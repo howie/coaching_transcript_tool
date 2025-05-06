@@ -1,26 +1,25 @@
 # Use an official Python runtime as a parent image
-FROM python:3.10-slim-buster # Choose a suitable Python version
+FROM python:3.10-slim-buster
 
 WORKDIR /app
 
 # Copy only necessary files for installing dependencies first
 COPY pyproject.toml ./
-COPY requirements.txt ./ # If you use requirements.txt for Docker
-# COPY setup.py ./ # If needed
+COPY requirements.txt ./
 
 # Install dependencies
-# Using requirements.txt might be simpler in Docker
 RUN pip install --no-cache-dir -r requirements.txt
-# Or install from pyproject.toml
-# RUN pip install --no-cache-dir .
+RUN pip install openpyxl pandas
 
 # Copy the rest of the application code
 COPY src/ ./src
-COPY README.md . # etc.
+COPY README.md ./
 
-# Make port 80 available if it's a web app
-# EXPOSE 80
+# Create a volume mount point for data
+VOLUME ["/data"]
 
-# Command to run the application
-# Adjust based on your project's entry point
-CMD ["python", "src/main.py"]
+# Set the entrypoint to the Python interpreter
+ENTRYPOINT ["python"]
+
+# Default command to show help
+CMD ["-m", "src.vtt", "--help"]
