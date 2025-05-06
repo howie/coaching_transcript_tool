@@ -60,11 +60,54 @@ def replace_names(data, coach, client):
             item['speaker'] = 'Client'
     return data
 
-def generate_markdown(data):
+def generate_markdown(data, content_width=80):
+    """
+    Generate a Markdown table from the parsed data.
+    
+    Args:
+        data: List of dictionaries with time, speaker, and content
+        content_width: Maximum width for content column before wrapping (default: 80)
+    
+    Returns:
+        Markdown table as a string
+    """
+    # Create header
     markdown = "| Time | Role | Content |\n"
     markdown += "| ---- | ---- | ------- |\n"
+    
+    # Process each row
     for item in data:
-        markdown += f"| {item['time']} | {item['speaker']} | {item['content']} |\n"
+        # Get the content and wrap it if needed
+        content = item['content']
+        
+        # Format the content to fit within content_width
+        if len(content) > content_width:
+            # More natural word-based wrapping instead of character-based
+            words = content.split()
+            wrapped_content = []
+            current_line = ""
+            
+            for word in words:
+                if len(current_line) + len(word) + 1 <= content_width:
+                    if current_line:
+                        current_line += " " + word
+                    else:
+                        current_line = word
+                else:
+                    wrapped_content.append(current_line)
+                    current_line = word
+            
+            if current_line:
+                wrapped_content.append(current_line)
+                
+            content = "<br>".join(wrapped_content)
+        
+        # Add row to markdown table with special formatting for Coach
+        if item['speaker'] == 'Coach':
+            markdown += f"| {item['time']} | **{item['speaker']}** | {content} |\n"
+        else:
+            markdown += f"| {item['time']} | {item['speaker']} | {content} |\n"
+    
     return markdown
 
 def generate_excel(data, output_file, coach_color='D8E4F0', font_size=16, content_width=40):
@@ -165,7 +208,7 @@ def main():
     parser.add_argument('-Client', help='Name of the client')
     parser.add_argument('-color', default='D8E4F0', help='Hex color code for highlighting coach rows (default: D8E4F0 light blue)')
     parser.add_argument('-font_size', type=int, default=16, help='Font size for Excel output (default: 16)')
-    parser.add_argument('-content_width', type=int, default=160, help='Width of content column in characters (default: 160)')
+    parser.add_argument('-content_width', type=int, default=160, help='Width of content column in characters (default: 160 for Excel, 80 for Markdown)')
     args = parser.parse_args()
 
     data = parse_vtt(args.input_file)
@@ -175,7 +218,9 @@ def main():
         consolidated_data = replace_names(consolidated_data, args.Coach, args.Client)
 
     if args.output_file.endswith('.md'):
-        output = generate_markdown(consolidated_data)
+        # For Markdown, use a more reasonable content width if not explicitly set
+        md_content_width = min(args.content_width, 80) if args.content_width != 160 else 80
+        output = generate_markdown(consolidated_data, md_content_width)
         with open(args.output_file, 'w', encoding='utf-8') as f:
             f.write(output)
     elif args.output_file.endswith('.xlsx'):
