@@ -15,4 +15,4 @@ def data_dir():
 @pytest.fixture
 def sample_vtt_path(data_dir):
     """Return the path to the sample VTT file."""
-    return os.path.join(data_dir, 'sample.vtt')
+    return os.path.join(data_dir, 'sample_1.vtt', 'sample_2.vtt')

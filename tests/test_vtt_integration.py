@@ -6,7 +6,7 @@ import pytest
 import pandas as pd
 
 # Sample VTT content for integration testing
-SAMPLE_VTT = """WEBVTT
+SAMPLE_1_VTT = """WEBVTT
 
 00:00:01.000 --> 00:00:05.000
 <v Coach Name>How are you feeling today?</v>
@@ -25,7 +25,7 @@ SAMPLE_VTT = """WEBVTT
 def sample_vtt_file():
     """Create a temporary VTT file for testing."""
     with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.vtt') as f:
-        f.write(SAMPLE_VTT)
+        f.write(SAMPLE_1_VTT)
         temp_path = f.name
     
     yield temp_path
@@ -68,7 +68,7 @@ def test_markdown_output_cli(sample_vtt_file):
             content = f.read()
             
         assert "| Time | Role | Content |" in content
-        assert "| 00:00:01.000 | Coach | How are you feeling today? |" in content
+        assert "| 00:00:01.000 | **Coach** | How are you feeling today? |" in content
         assert "| 00:00:06.000 | Client | I'm feeling pretty good, thanks for asking. |" in content
     finally:
         # Cleanup
