@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="importlib._bootstrap")
+
 import argparse
 import re
 from collections import defaultdict
@@ -129,8 +132,7 @@ def generate_excel(data, output_file, coach_color='D8E4F0', font_size=16, conten
         # Write DataFrame to Excel
         df.to_excel(writer, index=False, sheet_name='Transcript')
         
-        # Get the workbook and worksheet
-        workbook = writer.book
+        # Get the worksheet
         worksheet = writer.sheets['Transcript']
         
         # Set default font size for the entire worksheet
