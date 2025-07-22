@@ -4,3 +4,4 @@
 pandas>=1.3.0
 openpyxl>=3.0.9  # Required for Excel output
 pytest>=7.0.0    # For testing
+opencc-python-reimplemented>=0.1.7  # For Simplified to Traditional Chinese conversion
