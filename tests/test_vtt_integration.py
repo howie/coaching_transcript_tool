@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="importlib._bootstrap")
+
 import os
 import tempfile
 import subprocess
@@ -108,10 +111,10 @@ def test_excel_output_cli(sample_vtt_file):
         df = pd.read_excel(output_path)
         
         assert len(df) == 4
-        assert df.iloc[0]['speaker'] == 'Coach'
-        assert 'feeling today' in df.iloc[0]['content']
-        assert df.iloc[1]['speaker'] == 'Client'
-        assert 'career goals' in df.iloc[3]['content']
+        assert df.iloc[0]['Role'] == 'Coach'  # Changed from 'speaker' to 'Role'
+        assert 'feeling today' in df.iloc[0]['Content']
+        assert df.iloc[1]['Role'] == 'Client'  # Changed from 'speaker' to 'Role'
+        assert 'career goals' in df.iloc[3]['Content']  # Changed to use 'Content' for consistency
     finally:
         # Cleanup
         if os.path.exists(output_path):

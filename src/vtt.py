@@ -7,29 +7,89 @@ Main script for converting VTT files to Markdown or Excel format.
 """
 import sys
 import re
+import sys
 import logging
+import warnings
 import argparse
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
-# Local imports
-from parser import parse_vtt, consolidate_speakers, replace_names
+# Import from our parser module
+from parser import parse_vtt, VTTFormat, detect_format, consolidate_speakers, replace_names
 from exporters.markdown import generate_markdown
 from exporters.excel import generate_excel
 
-# Version information
-__version__ = '1.2.0'
+# Suppress specific warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="Proactor .* is not implemented")
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
+    handlers=[
+        logging.StreamHandler()
+    ]
 )
+
 logger = logging.getLogger(__name__)
 
+# Version
+__version__ = '1.3.0'
 
-
-
+def process_vtt(input_file: str, output_file: str, output_format: str = 'markdown',
+               coach_name: str = None, client_name: str = None, debug: bool = False,
+               format_type: VTTFormat = None) -> None:
+    """
+    Process a VTT file and generate output in the specified format.
+    
+    Args:
+        input_file: Path to the input VTT file
+        output_file: Path to the output file
+        output_format: Output format ('markdown' or 'excel')
+        coach_name: Name of the coach in the transcript
+        client_name: Name of the client in the transcript
+        debug: Enable debug logging
+        format_type: Optional format type (MS_TEAMS, MAC_WHISPER). Auto-detected if None.
+    """
+    if debug:
+        logger.setLevel(logging.DEBUG)
+    
+    logger.info(f'Processing input file: {input_file}')
+    
+    try:
+        # Parse the VTT file
+        parsed_data = parse_vtt(input_file, format_type)
+        logger.debug(f'Successfully parsed {len(parsed_data)} entries')
+        
+        # Consolidate consecutive speeches from the same speaker
+        consolidated_data = consolidate_speakers(parsed_data)
+        logger.debug(f'Consolidated to {len(consolidated_data)} entries')
+        
+        # Replace names with roles if coach and client names are provided
+        if coach_name and client_name:
+            logger.debug(f'Replacing names - Coach: {coach_name}, Client: {client_name}')
+            processed_data = replace_names(consolidated_data, coach_name, client_name)
+        else:
+            processed_data = consolidated_data
+        
+        # Generate output in the specified format
+        logger.info(f'Generating {output_format} output to {output_file}')
+        
+        if output_format.lower() == 'markdown':
+            markdown_content = generate_markdown(processed_data)
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(markdown_content)
+        elif output_format.lower() == 'excel':
+            generate_excel(processed_data, output_file)
+        else:
+            raise ValueError(f'Unsupported output format: {output_format}')
+            
+        logger.info(f'Successfully generated {output_format} file: {output_file}')
+        
+    except Exception as e:
+        logger.error(f'Error processing VTT file: {str(e)}')
+        if debug:
+            logger.exception('Detailed error:')
+        raise
 
 def parse_arguments():
     """Parse command line arguments."""
@@ -81,35 +141,32 @@ def main():
     logger.debug(f"Starting VTT conversion with args: {args}")
 
     try:
-        logger.info(f"Processing input file: {args.input_file}")
-        data = parse_vtt(args.input_file)
-        logger.debug(f"Parsed {len(data)} entries from VTT file")
-        
-        consolidated_data = consolidate_speakers(data)
-        logger.debug(f"Consolidated to {len(consolidated_data)} entries")
-
-        if args.Coach and args.Client:
-            logger.debug(f"Replacing names - Coach: {args.Coach}, Client: {args.Client}")
-            consolidated_data = replace_names(consolidated_data, args.Coach, args.Client)
-
-        logger.info(f"Generating output file: {args.output_file}")
-        if args.output_file.endswith('.md'):
-            # For Markdown, use a more reasonable content width if not explicitly set
-            md_content_width = min(args.content_width, 80) if args.content_width != 160 else 80
-            logger.debug(f"Generating Markdown with content width: {md_content_width}")
-            output = generate_markdown(consolidated_data, md_content_width)
-            with open(args.output_file, 'w', encoding='utf-8') as f:
-                f.write(output)
-            logger.info(f"Markdown file created successfully: {args.output_file}")
-            
-        elif args.output_file.endswith('.xlsx'):
-            logger.debug(f"Generating Excel with font size: {args.font_size}, content width: {args.content_width}")
-            generate_excel(consolidated_data, args.output_file, args.color, args.font_size, args.content_width)
-            logger.info(f"Excel file created successfully: {args.output_file}")
-            
+        # Determine output format
+        if args.output_file.lower().endswith('.md'):
+            output_format = 'markdown'
+            # Use a more reasonable content width for markdown if not explicitly set
+            content_width = min(args.content_width, 80) if args.content_width != 160 else 80
+        elif args.output_file.lower().endswith(('.xlsx', '.xls')):
+            output_format = 'excel'
+            content_width = args.content_width
         else:
             logger.error("Unsupported output format. Use .md for Markdown or .xlsx for Excel.")
             sys.exit(1)
+            
+        logger.debug(f"Processing with format: {output_format}, font_size: {args.font_size}, content_width: {content_width}")
+        
+        # Process the VTT file
+        process_vtt(
+            input_file=args.input_file,
+            output_file=args.output_file,
+            output_format=output_format,
+            coach_name=args.Coach,
+            client_name=args.Client,
+            debug=args.debug,
+            format_type=None  # Auto-detect format
+        )
+        
+        logger.info(f"Successfully generated {output_format} file: {args.output_file}")
             
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")
