@@ -4,17 +4,18 @@
 
 ## 0. Project Setup
 
-* [ ] Initialize monorepo or single repo structure (`/core`, `/api`, `/integrations`).
+* [x] Initialize monorepo or single repo structure (`/core`, `/api`, `/integrations`).
 * [ ] Add `pyproject.toml` + `ruff`/`black`/`mypy` configs.
 * [ ] Create `.windsurf/rules.md` & `.cline/rules.md` to guide agents.
 
 ## 1. Core / Backend
 
-* [ ] Abstract `TranscriptParser` interface to support **VTT / SRT / Audio(JSON)**.
-* [ ] Refactor CLI-only code into importable module: `coaching_transcript/core.py`.
-* [ ] Expose main pipeline function: `format_transcript(input_bytes, filename, output="excel|markdown")`.
+* [x] Abstract `TranscriptParser` interface to support **VTT / SRT / Audio(JSON)**.
+* [x] Refactor CLI-only code into importable module: `coaching_transcript/core.py`.
+* [x] Expose main pipeline function: `format_transcript(input_bytes, filename, output="excel|markdown")`.
 * [ ] Publish to internal PyPI (optional) for easier reuse.
 * [ ] Write unit tests with `pytest` (coverage ≥ 80%).
+* [ ] Maintain a changelog to track changes and updates.
 
 ## 2. API & Cloud
 

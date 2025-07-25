@@ -1,6 +1,6 @@
 # Coaching Transcript Tool
 
-A tool for converting coaching transcripts from VTT to Markdown or Excel.
+A tool for converting coaching transcripts from VTT to Markdown or Excel, available as both a command-line tool and a REST API service.
 
 ## Installation
 
@@ -34,9 +34,9 @@ make dist-install
 pip install dist/coaching_transcript_tool-0.1.0-py3-none-any.whl
 ```
 
-### Option 4: Use Docker
+### Option 4: Use Docker (CLI Tool)
 
-Build and run using Docker:
+Build and run the command-line tool using Docker:
 
 ```bash
 # Build the Docker image
@@ -46,7 +46,58 @@ make docker
 docker run -v $(pwd):/data coaching_transcript_tool:latest -m src.vtt --help
 ```
 
+### Option 5: Run the API Service
+
+Run the FastAPI service using Docker Compose:
+
+```bash
+# Start the service
+docker-compose up -d
+
+# The API will be available at http://localhost:8000
+# Check the API documentation at http://localhost:8000/docs
+```
+
 ## Usage
+
+### API Service Usage
+
+The API provides the following endpoints:
+
+#### POST /format
+Convert a transcript file to the specified format.
+
+**Request:**
+- Method: `POST`
+- URL: `/format?output_format=markdown&coach_name=Coach&client_name=Client&convert_to_tc=true`
+- Headers: 
+  - `Content-Type: multipart/form-data`
+- Body:
+  - `file`: The transcript file to process (VTT or SRT)
+
+**Parameters:**
+- `output_format`: Output format (`markdown` or `excel`)
+- `coach_name`: Name of the coach (for role identification)
+- `client_name`: Name of the client (for role identification)
+- `convert_to_tc`: Whether to convert Chinese text to Traditional Chinese (`true`/`false`)
+
+**Example using cURL:**
+```bash
+curl -X 'POST' \
+  'http://localhost:8000/format?output_format=markdown&coach_name=Howie&client_name=John' \
+  -H 'accept: application/octet-stream' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'file=@/path/to/transcript.vtt' \
+  --output transcript.md
+```
+
+#### GET /health
+Check if the service is running.
+
+**Example:**
+```bash
+curl http://localhost:8000/health
+```
 
 ### Command Line Usage
 

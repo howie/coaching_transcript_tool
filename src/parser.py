@@ -84,22 +84,20 @@ def detect_format(content: str) -> Optional[VTTFormat]:
     
     return None
 
-def parse_vtt(file_path: str, format_type: Optional[VTTFormat] = None) -> List[Dict[str, Any]]:
+def parse_vtt(content: str, format_type: Optional[VTTFormat] = None) -> List[Dict[str, Any]]:
     """
-    Parse a VTT file and return a list of dictionaries with time, speaker, and content.
-    
+    Parse VTT content and return a list of dictionaries with time, speaker, and content.
+
     Args:
-        file_path: Path to the VTT file
+        content: The string content of the VTT file.
         format_type: Optional format type to force. If None, will auto-detect.
-        
+
     Returns:
-        List of dictionaries containing 'time', 'speaker', and 'content' keys
-        
+        List of dictionaries containing 'time', 'speaker', and 'content' keys.
+
     Raises:
-        ValueError: If the format cannot be detected or is not supported
+        ValueError: If the format cannot be detected or is not supported.
     """
-    with open(file_path, 'r', encoding='utf-8') as file:
-        content = file.read()
     
     # If format not specified, try to detect it
     if format_type is None:

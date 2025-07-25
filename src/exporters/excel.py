@@ -5,6 +5,7 @@ Module for exporting transcript data to Excel format.
 from typing import List, Dict, Any
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
+import io
 from openpyxl.utils import get_column_letter
 
 def calculate_column_widths(worksheet) -> None:
@@ -25,14 +26,8 @@ def calculate_column_widths(worksheet) -> None:
         
         # Find the maximum length of content in the column
         for cell in column:
-            try:
-                # Get the length of the cell value
-                if cell.value:
-                    cell_length = len(str(cell.value))
-                    if cell_length > max_length:
-                        max_length = cell_length
-            except:
-                pass
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
         
         # Add some padding and set the column width
         adjusted_width = (max_length + 2) * 1.1  # Add padding and a little extra
@@ -47,21 +42,22 @@ def calculate_column_widths(worksheet) -> None:
         worksheet.column_dimensions[column_letter].width = adjusted_width
 
 def generate_excel(
-    data: List[Dict[str, Any]], 
-    output_file: str, 
-    coach_color: str = 'D8E4F0', 
+    data: List[Dict[str, Any]],
+    coach_color: str = 'D8E4F0',
     client_color: str = 'F0F0F0',  # Light gray for client rows
     font_size: int = 16,           # Slightly smaller default font size
-) -> None:
+) -> io.BytesIO:
     """
     Generate an Excel file from the parsed data with formatting.
     
     Args:
-        data: List of dictionaries with time, speaker, and content
-        output_file: Path to save the Excel file
-        coach_color: Hex color code to highlight coach rows (default: light blue D8E4F0)
-        client_color: Hex color code for client rows (default: light gray F0F0F0)
-        font_size: Default font size for all cells (default: 14)
+        data: List of dictionaries with time, speaker, and content.
+        coach_color: Hex color code to highlight coach rows (default: light blue D8E4F0).
+        client_color: Hex color code for client rows (default: light gray F0F0F0).
+        font_size: Default font size for all cells (default: 14).
+
+    Returns:
+        An in-memory BytesIO buffer containing the Excel file.
     """
     # Create a new workbook and select the active worksheet
     wb = Workbook()
@@ -76,44 +72,17 @@ def generate_excel(
     for item in data:
         ws.append([item['time'], item['speaker'], item['content']])
     
-    # Set initial column widths (will be adjusted later)
-    ws.column_dimensions['A'].width = 15  # Time column
-    ws.column_dimensions['B'].width = 15  # Role column
-    ws.column_dimensions['C'].width = 40  # Content column (initial width)
-    
-    # Create styles
-    header_font = Font(bold=True, size=font_size + 2, color='FFFFFF')  # White text for header
-    cell_font = Font(size=font_size)
-    alignment = Alignment(wrap_text=True, vertical='top')
-    
-    # Create fills
-    header_fill = PatternFill(start_color='4F81BD', end_color='4F81BD', fill_type='solid')  # Blue header
-    coach_fill = PatternFill(start_color=coach_color, end_color=coach_color, fill_type='solid')
-    client_fill = PatternFill(start_color=client_color, end_color=client_color, fill_type='solid')
-    
-    # Apply styles to header
-    for cell in ws[1]:
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    
-    # Apply styles to data cells
-    for row in ws.iter_rows(min_row=2, max_row=len(data)+1, min_col=1, max_col=3):
-        speaker = row[1].value  # Column B contains the speaker
-        
-        for cell in row:
-            cell.font = cell_font
-            cell.alignment = alignment
-            
-            # Apply fill based on speaker role
-            if speaker == 'Coach':
-                cell.fill = coach_fill
-            elif speaker == 'Client':
-                cell.fill = client_fill
-    
-    # Auto-adjust column widths based on content
+    # Set initial column widths
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 15
+    ws.column_dimensions['C'].width = 40
+
+    # Apply styles and formatting
+    _apply_styles(ws, data, font_size, coach_color, client_color)
+
+    # Adjust column widths based on content
     calculate_column_widths(ws)
-    
+
     # Calculate and set row heights based on content
     for row_idx, row in enumerate(ws.iter_rows(min_row=2), start=2):  # Start from row 2 (skip header)
         max_lines = 1
@@ -137,5 +106,31 @@ def generate_excel(
     # Freeze the header row
     ws.freeze_panes = 'A2'
     
-    # Save the workbook
-    wb.save(output_file)
+    # Save the workbook to an in-memory buffer
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+def _apply_styles(ws, data, font_size, coach_color, client_color):
+    """Helper function to apply styles to the worksheet."""
+    header_font = Font(bold=True, size=font_size + 2, color='FFFFFF')
+    cell_font = Font(size=font_size)
+    alignment = Alignment(wrap_text=True, vertical='top')
+
+    header_fill = PatternFill(start_color='4F81BD', end_color='4F81BD', fill_type='solid')
+    coach_fill = PatternFill(start_color=coach_color, end_color=coach_color, fill_type='solid')
+    client_fill = PatternFill(start_color=client_color, end_color=client_color, fill_type='solid')
+
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    for row_idx, item in enumerate(data, start=2):
+        fill = coach_fill if item['speaker'] == 'Coach' else client_fill
+        for col_idx in range(1, 4):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.font = cell_font
+            cell.fill = fill
+            cell.alignment = alignment
