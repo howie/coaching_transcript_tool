@@ -4,10 +4,10 @@ Core processing logic for handling transcript files.
 import logging
 from typing import List, Dict, Any, Optional, Union, IO
 
-from parser import parse_vtt, VTTFormat, consolidate_speakers, replace_names
-from exporters.markdown import generate_markdown
-from exporters.excel import generate_excel
-from utils.chinese_converter import convert_to_traditional
+from ..parser import VTTFormat, consolidate_speakers, parse_vtt, replace_names
+from ..exporters.excel import generate_excel
+from ..exporters.markdown import generate_markdown
+from ..utils.chinese_converter import convert_to_traditional
 
 logger = logging.getLogger(__name__)
 

@@ -23,12 +23,16 @@ dependencies = [
     "fastapi>=0.100.0",
     "uvicorn>=0.22.0",
     "python-multipart",
+    "typer[all]",
 ]
 
 
 [project.urls]
 "Homepage" = "https://github.com/howie/coaching_transcript_tool"
 "Bug Tracker" = "https://github.com/howie/coaching_transcript_tool/issues"
+
+[project.scripts]
+transcript-tool = "coaching_assistant.cli:app"
 
 [tool.pytest.ini_options]
 pythonpath = [
