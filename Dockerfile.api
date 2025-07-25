@@ -1,0 +1,45 @@
+# Build stage
+FROM python:3.10-slim as builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY pyproject.toml README.md ./
+COPY src/ ./src/
+
+# Install the package in development mode
+RUN pip install --prefix=/install -e .
+
+# Install API dependencies
+RUN pip install --prefix=/install -r requirements/api.txt
+
+# Runtime stage
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy the application code
+COPY src/ ./src/
+
+# Create a non-root user and switch to it
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Expose the port the app runs on
+EXPOSE 8000
+
+# Command to run the application
+CMD ["uvicorn", "coaching_transcript_tool.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
