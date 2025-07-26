@@ -31,29 +31,41 @@ build: clean
 install: build
 	$(PIP) install -e .
 
-# Install development dependencies
-dev-setup:
-	$(PIP) install -r requirements.txt
-	$(PIP) install --upgrade pip setuptools wheel build
-	$(PIP) install -e .
+
 
 # Build Docker image
 docker:
 	docker build -t $(DOCKER_IMAGE) -t $(DOCKER_LATEST) .
 
-# Run the Docker container
+# Run the Docker container with volume mapping
 docker-run:
 	@echo "Running Docker container..."
-	@echo "Usage: docker run -v /path/to/data:/data $(DOCKER_IMAGE) -m src.vtt /data/input.vtt /data/output.xlsx -Coach 'Coach Name' -Client 'Client Name'"
-	docker run -it --rm $(DOCKER_IMAGE) -m src.vtt --help
+	@echo "Example usage:"
+	@echo "  make docker-run INPUT=./input.vtt OUTPUT=./output.md"
+	@echo "  make docker-run INPUT=./input.vtt OUTPUT=./output.xlsx FORMAT=excel"
+	@if [ -z "$(INPUT)" ] || [ -z "$(OUTPUT)" ]; then \
+		echo "Error: INPUT and OUTPUT parameters are required"; \
+		echo "Example: make docker-run INPUT=./input.vtt OUTPUT=./output.md"; \
+		exit 1; \
+	fi
+	docker run -it --rm \
+		-v $(shell pwd)/$(INPUT):/input.vtt:ro \
+		-v $(shell pwd)/$(dir $(OUTPUT)):/output \
+		$(DOCKER_IMAGE) format-command /input.vtt /output/$(notdir $(OUTPUT)) $(if $(FORMAT),--format $(FORMAT))
 
 # Run tests
 test:
 	pytest tests/
 
+# Install development dependencies
+dev-setup:
+	$(PIP) install -r requirements.txt
+	$(PIP) install --upgrade pip setuptools wheel build flake8 pytest
+	$(PIP) install -e .
+
 # Run linting
-lint:
-	flake8 src/ tests/
+lint: dev-setup
+	$(PYTHON) -m flake8 src/ tests/
 
 # Create a distribution package
 dist: clean

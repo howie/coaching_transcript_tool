@@ -4,15 +4,17 @@ Core processing logic for handling transcript files.
 import logging
 from typing import List, Dict, Any, Optional, Union, IO
 
-from ..parser import VTTFormat, consolidate_speakers, parse_vtt, replace_names
+from ..parser import (VTTFormat, UnrecognizedFormatError, consolidate_speakers, parse_vtt, replace_names)
 from ..exporters.excel import generate_excel
 from ..exporters.markdown import generate_markdown
 from ..utils.chinese_converter import convert_to_traditional
+from ..utils.s3_uploader import upload_snippet_to_s3
 
 logger = logging.getLogger(__name__)
 
 def format_transcript(
-    file_content: str,
+    file_content: bytes,  # Changed from str to bytes
+    original_filename: str,
     output_format: str = 'markdown',
     coach_name: Optional[str] = None,
     client_name: Optional[str] = None,
@@ -34,8 +36,15 @@ def format_transcript(
         The formatted transcript as a string (for Markdown) or bytes (for Excel).
     """
     try:
+        # Decode file content to string for parsing
+        try:
+            content_str = file_content.decode('utf-8')
+        except UnicodeDecodeError:
+            # If decoding fails, it's likely not a valid text file.
+            raise UnrecognizedFormatError("File is not valid UTF-8 text.")
+
         # Parse the VTT content
-        parsed_data = parse_vtt(file_content, format_type)
+        parsed_data = parse_vtt(content_str, format_type)
         logger.debug(f'Successfully parsed {len(parsed_data)} entries')
 
         # Consolidate consecutive speeches from the same speaker
@@ -60,9 +69,17 @@ def format_transcript(
         if output_format.lower() == 'markdown':
             return generate_markdown(processed_data)
         elif output_format.lower() == 'excel':
-            return generate_excel(processed_data)
+            excel_data = generate_excel(processed_data)
+            return excel_data.getvalue()
         else:
             raise ValueError(f'Unsupported output format: {output_format}')
+
+    except UnrecognizedFormatError as e:
+        logger.warning(f"Unrecognized format for file '{original_filename}': {e}")
+        # Upload a snippet of the file for review
+        upload_snippet_to_s3(file_content, original_filename)
+        # Re-raise the exception to be handled by the API layer
+        raise
 
     except Exception as e:
         logger.error(f'Error processing transcript content: {str(e)}')

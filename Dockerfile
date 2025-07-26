@@ -1,15 +1,24 @@
 # Use an official Python runtime as a parent image
-FROM python:3.10-slim-buster
+FROM python:3.10-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
-# Copy only necessary files for installing dependencies first
-COPY pyproject.toml ./
-COPY requirements.txt ./
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install openpyxl pandas
+# Copy only necessary files for installing dependencies first
+COPY pyproject.toml requirements.txt ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install openpyxl pandas
 
 # Copy the rest of the application code
 COPY src/ ./src
@@ -19,7 +28,7 @@ COPY README.md ./
 VOLUME ["/data"]
 
 # Set the entrypoint to the Python interpreter
-ENTRYPOINT ["python"]
+ENTRYPOINT ["python", "-m", "src.coaching_assistant.cli"]
 
 # Default command to show help
-CMD ["-m", "src.vtt", "--help"]
+CMD ["--help"]

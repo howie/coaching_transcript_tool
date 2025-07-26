@@ -64,11 +64,12 @@ def format_command(
     """
     logger.info(f"Reading file: {input_file}")
     try:
-        with open(input_file, 'r', encoding='utf-8') as f:
-            content_str = f.read()
+        with open(input_file, 'rb') as f:
+            content_bytes = f.read()
 
         result = format_transcript(
-            file_content=content_str,
+            file_content=content_bytes,
+            original_filename=input_file.name,
             output_format=output_format,
             coach_name=coach_name,
             client_name=client_name,
@@ -76,12 +77,12 @@ def format_command(
         )
 
         logger.info(f"Writing output to: {output_file}")
-        if output_format.lower() == 'excel':
-            # The result is a BytesIO object
+        if isinstance(result, bytes):
+            # For Excel output
             with open(output_file, 'wb') as f:
-                f.write(result.getvalue())
-        elif output_format.lower() == 'markdown':
-            # The result is a string
+                f.write(result)
+        elif isinstance(result, str):
+            # For Markdown output
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(result)
         else:

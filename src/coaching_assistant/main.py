@@ -5,7 +5,8 @@ from typing import Optional
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 
-from coaching_assistant.core import format_transcript
+from coaching_assistant.core.processor import format_transcript
+from coaching_assistant.parser import UnrecognizedFormatError
 
 # Configure logging
 logging.basicConfig(
@@ -42,13 +43,9 @@ async def format_transcript_endpoint(
     try:
         file_content = await file.read()
 
-        try:
-            content_str = file_content.decode('utf-8')
-        except UnicodeDecodeError:
-            raise HTTPException(status_code=400, detail="File is not valid UTF-8.")
-
         result = format_transcript(
-            file_content=content_str,
+            file_content=file_content, # Pass raw bytes
+            original_filename=file.filename,
             output_format=output_format,
             coach_name=coach_name,
             client_name=client_name,
@@ -76,6 +73,9 @@ async def format_transcript_endpoint(
             headers={"Content-Disposition": f"attachment; filename={output_filename}"}
         )
 
+    except UnrecognizedFormatError as e:
+        logger.warning(f"Returning 400 due to unrecognized format: {e}")
+        raise HTTPException(status_code=400, detail=f"Unrecognized file format: {e}")
     except Exception as e:
         logger.exception(f"Error processing file {file.filename}:")
         raise HTTPException(status_code=500, detail=str(e))
