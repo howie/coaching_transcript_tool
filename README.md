@@ -86,7 +86,9 @@ docker-compose up -d
 
 ## 💻 Local Usage
 
-The tool can also be run directly from the command line using `transcript-tool`.
+The tool is primarily designed to be used as a command-line interface. After installation, you can run it using the `transcript-tool` command.
+
+## 🖥️ Command Line Interface
 
 ### Basic Command
 
@@ -94,33 +96,75 @@ The tool can also be run directly from the command line using `transcript-tool`.
 transcript-tool format-command [INPUT_FILE] [OUTPUT_FILE] [OPTIONS]
 ```
 
+### Getting Help
+
+Show help message and available commands:
+```bash
+transcript-tool --help
+```
+
+Show version:
+```bash
+transcript-tool --version
+```
+
 ### Examples
 
-1.  **Convert a VTT file to Markdown:**
-    ```bash
-    transcript-tool format-command input.vtt output.md
-    ```
+1. **Basic Conversion**
+   ```bash
+   # Convert VTT to Markdown (default format)
+   transcript-tool format-command input.vtt output.md
+   
+   # Convert VTT to Excel
+   transcript-tool format-command input.vtt output.xlsx --format excel
+   ```
 
-2.  **Convert to Excel and anonymize speakers:**
-    ```bash
-    transcript-tool format-command transcript.vtt formatted.xlsx --format excel --coach-name "John Doe" --client-name "Jane Smith"
-    ```
+2. **Speaker Anonymization**
+   ```bash
+   # Replace specific names with 'Coach' and 'Client'
+   transcript-tool format-command input.vtt output.md \
+       --coach-name "Dr. Smith" \
+       --client-name "Mr. Johnson"
+   ```
 
-3.  **Convert to Markdown with Traditional Chinese:**
-    ```bash
-    transcript-tool format-command simplified_chinese.vtt traditional_chinese.md --traditional
-    ```
+3. **Chinese Language Support**
+   ```bash
+   # Convert Simplified Chinese to Traditional Chinese
+   transcript-tool format-command input.vtt output.md --traditional
+   ```
+
+4. **Combined Options**
+   ```bash
+   # Multiple options together
+   transcript-tool format-command meeting.vtt report.xlsx \
+       --format excel \
+       --coach-name "Dr. Lee" \
+       --client-name "Ms. Chen" \
+       --traditional
+   ```
 
 ### Command Options
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| `input_file` | Path to the input VTT transcript file (required) | `input.vtt` |
-| `output_file` | Path to save the formatted output file (required) | `output.md` or `output.xlsx` |
-| `--format` | Output format: `markdown` (default) or `excel` | `--format excel` |
-| `--coach-name` | Name of the coach to be replaced with 'Coach' | `--coach-name "John Doe"` |
-| `--client-name` | Name of the client to be replaced with 'Client' | `--client-name "Jane Smith"` |
-| `--traditional` | Convert Simplified Chinese to Traditional Chinese | `--traditional` |
+| Option | Short | Description | Required | Default |
+|--------|-------|-------------|:--------:|:-------:|
+| `INPUT_FILE` | - | Path to the input VTT transcript file | ✅ | - |
+| `OUTPUT_FILE` | - | Path to save the formatted output file | ✅ | - |
+| `--format`, `-f` | `-f` | Output format: `markdown` or `excel` | ❌ | `markdown` |
+| `--coach-name` | - | Name of the coach to be replaced with 'Coach' | ❌ | - |
+| `--client-name` | - | Name of the client to be replaced with 'Client' | ❌ | - |
+| `--traditional` | `-t` | Convert Simplified Chinese to Traditional Chinese | ❌ | `False` |
+
+### Output Formats
+
+- **Markdown (`.md`)**
+  - Clean, readable text format
+  - Preserves speaker turns and timestamps
+  - Easy to edit and version control
+
+- **Excel (`.xlsx`)**
+  - Structured tabular format
+  - Multiple columns for speaker, timestamp, and content
+  - Easy to sort, filter, and analyze
 
 ### Environment Variables
 
