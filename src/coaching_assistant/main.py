@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Coaching Transcript Tool API",
     description="An API to format coaching transcript files (VTT) into Markdown or Excel.",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 @app.get("/")
