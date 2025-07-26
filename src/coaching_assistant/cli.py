@@ -15,12 +15,40 @@ logger = logging.getLogger(__name__)
 
 app = typer.Typer(
     name="transcript-tool",
-    help="A CLI tool to format coaching transcript files (VTT) into Markdown or Excel.",
+    help="""A powerful CLI tool to process and format coaching transcript files (VTT) into structured Markdown or Excel documents.
+    
+    Examples:
+    
+    1. Convert VTT to Markdown:
+       transcript-tool format-command input.vtt output.md
+    
+    2. Convert VTT to Excel:
+       transcript-tool format-command input.vtt output.xlsx --format excel
+    
+    3. Anonymize speaker names:
+       transcript-tool format-command input.vtt output.md --coach "John Doe" --client "Jane Smith"
+    
+    4. Convert to Traditional Chinese:
+       transcript-tool format-command input.vtt output.md --traditional
+    """,
+    no_args_is_help=True,
 )
 
-@app.callback()
-def callback():
-    """Callback to ensure help is shown when no command is provided."""
+@app.callback(invoke_without_command=True)
+def callback(
+    version: bool = typer.Option(
+        None, 
+        "--version", 
+        "-v",
+        help="Show version and exit.",
+        is_eager=True,
+    )
+):
+    """CLI for processing coaching transcripts."""
+    if version:
+        from coaching_assistant import __version__
+        typer.echo(f"transcript-tool v{__version__}")
+        raise typer.Exit()
 
 @app.command()
 def format_command(
@@ -60,7 +88,18 @@ def format_command(
     ),
 ):
     """
-    Processes a VTT file and saves the formatted version to a new file.
+    Process a VTT file and save the formatted version to a new file.
+    
+    The tool supports converting VTT files to either Markdown (.md) or Excel (.xlsx) format.
+    You can also perform additional processing like speaker anonymization and Chinese conversion.
+    
+    Args:
+        input_file: Path to the input VTT file
+        output_file: Path where to save the converted file
+        output_format: Output format (markdown or excel)
+        coach_name: Name to replace with 'Coach' in the transcript
+        client_name: Name to replace with 'Client' in the transcript
+        convert_to_traditional_chinese: Convert Simplified Chinese to Traditional Chinese
     """
     logger.info(f"Reading file: {input_file}")
     try:
