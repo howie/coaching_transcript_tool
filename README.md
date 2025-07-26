@@ -1,269 +1,173 @@
 # Coaching Transcript Tool
 
-A tool for converting coaching transcripts from VTT to Markdown or Excel, available as both a command-line tool and a REST API service.
+A command-line tool to process and format coaching transcript files (VTT) into structured Markdown or Excel documents.
 
-## Installation
+## ✨ Features
 
-### Option 1: Install from PyPI (Not yet available)
+- **Format Conversion**: Convert VTT files to either Markdown (`.md`) or Excel (`.xlsx`).
+- **Speaker Anonymization**: Replace the names of the coach and client with 'Coach' and 'Client' for privacy.
+- **Chinese Language Support**: Convert transcript text from Simplified Chinese to Traditional Chinese.
 
-```bash
-pip install coaching-transcript-tool
+## Prerequisites
+
+- Python 3.8 or higher
+
+## 🚀 Installation & Setup
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/howie/coaching_transcript_tool.git
+    cd coaching_transcript_tool
+    ```
+
+2.  **Create and activate a virtual environment using `venv`:**
+    ```bash
+    # Create the virtual environment
+    python3 -m venv venv
+
+    # Activate the environment
+    source venv/bin/activate
+    # On Windows, use: .\venv\Scripts\activate
+    ```
+
+3.  **Install dependencies:**
+    ```bash
+    pip install -e .[dev]
+    ```
+    This will install the tool in editable mode along with development dependencies.
+
+## 🐋 Docker Usage
+
+### Quick Start with Docker
+
+1. **Build the Docker image**:
+   ```bash
+   make docker
+   ```
+
+2. **Run a conversion**:
+   ```bash
+   # Convert VTT to Markdown
+   make docker-run INPUT=./input.vtt OUTPUT=./output.md
+   
+   # Convert VTT to Excel
+   make docker-run INPUT=./input.vtt OUTPUT=./output.xlsx FORMAT=excel
+   
+   # With additional options
+   make docker-run INPUT=./input.vtt OUTPUT=./output.md COACH="John Doe" CLIENT="Jane Smith" TRADITIONAL=true
+   ```
+
+### Docker Compose
+
+For running the API service:
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=8000
+      # Add other environment variables as needed
 ```
 
-### Option 2: Install from Source
-
-Clone the repository and install:
-
+Start the service:
 ```bash
-git clone https://github.com/howie/coaching_transcript_tool.git
-cd coaching_transcript_tool
-pip install -e .
-```
-
-### Option 3: Install from Distribution Package
-
-Build and install the package:
-
-```bash
-# Build the package
-make dist
-
-# Install the package
-make dist-install
-# OR
-pip install dist/coaching_transcript_tool-0.1.0-py3-none-any.whl
-```
-
-### Option 4: Use Docker (CLI Tool)
-
-Build and run the command-line tool using Docker:
-
-```bash
-# Build the Docker image
-make docker
-
-# Run the Docker container
-docker run -v $(pwd):/data coaching_transcript_tool:latest -m src.vtt --help
-```
-
-### Option 5: Run the API Service
-
-Run the FastAPI service using Docker Compose:
-
-```bash
-# Start the service
 docker-compose up -d
-
-# The API will be available at http://localhost:8000
-# Check the API documentation at http://localhost:8000/docs
 ```
 
-## Usage
+## 💻 Local Usage
 
-### API Service Usage
+The tool can also be run directly from the command line using `transcript-tool`.
 
-The API provides the following endpoints:
-
-#### POST /format
-Convert a transcript file to the specified format.
-
-**Request:**
-- Method: `POST`
-- URL: `/format?output_format=markdown&coach_name=Coach&client_name=Client&convert_to_tc=true`
-- Headers: 
-  - `Content-Type: multipart/form-data`
-- Body:
-  - `file`: The transcript file to process (VTT or SRT)
-
-**Parameters:**
-- `output_format`: Output format (`markdown` or `excel`)
-- `coach_name`: Name of the coach (for role identification)
-- `client_name`: Name of the client (for role identification)
-- `convert_to_tc`: Whether to convert Chinese text to Traditional Chinese (`true`/`false`)
-
-**Example using cURL:**
-```bash
-curl -X 'POST' \
-  'http://localhost:8000/format?output_format=markdown&coach_name=Howie&client_name=John' \
-  -H 'accept: application/octet-stream' \
-  -H 'Content-Type: multipart/form-data' \
-  -F 'file=@/path/to/transcript.vtt' \
-  --output transcript.md
-```
-
-#### GET /health
-Check if the service is running.
-
-**Example:**
-```bash
-curl http://localhost:8000/health
-```
-
-### Command Line Usage
-
-After installation, you can use the tool in several ways:
-
-#### 1. Using the Entry Point (After pip install)
+### Basic Command
 
 ```bash
-vtt-convert input.vtt output.xlsx -Coach "Coach Name" -Client "Client Name"
-```
-
-#### 2. As a Python Module
-
-```bash
-python -m src.vtt input.vtt output.xlsx -Coach "Coach Name" -Client "Client Name"
-```
-
-#### 3. Using Docker
-
-```bash
-docker run -v $(pwd):/data coaching_transcript_tool:latest -m src.vtt /data/input.vtt /data/output.xlsx -Coach "Coach Name" -Client "Client Name"
-```
-
-### Command Line Options
-
-```
-usage: vtt.py [-h] [-Coach COACH] [-Client CLIENT] [-color COLOR] [-font_size FONT_SIZE] [-content_width CONTENT_WIDTH]
-              input_file output_file
-
-positional arguments:
-  input_file            Input VTT file
-  output_file           Output file (use .md for Markdown or .xlsx for Excel)
-
-options:
-  -h, --help            show this help message and exit
-  -Coach COACH          Name of the coach
-  -Client CLIENT        Name of the client
-  -color COLOR          Hex color code for highlighting coach rows (default: D8E4F0 light blue)
-  -font_size FONT_SIZE  Font size for Excel output (default: 16)
-  -content_width CONTENT_WIDTH
-                        Width of content column in characters (default: 160 for Excel, 80 for Markdown)
+transcript-tool format-command [INPUT_FILE] [OUTPUT_FILE] [OPTIONS]
 ```
 
 ### Examples
 
-#### Convert VTT to Excel with default settings
+1.  **Convert a VTT file to Markdown:**
+    ```bash
+    transcript-tool format-command input.vtt output.md
+    ```
 
-```bash
-vtt-convert input.vtt output.xlsx -Coach "Howie Yu" -Client "CaRy"
-```
+2.  **Convert to Excel and anonymize speakers:**
+    ```bash
+    transcript-tool format-command transcript.vtt formatted.xlsx --format excel --coach-name "John Doe" --client-name "Jane Smith"
+    ```
 
-#### Convert VTT to Excel with custom formatting
+3.  **Convert to Markdown with Traditional Chinese:**
+    ```bash
+    transcript-tool format-command simplified_chinese.vtt traditional_chinese.md --traditional
+    ```
 
-```bash
-vtt-convert input.vtt output.xlsx -Coach "Howie Yu" -Client "CaRy" -color "FFD700" -font_size 14 -content_width 70
-```
+### Command Options
 
-#### Convert VTT to Markdown
+| Option | Description | Example |
+|--------|-------------|---------|
+| `input_file` | Path to the input VTT transcript file (required) | `input.vtt` |
+| `output_file` | Path to save the formatted output file (required) | `output.md` or `output.xlsx` |
+| `--format` | Output format: `markdown` (default) or `excel` | `--format excel` |
+| `--coach-name` | Name of the coach to be replaced with 'Coach' | `--coach-name "John Doe"` |
+| `--client-name` | Name of the client to be replaced with 'Client' | `--client-name "Jane Smith"` |
+| `--traditional` | Convert Simplified Chinese to Traditional Chinese | `--traditional` |
 
-```bash
-vtt-convert input.vtt output.md -Coach "Howie Yu" -Client "CaRy" -content_width 60
-```
+### Environment Variables
 
-### Python API Usage
+When running as a service, you can set these environment variables:
 
-You can also use the tool as a Python library:
+- `PORT`: Port to run the API server on (default: 8000)
+- `LOG_LEVEL`: Logging level (default: info)
+- `UPLOAD_FOLDER`: Folder to store uploaded files (default: ./data/uploads)
 
-```python
-from src import vtt
+## 🔧 Development
 
-# Parse VTT file
-data = vtt.parse_vtt('input.vtt')
-consolidated_data = vtt.consolidate_speakers(data)
+This project uses `Makefile` to streamline common development tasks.
 
-# Replace names with roles
-consolidated_data = vtt.replace_names(consolidated_data, 'Coach Name', 'Client Name')
+- **Install for development:**
+  ```bash
+  # Install development dependencies
+  make dev-setup
+  
+  # Or install directly
+  pip install -e .[dev]
+  ```
 
-# Generate Excel output
-vtt.generate_excel(
-    consolidated_data, 
-    'output.xlsx', 
-    coach_color='D8E4F0',  # Light blue color for coach rows
-    font_size=16, 
-    content_width=160
-)
+- **Run tests:**
+  ```bash
+  # Run all tests
+  make test
+  
+  # Run specific test
+  pytest tests/test_processor.py -v
+  
+  # Run with coverage
+  pytest --cov=src tests/
+  ```
 
-# OR generate Markdown output
-markdown = vtt.generate_markdown(consolidated_data, content_width=80)
-with open('output.md', 'w', encoding='utf-8') as f:
-    f.write(markdown)
-```
+- **Docker Commands:**
+  ```bash
+  # Build Docker image
+  make docker
+  
+  # Run container with volume mapping
+  make docker-run INPUT=./input.vtt OUTPUT=./output.md
+  
+  # Run API service
+  docker-compose up -d
+  
+  # View logs
+  docker-compose logs -f
+  ```
 
-## Development
-
-Setup development environment:
-```bash
-python -m venv venv
-source venv/bin/activate # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-pip install -e .
-```
-
-Run tests:
-```bash
-pytest
-```
-
-## Building and Packaging
-
-The project includes a Makefile with various targets for building, testing, and packaging.
-
-### Using the Makefile
-
-```bash
-# Show all available commands
-make help
-
-# Build the package
-make build
-
-# Install locally in development mode
-make install
-
-# Run tests
-make test
-
-# Create distribution package
-make dist
-
-# Build Docker image
-make docker
-
-# Run Docker container (shows help)
-make docker-run
-```
-
-### Docker Usage
-
-After building the Docker image, you can run the VTT conversion tool with:
-
-```bash
-# Convert VTT to Excel
-docker run -v /path/to/local/data:/data coaching_transcript_tool python -m src.vtt /data/input.vtt /data/output.xlsx -Coach "Coach Name" -Client "Client Name"
-
-# Convert VTT to Markdown
-docker run -v /path/to/local/data:/data coaching_transcript_tool python -m src.vtt /data/input.vtt /data/output.md -Coach "Coach Name" -Client "Client Name"
-```
-
-### Pip Installation
-
-You can install the package directly from the repository:
-
-```bash
-pip install git+https://github.com/howie/coaching_transcript_tool.git
-```
-
-Or build and install locally:
-
-```bash
-make dist-install
-```
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
-
-## License
-
-[MIT](https://choosealicense.com/licenses/mit/)
+For a full list of commands, run `make help`.

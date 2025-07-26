@@ -10,6 +10,10 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 from typing import List, Dict, Any, Optional, Type, Pattern, Match, Tuple
 
+class UnrecognizedFormatError(ValueError):
+    """Custom exception for when the VTT format cannot be determined."""
+    pass
+
 class VTTFormat(Enum):
     """Supported VTT format types."""
     MS_TEAMS = auto()    # <v Speaker>Text</v>
@@ -103,7 +107,7 @@ def parse_vtt(content: str, format_type: Optional[VTTFormat] = None) -> List[Dic
     if format_type is None:
         format_type = detect_format(content)
         if format_type is None:
-            raise ValueError("Could not detect VTT format. Please specify the format type.")
+            raise UnrecognizedFormatError("Could not detect VTT format. Please specify the format type.")
         format_name = format_type.name if hasattr(format_type, 'name') else str(format_type)
         print(f"Detected VTT format: {format_name}")
     else:
