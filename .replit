@@ -7,6 +7,8 @@ packages = ["glibcLocales", "libxcrypt"]
 
 [deployment]
 build = ["sh", "-c", "make"]
+run = ["sh", "-c", "python src/coaching_assistant/main.py"]
+deploymentTarget = "cloudrun"
 
 [workflows]
 runButton = "Web App"
