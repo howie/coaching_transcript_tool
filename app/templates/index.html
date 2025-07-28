@@ -8,9 +8,9 @@
         <h1 class="hero-title">Empowering Coaches with AI Clarity</h1>
         <p class="hero-subtitle">Transform your coaching transcripts into structured, actionable insights with our AI-powered platform</p>
         {% if user_info %}
-            <a href="{{ url_for('transcript_converter') }}" class="btn btn-primary btn-large">Start Converting Transcripts</a>
+            <a href="{{ url_for('frontend.transcript_converter') }}" class="btn btn-primary btn-large">Start Converting Transcripts</a>
         {% else %}
-            <a href="{{ url_for('signin') }}" class="btn btn-primary btn-large">
+            <a href="{{ url_for('frontend.signin') }}" class="btn btn-primary btn-large">
                 <i class="fab fa-google"></i>
                 Login with Google to Start
             </a>

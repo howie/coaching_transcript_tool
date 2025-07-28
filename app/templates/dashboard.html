@@ -1,14 +1,13 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - CoachAssistant</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Dashboard - CoachAssistant{% endblock %}
+
+{% block extra_head %}
     <link href="{{ url_for('static', filename='css/dashboard.css') }}" rel="stylesheet">
-</head>
+{% endblock %}
+
+{% block content %}
 <body>
     <!-- Top Navigation -->
     <nav class="top-nav">
@@ -25,7 +24,7 @@
                     <i class="fas fa-user-circle"></i>
                     <span>{{ user_info.given_name or user_info.name }}</span>
                 </div>
-                <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+                <a href="{{ url_for('frontend.logout') }}" class="logout-btn">Logout</a>
             {% endif %}
         </div>
     </nav>
@@ -39,22 +38,22 @@
         </div>
         <ul class="sidebar-menu">
             <li>
-                <a href="{{ url_for('transcript_converter') }}" class="menu-item">
+                <a href="{{ url_for('frontend.transcript_converter') }}" class="menu-item">
                     <i class="fas fa-file-alt"></i>
-                    <span class="menu-text">Convert</span>
+                    <span class="menu-text">Transcript Converter</span>
                 </a>
             </li>
-            <li>
-                <a href="{{ url_for('marker_analysis') }}" class="menu-item">
+            <li class="coming-soon-item">
+                <a href="#" class="menu-item">
                     <i class="fas fa-chart-line"></i>
-                    <span class="menu-text">Analysis</span>
+                    <span class="menu-text">ICF Marker Analysis</span>
                     <span class="coming-soon">Coming Soon</span>
                 </a>
             </li>
-            <li>
-                <a href="{{ url_for('insights') }}" class="menu-item">
+            <li class="coming-soon-item">
+                <a href="#" class="menu-item">
                     <i class="fas fa-lightbulb"></i>
-                    <span class="menu-text">Insights</span>
+                    <span class="menu-text">AI Insights</span>
                     <span class="coming-soon">Coming Soon</span>
                 </a>
             </li>
@@ -77,7 +76,7 @@
                 <p style="color: var(--text-secondary); margin-bottom: 20px;">
                     Convert your coaching session transcripts from VTT or SRT format to structured Excel files for analysis.
                 </p>
-                <a href="{{ url_for('transcript_converter') }}" class="btn btn-primary">
+                <a href="{{ url_for('frontend.transcript_converter') }}" class="btn btn-primary">
                     <i class="fas fa-upload"></i>
                     Upload Transcript
                 </a>
@@ -144,5 +143,8 @@
     {% endwith %}
 
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-</body>
-</html>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
