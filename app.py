@@ -35,18 +35,13 @@ def get_user_info(access_token):
     except:
         return None
 
-def require_auth():
-    """Check if user is authenticated"""
-    return "access_token" in session and get_user_info(session["access_token"]) is not None
-
 @app.route('/')
 def home():
-    """Dashboard home - requires authentication"""
-    if not require_auth():
-        return render_template('login.html')
-    
-    user_info = get_user_info(session["access_token"])
-    return render_template('dashboard.html', user_info=user_info, current_page='dashboard')
+    """Landing page"""
+    user_info = None
+    if "access_token" in session:
+        user_info = get_user_info(session["access_token"])
+    return render_template('index.html', user_info=user_info)
 
 @app.route('/signin')
 def signin():
@@ -71,52 +66,33 @@ def oauth2callback():
     
     oauth_flow.fetch_token(authorization_response=request.url.replace('http:', 'https:'))
     session['access_token'] = oauth_flow.credentials.token
-    return redirect('/')
+    return redirect('/transcript-converter')
 
 @app.route('/logout')
 def logout():
     """Logout user"""
     session.clear()
-    flash('You have been logged out successfully', 'info')
     return redirect('/')
 
 @app.route('/transcript-converter')
 def transcript_converter():
     """Transcript converter page - requires authentication"""
-    if not require_auth():
+    if "access_token" not in session:
+        flash('Please sign in to access the transcript converter', 'info')
         return redirect('/')
     
     user_info = get_user_info(session["access_token"])
-    return render_template('transcript_converter.html', user_info=user_info, current_page='transcript-converter')
-
-@app.route('/marker-analysis')
-def marker_analysis():
-    """ICF Marker Analysis page - coming soon"""
-    if not require_auth():
+    if not user_info:
+        session.clear()
+        flash('Session expired. Please sign in again.', 'error')
         return redirect('/')
     
-    user_info = get_user_info(session["access_token"])
-    return render_template('coming_soon.html', 
-                         user_info=user_info, 
-                         current_page='marker-analysis',
-                         feature_name='ICF Marker Analysis')
-
-@app.route('/insights')
-def insights():
-    """Insights page - coming soon"""
-    if not require_auth():
-        return redirect('/')
-    
-    user_info = get_user_info(session["access_token"])
-    return render_template('coming_soon.html', 
-                         user_info=user_info, 
-                         current_page='insights',
-                         feature_name='Coaching Session Insights')
+    return render_template('transcript_converter.html', user_info=user_info)
 
 @app.route('/upload', methods=['POST'])
 def upload_transcript():
     """Handle transcript file upload"""
-    if not require_auth():
+    if "access_token" not in session:
         return jsonify({'error': 'Authentication required'}), 401
     
     if 'file' not in request.files:
@@ -126,23 +102,12 @@ def upload_transcript():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
-    # Validate file extension
-    allowed_extensions = {'.vtt', '.srt'}
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in allowed_extensions:
-        return jsonify({'error': 'Invalid file type. Please upload .vtt or .srt files only.'}), 400
-    
-    # Process the file (integrate with your existing processor)
-    try:
-        # For now, return success message - integrate with your existing processor
-        return jsonify({
-            'success': True,
-            'message': f'File "{file.filename}" uploaded successfully. Processing...',
-            'filename': file.filename,
-            'status': 'processing'
-        })
-    except Exception as e:
-        return jsonify({'error': f'Processing failed: {str(e)}'}), 500
+    # For now, return success message - integrate with your existing processor later
+    return jsonify({
+        'success': True,
+        'message': f'File "{file.filename}" uploaded successfully. Processing will be implemented soon.',
+        'filename': file.filename
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
