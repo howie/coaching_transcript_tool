@@ -142,8 +142,12 @@ from fastapi.responses import StreamingResponse
 from typing import Optional
 import io
 import logging
-from src.coaching_assistant.core.processor import format_transcript
-from src.coaching_assistant.parser import UnrecognizedFormatError
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
+from coaching_assistant.core.processor import format_transcript
+from coaching_assistant.parser import UnrecognizedFormatError
 
 logger = logging.getLogger(__name__)
 
