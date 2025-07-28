@@ -1,0 +1,97 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-content">
+        <h1 class="hero-title">Empowering Coaches with AI Clarity</h1>
+        <p class="hero-subtitle">Transform your coaching transcripts into structured, actionable insights with our AI-powered platform</p>
+        {% if user_info %}
+            <a href="{{ url_for('transcript_converter') }}" class="btn btn-primary btn-large">Start Converting Transcripts</a>
+        {% else %}
+            <a href="{{ url_for('signin') }}" class="btn btn-primary btn-large">
+                <i class="fab fa-google"></i>
+                Login with Google to Start
+            </a>
+        {% endif %}
+    </div>
+    <div class="hero-image">
+        <div class="hero-placeholder">
+            <i class="fas fa-chart-line"></i>
+        </div>
+    </div>
+</section>
+
+<!-- Services Section -->
+<section id="services" class="services">
+    <div class="container">
+        <h2 class="section-title">Our Services</h2>
+        <div class="services-grid">
+            <div class="service-card">
+                <div class="service-icon">
+                    <i class="fas fa-file-excel"></i>
+                </div>
+                <h3>Transcript Conversion</h3>
+                <p>Convert VTT and SRT transcript files into structured Excel spreadsheets with speaker identification and timestamps.</p>
+                <div class="service-status available">Available Now</div>
+            </div>
+            <div class="service-card">
+                <div class="service-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3>ICF Marker Analysis</h3>
+                <p>Analyze coaching sessions against ICF competency markers to improve coaching effectiveness and certification requirements.</p>
+                <div class="service-status coming-soon">Coming Soon</div>
+            </div>
+            <div class="service-card">
+                <div class="service-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h3>Coaching Session Insights</h3>
+                <p>Generate AI-powered insights and recommendations from your coaching sessions to enhance your practice.</p>
+                <div class="service-status coming-soon">Coming Soon</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- About Section -->
+<section id="about" class="about">
+    <div class="container">
+        <div class="about-content">
+            <div class="about-text">
+                <h2 class="section-title">About CoachAssistant</h2>
+                <p>CoachAssistant was born from the need to help professional coaches streamline their practice and gain deeper insights from their sessions. Our AI-powered platform transforms raw transcript data into actionable intelligence.</p>
+                <p>Founded by experienced coaches and technology experts, we understand the unique challenges of the coaching profession and are committed to providing tools that enhance your impact while saving valuable time.</p>
+            </div>
+            <div class="about-image">
+                <div class="founder-placeholder">
+                    <i class="fas fa-user-circle"></i>
+                    <p>Founder Photo</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact Section -->
+<section id="contact" class="contact">
+    <div class="container">
+        <h2 class="section-title">Get in Touch</h2>
+        <p class="contact-intro">Have questions about our services or want to learn more? We'd love to hear from you.</p>
+        <div class="contact-form-container">
+            <iframe 
+                src="https://docs.google.com/forms/d/e/1FAIpQLSf_placeholder_form_id/viewform?embedded=true" 
+                width="100%" 
+                height="500" 
+                frameborder="0" 
+                marginheight="0" 
+                marginwidth="0"
+                class="contact-form">
+                Loading contact form...
+            </iframe>
+        </div>
+    </div>
+</section>
+{% endblock %}
