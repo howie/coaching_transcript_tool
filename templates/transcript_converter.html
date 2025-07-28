@@ -1,0 +1,80 @@
+
+{% extends "base.html" %}
+
+{% block title %}Transcript Converter - CoachAssistant{% endblock %}
+
+{% block content %}
+<section class="converter-page">
+    <div class="container">
+        <div class="converter-header">
+            <h1>Convert Your Coaching Transcript</h1>
+            <p>Upload your VTT or SRT transcript file and we'll convert it to a structured Excel format</p>
+        </div>
+
+        <div class="converter-content">
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h3>Drop your transcript file here</h3>
+                    <p>or click to browse</p>
+                    <input type="file" id="fileInput" accept=".vtt,.srt" style="display: none;">
+                    <div class="upload-info">
+                        <small>Supported formats: .vtt, .srt (Max size: 10MB)</small>
+                    </div>
+                </div>
+                
+                <div class="upload-options">
+                    <div class="option-group">
+                        <label for="coachName">Coach Name (optional):</label>
+                        <input type="text" id="coachName" placeholder="Enter coach's name to replace with 'Coach'">
+                    </div>
+                    <div class="option-group">
+                        <label for="clientName">Client Name (optional):</label>
+                        <input type="text" id="clientName" placeholder="Enter client's name to replace with 'Client'">
+                    </div>
+                    <div class="option-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="traditionalChinese">
+                            <span class="checkmark"></span>
+                            Convert to Traditional Chinese
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-section" id="statusSection" style="display: none;">
+                <div class="status-content">
+                    <div class="status-icon">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <h3 id="statusTitle">Processing your transcript...</h3>
+                    <p id="statusMessage">Once uploaded, your Excel file will be generated and available for download shortly.</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="download-section" id="downloadSection" style="display: none;">
+                <div class="download-content">
+                    <div class="download-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3>Your transcript is ready!</h3>
+                    <p>Your Excel file has been generated successfully.</p>
+                    <button class="btn btn-primary btn-large" id="downloadBtn">
+                        <i class="fas fa-download"></i>
+                        Download Excel File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/converter.js') }}"></script>
+{% endblock %}

@@ -7,3 +7,15 @@ packages = ["glibcLocales"]
 
 [deployment]
 build = ["sh", "-c", "make"]
+
+[workflows]
+runButton = "Web App"
+
+[[workflows.workflow]]
+name = "Web App"
+author = 40986870
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python app.py"
