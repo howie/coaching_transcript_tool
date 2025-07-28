@@ -1,4 +1,4 @@
-modules = ["python-3.8", "bash"]
+modules = ["python-3.13.5", "bash"]
 compile = "make"
 
 [nix]

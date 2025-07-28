@@ -1,6 +1,33 @@
 # Coach‑Review Agent – MVP TODO Breakdown
 
-> Last updated: 2025‑07‑25 (UTC+8)
+> Last updated: 2025-07-29 (UTC+8)
+
+## Web Architecture Refactoring
+
+* [x] **Directory Restructure**
+  - [x] Create new directory structure:
+    - `app/` - Main application package
+      - `frontend/` - Flask frontend
+      - `api/` - FastAPI backend
+    - `src/` - Core business logic
+  - [x] Move existing code to new structure
+  - [x] Update imports and references
+
+* [ ] **Code Organization**
+  - [ ] Separate Flask routes into `app/frontend/routes/`
+  - [ ] Move FastAPI endpoints to `app/api/routes/`
+  - [ ] Consolidate duplicate code between `app.py` and `main.py`
+  - [ ] Move core business logic to `src/coaching_assistant/`
+
+* [ ] **Configuration**
+  - [ ] Create centralized config in `app/config.py`
+  - [ ] Move environment variables to `.env`
+  - [ ] Add `.env.example` with required variables
+
+* [ ] **Testing**
+  - [ ] Add tests for new structure
+  - [ ] Ensure all existing functionality works
+
 
 ## 0. Project Setup
 
