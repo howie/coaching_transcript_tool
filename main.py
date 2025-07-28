@@ -168,8 +168,12 @@ async def convert_transcript(
         
         logger.info(f"Successfully converted file. Preparing response as {output_filename}")
         
+        # Create BytesIO object from the result bytes
+        excel_stream = io.BytesIO(result)
+        excel_stream.seek(0)
+        
         return StreamingResponse(
-            result,
+            excel_stream,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f"attachment; filename={output_filename}"}
         )
