@@ -1,80 +1,116 @@
 
 {% extends "base.html" %}
 
-{% block title %}Transcript Converter - CoachAssistant{% endblock %}
-
 {% block content %}
-<section class="converter-page">
-    <div class="container">
-        <div class="converter-header">
-            <h1>Convert Your Coaching Transcript</h1>
-            <p>Upload your VTT or SRT transcript file and we'll convert it to a structured Excel format</p>
+<div class="content-header">
+    <h1 class="content-title">Upload Your Coaching Transcript</h1>
+    <p class="content-subtitle">Convert VTT or SRT files into structured Excel spreadsheets</p>
+</div>
+
+<div class="content-card">
+    <!-- Upload Section -->
+    <div class="upload-section" id="uploadSection">
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">
+                <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <h3>Drop your transcript file here</h3>
+            <p>or click to browse and select a file</p>
+            <input type="file" id="fileInput" accept=".vtt,.srt" style="display: none;">
+            <div class="upload-info">
+                <small>Supported formats: VTT, SRT | Max file size: 50MB</small>
+            </div>
         </div>
-
-        <div class="converter-content">
-            <div class="upload-section">
-                <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                    </div>
-                    <h3>Drop your transcript file here</h3>
-                    <p>or click to browse</p>
-                    <input type="file" id="fileInput" accept=".vtt,.srt" style="display: none;">
-                    <div class="upload-info">
-                        <small>Supported formats: .vtt, .srt (Max size: 10MB)</small>
-                    </div>
-                </div>
-                
-                <div class="upload-options">
-                    <div class="option-group">
-                        <label for="coachName">Coach Name (optional):</label>
-                        <input type="text" id="coachName" placeholder="Enter coach's name to replace with 'Coach'">
-                    </div>
-                    <div class="option-group">
-                        <label for="clientName">Client Name (optional):</label>
-                        <input type="text" id="clientName" placeholder="Enter client's name to replace with 'Client'">
-                    </div>
-                    <div class="option-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="traditionalChinese">
-                            <span class="checkmark"></span>
-                            Convert to Traditional Chinese
-                        </label>
-                    </div>
-                </div>
+        
+        <!-- Upload Options -->
+        <div class="upload-options" style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+                <label class="form-label" for="coachName">Coach Name (optional)</label>
+                <input type="text" id="coachName" class="form-input" placeholder="Enter coach name">
+                <small style="color: var(--text-muted);">Will be replaced with 'Coach' in output</small>
             </div>
-
-            <div class="status-section" id="statusSection" style="display: none;">
-                <div class="status-content">
-                    <div class="status-icon">
-                        <i class="fas fa-spinner fa-spin"></i>
-                    </div>
-                    <h3 id="statusTitle">Processing your transcript...</h3>
-                    <p id="statusMessage">Once uploaded, your Excel file will be generated and available for download shortly.</p>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                </div>
+            <div class="form-group">
+                <label class="form-label" for="clientName">Client Name (optional)</label>
+                <input type="text" id="clientName" class="form-input" placeholder="Enter client name">
+                <small style="color: var(--text-muted);">Will be replaced with 'Client' in output</small>
             </div>
+        </div>
+        
+        <div class="form-group" style="margin-top: 20px;">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="convertChinese">
+                <span class="form-label" style="margin: 0;">Convert Simplified Chinese to Traditional Chinese</span>
+            </label>
+        </div>
+    </div>
 
-            <div class="download-section" id="downloadSection" style="display: none;">
-                <div class="download-content">
-                    <div class="download-icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <h3>Your transcript is ready!</h3>
-                    <p>Your Excel file has been generated successfully.</p>
-                    <button class="btn btn-primary btn-large" id="downloadBtn">
-                        <i class="fas fa-download"></i>
-                        Download Excel File
-                    </button>
-                </div>
+    <!-- Processing Status Section -->
+    <div class="status-section" id="statusSection" style="display: none;">
+        <div class="status-icon">
+            <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        <h3>Processing Your Transcript</h3>
+        <p id="statusMessage">Analyzing file format and extracting speaker data...</p>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+    </div>
+
+    <!-- Download Section -->
+    <div class="download-section" id="downloadSection" style="display: none;">
+        <div class="download-icon" style="color: #10b981;">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <h3>Your transcript is ready!</h3>
+        <p>Your Excel file has been generated successfully.</p>
+        <button class="btn btn-primary btn-large" id="downloadBtn">
+            <i class="fas fa-download"></i>
+            Download Excel File
+        </button>
+        <div style="margin-top: 20px;">
+            <button class="btn btn-secondary" id="processAnotherBtn">
+                <i class="fas fa-plus"></i>
+                Process Another File
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- File Processing Info -->
+<div class="content-card" style="margin-top: 20px;">
+    <h3 style="color: var(--text-primary); margin-bottom: 15px;">How it works</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div style="display: flex; gap: 15px;">
+            <div style="color: var(--accent-color); font-size: 24px;">
+                <i class="fas fa-upload"></i>
+            </div>
+            <div>
+                <h4 style="color: var(--text-primary); margin-bottom: 5px;">1. Upload</h4>
+                <p style="color: var(--text-secondary); margin: 0;">Select your VTT or SRT transcript file</p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 15px;">
+            <div style="color: var(--accent-color); font-size: 24px;">
+                <i class="fas fa-cogs"></i>
+            </div>
+            <div>
+                <h4 style="color: var(--text-primary); margin-bottom: 5px;">2. Process</h4>
+                <p style="color: var(--text-secondary); margin: 0;">AI analyzes and structures the content</p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 15px;">
+            <div style="color: var(--accent-color); font-size: 24px;">
+                <i class="fas fa-download"></i>
+            </div>
+            <div>
+                <h4 style="color: var(--text-primary); margin-bottom: 5px;">3. Download</h4>
+                <p style="color: var(--text-secondary); margin: 0;">Get your formatted Excel spreadsheet</p>
             </div>
         </div>
     </div>
-</section>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='js/converter.js') }}"></script>
+<script src="{{ url_for('static', filename='js/transcript_converter.js') }}"></script>
 {% endblock %}
