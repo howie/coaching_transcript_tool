@@ -32,20 +32,22 @@
 
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
-        <button class="sidebar-toggle" onclick="toggleSidebar()">
-            <i class="fas fa-chevron-left"></i>
-        </button>
+        <div class="sidebar-header">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
         <ul class="sidebar-menu">
             <li>
                 <a href="{{ url_for('transcript_converter') }}" class="menu-item">
                     <i class="fas fa-file-alt"></i>
-                    <span class="menu-text">Transcript Converter</span>
+                    <span class="menu-text">Convert</span>
                 </a>
             </li>
             <li>
                 <a href="{{ url_for('marker_analysis') }}" class="menu-item {{ 'active' if feature == 'ICF Marker Analysis' else '' }}">
                     <i class="fas fa-chart-line"></i>
-                    <span class="menu-text">ICF Marker Analysis</span>
+                    <span class="menu-text">Analysis</span>
                     <span class="coming-soon">Coming Soon</span>
                 </a>
             </li>
