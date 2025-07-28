@@ -4,36 +4,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}CoachAssistant - Empowering Coaches with AI Clarity{% endblock %}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>{% block title %}CoachAssistant - Doxa Studio{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dashboard.css') }}" rel="stylesheet">
     {% block extra_head %}{% endblock %}
 </head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-logo">
-                <a href="{{ url_for('home') }}">
-                    <span class="logo-text">Doxa Studio</span>
-                </a>
+<body class="dark-theme">
+    <!-- Top Navigation Bar -->
+    <nav class="top-navbar">
+        <div class="nav-left">
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">
+                <span class="logo-text">Doxa Studio</span>
             </div>
-            <div class="nav-menu">
-                <a href="{{ url_for('home') }}" class="nav-link">Home</a>
-                <a href="{{ url_for('home') }}#services" class="nav-link">Services</a>
-                <a href="{{ url_for('transcript_converter') }}" class="nav-link">Transcript Converter</a>
-                <a href="{{ url_for('home') }}#about" class="nav-link">About Us</a>
-                <a href="{{ url_for('home') }}#contact" class="nav-link">Contact</a>
-                {% if user_info %}
-                    <div class="user-menu">
-                        <span class="user-name">{{ user_info.given_name }}</span>
-                        <a href="{{ url_for('logout') }}" class="btn btn-outline">Logout</a>
+        </div>
+        <div class="nav-center">
+            <h1 class="product-name">CoachAssistant</h1>
+        </div>
+        <div class="nav-right">
+            {% if user_info %}
+                <div class="user-menu">
+                    <div class="user-info">
+                        <img src="{{ user_info.picture or '/static/images/default-avatar.png' }}" 
+                             alt="User Avatar" class="user-avatar">
+                        <span class="user-name">{{ user_info.given_name or user_info.name }}</span>
                     </div>
-                {% else %}
-                    <a href="{{ url_for('signin') }}" class="btn btn-primary">Sign In</a>
-                {% endif %}
-            </div>
+                    <a href="{{ url_for('logout') }}" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Logout
+                    </a>
+                </div>
+            {% endif %}
         </div>
     </nav>
 
@@ -43,6 +47,7 @@
             <div class="flash-messages">
                 {% for category, message in messages %}
                     <div class="flash-message flash-{{ category }}">
+                        <i class="fas fa-info-circle"></i>
                         {{ message }}
                         <button class="flash-close">&times;</button>
                     </div>
@@ -51,40 +56,55 @@
         {% endif %}
     {% endwith %}
 
-    <!-- Main Content -->
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Left Sidebar -->
+        {% if user_info %}
+        <aside class="sidebar" id="sidebar">
+            <nav class="sidebar-nav">
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="{{ url_for('home') }}" 
+                           class="nav-link {% if current_page == 'dashboard' %}active{% endif %}">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('transcript_converter') }}" 
+                           class="nav-link {% if current_page == 'transcript-converter' %}active{% endif %}">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Transcript Converter</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('marker_analysis') }}" 
+                           class="nav-link {% if current_page == 'marker-analysis' %}active{% endif %} coming-soon">
+                            <i class="fas fa-search"></i>
+                            <span>ICF Marker Analysis</span>
+                            <small class="coming-soon-badge">Coming Soon</small>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('insights') }}" 
+                           class="nav-link {% if current_page == 'insights' %}active{% endif %} coming-soon">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Insights</span>
+                            <small class="coming-soon-badge">Coming Soon</small>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+        {% endif %}
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Doxa Studio</h3>
-                    <p>Empowering coaches with AI clarity</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact</h4>
-                    <p>Email: hello@doxastudio.com</p>
-                    <p>Phone: +1 (555) 123-4567</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Follow Us</h4>
-                    <div class="social-icons">
-                        <a href="#"><i class="fab fa-linkedin"></i></a>
-                        <a href="#"><i class="fab fa-twitter"></i></a>
-                        <a href="#"><i class="fab fa-instagram"></i></a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 Doxa Studio. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
+        <!-- Main Content Area -->
+        <main class="main-content {% if not user_info %}full-width{% endif %}">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
