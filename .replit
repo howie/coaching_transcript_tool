@@ -7,7 +7,7 @@ packages = ["glibcLocales", "libxcrypt"]
 
 [deployment]
 build = ["sh", "-c", "make"]
-run = ["sh", "-c", "python src/coaching_assistant/main.py"]
+run = ["sh", "-c", "uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 5000 & flask run --host 0.0.0.0 --port 5001"]
 deploymentTarget = "cloudrun"
 
 [workflows]
@@ -25,3 +25,6 @@ args = "python main.py"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[env]
+REPLIT_DISABLE_PACKAGE_LAYER = "1"

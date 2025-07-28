@@ -24,13 +24,15 @@ clean:
 # Build the package
 build: clean
 	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install --upgrade setuptools wheel build
-	$(PYTHON) -m build
+	$(PYTHON) -m pip install -e .
 
 # Install the package locally
 install: build
 	$(PIP) install -e .
 
+run: 
+# Start FastAPI and Flask applications simultaneously
+(sh -c 'uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 5000 & flask run --host 0.0.0.0 --port 5001')
 
 
 # Build Docker image
