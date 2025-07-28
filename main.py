@@ -141,7 +141,7 @@ from coaching_assistant.parser import UnrecognizedFormatError
 
 logger = logging.getLogger(__name__)
 
-@api_app.post("/convert-transcript")
+@api_app.post("/api/convert-transcript")
 async def convert_transcript(
     file: UploadFile = File(..., description="The VTT or SRT transcript file to process."),
     coach_name: Optional[str] = Form(None, description="Name of the coach to be replaced with 'Coach'."),
@@ -181,7 +181,7 @@ async def convert_transcript(
         logger.exception(f"Error processing file {file.filename}:")
         raise HTTPException(status_code=500, detail=str(e))
 
-@api_app.get("/job-status/{job_id}")
+@api_app.get("/api/job-status/{job_id}")
 async def get_job_status(job_id: str):
     """Get status of async job (placeholder for future implementation)"""
     return {"job_id": job_id, "status": "completed", "message": "Job status endpoint - coming soon"}
