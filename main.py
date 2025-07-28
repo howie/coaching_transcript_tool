@@ -49,53 +49,43 @@ def get_user_info(access_token):
 @frontend_app.route('/')
 def dashboard():
     """Main dashboard page"""
-    user_info = None
-    if "access_token" in session:
-        user_info = get_user_info(session["access_token"])
-    
-    if not user_info:
-        return render_template('login.html')
-    
-    return render_template('dashboard.html', user_info=user_info)
+    # Remove authentication requirement - go directly to dashboard
+    mock_user_info = {
+        'given_name': 'User',
+        'name': 'Anonymous User',
+        'email': 'user@example.com'
+    }
+    return render_template('dashboard.html', user_info=mock_user_info)
 
 @frontend_app.route('/transcript-converter')
 def transcript_converter():
-    """Transcript converter page - requires authentication"""
-    if "access_token" not in session:
-        flash('Please sign in to access the transcript converter', 'info')
-        return redirect('/')
-    
-    user_info = get_user_info(session["access_token"])
-    if not user_info:
-        session.clear()
-        flash('Session expired. Please sign in again.', 'error')
-        return redirect('/')
-    
-    return render_template('transcript_converter.html', user_info=user_info)
+    """Transcript converter page - no authentication required"""
+    mock_user_info = {
+        'given_name': 'User',
+        'name': 'Anonymous User',
+        'email': 'user@example.com'
+    }
+    return render_template('transcript_converter.html', user_info=mock_user_info)
 
 @frontend_app.route('/marker-analysis')
 def marker_analysis():
     """ICF Marker Analysis page - coming soon"""
-    if "access_token" not in session:
-        return redirect('/')
-    
-    user_info = get_user_info(session["access_token"])
-    if not user_info:
-        return redirect('/')
-    
-    return render_template('coming_soon.html', user_info=user_info, feature="ICF Marker Analysis")
+    mock_user_info = {
+        'given_name': 'User',
+        'name': 'Anonymous User',
+        'email': 'user@example.com'
+    }
+    return render_template('coming_soon.html', user_info=mock_user_info, feature="ICF Marker Analysis")
 
 @frontend_app.route('/insights')
 def insights():
     """Insights page - coming soon"""
-    if "access_token" not in session:
-        return redirect('/')
-    
-    user_info = get_user_info(session["access_token"])
-    if not user_info:
-        return redirect('/')
-    
-    return render_template('coming_soon.html', user_info=user_info, feature="Insights")
+    mock_user_info = {
+        'given_name': 'User',
+        'name': 'Anonymous User',
+        'email': 'user@example.com'
+    }
+    return render_template('coming_soon.html', user_info=mock_user_info, feature="Insights")
 
 @frontend_app.route('/signin')
 def signin():
