@@ -1,9 +1,11 @@
 import io
 import logging
+import os
+from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, status
+from fastapi.responses import FileResponse, StreamingResponse
 
 from coaching_assistant.core.processor import format_transcript
 from coaching_assistant.parser import UnrecognizedFormatError
@@ -25,6 +27,17 @@ app = FastAPI(
 def read_root():
     """Root endpoint providing a welcome message."""
     return {"message": "Welcome to the Coaching Transcript Tool API!"}
+
+@app.get("/openai.json")
+async def get_openai_schema():
+    """Serve the OpenAI plugin schema file."""
+    file_path = Path(__file__).parent / "static" / "openai.json"
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="OpenAI schema file not found"
+        )
+    return FileResponse(file_path, media_type="application/json")
 
 @app.post("/format")
 async def format_transcript_endpoint(
