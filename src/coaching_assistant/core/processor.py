@@ -69,8 +69,9 @@ def format_transcript(
         if output_format.lower() == 'markdown':
             return generate_markdown(processed_data)
         elif output_format.lower() == 'excel':
-            excel_data = generate_excel(processed_data)
-            return excel_data.getvalue()
+            excel_buffer = generate_excel(processed_data)
+            excel_buffer.seek(0)  # Reset buffer position to beginning
+            return excel_buffer.getvalue()
         else:
             raise ValueError(f'Unsupported output format: {output_format}')
 
