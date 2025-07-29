@@ -149,44 +149,301 @@ body.dark-mode .top-nav {
     box-shadow: var(--shadow-hover);
 }
 
-/* 語言切換器 */
-.language-switcher {
-    display: flex;
-    gap: 5px;
+/* 通知按鈕 */
+.notification-btn {
+    background: none;
+    border: none;
+    color: var(--text-dark-primary);
+    font-size: 18px;
+    padding: 8px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
 }
 
-.language-switcher span {
-    cursor: pointer;
-    padding: 6px 10px;
-    border-radius: var(--border-radius);
+.notification-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 幫助下拉選單 */
+.help-dropdown {
+    position: relative;
+}
+
+.help-btn {
+    background: none;
+    border: none;
     color: var(--text-dark-primary);
+    font-size: 18px;
+    padding: 8px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.help-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.help-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--card-light);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    min-width: 220px;
+    z-index: 1003;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: var(--transition);
+}
+
+body.dark-mode .help-dropdown-menu {
+    background: var(--card-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.help-dropdown.open .help-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* 狀態指示器 */
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+/* 用戶下拉選單 */
+.user-dropdown {
+    position: relative;
+}
+
+.user-dropdown-btn {
+    background: none;
+    border: none;
+    color: var(--text-dark-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
     transition: var(--transition);
     font-size: 14px;
 }
 
-.language-switcher span:hover,
-.language-switcher span.active {
-    background: rgba(255, 255, 255, 0.2);
+.user-dropdown-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--text-dark-primary);
-}
-
-.logout-btn {
-    color: var(--text-dark-primary);
-    font-size: 18px;
-    text-decoration: none;
-    padding: 8px;
-    border-radius: var(--border-radius);
+.dropdown-arrow {
+    font-size: 12px;
     transition: var(--transition);
 }
 
-.logout-btn:hover {
+.user-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--card-light);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    min-width: 220px;
+    z-index: 1003;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: var(--transition);
+}
+
+body.dark-mode .user-dropdown-menu {
+    background: var(--card-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.user-dropdown.open .user-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--text-light-primary);
+    text-decoration: none;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+body.dark-mode .dropdown-item {
+    color: var(--text-dark-primary);
+}
+
+.dropdown-item:hover {
+    background: var(--card-light-alt);
+}
+
+body.dark-mode .dropdown-item:hover {
     background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item i {
+    width: 18px;
+    text-align: center;
+    color: var(--text-light-secondary);
+}
+
+body.dark-mode .dropdown-item i {
+    color: var(--text-dark-secondary);
+}
+
+.dropdown-separator {
+    height: 1px;
+    background: var(--border-color);
+    margin: 8px 0;
+}
+
+body.dark-mode .dropdown-separator {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 主題切換項目 */
+.theme-toggle-item {
+    justify-content: space-between;
+}
+
+.theme-buttons {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.theme-btn {
+    background: rgba(113, 201, 241, 0.1);
+    border: 1px solid rgba(113, 201, 241, 0.3);
+    color: var(--primary-color);
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 12px;
+}
+
+.theme-btn:hover {
+    background: rgba(113, 201, 241, 0.2);
+}
+
+.theme-btn.active {
+    background: var(--primary-color);
+    color: var(--text-dark-primary);
+}
+
+/* 語言下拉選單 */
+.language-dropdown {
+    justify-content: space-between;
+    position: relative;
+}
+
+.language-selector {
+    position: relative;
+    margin-left: auto;
+}
+
+.current-lang {
+    background: rgba(113, 201, 241, 0.1);
+    border: 1px solid rgba(113, 201, 241, 0.3);
+    color: var(--primary-color);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.current-lang:hover {
+    background: rgba(113, 201, 241, 0.2);
+}
+
+.current-lang i {
+    font-size: 8px;
+}
+
+.language-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: var(--card-light);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 120px;
+    z-index: 1005;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: var(--transition);
+}
+
+body.dark-mode .language-dropdown-menu {
+    background: var(--card-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.language-selector.open .language-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.lang-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 12px;
+}
+
+.lang-option:hover {
+    background: var(--card-light-alt);
+}
+
+body.dark-mode .lang-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 登出項目 */
+.logout-item {
+    color: #ef4444 !important;
+}
+
+.logout-item:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.logout-item i {
+    color: #ef4444 !important;
 }
 
 /* 漢堡按鈕樣式 */
