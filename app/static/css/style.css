@@ -32,6 +32,90 @@ body {
 }
 
 /* Navigation */
+.main-nav {
+    background: #2c3e50;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 64px;
+}
+
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.nav-logo {
+    font-size: 20px;
+    font-weight: 600;
+    color: #ffffff;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.nav-logo:hover {
+    color: #71c9f1;
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.nav-item {
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 400;
+    font-size: 14px;
+    transition: var(--transition);
+    position: relative;
+}
+
+.nav-item:hover {
+    color: #71c9f1;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.nav-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+    border: none;
+    cursor: pointer;
+}
+
+.nav-btn-primary {
+    background: #ff6b35;
+    color: #ffffff;
+}
+
+.nav-btn-primary:hover {
+    background: #e55a2b;
+    transform: translateY(-1px);
+}
+
+/* Legacy navbar styles for dashboard pages */
 .navbar {
     background: var(--white);
     box-shadow: var(--shadow);
@@ -42,27 +126,11 @@ body {
     transition: var(--transition);
 }
 
-.nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 70px;
-}
-
 .nav-logo .logo-text {
     font-size: 24px;
     font-weight: 700;
     color: var(--black);
     text-decoration: none;
-}
-
-.nav-menu {
-    display: flex;
-    align-items: center;
-    gap: 30px;
 }
 
 .nav-link {
@@ -579,8 +647,25 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .nav-left {
+        gap: 20px;
+    }
+    
     .nav-menu {
         gap: 15px;
+    }
+    
+    .nav-right {
+        gap: 10px;
+    }
+    
+    .nav-item {
+        font-size: 13px;
+    }
+    
+    .nav-btn {
+        padding: 6px 12px;
+        font-size: 13px;
     }
     
     .hero {
@@ -626,12 +711,35 @@ body {
         padding: 0 15px;
     }
     
-    .nav-menu {
-        gap: 10px;
+    .nav-left {
+        gap: 15px;
     }
     
-    .nav-link {
-        font-size: 14px;
+    .nav-menu {
+        gap: 8px;
+    }
+    
+    .nav-item {
+        font-size: 12px;
+    }
+    
+    .nav-btn {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    
+    .nav-logo {
+        font-size: 18px;
+    }
+    
+    .landing-language-switcher {
+        top: 70px;
+        right: 15px;
+    }
+    
+    .hero {
+        margin-top: 64px;
+        padding: 40px 15px;
     }
     
     .hero-title {

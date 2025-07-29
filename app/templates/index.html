@@ -7,19 +7,91 @@
     .hero {
         background-color: #71c9f1;
         color: #FFFFFF;
-        padding: 100px 20px;
-        text-align: center;
+        padding: 80px 20px;
+        margin-top: 64px;
+        min-height: 500px;
+        display: flex;
+        align-items: center;
+    }
+    .hero-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 60px;
+        align-items: center;
+    }
+    .hero-content {
+        text-align: left;
     }
     .hero-title {
         font-size: 48px;
         font-weight: 700;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
+        line-height: 1.2;
     }
     .hero-subtitle {
         font-size: 20px;
-        max-width: 600px;
-        margin: 0 auto 40px;
-        color: #E0E0E0;
+        margin-bottom: 40px;
+        color: rgba(255,255,255,0.8);
+        line-height: 1.5;
+    }
+    .hero-buttons {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    .hero-visual {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .geometric-pattern {
+        width: 400px;
+        height: 400px;
+        position: relative;
+        background: linear-gradient(135deg, #8B5CF6, #A855F7, #C084FC);
+        border-radius: 20px;
+        overflow: hidden;
+    }
+    .pattern-grid {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
+            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+    .pattern-blocks {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+    .block {
+        position: absolute;
+        background: rgba(255,255,255,0.2);
+        border-radius: 4px;
+    }
+    @media (max-width: 768px) {
+        .hero-container {
+            grid-template-columns: 1fr;
+            gap: 40px;
+        }
+        .hero-content {
+            text-align: center;
+        }
+        .hero-title {
+            font-size: 36px;
+        }
+        .geometric-pattern {
+            width: 300px;
+            height: 300px;
+        }
     }
     .section {
         padding: 80px 20px;
@@ -76,20 +148,27 @@
 {% block content %}
 <!-- Hero Section -->
 <section class="hero">
-    <h1 class="hero-title" data-i18n="landing.title">你的 AI 教練夥伴，陪你從學習走向專業</h1>
-    <p class="hero-subtitle" data-i18n="landing.subtitle">從教練小白到執業認證，Coachly 幫你記錄、成長與實踐。</p>
-    {% if user_info %}
-        <a href="{{ url_for('frontend.dashboard') }}" class="btn btn-primary btn-large" style="background-color: #FFFFFF; color: #1C2E4A; border: 2px solid #FFFFFF;">
-            <span data-i18n="landing.dashboard_btn">進入儀表板</span>
-        </a>
-        <p style="margin-top: 20px; color: #E0E0E0;">
-            <span data-i18n="landing.welcome_back">歡迎回來</span>，{{ user_info.given_name }}！
-        </p>
-    {% else %}
-        <a href="{{ url_for('frontend.login') }}" class="btn btn-primary btn-large" style="background-color: #FFFFFF; color: #1C2E4A; border: 2px solid #FFFFFF;">
-            <span data-i18n="landing.login_btn">登入使用系統</span>
-        </a>
-    {% endif %}
+    <div class="hero-container">
+        <div class="hero-content">
+            <h1 class="hero-title" data-i18n="landing.slogan">AI-Powered Coaching</h1>
+            <p class="hero-subtitle" data-i18n="landing.subtitle">Build, deploy, and scale your apps with unparalleled ease – from your first user to your billionth</p>
+            <div class="hero-buttons">
+                <a href="{{ url_for('frontend.login') }}" class="btn btn-primary btn-large" style="background-color: #FFFFFF; color: #1C2E4A; border: 2px solid #FFFFFF; padding: 15px 30px; font-size: 16px; font-weight: 600;">
+                    <span data-i18n="landing.get_started">Get Started for Free</span>
+                </a>
+                <a href="mailto:service@doxa.com.tw" class="btn btn-secondary btn-large" style="background-color: transparent; color: #FFFFFF; border: 2px solid #FFFFFF; padding: 15px 30px; font-size: 16px; font-weight: 600;">
+                    <span data-i18n="landing.contact_sales">contact sales</span>
+                </a>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="hero-logo">
+                <img src="{{ url_for('static', filename='images/Coachly-logo-transparent-600px.png') }}" 
+                     alt="Coachly Logo" 
+                     style="width: 400px; height: auto; max-width: 100%;">
+            </div>
+        </div>
+    </div>
 </section>
 
 <!-- Who it’s for Section -->
@@ -140,24 +219,36 @@
 <section id="pricing" class="section section-light">
     <h2 class="section-title" data-i18n="landing.pricing">收費與方案</h2>
     <div class="grid" style="grid-template-columns: 1fr 1fr; max-width: 800px;">
-        <div class="card pricing-card">
+        <div class="card pricing-card" style="display: flex; flex-direction: column;">
             <h3 data-i18n="landing.free.title">Free</h3>
-            <p style="font-size: 48px; font-weight: 700; margin: 20px 0;">$0</p>
-            <ul>
-                <li data-i18n="landing.free.feature1">每月 3 次逐字稿轉換</li>
-                <li data-i18n="landing.free.feature2">基本分析功能</li>
-                <li data-i18n="landing.free.feature3">社群支援</li>
-            </ul>
+            <p style="font-size: 48px; font-weight: 700; margin: 20px 0; flex: none;">$0</p>
+            
+            <a href="{{ url_for('frontend.login') }}" class="btn btn-primary" style="background-color: #1C2E4A; color: #FFFFFF; border: 2px solid #1C2E4A; margin: 20px 0; padding: 15px 30px; text-decoration: none; border-radius: 8px; text-align: center; font-weight: 600;">
+                <span data-i18n="landing.get_started">Get Started for Free</span>
+            </a>
+            
+            <div style="border-top: 1px solid #e0e0e0; padding-top: 20px; margin-top: 10px;">
+                <ul style="margin: 0;">
+                    <li data-i18n="landing.pricing.free.feature1">逐字稿轉檔</li>
+                    <li data-i18n="landing.pricing.free.feature2">教練時數統計</li>
+                </ul>
+            </div>
         </div>
-        <div class="card pricing-card pro">
-            <h3 data-i18n="landing.pro.title">Pro</h3>
-            <p style="font-size: 48px; font-weight: 700; margin: 20px 0;">$15 <span style="font-size: 16px;" data-i18n="landing.pro.month">/月</span></p>
-            <ul>
-                <li data-i18n="landing.pro.feature1">無限次逐字稿轉換</li>
-                <li data-i18n="landing.pro.feature2">完整 ICF 核心能力分析</li>
-                <li data-i18n="landing.pro.feature3">AI 教練洞見報告</li>
-                <li data-i18n="landing.pro.feature4">優先 Email 支援</li>
-            </ul>
+        
+        <div class="card pricing-card pro" style="display: flex; flex-direction: column;">
+             <h3 data-i18n="landing.pro.title">Pro</h3>
+             <p style="font-size: 30px; font-weight: 700; margin: 20px 0; flex: none;">Custom Pricing</p>
+            
+            <a href="mailto:service@doxa.com.tw" class="btn btn-primary" style="background-color: #71c9f1; color: #FFFFFF; border: 2px solid #71c9f1; margin: 20px 0; padding: 15px 30px; text-decoration: none; border-radius: 8px; text-align: center; font-weight: 600;">
+                Get in touch
+            </a>
+            
+            <div style="border-top: 1px solid #e0e0e0; padding-top: 20px; margin-top: 10px;">
+                <ul style="margin: 0;">
+                    <li data-i18n="landing.pricing.pro.feature1">ICF 核心能力分析</li>
+                    <li data-i18n="landing.pricing.pro.feature2">AI 教練洞見</li>
+                </ul>
+            </div>
         </div>
     </div>
 </section>

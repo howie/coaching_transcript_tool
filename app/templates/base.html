@@ -17,7 +17,7 @@
             display: flex;
             gap: 10px;
         }
-        .landing-lang-btn {
+        .landing-lang-select {
             background: rgba(28, 46, 74, 0.9);
             border: none;
             color: #ffffff;
@@ -27,23 +27,56 @@
             transition: all 0.3s ease;
             font-size: 14px;
             backdrop-filter: blur(10px);
+            min-width: 140px;
         }
-        .landing-lang-btn:hover {
+        .landing-lang-select:hover {
             background: #71c9f1;
             color: #1C2E4A;
         }
-        .landing-lang-btn.active {
-            background: #71c9f1;
-            color: #1C2E4A;
+        .landing-lang-select option {
+            background: #2c3e50;
+            color: #ffffff;
         }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <!-- Navigation Header -->
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="nav-left">
+                <a href="{{ url_for('frontend.home') }}" class="nav-logo">
+                    <img src="{{ url_for('static', filename='images/Coachly-logo-transparent-300px.png') }}" 
+                         alt="Coachly Logo" 
+                         style="height: 32px; width: auto; vertical-align: middle; margin-right: 8px;">
+                    Coachly
+                </a>
+                <div class="nav-menu">
+                    <a href="#who-its-for" class="nav-item" data-i18n="nav.who_its_for">適用對象</a>
+                    <a href="#features" class="nav-item" data-i18n="nav.features">Features</a>
+                    <a href="#pricing" class="nav-item" data-i18n="nav.pricing">Pricing</a>
+                    <a href="#" class="nav-item" data-i18n="nav.blog">Blog</a>
+                    <a href="#" class="nav-item" data-i18n="nav.contact">Contact us</a>
+                </div>
+            </div>
+            <div class="nav-right">
+                {% if user_info %}
+                    <a href="{{ url_for('frontend.dashboard') }}" class="nav-item" data-i18n="nav.dashboard">Dashboard</a>
+                    <a href="{{ url_for('frontend.logout') }}" class="nav-btn nav-btn-primary" data-i18n="nav.logout">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('frontend.login') }}" class="nav-item" data-i18n="nav.login">Log in</a>
+                    <a href="{{ url_for('frontend.login') }}" class="nav-btn nav-btn-primary" data-i18n="nav.signup">Sign up</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
     <!-- Language Switcher for Landing Page -->
     <div class="landing-language-switcher">
-        <button class="landing-lang-btn active" id="landing-lang-zh">🇹🇼 ZH</button>
-        <button class="landing-lang-btn" id="landing-lang-en">🇬🇧 EN</button>
+        <select class="landing-lang-select" id="landing-lang-select">
+            <option value="zh">🇹🇼 繁體中文</option>
+            <option value="en">🇬🇧 English</option>
+        </select>
     </div>
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -69,13 +102,11 @@
         <div class="footer-container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>Doxa Studio</h3>
-                    <p>Empowering coaches with AI clarity</p>
+                    <h3>build by Doxa Studio</h3>
                 </div>
                 <div class="footer-section">
                     <h4>Contact</h4>
-                    <p>Email: hello@doxastudio.com</p>
-                    <p>Phone: +1 (555) 123-4567</p>
+                    <p>Email: service@doxa.com.tw</p>
                 </div>
                 <div class="footer-section">
                     <h4>Follow Us</h4>
@@ -97,31 +128,17 @@
     <script>
         // Landing page 語言切換器特殊處理
         document.addEventListener('DOMContentLoaded', () => {
-            const landingZhBtn = document.getElementById('landing-lang-zh');
-            const landingEnBtn = document.getElementById('landing-lang-en');
+            const landingLangSelect = document.getElementById('landing-lang-select');
             
-            if (landingZhBtn && landingEnBtn) {
-                landingZhBtn.addEventListener('click', () => {
-                    i18n.setLanguage('zh');
-                    landingZhBtn.classList.add('active');
-                    landingEnBtn.classList.remove('active');
-                });
-                
-                landingEnBtn.addEventListener('click', () => {
-                    i18n.setLanguage('en');
-                    landingEnBtn.classList.add('active');
-                    landingZhBtn.classList.remove('active');
-                });
-                
-                // 初始化語言切換器狀態
+            if (landingLangSelect) {
+                // 設置初始語言
                 const currentLang = i18n.currentLang;
-                if (currentLang === 'en') {
-                    landingEnBtn.classList.add('active');
-                    landingZhBtn.classList.remove('active');
-                } else {
-                    landingZhBtn.classList.add('active');
-                    landingEnBtn.classList.remove('active');
-                }
+                landingLangSelect.value = currentLang;
+                
+                // 監聽下拉選單變更
+                landingLangSelect.addEventListener('change', (e) => {
+                    i18n.setLanguage(e.target.value);
+                });
             }
         });
     </script>
