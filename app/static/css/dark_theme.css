@@ -189,6 +189,39 @@ body.dark-mode .top-nav {
     background: rgba(255, 255, 255, 0.1);
 }
 
+/* 漢堡按鈕樣式 */
+.hamburger {
+    background: none;
+    border: none;
+    color: var(--text-dark-primary);
+    font-size: 18px;
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hamburger:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.hamburger:active {
+    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.hamburger i {
+    transition: var(--transition);
+}
+
+.hamburger:hover i {
+    transform: scale(1.1);
+}
+
 /* ========== 側邊欄 ========== */
 .sidebar {
     background-color: var(--sidebar-light);
