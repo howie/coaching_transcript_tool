@@ -144,3 +144,31 @@ def logout():
     """Logout user"""
     session.clear()
     return redirect(url_for('frontend.home'))
+
+@bp.route('/icf-marker-analysis')
+def icf_marker_analysis():
+    """ICF Marker Analysis page (coming soon)"""
+    user_info = {
+        'name': 'Demo User',
+        'email': 'demo@example.com',
+        'picture': 'https://via.placeholder.com/150',
+        'given_name': 'Demo'
+    }
+    return render_template('coming_soon.html', 
+                         user_info=user_info,
+                         feature='ICF Marker Analysis',
+                         active_page='icf_marker_analysis')
+
+@bp.route('/ai-insights')
+def ai_insights():
+    """AI Insights page (coming soon)"""
+    user_info = {
+        'name': 'Demo User',
+        'email': 'demo@example.com',
+        'picture': 'https://via.placeholder.com/150',
+        'given_name': 'Demo'
+    }
+    return render_template('coming_soon.html', 
+                         user_info=user_info,
+                         feature='AI Insights',
+                         active_page='ai_insights')
