@@ -41,8 +41,12 @@
             <button class="hamburger" id="hamburger-btn">
                 <i class="fas fa-bars"></i>
             </button>
-            <div class="logo">Doxa Studio</div>
-            <div class="product-name">Coachly</div>
+            <div class="logo" style="display: flex; align-items: center; gap: 8px;">
+                <img src="{{ url_for('static', filename='images/Coachly-logo-transparent-300px.png') }}" 
+                     alt="Coachly Logo" 
+                     style="height: 24px; width: auto;">
+                <span>Coachly</span>
+            </div>
         </div>
         <div class="nav-right">
             <button class="notification-btn" title="Notifications">
