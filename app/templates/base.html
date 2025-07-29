@@ -8,35 +8,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <style>
+        .landing-language-switcher {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+        .landing-lang-btn {
+            background: rgba(28, 46, 74, 0.9);
+            border: none;
+            color: #ffffff;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+        .landing-lang-btn:hover {
+            background: #71c9f1;
+            color: #1C2E4A;
+        }
+        .landing-lang-btn.active {
+            background: #71c9f1;
+            color: #1C2E4A;
+        }
+    </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-logo">
-                <a href="{{ url_for('frontend.home') }}">
-                    <span class="logo-text">Doxa Studio</span>
-                </a>
-            </div>
-            <div class="nav-menu">
-                <a href="{{ url_for('frontend.home') }}" class="nav-link">Home</a>
-                <a href="{{ url_for('frontend.home') }}#services" class="nav-link">Services</a>
-                <a href="{{ url_for('frontend.transcript_converter') }}" class="nav-link">Transcript Converter</a>
-                <a href="{{ url_for('frontend.home') }}#about" class="nav-link">About Us</a>
-                <a href="{{ url_for('frontend.home') }}#contact" class="nav-link">Contact</a>
-                {% if user_info %}
-                    <div class="user-menu">
-                        <span class="user-name">{{ user_info.given_name }}</span>
-                        <a href="{{ url_for('frontend.logout') }}" class="btn btn-outline">Logout</a>
-                    </div>
-                {% else %}
-                    <a href="{{ url_for('frontend.signin') }}" class="btn btn-primary">Sign In</a>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
-
+    <!-- Language Switcher for Landing Page -->
+    <div class="landing-language-switcher">
+        <button class="landing-lang-btn active" id="landing-lang-zh">🇹🇼 ZH</button>
+        <button class="landing-lang-btn" id="landing-lang-en">🇬🇧 EN</button>
+    </div>
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -84,7 +92,39 @@
         </div>
     </footer>
 
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Landing page 語言切換器特殊處理
+        document.addEventListener('DOMContentLoaded', () => {
+            const landingZhBtn = document.getElementById('landing-lang-zh');
+            const landingEnBtn = document.getElementById('landing-lang-en');
+            
+            if (landingZhBtn && landingEnBtn) {
+                landingZhBtn.addEventListener('click', () => {
+                    i18n.setLanguage('zh');
+                    landingZhBtn.classList.add('active');
+                    landingEnBtn.classList.remove('active');
+                });
+                
+                landingEnBtn.addEventListener('click', () => {
+                    i18n.setLanguage('en');
+                    landingEnBtn.classList.add('active');
+                    landingZhBtn.classList.remove('active');
+                });
+                
+                // 初始化語言切換器狀態
+                const currentLang = i18n.currentLang;
+                if (currentLang === 'en') {
+                    landingEnBtn.classList.add('active');
+                    landingZhBtn.classList.remove('active');
+                } else {
+                    landingZhBtn.classList.add('active');
+                    landingEnBtn.classList.remove('active');
+                }
+            }
+        });
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

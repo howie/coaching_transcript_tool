@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CoachAssistant{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dark_theme.css') }}" rel="stylesheet">
+    <style>
+        .language-switcher {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .lang-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 5px 8px;
+            border-radius: 4px;
+            transition: var(--transition);
+            font-size: 14px;
+        }
+        .lang-btn:hover {
+            color: var(--text-primary);
+            background-color: var(--surface-color);
+        }
+        .lang-btn.active {
+            color: var(--accent-color);
+            background-color: var(--surface-color);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="has-nav">
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <button class="hamburger" id="hamburger-btn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">Doxa Studio</div>
+            <div class="product-name">CoachAssistant</div>
+        </div>
+        <div class="nav-right">
+            <button class="dark-mode-toggle" id="dark-mode-toggle">
+                🌙 切換模式
+            </button>
+            <div class="language-switcher">
+                <span id="lang-zh">🇹🇼 ZH</span>
+                <span id="lang-en">🇬🇧 EN</span>
+            </div>
+            {% if user_info %}
+                <div class="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span>{{ user_info.given_name or user_info.name }}</span>
+                </div>
+                <a href="{{ url_for('frontend.logout') }}" class="logout-btn" title="Logout" data-i18n="nav.logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <h2 data-i18n="menu.title">Menu</h2>
+        <ul class="sidebar-menu">
+            <li class="{{ 'active' if active_page == 'dashboard' else '' }}">
+                <a href="{{ url_for('frontend.dashboard') }}" class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span class="menu-text" data-i18n="menu.dashboard">Dashboard</span>
+                </a>
+            </li>
+            <li class="{{ 'active' if active_page == 'transcript_converter' else '' }}">
+                <a href="{{ url_for('frontend.transcript_converter') }}" class="menu-item">
+                    <i class="fas fa-file-alt"></i>
+                    <span class="menu-text" data-i18n="menu.converter">Converter</span>
+                </a>
+            </li>
+            <li class="{{ 'active' if active_page == 'marker_analysis' else '' }}">
+                <a href="{{ url_for('frontend.marker_analysis') }}" class="menu-item">
+                    <i class="fas fa-compass"></i>
+                    <span class="menu-text" data-i18n="menu.analysis">Analysis</span>
+                </a>
+            </li>
+            <li class="{{ 'active' if active_page == 'insights' else '' }}">
+                <a href="{{ url_for('frontend.insights') }}" class="menu-item">
+                    <i class="fas fa-chart-line"></i>
+                    <span class="menu-text" data-i18n="menu.insights">Insights</span>
+                </a>
+            </li>
+            <li class="{{ 'active' if active_page == 'profile' else '' }}">
+                <a href="{{ url_for('frontend.profile') }}" class="menu-item">
+                    <i class="fas fa-user-cog"></i>
+                    <span class="menu-text" data-i18n="menu.profile">Profile</span>
+                </a>
+            </li>
+            <li class="{{ 'active' if active_page == 'feedback' else '' }}">
+                <a href="{{ url_for('frontend.feedback') }}" class="menu-item">
+                    <i class="fas fa-comment-dots"></i>
+                    <span class="menu-text" data-i18n="menu.feedback">Feedback</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
