@@ -50,7 +50,7 @@
             </button>
             <div class="language-switcher">
                 <span id="lang-zh">🇹🇼 ZH</span>
-                <span id="lang-en">🇬🇧 EN</span>
+                <span id="lang-en">🇺🇸 EN</span>
             </div>
             {% if user_info %}
                 <div class="user-info">
@@ -66,7 +66,6 @@
 
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
-        <h2 data-i18n="menu.title">Menu</h2>
         <ul class="sidebar-menu">
             <li class="{{ 'active' if active_page == 'dashboard' else '' }}">
                 <a href="{{ url_for('frontend.dashboard') }}" class="menu-item">
