@@ -1,0 +1,1123 @@
+/* ========== CSS 變數系統 ========== */
+:root {
+    /* 品牌主色系 */
+    --primary-color: #71c9f1;
+    --primary-text-on-primary: #ffffff;
+    --secondary-color: #F5C451;
+    --secondary-text-on-secondary: #1C2E4A;
+    --primary-dark: #1C2E4A;
+    
+    /* 亮色模式 */
+    --bg-light: #F1F8FF;
+    --card-bg: #FFFFFF;
+    --card-bg-alt: #F5F9FC;
+    --card-light: #FFFFFF;
+    --card-light-alt: #F5F9FC;
+    --text-primary: #1C2E4A;
+    --text-light-primary: #1C2E4A;
+    --text-secondary: #7A8A9D;
+    --text-light-secondary: #7A8A9D;
+    --sidebar-light: #E6F2FA;
+    
+    /* 深色模式 */
+    --bg-dark: #1c2e4a;
+    --card-bg-dark: #2c3e50;
+    --card-dark: #2C3E50;
+    --text-primary-dark: #ffffff;
+    --text-dark-primary: #ffffff;
+    --text-secondary-dark: #bdc3c7;
+    --text-dark-secondary: #bdc3c7;
+    --sidebar-dark: #263545;
+    
+    /* UI 通用 */
+    --border-color: #D3E2EF;
+    --radius: 8px;
+    --border-radius: 8px;
+    --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-hover: 0 4px 8px rgba(0, 0, 0, 0.15);
+    --transition: all 0.3s ease;
+    
+    /* 字體 */
+    --font-family: 'Inter', 'Noto Sans TC', sans-serif;
+}
+
+/* ========== 基礎樣式 ========== */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    transition: var(--transition);
+}
+
+/* 亮色模式（預設） */
+body {
+    background-color: var(--bg-light);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* 深色模式 */
+body.dark-mode {
+    background-color: var(--bg-dark);
+    color: var(--text-primary-dark);
+}
+
+/* 當有頂部導航時的padding */
+body.has-nav {
+    padding-top: 60px;
+    padding-left: 220px; /* 增加左邊距避免重疊 */
+}
+
+body.has-nav.sidebar-collapsed {
+    padding-left: 100px; /* 收合時也需要調整 */
+}
+
+/* 容器佈局 */
+.container {
+    display: flex;
+    width: 100%;
+}
+
+.main {
+    flex: 1;
+    padding: 2rem;
+}
+
+/* ========== 頂部導航 ========== */
+.top-nav {
+    background-color: var(--primary-color);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    height: 60px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1001;
+    box-shadow: var(--shadow-light);
+    transition: var(--transition);
+}
+
+/* 深色模式下的頂部導航 */
+body.dark-mode .top-nav {
+    background-color: var(--primary-dark);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.nav-left, .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo {
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--text-dark-primary);
+}
+
+.product-name {
+    font-weight: 500;
+    color: var(--text-dark-primary);
+}
+
+/* 深色模式切換按鈕 */
+.dark-mode-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-dark-primary);
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 14px;
+}
+
+.dark-mode-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: var(--shadow-hover);
+}
+
+/* 通知按鈕 */
+.notification-btn {
+    background: none;
+    border: none;
+    color: var(--text-dark-primary);
+    font-size: 18px;
+    padding: 8px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.notification-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 幫助下拉選單 */
+.help-dropdown {
+    position: relative;
+}
+
+.help-btn {
+    background: none;
+    border: none;
+    color: var(--text-dark-primary);
+    font-size: 18px;
+    padding: 8px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.help-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.help-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--card-light);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    min-width: 220px;
+    z-index: 1003;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: var(--transition);
+}
+
+body.dark-mode .help-dropdown-menu {
+    background: var(--card-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.help-dropdown.open .help-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* 狀態指示器 */
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+/* 用戶下拉選單 */
+.user-dropdown {
+    position: relative;
+}
+
+.user-dropdown-btn {
+    background: none;
+    border: none;
+    color: var(--text-dark-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 14px;
+}
+
+.user-dropdown-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-arrow {
+    font-size: 12px;
+    transition: var(--transition);
+}
+
+.user-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--card-light);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    min-width: 220px;
+    z-index: 1003;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: var(--transition);
+}
+
+body.dark-mode .user-dropdown-menu {
+    background: var(--card-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.user-dropdown.open .user-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--text-light-primary);
+    text-decoration: none;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+body.dark-mode .dropdown-item {
+    color: var(--text-dark-primary);
+}
+
+.dropdown-item:hover {
+    background: var(--card-light-alt);
+}
+
+body.dark-mode .dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item i {
+    width: 18px;
+    text-align: center;
+    color: var(--text-light-secondary);
+}
+
+body.dark-mode .dropdown-item i {
+    color: var(--text-dark-secondary);
+}
+
+.dropdown-separator {
+    height: 1px;
+    background: var(--border-color);
+    margin: 8px 0;
+}
+
+body.dark-mode .dropdown-separator {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 主題切換項目 */
+.theme-toggle-item {
+    justify-content: space-between;
+}
+
+.theme-buttons {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.theme-btn {
+    background: rgba(113, 201, 241, 0.1);
+    border: 1px solid rgba(113, 201, 241, 0.3);
+    color: var(--primary-color);
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 12px;
+}
+
+.theme-btn:hover {
+    background: rgba(113, 201, 241, 0.2);
+}
+
+.theme-btn.active {
+    background: var(--primary-color);
+    color: var(--text-dark-primary);
+}
+
+/* 語言下拉選單 */
+.language-dropdown {
+    justify-content: space-between;
+    position: relative;
+}
+
+.language-selector {
+    position: relative;
+    margin-left: auto;
+}
+
+.current-lang {
+    background: rgba(113, 201, 241, 0.1);
+    border: 1px solid rgba(113, 201, 241, 0.3);
+    color: var(--primary-color);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.current-lang:hover {
+    background: rgba(113, 201, 241, 0.2);
+}
+
+.current-lang i {
+    font-size: 8px;
+}
+
+.language-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: var(--card-light);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 120px;
+    z-index: 1005;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: var(--transition);
+}
+
+body.dark-mode .language-dropdown-menu {
+    background: var(--card-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.language-selector.open .language-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.lang-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 12px;
+}
+
+.lang-option:hover {
+    background: var(--card-light-alt);
+}
+
+body.dark-mode .lang-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 登出項目 */
+.logout-item {
+    color: #ef4444 !important;
+}
+
+.logout-item:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.logout-item i {
+    color: #ef4444 !important;
+}
+
+/* 漢堡按鈕樣式 */
+.hamburger {
+    background: none;
+    border: none;
+    color: var(--text-dark-primary);
+    font-size: 18px;
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hamburger:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.hamburger:active {
+    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.hamburger i {
+    transition: var(--transition);
+}
+
+.hamburger:hover i {
+    transform: scale(1.1);
+}
+
+/* ========== 側邊欄 ========== */
+.sidebar {
+    background-color: var(--sidebar-light);
+    width: 200px;
+    height: calc(100vh - 60px);
+    position: fixed;
+    top: 60px;
+    left: 0;
+    padding: 1rem;
+    z-index: 1000;
+    transition: var(--transition);
+    overflow: hidden;
+    box-shadow: var(--shadow-light);
+}
+
+/* 深色模式下的側邊欄 */
+body.dark-mode .sidebar {
+    background-color: var(--sidebar-dark);
+}
+
+.sidebar.collapsed {
+    width: 80px;
+}
+
+.sidebar h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+body.dark-mode .sidebar h2 {
+    color: var(--text-secondary-dark);
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar li {
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+}
+
+body.dark-mode .sidebar li {
+    color: var(--text-secondary-dark);
+}
+
+.sidebar li.active {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+/* ========== 主內容區域 ========== */
+.main-content {
+    padding: 30px;
+    min-height: calc(100vh - 60px);
+}
+
+.page-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--primary-color);
+}
+
+.page-subtitle {
+    color: var(--text-light-secondary);
+    margin-bottom: 30px;
+    font-size: 16px;
+}
+
+body.dark-mode .page-subtitle {
+    color: var(--text-dark-secondary);
+}
+
+/* ========== 卡片系統 ========== */
+.card {
+    background-color: var(--card-light);
+    border-radius: var(--border-radius);
+    padding: 25px;
+    box-shadow: var(--shadow-light);
+    border: 1px solid rgba(113, 201, 241, 0.1);
+    transition: var(--transition);
+}
+
+body.dark-mode .card {
+    background-color: var(--card-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+}
+
+/* 統計卡片 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: var(--card-light);
+    padding: 25px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-light);
+    text-align: center;
+    transition: var(--transition);
+}
+
+body.dark-mode .stat-card {
+    background: var(--card-dark);
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+}
+
+.stat-number {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    color: var(--text-light-secondary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+body.dark-mode .stat-label {
+    color: var(--text-dark-secondary);
+}
+
+/* ========== 按鈕系統 ========== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    transition: var(--transition);
+    gap: 8px;
+}
+
+.btn-primary,
+.upload-button {
+    background-color: var(--primary-color);
+    color: var(--text-dark-primary);
+}
+
+.btn-primary:hover,
+.upload-button:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-1px);
+}
+
+.btn-primary:disabled,
+.upload-button:disabled {
+    background-color: var(--text-light-secondary);
+    cursor: not-allowed;
+    transform: none;
+}
+
+body.dark-mode .btn-primary:disabled,
+body.dark-mode .upload-button:disabled {
+    background-color: var(--text-dark-secondary);
+}
+
+/* ========== 功能卡片 ========== */
+.feature-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
+}
+
+.feature-card {
+    background: var(--card-light);
+    padding: 30px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-light);
+    transition: var(--transition);
+}
+
+body.dark-mode .feature-card {
+    background: var(--card-dark);
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
+}
+
+.feature-icon {
+    font-size: 32px;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+}
+
+.feature-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--primary-color);
+}
+
+.feature-desc {
+    color: var(--text-light-secondary);
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+body.dark-mode .feature-desc {
+    color: var(--text-dark-secondary);
+}
+
+/* ========== 上傳區域 ========== */
+.upload-area {
+    border: 2px dashed var(--primary-color);
+    border-radius: var(--border-radius);
+    padding: 40px;
+    text-align: center;
+    background: var(--card-light-alt);
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+body.dark-mode .upload-area {
+    background: rgba(44, 62, 80, 0.5);
+    border-color: var(--primary-color);
+}
+
+.upload-area:hover {
+    background: rgba(113, 201, 241, 0.1);
+    border-color: var(--primary-dark);
+}
+
+.upload-icon {
+    font-size: 48px;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.upload-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-light-primary);
+    margin-bottom: 8px;
+}
+
+body.dark-mode .upload-text {
+    color: var(--text-dark-primary);
+}
+
+.upload-subtext {
+    color: var(--text-light-secondary);
+    font-size: 14px;
+}
+
+body.dark-mode .upload-subtext {
+    color: var(--text-dark-secondary);
+}
+
+/* ========== 表單元素 ========== */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-light-primary);
+}
+
+body.dark-mode .form-label {
+    color: var(--text-dark-primary);
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid rgba(113, 201, 241, 0.3);
+    border-radius: var(--border-radius);
+    background: var(--card-light);
+    color: var(--text-light-primary);
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+body.dark-mode .form-input {
+    background: var(--card-dark);
+    color: var(--text-dark-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(113, 201, 241, 0.1);
+}
+
+/* ========== Coming Soon 頁面 ========== */
+.coming-soon {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.coming-soon-icon {
+    font-size: 64px;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.coming-soon-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: var(--text-light-primary);
+}
+
+body.dark-mode .coming-soon-title {
+    color: var(--text-dark-primary);
+}
+
+.coming-soon-message {
+    font-size: 18px;
+    color: var(--text-light-secondary);
+    margin-bottom: 30px;
+}
+
+body.dark-mode .coming-soon-message {
+    color: var(--text-dark-secondary);
+}
+
+/* ========== 響應式設計 ========== */
+@media (max-width: 768px) {
+    body.has-nav {
+        padding-left: 0;
+        padding-top: 60px;
+    }
+    
+    body.has-nav.sidebar-collapsed {
+        padding-left: 0;
+    }
+    
+    .sidebar {
+        transform: translateX(-100%);
+        z-index: 1002;
+        top: 60px;
+        height: calc(100vh - 60px);
+    }
+    
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        padding: 20px 15px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .feature-cards {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .page-title {
+        font-size: 24px;
+    }
+    
+    .nav-left, .nav-right {
+        gap: 10px;
+    }
+    
+    .language-switcher span {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+}
+
+/* ========== 動畫效果 ========== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* ========== 輔助類別 ========== */
+.text-center {
+    text-align: center;
+}
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 8px; }
+.mb-2 { margin-bottom: 16px; }
+.mb-3 { margin-bottom: 24px; }
+.mb-4 { margin-bottom: 32px; }
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.mt-3 { margin-top: 24px; }
+.mt-4 { margin-top: 32px; }
+
+.d-flex { display: flex; }
+.justify-content-between { justify-content: space-between; }
+.align-items-center { align-items: center; }
+.gap-2 { gap: 16px; }
+.gap-3 { gap: 24px; }
+
+/* ========== 滾動條樣式 ========== */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--card-light-alt);
+}
+
+body.dark-mode ::-webkit-scrollbar-track {
+    background: var(--card-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+/* ========== 網頁範例樣式 ========== */
+/* 深色模式切換按鈕 (網頁範例樣式) */
+.toggle-mode {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+body.dark-mode .toggle-mode {
+    background-color: var(--card-bg-dark);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-primary-dark);
+}
+
+/* 儀表板標題區域 */
+.dashboard-header h1 {
+    color: var(--primary-color);
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-header p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+body.dark-mode .dashboard-header p {
+    color: var(--text-secondary-dark);
+}
+
+/* 統計卡片網格 */
+.cards {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.card-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 0.25rem;
+}
+
+.card-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+body.dark-mode .card-label {
+    color: var(--text-secondary-dark);
+}
+
+/* 側邊欄選單項目 */
+.sidebar-menu {
+    list-style: none;
+    padding: 20px 0;
+    margin: 0;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition);
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+body.dark-mode .menu-item {
+    color: var(--text-secondary-dark);
+}
+
+.menu-item:hover {
+    color: var(--primary-color);
+}
+
+.sidebar-menu li.active .menu-item {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.sidebar.collapsed .menu-item {
+    justify-content: center;
+    padding: 15px 10px;
+}
+
+.sidebar.collapsed .menu-text {
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+}
+
+.menu-item i {
+    min-width: 20px;
+    text-align: center;
+    font-size: 18px;
+}
+
+.menu-text {
+    transition: var(--transition);
+}
+
+/* 上傳區塊 */
+.upload-block {
+    background-color: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-top: 1rem;
+    box-shadow: var(--shadow-light);
+    transition: var(--transition);
+}
+
+body.dark-mode .upload-block {
+    background-color: var(--card-bg-dark);
+    color: var(--text-primary-dark);
+    box-shadow: var(--shadow-dark);
+}
+
+.upload-block h3 {
+    margin-top: 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+body.dark-mode .upload-block h3 {
+    color: var(--text-primary-dark);
+}
+
+.upload-block p {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+body.dark-mode .upload-block p {
+    color: var(--text-secondary-dark);
+}
+
+/* Coming Soon 區塊 (覆蓋之前的樣式) */
+.coming-soon {
+    background-color: var(--card-bg-alt);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-top: 1rem;
+    box-shadow: var(--shadow-light);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+body.dark-mode .coming-soon {
+    background-color: var(--card-bg-dark);
+    color: var(--text-secondary-dark);
+    box-shadow: var(--shadow-dark);
+}
+
+.coming-soon h3 {
+    margin-top: 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+body.dark-mode .coming-soon h3 {
+    color: var(--text-primary-dark);
+}
+
+.coming-soon p {
+    margin-bottom: 0;
+    line-height: 1.5;
+}

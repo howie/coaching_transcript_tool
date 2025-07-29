@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Coachly - 你的 AI 教練夥伴{% endblock %}
+
+{% block extra_head %}
+<style>
+    .hero {
+        background-color: #71c9f1;
+        color: #FFFFFF;
+        padding: 100px 20px;
+        text-align: center;
+    }
+    .hero-title {
+        font-size: 48px;
+        font-weight: 700;
+        margin-bottom: 20px;
+    }
+    .hero-subtitle {
+        font-size: 20px;
+        max-width: 600px;
+        margin: 0 auto 40px;
+        color: #E0E0E0;
+    }
+    .section {
+        padding: 80px 20px;
+        text-align: center;
+    }
+    .section-dark {
+        background-color: #71c9f1;
+        color: #FFFFFF;
+    }
+    .section-light {
+        background-color: #f8f9fa;
+    }
+    .section-title {
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 50px;
+    }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 40px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .card {
+        background: #FFFFFF;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        text-align: left;
+    }
+    .card-dark {
+        background: #2a3f5f;
+    }
+    .card .icon {
+        font-size: 40px;
+        color: #71c9f1;
+        margin-bottom: 20px;
+    }
+    .card h3 {
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+    .pricing-card {
+        border: 2px solid #1C2E4A;
+    }
+    .pricing-card.pro {
+        border-color: #71c9f1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <h1 class="hero-title" data-i18n="landing.title">你的 AI 教練夥伴，陪你從學習走向專業</h1>
+    <p class="hero-subtitle" data-i18n="landing.subtitle">從教練小白到執業認證，Coachly 幫你記錄、成長與實踐。</p>
+    {% if user_info %}
+        <a href="{{ url_for('frontend.dashboard') }}" class="btn btn-primary btn-large" style="background-color: #FFFFFF; color: #1C2E4A; border: 2px solid #FFFFFF;">
+            <span data-i18n="landing.dashboard_btn">進入儀表板</span>
+        </a>
+        <p style="margin-top: 20px; color: #E0E0E0;">
+            <span data-i18n="landing.welcome_back">歡迎回來</span>，{{ user_info.given_name }}！
+        </p>
+    {% else %}
+        <a href="{{ url_for('frontend.login') }}" class="btn btn-primary btn-large" style="background-color: #FFFFFF; color: #1C2E4A; border: 2px solid #FFFFFF;">
+            <span data-i18n="landing.login_btn">登入使用系統</span>
+        </a>
+    {% endif %}
+</section>
+
+<!-- Who it’s for Section -->
+<section id="who-its-for" class="section section-light">
+    <h2 class="section-title" data-i18n="landing.who_its_for">適用對象</h2>
+    <div class="grid">
+        <div class="card">
+            <div class="icon"><i class="fas fa-user-graduate"></i></div>
+            <h3 data-i18n="landing.learner.title">教練學習者</h3>
+            <p data-i18n="landing.learner.desc">正在接受教練培訓，需要工具來分析和反思自己的教練對話，以滿足認證時數要求。</p>
+        </div>
+        <div class="card">
+            <div class="icon"><i class="fas fa-user-tie"></i></div>
+            <h3 data-i18n="landing.professional.title">專業執業教練</h3>
+            <p data-i18n="landing.professional.desc">希望提高效率，將逐字稿整理工作自動化，並從客戶對話中獲得更深層次的洞見。</p>
+        </div>
+        <div class="card">
+            <div class="icon"><i class="fas fa-chalkboard-teacher"></i></div>
+            <h3 data-i18n="landing.supervisor.title">教練督導與培訓師</h3>
+            <p data-i18n="landing.supervisor.desc">需要一個統一的平台來審閱學員的教練稿件，提供基於數據的回饋。</p>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="section section-dark">
+    <h2 class="section-title" data-i18n="landing.features">主要功能</h2>
+    <div class="grid">
+        <div class="card card-dark">
+            <div class="icon"><i class="fas fa-file-excel"></i></div>
+            <h3 data-i18n="landing.transcript.title">逐字稿轉換器</h3>
+            <p data-i18n="landing.transcript.desc">快速將 VTT/SRT 格式的錄音逐字稿轉換為結構化的 Excel 表格，自動標記發言者和時間戳。</p>
+        </div>
+        <div class="card card-dark">
+            <div class="icon"><i class="fas fa-compass"></i></div>
+            <h3 data-i18n="landing.analysis.title">ICF 核心能力分析</h3>
+            <p data-i18n="landing.analysis.desc">（即將推出）自動分析對話中的 ICF 核心能力指標，幫助你準備 ACC/PCC 認證。</p>
+        </div>
+        <div class="card card-dark">
+            <div class="icon"><i class="fas fa-lightbulb"></i></div>
+            <h3 data-i18n="landing.insights.title">AI 教練洞見</h3>
+            <p data-i18n="landing.insights.desc">（即將推出）利用 AI 分析你的提問模式、語言習慣和客戶反應，提供個人化的成長建議。</p>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing Section -->
+<section id="pricing" class="section section-light">
+    <h2 class="section-title" data-i18n="landing.pricing">收費與方案</h2>
+    <div class="grid" style="grid-template-columns: 1fr 1fr; max-width: 800px;">
+        <div class="card pricing-card">
+            <h3 data-i18n="landing.free.title">Free</h3>
+            <p style="font-size: 48px; font-weight: 700; margin: 20px 0;">$0</p>
+            <ul>
+                <li data-i18n="landing.free.feature1">每月 3 次逐字稿轉換</li>
+                <li data-i18n="landing.free.feature2">基本分析功能</li>
+                <li data-i18n="landing.free.feature3">社群支援</li>
+            </ul>
+        </div>
+        <div class="card pricing-card pro">
+            <h3 data-i18n="landing.pro.title">Pro</h3>
+            <p style="font-size: 48px; font-weight: 700; margin: 20px 0;">$15 <span style="font-size: 16px;" data-i18n="landing.pro.month">/月</span></p>
+            <ul>
+                <li data-i18n="landing.pro.feature1">無限次逐字稿轉換</li>
+                <li data-i18n="landing.pro.feature2">完整 ICF 核心能力分析</li>
+                <li data-i18n="landing.pro.feature3">AI 教練洞見報告</li>
+                <li data-i18n="landing.pro.feature4">優先 Email 支援</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- Coming Soon Section -->
+<section id="coming-soon" class="section section-dark">
+    <h2 class="section-title" data-i18n="landing.coming_soon">即將推出</h2>
+    <p style="max-width: 600px; margin: 0 auto;" data-i18n="landing.coming_soon_desc">我們正努力開發更多強大功能，包括團隊協作、客戶管理和進階報告，敬請期待！</p>
+</section>
+{% endblock %}

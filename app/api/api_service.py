@@ -7,8 +7,8 @@ from typing import Optional
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, status
 from fastapi.responses import FileResponse, StreamingResponse
 
-from coaching_assistant.core.processor import format_transcript
-from coaching_assistant.parser import UnrecognizedFormatError
+from src.coaching_assistant.core.processor import format_transcript
+from src.coaching_assistant.parser import UnrecognizedFormatError
 
 # Configure logging
 logging.basicConfig(
@@ -17,6 +17,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Create the FastAPI app instance
 app = FastAPI(
     title="Coaching Transcript Tool API",
     description="An API to format coaching transcript files (VTT) into Markdown or Excel.",
