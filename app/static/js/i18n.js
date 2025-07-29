@@ -41,6 +41,16 @@ const i18n = {
             'menu.profile': '個人檔案',
             'menu.feedback': '意見回饋',
             'menu.coming_soon': '即將推出',
+            'menu.account': '帳戶設定',
+            'menu.theme': '主題',
+            'menu.language': '語言',
+            
+            // Help Menu
+            'help.systems_operational': '所有系統正常運作',
+            'help.get_help': '取得協助',
+            'help.community_hub': '社群中心',
+            'help.view_updates': '查看更新',
+            'help.read_docs': '閱讀文檔',
             
             // Transcript Converter
             'converter.title': '上傳逐字稿產生 Excel',
@@ -139,6 +149,16 @@ const i18n = {
             'menu.profile': 'Profile',
             'menu.feedback': 'Feedback',
             'menu.coming_soon': 'Coming Soon',
+            'menu.account': 'Account',
+            'menu.theme': 'Theme',
+            'menu.language': 'Language',
+            
+            // Help Menu
+            'help.systems_operational': 'All systems operational',
+            'help.get_help': 'Get help',
+            'help.community_hub': 'Community Hub',
+            'help.view_updates': 'View updates',
+            'help.read_docs': 'Read the docs',
             
             // Transcript Converter
             'converter.title': 'Upload Transcript to Generate Excel',
