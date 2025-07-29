@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}CoachAssistant - 你的 AI 教練夥伴{% endblock %}
+{% block title %}Coachly - 你的 AI 教練夥伴{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -77,7 +77,7 @@
 <!-- Hero Section -->
 <section class="hero">
     <h1 class="hero-title" data-i18n="landing.title">你的 AI 教練夥伴，陪你從學習走向專業</h1>
-    <p class="hero-subtitle" data-i18n="landing.subtitle">從教練小白到執業認證，CoachAssistant 幫你記錄、成長與實踐。</p>
+    <p class="hero-subtitle" data-i18n="landing.subtitle">從教練小白到執業認證，Coachly 幫你記錄、成長與實踐。</p>
     {% if user_info %}
         <a href="{{ url_for('frontend.dashboard') }}" class="btn btn-primary btn-large" style="background-color: #FFFFFF; color: #1C2E4A; border: 2px solid #FFFFFF;">
             <span data-i18n="landing.dashboard_btn">進入儀表板</span>

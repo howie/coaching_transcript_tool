@@ -13,13 +13,13 @@ const i18n = {
             
             // Landing Page
             'landing.title': '你的 AI 教練夥伴，陪你從學習走向專業',
-            'landing.subtitle': '從教練小白到執業認證，CoachAssistant 幫你記錄、成長與實踐。',
+            'landing.subtitle': '從教練小白到執業認證，Coachly 幫你記錄、成長與實踐。',
             'landing.login_btn': '登入使用系統',
             'landing.dashboard_btn': '進入儀表板',
             'landing.welcome_back': '歡迎回來',
             
             // Dashboard
-            'dashboard.title': '歡迎使用 CoachAssistant',
+            'dashboard.title': '歡迎使用 Coachly',
             'dashboard.subtitle': 'AI 驅動的工具，提升您的教練實踐',
             'dashboard.stats.total_hours': '總教練時數',
             'dashboard.stats.monthly_hours': '本月教練時數',
@@ -121,13 +121,13 @@ const i18n = {
             
             // Landing Page
             'landing.title': 'Your AI-powered coaching companion',
-            'landing.subtitle': 'From student to certified coach, CoachAssistant helps you track, grow, and thrive.',
+            'landing.subtitle': 'From student to certified coach, Coachly helps you track, grow, and thrive.',
             'landing.login_btn': 'Login to System',
             'landing.dashboard_btn': 'Go to Dashboard',
             'landing.welcome_back': 'Welcome back',
             
             // Dashboard
-            'dashboard.title': 'Welcome to CoachAssistant',
+            'dashboard.title': 'Welcome to Coachly',
             'dashboard.subtitle': 'AI-powered tools to enhance your coaching practice',
             'dashboard.stats.total_hours': 'Total Coaching Hours',
             'dashboard.stats.monthly_hours': 'Monthly Hours',
