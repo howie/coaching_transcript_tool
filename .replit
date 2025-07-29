@@ -1,0 +1,47 @@
+modules = ["bash", "python-3.13.5"]
+compile = "make"
+
+[nix]
+channel = "stable-25_05"
+packages = ["glibcLocales", "libxcrypt"]
+
+[deployment]
+build = ["sh", "-c", "make"]
+run = [
+  "sh",
+  "-c",
+  "uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 8000 & flask run --host 0.0.0.0 --port 8001",
+]
+deploymentTarget = "cloudrun"
+
+[workflows]
+runButton = "Web App"
+
+[[workflows.workflow]]
+name = "Web App"
+author = 40986870
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
+
+[[workflows.workflow]]
+name = "Web App Alternative"
+author = 40986870
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "make build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "make run"
+
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[env]
+REPLIT_DISABLE_PACKAGE_LAYER = "1"

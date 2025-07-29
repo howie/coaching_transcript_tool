@@ -23,14 +23,15 @@ clean:
 
 # Build the package
 build: clean
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install --upgrade setuptools wheel build
-	$(PYTHON) -m build
+	$(PYTHON) -m pip install -r requirement.txt --break-system-packages
 
 # Install the package locally
 install: build
-	$(PIP) install -e .
+	$(PIP) install -r requirement.txt --break-system-packages
 
+run: 
+# Start FastAPI and Flask applications simultaneously
+(sh -c 'uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 8000 & flask run --host 0.0.0.0 --port 8001')
 
 
 # Build Docker image
@@ -59,9 +60,9 @@ test:
 
 # Install development dependencies
 dev-setup:
-	$(PIP) install -r requirements.txt
-	$(PIP) install --upgrade pip setuptools wheel build flake8 pytest
-	$(PIP) install -e .
+	$(PIP) install -r requirements.txt --break-system-packages
+	$(PIP) install setuptools wheel build flake8 pytest --break-system-packages
+	$(PIP) install -e . --break-system-packages
 
 # Run linting
 lint: dev-setup
@@ -69,13 +70,12 @@ lint: dev-setup
 
 # Create a distribution package
 dist: clean
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install --upgrade setuptools wheel build
+	$(PYTHON) -m pip install setuptools wheel build --break-system-packages
 	$(PYTHON) -m build
 
 # Install the package from the distribution
 dist-install: dist
-	$(PIP) install dist/*.whl
+	$(PIP) install dist/*.whl --break-system-packages
 
 # Help target
 help:

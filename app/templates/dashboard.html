@@ -1,0 +1,225 @@
+
+{% extends "dashboard_base.html" %}
+
+{% block title %}Dashboard - Coachly{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--shadow-light);
+            transition: var(--transition);
+        }
+        body.dark-mode .stat-card {
+            background: var(--card-bg-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: var(--shadow-dark);
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        body.dark-mode .stat-label {
+            color: var(--text-secondary-dark);
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 25px;
+            box-shadow: var(--shadow-light);
+            transition: var(--transition);
+        }
+        body.dark-mode .card {
+            background: var(--card-bg-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: var(--shadow-dark);
+        }
+        .card h3 {
+            color: #F5C451;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card p {
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #F5C451;
+            color: #1C2E4A;
+        }
+        .btn-primary:hover {
+            background: #f3c043;
+        }
+        .btn-secondary {
+            background: #334155;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+        .coming-soon {
+            background: #475569;
+            color: #94a3b8;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-left: 10px;
+        }
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .step-card {
+            padding: 15px;
+            background: rgba(245, 196, 81, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #F5C451;
+        }
+        .step-card h4 {
+            color: #F5C451;
+            margin-bottom: 8px;
+        }
+        .step-card p {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title" style="color: #F5C451; font-size: 32px; margin-bottom: 10px;" data-i18n="dashboard.title">Welcome to Coachly</h1>
+    <p class="page-subtitle" style="color: #94a3b8; font-size: 16px;" data-i18n="dashboard.subtitle">AI-powered tools to enhance your coaching practice</p>
+</div>
+
+<!-- Mock 教練時數分析統計 -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">24</div>
+        <div class="stat-label" data-i18n="dashboard.stats.total_hours">總教練時數</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">12</div>
+        <div class="stat-label" data-i18n="dashboard.stats.monthly_hours">本月教練時數</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">8</div>
+        <div class="stat-label" data-i18n="dashboard.stats.transcripts">轉換的逐字稿</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">95%</div>
+        <div class="stat-label" data-i18n="dashboard.stats.icf_competency">ICF 核心能力達成</div>
+    </div>
+</div>
+
+<!-- 功能卡片 -->
+<div class="dashboard-grid">
+    <div class="card">
+        <h3>
+            <i class="fas fa-file-alt"></i>
+            <span data-i18n="feature.converter.title">Transcript Converter</span>
+        </h3>
+        <p data-i18n="feature.converter.desc">
+            Convert your coaching session transcripts from VTT or SRT format to structured Excel files for analysis.
+        </p>
+        <a href="{{ url_for('frontend.transcript_converter') }}" class="btn btn-primary">
+            <i class="fas fa-upload"></i>
+            <span data-i18n="feature.converter.btn">Upload Transcript</span>
+        </a>
+    </div>
+
+    <div class="card">
+        <h3 style="color: #94a3b8;">
+            <i class="fas fa-compass"></i>
+            <span data-i18n="feature.analysis.title">ICF Marker Analysis</span>
+            <span class="coming-soon" data-i18n="menu.coming_soon">Coming Soon</span>
+        </h3>
+        <p data-i18n="feature.analysis.desc">
+            Automatically identify and analyze ICF coaching competencies and markers in your sessions.
+        </p>
+        <button class="btn btn-secondary" disabled>
+            <i class="fas fa-clock"></i>
+            <span data-i18n="menu.coming_soon">Coming Soon</span>
+        </button>
+    </div>
+
+    <div class="card">
+        <h3 style="color: #94a3b8;">
+            <i class="fas fa-chart-line"></i>
+            <span data-i18n="feature.insights.title">AI Insights</span>
+            <span class="coming-soon" data-i18n="menu.coming_soon">Coming Soon</span>
+        </h3>
+        <p data-i18n="feature.insights.desc">
+            Get AI-powered insights and suggestions to improve your coaching effectiveness.
+        </p>
+        <button class="btn btn-secondary" disabled>
+            <i class="fas fa-clock"></i>
+            <span data-i18n="menu.coming_soon">Coming Soon</span>
+        </button>
+    </div>
+</div>
+
+<!-- 快速開始指南 -->
+<div class="card">
+    <h3 style="color: #F5C451; margin-bottom: 15px;" data-i18n="dashboard.getting_started">Getting Started</h3>
+    <div class="steps-grid">
+        <div class="step-card">
+            <h4 data-i18n="dashboard.step1.title">1. Upload Transcript</h4>
+            <p data-i18n="dashboard.step1.desc">Upload your VTT or SRT transcript file from your coaching session.</p>
+        </div>
+        <div class="step-card">
+            <h4 data-i18n="dashboard.step2.title">2. Configure Options</h4>
+            <p data-i18n="dashboard.step2.desc">Set coach and client names for anonymization and other preferences.</p>
+        </div>
+        <div class="step-card">
+            <h4 data-i18n="dashboard.step3.title">3. Download Excel</h4>
+            <p data-i18n="dashboard.step3.desc">Get your structured Excel file ready for analysis and review.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+{% endblock %}

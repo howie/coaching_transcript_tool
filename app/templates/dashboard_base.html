@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Coachly{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dark_theme.css') }}" rel="stylesheet">
+    <style>
+        .language-switcher {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .lang-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 5px 8px;
+            border-radius: 4px;
+            transition: var(--transition);
+            font-size: 14px;
+        }
+        .lang-btn:hover {
+            color: var(--text-primary);
+            background-color: var(--surface-color);
+        }
+        .lang-btn.active {
+            color: var(--accent-color);
+            background-color: var(--surface-color);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="has-nav">
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <button class="hamburger" id="hamburger-btn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">Doxa Studio</div>
+            <div class="product-name">Coachly</div>
+        </div>
+        <div class="nav-right">
+            <button class="notification-btn" title="Notifications">
+                <i class="fas fa-bell"></i>
+            </button>
+            <div class="help-dropdown">
+                <button class="help-btn" id="help-btn" title="Help">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+                <div class="help-dropdown-menu" id="help-dropdown-menu">
+                    <div class="dropdown-item">
+                        <div class="status-indicator"></div>
+                        <span data-i18n="help.systems_operational">All systems operational</span>
+                    </div>
+                    <div class="dropdown-item">
+                        <i class="fas fa-question-circle"></i>
+                        <span data-i18n="help.get_help">Get help</span>
+                    </div>
+                    <div class="dropdown-item">
+                        <i class="fas fa-globe"></i>
+                        <span data-i18n="help.community_hub">Community Hub</span>
+                    </div>
+                    <div class="dropdown-item">
+                        <i class="fas fa-star"></i>
+                        <span data-i18n="help.view_updates">View updates</span>
+                    </div>
+                    <div class="dropdown-item">
+                        <i class="fas fa-book"></i>
+                        <span data-i18n="help.read_docs">Read the docs</span>
+                    </div>
+                </div>
+            </div>
+            {% if user_info %}
+                <div class="user-dropdown">
+                    <button class="user-dropdown-btn" id="user-dropdown-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ user_info.given_name or user_info.name }}</span>
+                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    </button>
+                    <div class="user-dropdown-menu" id="user-dropdown-menu">
+                        <div class="dropdown-item">
+                            <i class="fas fa-cog"></i>
+                            <span data-i18n="menu.account">Account</span>
+                        </div>
+                        <div class="dropdown-item">
+                            <i class="fas fa-user"></i>
+                            <span data-i18n="menu.profile">Profile</span>
+                        </div>
+                        <div class="dropdown-separator"></div>
+                        <div class="dropdown-item theme-toggle-item">
+                            <i class="fas fa-palette"></i>
+                            <span data-i18n="menu.theme">Theme</span>
+                            <div class="theme-buttons">
+                                <button class="theme-btn" id="dark-theme-btn" title="Dark Mode">
+                                    <i class="fas fa-moon"></i>
+                                </button>
+                                <button class="theme-btn" id="light-theme-btn" title="Light Mode">
+                                    <i class="fas fa-sun"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="dropdown-item language-dropdown">
+                            <i class="fas fa-globe"></i>
+                            <span data-i18n="menu.language">Language</span>
+                            <div class="language-selector">
+                                <button class="current-lang" id="current-lang-btn">
+                                    <span id="current-lang-text">🇹🇼 ZH</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="language-dropdown-menu" id="language-dropdown-menu">
+                                    <div class="lang-option" data-lang="zh">
+                                        <span>🇹🇼 繁體中文</span>
+                                    </div>
+                                    <div class="lang-option" data-lang="en">
+                                        <span>🇺🇸 English</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dropdown-separator"></div>
+                        <a href="{{ url_for('frontend.logout') }}" class="dropdown-item logout-item">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span data-i18n="nav.logout">Log out</span>
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <ul class="sidebar-menu">
+            <li class="{{ 'active' if active_page == 'dashboard' else '' }}">
+                <a href="{{ url_for('frontend.dashboard') }}" class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span class="menu-text" data-i18n="menu.dashboard">Dashboard</span>
+                </a>
+            </li>
+            <li class="{{ 'active' if active_page == 'transcript_converter' else '' }}">
+                <a href="{{ url_for('frontend.transcript_converter') }}" class="menu-item">
+                    <i class="fas fa-file-alt"></i>
+                    <span class="menu-text" data-i18n="menu.converter">Converter</span>
+                </a>
+            </li>
+            <li class="{{ 'active' if active_page == 'marker_analysis' else '' }}">
+                <a href="{{ url_for('frontend.marker_analysis') }}" class="menu-item">
+                    <i class="fas fa-compass"></i>
+                    <span class="menu-text" data-i18n="menu.analysis">Analysis</span>
+                </a>
+            </li>
+            <li class="{{ 'active' if active_page == 'insights' else '' }}">
+                <a href="{{ url_for('frontend.insights') }}" class="menu-item">
+                    <i class="fas fa-chart-line"></i>
+                    <span class="menu-text" data-i18n="menu.insights">Insights</span>
+                </a>
+            </li>
+            <li class="{{ 'active' if active_page == 'profile' else '' }}">
+                <a href="{{ url_for('frontend.profile') }}" class="menu-item">
+                    <i class="fas fa-user-cog"></i>
+                    <span class="menu-text" data-i18n="menu.profile">Profile</span>
+                </a>
+            </li>
+            <li class="{{ 'active' if active_page == 'feedback' else '' }}">
+                <a href="{{ url_for('frontend.feedback') }}" class="menu-item">
+                    <i class="fas fa-comment-dots"></i>
+                    <span class="menu-text" data-i18n="menu.feedback">Feedback</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
