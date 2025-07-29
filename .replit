@@ -10,7 +10,7 @@ build = ["sh", "-c", "make"]
 run = [
   "sh",
   "-c",
-  "uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 5000 & flask run --host 0.0.0.0 --port 5001",
+  "uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 8000 & flask run --host 0.0.0.0 --port 8001",
 ]
 deploymentTarget = "cloudrun"
 
@@ -40,7 +40,7 @@ task = "shell.exec"
 args = "make run"
 
 [[ports]]
-localPort = 5000
+localPort = 8000
 externalPort = 80
 
 [env]

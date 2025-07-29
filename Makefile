@@ -31,7 +31,7 @@ install: build
 
 run: 
 # Start FastAPI and Flask applications simultaneously
-(sh -c 'uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 5000 & flask run --host 0.0.0.0 --port 5001')
+(sh -c 'uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 8000 & flask run --host 0.0.0.0 --port 8001')
 
 
 # Build Docker image

@@ -45,14 +45,14 @@ app = main_app
 
 if __name__ == "__main__":
     import uvicorn
-    print("Starting server on http://0.0.0.0:5000")
+    print("Starting server on http://0.0.0.0:8000")
     print(f"Debug: Static files at {static_dir}")
     if os.path.exists(os.path.join(static_dir, 'js')):
         print("Available JS files:", os.listdir(os.path.join(static_dir, 'js')))
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=5000,
+        port=8000,
         reload=True,
         log_level="debug"
     )

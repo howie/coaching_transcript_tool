@@ -7,27 +7,14 @@ import os
 import json
 import tempfile
 import requests
-from flask import render_template, redirect, session, url_for, flash, request, jsonify
-import google_auth_oauthlib.flow
+import io
+from flask import (render_template, redirect, session, url_for, flash, 
+                   request, jsonify, send_file)
 from . import frontend_bp as bp
+from src.coaching_assistant.core.processor import format_transcript, UnrecognizedFormatError
 
-# Google OAuth configuration
-try:
-    oauth_config = json.loads(os.environ.get('GOOGLE_OAUTH_SECRETS', '{}'))
-    if oauth_config:
-        oauth_flow = google_auth_oauthlib.flow.Flow.from_client_config(
-            oauth_config,
-            scopes=[
-                "https://www.googleapis.com/auth/userinfo.email",
-                "openid",
-                "https://www.googleapis.com/auth/userinfo.profile",
-            ]
-        )
-        oauth_flow.redirect_uri = os.environ.get('GOOGLE_OAUTH_REDIRECT_URI', 
-                                              'http://localhost:5000/oauth2callback')
-except Exception as e:
-    print(f"OAuth configuration error: {e}")
-    oauth_flow = None
+# Google OAuth configuration - disabled for now (using mock login)
+oauth_flow = None
 
 def get_user_info(access_token):
     """Get user information from Google API"""
@@ -43,25 +30,31 @@ def get_user_info(access_token):
 @bp.route('/')
 def home():
     """Landing page"""
-    # Bypass login for now
-    user_info = {
+    # Check if user is logged in (mock)
+    user_info = session.get('user_info')
+    return render_template('index.html', user_info=user_info)
+
+@bp.route('/login')
+def login():
+    """Mock login - set session and redirect to dashboard"""
+    # Mock user info
+    session['user_info'] = {
         'name': 'Demo User',
-        'email': 'demo@example.com',
+        'email': 'demo@coachassistant.com',
         'picture': 'https://via.placeholder.com/150',
         'given_name': 'Demo'
     }
-    return render_template('index.html', user_info=user_info)
+    flash('Login successful!', 'success')
+    return redirect(url_for('frontend.dashboard'))
 
 @bp.route('/dashboard')
 def dashboard():
-    """Main dashboard page"""
-    # Bypass login for now
-    user_info = {
-        'name': 'Demo User',
-        'email': 'demo@example.com',
-        'picture': 'https://via.placeholder.com/150',
-        'given_name': 'Demo'
-    }
+    """Main dashboard page with feature overview"""
+    user_info = session.get('user_info')
+    if not user_info:
+        flash('Please login to access the dashboard', 'error')
+        return redirect(url_for('frontend.home'))
+    
     return render_template('dashboard.html', 
                          user_info=user_info,
                          active_page='dashboard')
@@ -69,13 +62,10 @@ def dashboard():
 @bp.route('/transcript-converter', methods=['GET'])
 def transcript_converter():
     """Transcript converter page"""
-    # Bypass login for now
-    user_info = {
-        'name': 'Demo User',
-        'email': 'demo@example.com',
-        'picture': 'https://via.placeholder.com/150',
-        'given_name': 'Demo'
-    }
+    user_info = session.get('user_info')
+    if not user_info:
+        flash('Please login to access this feature', 'error')
+        return redirect(url_for('frontend.home'))
     
     return render_template('transcript_converter.html', 
                          user_info=user_info,
@@ -83,48 +73,61 @@ def transcript_converter():
 
 @bp.route('/upload', methods=['POST'])
 def upload_transcript():
-    """Handle transcript file upload"""
-    if "access_token" not in session:
-        return jsonify({'error': 'Authentication required'}), 401
-    
+    """Handle transcript file upload and conversion."""
     if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
+        return jsonify({'error': 'No file part in the request'}), 400
     
     file = request.files['file']
     if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    
-    # Save file to temporary location
+        return jsonify({'error': 'No file selected for uploading'}), 400
+
+    coach_name = request.form.get('coach_name')
+    client_name = request.form.get('client_name')
+    # When manually adding checkbox value, checked checkbox sends 'on'
+    convert_chinese = request.form.get('convert_to_traditional_chinese') == 'on'
+
     try:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            file.save(temp_file.name)
-            temp_file_path = temp_file.name
+        file_content = file.read()
+        original_filename = file.filename
         
-        # TODO: Process the transcript file
+        excel_bytes = format_transcript(
+            file_content=file_content,
+            original_filename=original_filename,
+            output_format='excel',
+            coach_name=coach_name,
+            client_name=client_name,
+            convert_to_traditional_chinese=convert_chinese
+        )
         
-        return jsonify({
-            'success': True,
-            'message': f'File "{file.filename}" uploaded successfully',
-            'filename': file.filename
-        })
+        output_filename = f"processed_{os.path.splitext(original_filename)[0]}.xlsx"
+        
+        return send_file(
+            io.BytesIO(excel_bytes),
+            as_attachment=True,
+            download_name=output_filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except UnrecognizedFormatError as e:
+        return jsonify({'error': f'File format not recognized: {e}'}), 400
     except Exception as e:
-        return jsonify({'error': f'Error processing file: {str(e)}'}), 500
-    finally:
-        # Clean up
-        if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
-            os.unlink(temp_file_path)
+        return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
 
 @bp.route('/signin')
 def signin():
     """Initiate Google OAuth flow"""
-    if not oauth_flow:
-        flash('Google OAuth not configured', 'error')
+    try:
+        if not oauth_flow:
+            flash('Google OAuth not configured', 'error')
+            return redirect(url_for('frontend.home'))
+        
+        oauth_flow.redirect_uri = url_for('frontend.oauth2callback', _external=True).replace('http://', 'https://')
+        authorization_url, state = oauth_flow.authorization_url()
+        session['state'] = state
+        return redirect(authorization_url)
+    except NameError:
+        flash('OAuth not available', 'error')
         return redirect(url_for('frontend.home'))
-    
-    oauth_flow.redirect_uri = url_for('frontend.oauth2callback', _external=True).replace('http://', 'https://')
-    authorization_url, state = oauth_flow.authorization_url()
-    session['state'] = state
-    return redirect(authorization_url)
 
 @bp.route('/oauth2callback')
 def oauth2callback():
@@ -145,30 +148,54 @@ def logout():
     session.clear()
     return redirect(url_for('frontend.home'))
 
-@bp.route('/icf-marker-analysis')
-def icf_marker_analysis():
-    """ICF Marker Analysis page (coming soon)"""
-    user_info = {
-        'name': 'Demo User',
-        'email': 'demo@example.com',
-        'picture': 'https://via.placeholder.com/150',
-        'given_name': 'Demo'
-    }
+@bp.route('/marker-analysis')
+def marker_analysis():
+    """Marker Analysis page (coming soon)"""
+    user_info = session.get('user_info')
+    if not user_info:
+        flash('Please login to access this feature', 'error')
+        return redirect(url_for('frontend.home'))
+    
     return render_template('coming_soon.html', 
                          user_info=user_info,
-                         feature='ICF Marker Analysis',
-                         active_page='icf_marker_analysis')
+                         feature_name='Marker Analysis',
+                         active_page='marker_analysis')
 
-@bp.route('/ai-insights')
-def ai_insights():
-    """AI Insights page (coming soon)"""
-    user_info = {
-        'name': 'Demo User',
-        'email': 'demo@example.com',
-        'picture': 'https://via.placeholder.com/150',
-        'given_name': 'Demo'
-    }
+@bp.route('/insights')
+def insights():
+    """Insights page (coming soon)"""
+    user_info = session.get('user_info')
+    if not user_info:
+        flash('Please login to access this feature', 'error')
+        return redirect(url_for('frontend.home'))
+    
     return render_template('coming_soon.html', 
                          user_info=user_info,
-                         feature='AI Insights',
-                         active_page='ai_insights')
+                         feature_name='Insights',
+                         active_page='insights')
+
+@bp.route('/profile')
+def profile():
+    """Profile page (coming soon)"""
+    user_info = session.get('user_info')
+    if not user_info:
+        flash('Please login to access this feature', 'error')
+        return redirect(url_for('frontend.home'))
+    
+    return render_template('coming_soon.html', 
+                         user_info=user_info,
+                         feature_name='Profile',
+                         active_page='profile')
+
+@bp.route('/feedback')
+def feedback():
+    """Feedback page (coming soon)"""
+    user_info = session.get('user_info')
+    if not user_info:
+        flash('Please login to access this feature', 'error')
+        return redirect(url_for('frontend.home'))
+    
+    return render_template('coming_soon.html', 
+                         user_info=user_info,
+                         feature_name='Feedback',
+                         active_page='feedback')
