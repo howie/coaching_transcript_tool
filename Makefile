@@ -23,11 +23,11 @@ clean:
 
 # Build the package
 build: clean
-	$(PYTHON) -m pip install -e . --break-system-packages
+	$(PYTHON) -m pip install -r requirement.txt --break-system-packages
 
 # Install the package locally
 install: build
-	$(PIP) install -e . --break-system-packages
+	$(PIP) install -r requirement.txt --break-system-packages
 
 run: 
 # Start FastAPI and Flask applications simultaneously
