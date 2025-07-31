@@ -210,6 +210,56 @@ coaching_transcript_tool/
 ---
 
 ### **階段 2：前端重構** (Week 3-4) ✅ **已完成**
+### **階段 2.5：Dashboard 功能遷移** (Week 4.5) 🚧 **進行中**
+
+#### 2.5.1 導航系統完善
+**從 `dashboard_base.html` 遷移：**
+- 完整的頂部導航結構（logo、漢堡選單、右側工具列）
+- 用戶下拉選單（帳戶、個人資料、主題切換、語言切換、登出）
+- 通知按鈕和幫助下拉選單
+- 完整的側邊欄選單（6個項目：Dashboard、Converter、Analysis、Insights、Profile、Feedback）
+
+#### 2.5.2 主題與國際化系統
+- 深色/淺色主題切換功能
+- 繁體中文/英文語言切換
+- i18n 系統整合（使用 next-i18next）
+- CSS 變數系統遷移（支援主題切換）
+
+#### 2.5.3 Dashboard 內容豐富化
+**從 `dashboard.html` 遷移：**
+- 教練時數統計卡片（4個統計項目：總教練時數、本月教練時數、轉換的逐字稿、ICF核心能力達成）
+- 三大功能卡片（Transcript Converter、ICF Analysis、AI Insights）
+- "Coming Soon" 狀態顯示
+- Getting Started 指南（3步驟卡片）
+
+#### 2.5.4 互動功能實作
+- 下拉選單開關邏輯
+- 響應式漢堡選單
+- 主題切換動畫效果
+- 語言切換即時更新
+
+#### 2.5.5 配色系統修復 ✅ **已完成 (2025-01-31)**
+**修復範圍：**
+- **首頁配色統一**：
+  - Footer 背景從黑色改為深藍色 (`bg-nav-dark`)，與導航欄保持一致
+  - 強調色從橙色統一改為淺藍色 (`text-primary-blue`)
+  - 社媒圖標 hover 效果統一使用淺藍色主視覺
+- **Dashboard 恢復原始設計色系**：
+  - Header 背景恢復為淺藍色 (#71c9f1)，完全符合原始設計圖
+  - Sidebar 背景改為淺藍色，與 header 完全一致
+  - Header 和 Sidebar 文字改為白色，確保良好對比度
+  - 統計數字 (24, 12, 8, 95%) 恢復為淺藍色 (#71c9f1)
+  - 保持黃色強調色在按鈕和圖標的使用
+
+**技術實現：**
+- 更新 Tailwind 配置，新增 `dashboard-header-bg` 和 `dashboard-stats-blue` 專用顏色變數
+- 修改 Dashboard Header、Sidebar、Stats 組件使用統一配色
+- 完善響應式設計，確保所有配色在不同裝置正確顯示
+- 所有修改經過瀏覽器測試驗證，文字對比度符合可訪問性標準
+
+**文件更新：**
+- 更新 `docs/design-system.md` 版本至 1.1，記錄完整的配色修改
+- 更新 `docs/project-snapshot.md` 和 `docs/changelog.md` 記錄修復內容
 
 #### 2.1 Next.js 應用建立 ✅
 

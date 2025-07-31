@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { apiClient, downloadBlob } from '@/lib/api'
+import { useI18n } from '@/contexts/i18n-context'
 
 interface ConversionOptions {
   outputFormat: 'markdown' | 'excel'
@@ -11,6 +12,7 @@ interface ConversionOptions {
 }
 
 export default function TranscriptConverterPage() {
+  const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [options, setOptions] = useState<ConversionOptions>({
@@ -25,7 +27,7 @@ export default function TranscriptConverterPage() {
     if (selectedFile && selectedFile.name.endsWith('.vtt')) {
       setFile(selectedFile)
     } else {
-      alert('請選擇 VTT 格式的檔案')
+      alert(t('converter.alert_select_file'))
     }
   }
 
@@ -33,7 +35,7 @@ export default function TranscriptConverterPage() {
     event.preventDefault()
     
     if (!file) {
-      alert('請先選擇檔案')
+      alert(t('converter.alert_no_file'))
       return
     }
 
@@ -49,12 +51,12 @@ export default function TranscriptConverterPage() {
       downloadBlob(result.blob, result.filename)
       
       // 處理成功後的邏輯
-      alert('檔案處理完成並已下載！')
+      alert(t('converter.alert_success'))
       setFile(null)
       
     } catch (error) {
       console.error('Processing error:', error)
-      alert(`處理過程中發生錯誤：${error instanceof Error ? error.message : '未知錯誤'}`)
+      alert(`${t('converter.alert_error')}${error instanceof Error ? error.message : t('converter.alert_unknown_error')}`)
     } finally {
       setIsProcessing(false)
     }
@@ -63,8 +65,8 @@ export default function TranscriptConverterPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-dashboard-accent">逐字稿轉換器</h1>
-        <p className="text-xl text-dashboard-text-secondary mt-3">將 VTT 格式的逐字稿轉換為 Markdown 或 Excel 文件</p>
+        <h1 className="text-4xl font-bold text-dashboard-accent">{t('converter.title')}</h1>
+        <p className="text-xl text-dashboard-text-secondary mt-3">{t('converter.subtitle')}</p>
       </div>
 
       <div className="bg-dashboard-card-bg rounded-lg shadow-dark p-8 border border-dashboard-accent border-opacity-10">
@@ -72,7 +74,7 @@ export default function TranscriptConverterPage() {
           {/* 檔案上傳區域 */}
           <div>
             <label className="block text-sm font-medium text-dashboard-text mb-2">
-              選擇 VTT 檔案
+              {t('converter.upload_text')}
             </label>
             <div className="border-2 border-dashed border-dashboard-accent border-opacity-30 rounded-lg p-6 text-center hover:border-dashboard-accent hover:border-opacity-50 transition-colors">
               {file ? (
@@ -86,7 +88,7 @@ export default function TranscriptConverterPage() {
                     onClick={() => setFile(null)}
                     className="ml-2 text-red-400 hover:text-red-300"
                   >
-                    移除
+                    {t('converter.remove_file')}
                   </button>
                 </div>
               ) : (
@@ -102,10 +104,9 @@ export default function TranscriptConverterPage() {
                     id="file-upload"
                   />
                   <label htmlFor="file-upload" className="cursor-pointer">
-                    <span className="text-dashboard-accent hover:text-dashboard-accent font-medium">點擊選擇檔案</span>
-                    <span className="text-dashboard-text-secondary"> 或拖放檔案到此處</span>
+                    <span className="text-dashboard-accent hover:text-dashboard-accent font-medium">{t('converter.upload_subtext')}</span>
                   </label>
-                  <p className="text-sm text-dashboard-text-tertiary mt-2">支援 VTT 格式，最大 10MB</p>
+                  <p className="text-sm text-dashboard-text-tertiary mt-2">{t('converter.file_info')}</p>
                 </div>
               )}
             </div>
@@ -114,7 +115,7 @@ export default function TranscriptConverterPage() {
           {/* 輸出格式選擇 */}
           <div>
             <label className="block text-sm font-medium text-dashboard-text mb-2">
-              輸出格式
+              {t('converter.output_format')}
             </label>
             <div className="grid grid-cols-2 gap-4">
               <label className="flex items-center p-4 border border-dashboard-accent border-opacity-30 rounded-lg cursor-pointer hover:bg-dashboard-accent hover:bg-opacity-10 transition-colors">
@@ -127,8 +128,8 @@ export default function TranscriptConverterPage() {
                   className="mr-3 text-dashboard-accent"
                 />
                 <div>
-                  <div className="font-medium text-dashboard-text">Markdown (.md)</div>
-                  <div className="text-sm text-dashboard-text-secondary">適合閱讀和版本控制</div>
+                  <div className="font-medium text-dashboard-text">{t('converter.markdown_title')}</div>
+                  <div className="text-sm text-dashboard-text-secondary">{t('converter.markdown_desc')}</div>
                 </div>
               </label>
               
@@ -142,8 +143,8 @@ export default function TranscriptConverterPage() {
                   className="mr-3 text-dashboard-accent"
                 />
                 <div>
-                  <div className="font-medium text-dashboard-text">Excel (.xlsx)</div>
-                  <div className="text-sm text-dashboard-text-secondary">適合數據分析和處理</div>
+                  <div className="font-medium text-dashboard-text">{t('converter.excel_title')}</div>
+                  <div className="text-sm text-dashboard-text-secondary">{t('converter.excel_desc')}</div>
                 </div>
               </label>
             </div>
@@ -153,7 +154,7 @@ export default function TranscriptConverterPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="coachName" className="block text-sm font-medium text-dashboard-text mb-2">
-                教練名稱
+                {t('converter.coach_name')}
               </label>
               <input
                 type="text"
@@ -161,13 +162,13 @@ export default function TranscriptConverterPage() {
                 value={options.coachName}
                 onChange={(e) => setOptions({...options, coachName: e.target.value})}
                 className="w-full px-3 py-2 bg-dashboard-bg border border-dashboard-accent border-opacity-30 rounded-lg focus:ring-2 focus:ring-dashboard-accent focus:border-dashboard-accent text-dashboard-text placeholder-dashboard-text-tertiary"
-                placeholder="Coach"
+                placeholder={t('converter.coach_placeholder')}
               />
             </div>
             
             <div>
               <label htmlFor="clientName" className="block text-sm font-medium text-dashboard-text mb-2">
-                客戶名稱
+                {t('converter.client_name')}
               </label>
               <input
                 type="text"
@@ -175,7 +176,7 @@ export default function TranscriptConverterPage() {
                 value={options.clientName}
                 onChange={(e) => setOptions({...options, clientName: e.target.value})}
                 className="w-full px-3 py-2 bg-dashboard-bg border border-dashboard-accent border-opacity-30 rounded-lg focus:ring-2 focus:ring-dashboard-accent focus:border-dashboard-accent text-dashboard-text placeholder-dashboard-text-tertiary"
-                placeholder="Client"
+                placeholder={t('converter.client_placeholder')}
               />
             </div>
           </div>
@@ -189,7 +190,7 @@ export default function TranscriptConverterPage() {
                 onChange={(e) => setOptions({...options, convertToTraditional: e.target.checked})}
                 className="mr-2 text-dashboard-accent focus:ring-dashboard-accent"
               />
-              <span className="text-dashboard-text">轉換為繁體中文</span>
+              <span className="text-dashboard-text">{t('converter.convert_chinese')}</span>
             </label>
           </div>
 
@@ -206,10 +207,10 @@ export default function TranscriptConverterPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  處理中...
+                  {t('converter.processing')}
                 </div>
               ) : (
-                '開始轉換'
+                t('converter.start_btn')
               )}
             </button>
           </div>
@@ -218,27 +219,27 @@ export default function TranscriptConverterPage() {
 
       {/* 使用說明 */}
       <div className="mt-8 bg-dashboard-card-bg border border-dashboard-accent border-opacity-20 rounded-lg p-6 shadow-dark">
-        <h3 className="text-xl font-semibold text-dashboard-accent mb-4">使用說明</h3>
+        <h3 className="text-xl font-semibold text-dashboard-accent mb-4">{t('converter.instructions')}</h3>
         <ul className="text-dashboard-text-secondary space-y-3">
           <li className="flex items-start">
             <span className="text-dashboard-accent mr-2">•</span>
-            <span>支援標準 WebVTT (.vtt) 格式檔案</span>
+            <span>{t('converter.instruction1')}</span>
           </li>
           <li className="flex items-start">
             <span className="text-dashboard-accent mr-2">•</span>
-            <span>系統會自動識別說話者並進行內容整理</span>
+            <span>{t('converter.instruction2')}</span>
           </li>
           <li className="flex items-start">
             <span className="text-dashboard-accent mr-2">•</span>
-            <span>可設定教練和客戶的顯示名稱以保護隱私</span>
+            <span>{t('converter.instruction3')}</span>
           </li>
           <li className="flex items-start">
             <span className="text-dashboard-accent mr-2">•</span>
-            <span>支援簡體轉繁體中文功能</span>
+            <span>{t('converter.instruction4')}</span>
           </li>
           <li className="flex items-start">
             <span className="text-dashboard-accent mr-2">•</span>
-            <span>處理完成後會自動下載結果檔案</span>
+            <span>{t('converter.instruction5')}</span>
           </li>
         </ul>
       </div>
