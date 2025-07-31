@@ -9,15 +9,32 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // 基於原始設計的金色主題
-        gold: '#C09357',
-        'gold-dark': '#a67d3a',
+        // Landing Page 主題 - 天藍色系
+        'primary-blue': '#71c9f1',
+        'nav-dark': '#2c3e50',
+        'accent-orange': '#ff6b35',
+        'accent-orange-hover': '#e55a2b',
+        'section-light': '#f8f9fa',
+        'hero-bg': '#71c9f1',
+        
+        // Dashboard 主題 - 深藍色+黃色系
+        'dashboard-bg': '#1C2E4A',
+        'dashboard-card-bg': 'rgba(255, 255, 255, 0.05)',
+        'dashboard-accent': '#F5C451',
+        'dashboard-accent-hover': '#f3c043',
+        'dashboard-text': '#ffffff',
+        'dashboard-text-secondary': '#b0bdc8',
+        'dashboard-text-tertiary': '#94a3b8',
+        'dashboard-input-bg': 'rgba(255, 255, 255, 0.05)',
+        
+        // 通用色彩
         black: '#000000',
         white: '#ffffff',
         gray: {
           100: '#f8f9fa',
           200: '#e9ecef',
           300: '#dee2e6',
+          600: '#6c757d',
           800: '#343a40',
         },
         // 保持原有的 shadcn/ui 色彩系統
@@ -27,7 +44,7 @@ const config: Config = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#C09357", // 金色作為主色
+          DEFAULT: "#71c9f1", // Landing 使用天藍色
           foreground: "#ffffff",
         },
         secondary: {
@@ -61,7 +78,8 @@ const config: Config = {
         sm: "4px",
       },
       boxShadow: {
-        'custom': '0 4px 20px rgba(0, 0, 0, 0.1)', // 原始設計陰影
+        'custom': '0 4px 20px rgba(0, 0, 0, 0.1)', // Landing Page 陰影
+        'dark': '0 4px 20px rgba(0, 0, 0, 0.3)', // Dashboard 陰影
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
