@@ -1,0 +1,25 @@
+{
+  "name": "coaching-transcript-tool",
+  "private": true,
+  "version": "2.0.0",
+  "description": "專業的教練對話逐字稿處理工具 - 前後端分離架構",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "deploy:frontend": "./scripts/deploy-frontend.sh",
+    "deploy:gateway": "./scripts/deploy-gateway.sh",
+    "deploy:backend": "./scripts/deploy-backend.sh",
+    "deploy:all": "npm run deploy:backend && npm run deploy:gateway && npm run deploy:frontend"
+  },
+  "devDependencies": {
+    "turbo": "^1.10.0",
+    "@changesets/cli": "^2.26.0"
+  },
+  "packageManager": "npm@9.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
