@@ -19,9 +19,11 @@ const config: Config = {
         
         // Dashboard 主題 - 深藍色+黃色系
         'dashboard-bg': '#1C2E4A',
+        'dashboard-header-bg': '#71c9f1', // Header 使用淺藍色
         'dashboard-card-bg': 'rgba(255, 255, 255, 0.05)',
-        'dashboard-accent': '#F5C451',
+        'dashboard-accent': '#F5C451', // 黃色強調色（按鈕等）
         'dashboard-accent-hover': '#f3c043',
+        'dashboard-stats-blue': '#71c9f1', // 統計數字使用淺藍色
         'dashboard-text': '#ffffff',
         'dashboard-text-secondary': '#b0bdc8',
         'dashboard-text-tertiary': '#94a3b8',

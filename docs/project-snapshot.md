@@ -313,10 +313,66 @@ GET /openapi.json
   - [x] Next.js 14 + App Router 架構
   - [x] TypeScript + Tailwind CSS 技術棧
   - [x] 響應式 UI 組件開發
-  - [x] Dashboard 和逐字稿轉換器頁面
+  - [x] **Landing Page 完全復刻** (新) ✅
+    - [x] Hero 區塊 (天藍色背景、Coachly logo、文案)
+    - [x] 適用對象區塊 (3張白色卡片)
+    - [x] 主要功能區塊 (3張深色卡片)
+    - [x] 收費方案區塊 (Free vs Pro)
+    - [x] 即將推出區塊
+    - [x] Footer (Doxa Studio 品牌資訊)
+    - [x] 導航系統和語言切換器
+    - [x] 響應式設計和錨點導航
+  - [x] **Dashboard 頁面完善** (新) ✅
+    - [x] 教練時數統計卡片 (24小時、12小時、8個、95%)
+    - [x] 三大功能卡片 (Transcript Converter, ICF Analysis, AI Insights)
+    - [x] Getting Started 指南 (3步驟卡片)
+    - [x] 完整功能按鈕和Coming Soon狀態
+  - [x] **Transcript Converter 頁面** (新) ✅
+    - [x] 檔案上傳區域 (拖放支援)
+    - [x] 輸出格式選擇 (Markdown/Excel)
+    - [x] 說話者設定 (Coach/Client)
+    - [x] 中文轉換選項
+    - [x] 處理狀態顯示
+    - [x] 使用說明區塊
   - [x] API 客戶端實作
   - [x] 環境變數配置
-  - [x] 金色主題 UI 設計
+  - [x] 淺藍色主題 UI 設計 (基於原始設計完全復刻)
+
+### ✅ 2025-01-31 修復記錄
+- ✅ **路徑問題修復**: 將 transcript-converter 從 `(dashboard)` 路由組移出，修正路徑從 `/dashboard/transcript-converter` 到 `/transcript-converter`
+- ✅ **國際化完整整合**: 
+  - transcript-converter 頁面完全整合 i18n 系統，所有文字使用翻譯函數
+  - 首頁完全整合 i18n 系統，替換所有硬編碼文字
+  - 新增完整的中英文翻譯 key 覆蓋
+- ✅ **淺色模式樣式修復**: 更新 globals.css 中 `dashboard-*` 類別在淺色模式下的顏色映射，使用橙色作為強調色
+- ✅ **架構重構 (2025-01-31 晚上)**: 
+  - **採用方案B**: 從 Route Groups `(dashboard)` 改為傳統 Nested Routes 架構
+  - **檔案結構重組**: `app/dashboard/` + `app/dashboard/transcript-converter/`
+  - **路徑統一**: 所有 dashboard 功能統一使用 `/dashboard/*` 前綴
+  - **導航修復**: Sidebar 和 Feature Cards 路徑完全一致
+  - **Layout 保持**: transcript-converter 正確繼承 dashboard layout (sidebar + header)
+  - **測試通過**: 所有導航和頁面正常運作，無 404 錯誤
+
+### ✅ 2025-01-31 配色系統修復
+- ✅ **首頁 Footer 配色統一**: 
+  - 背景從黑色改為深藍色 (`bg-nav-dark`)，與導航欄保持一致
+  - 強調色從橙色改為淺藍色 (`text-primary-blue`) 
+  - 社媒圖標 hover 效果統一使用淺藍色主視覺
+- ✅ **Dashboard 恢復原始設計色系**:
+  - Header 背景改為淺藍色 (#71c9f1)，完全符合原始設計圖
+  - Header 文字改為白色，確保在淺藍色背景上的對比度
+  - Sidebar 背景改為淺藍色，與 header 完全一致，文字改為白色
+  - 統計數字 24, 12, 8, 95% 改為淺藍色 (#71c9f1)
+  - 保持黃色強調色：按鈕、圖標等繼續使用黃色系 (#F5C451)
+- ✅ **技術實現**:
+  - 更新 Tailwind 配置，新增 `dashboard-header-bg` 和 `dashboard-stats-blue` 專用顏色變數
+  - 修改 Dashboard Header、Sidebar、Stats 組件使用統一配色
+  - 完善響應式設計，確保所有配色在不同裝置正確顯示
+  - 所有修改經過瀏覽器測試驗證，無視覺問題
+- ✅ **文件更新**:
+  - 更新 `docs/design-system.md` 反映所有配色修改，版本升級至 1.1
+  - 記錄完整的顏色變數和使用規範
+  - 新增可訪問性和對比度相關說明
 
 ### 🚧 進行中
 - [ ] **認證系統整

@@ -2,14 +2,234 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS 變數定義 */
+:root {
+  --primary-color: #F5C451;
+  --accent-color: #F5C451;
+  --text-primary: #ffffff;
+  --text-secondary: #b0bdc8;
+  --text-tertiary: #94a3b8;
+  --bg-primary: #1C2E4A;
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --border-color: rgba(245, 196, 81, 0.2);
+  --shadow-light: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-dark: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --radius: 8px;
+  --transition: all 0.3s ease;
+}
+
+/* 深色模式變數 */
+.dark-mode {
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-tertiary: #cbd5e1;
+  --bg-primary: #0f172a;
+  --card-bg: rgba(255, 255, 255, 0.08);
+  --border-color: rgba(245, 196, 81, 0.3);
+  --shadow-dark: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
 /* 移除預設樣式，讓 Tailwind 設計系統正確生效 */
 body {
   margin: 0;
   padding: 0;
+  transition: var(--transition);
+}
+
+/* 深色模式樣式 */
+.dark-mode {
+  background-color: #0f172a;
+  color: #ffffff;
+}
+
+.dark-mode .bg-white {
+  background-color: #1e293b !important;
+}
+
+.dark-mode .text-gray-600 {
+  color: #94a3b8 !important;
+}
+
+.dark-mode .text-gray-700 {
+  color: #cbd5e1 !important;
+}
+
+.dark-mode .border-gray-200 {
+  border-color: #334155 !important;
+}
+
+/* 淺色模式樣式 - 使用淡藍色系 */
+.light-mode {
+  background-color: #f8f9fa;
+  color: #2c3e50;
+}
+
+/* Dashboard 在淺色模式下的樣式調整 */
+.light-mode .bg-dashboard-bg {
+  background-color: #ffffff !important;
+}
+
+.light-mode .bg-dashboard-card-bg {
+  background-color: #ffffff !important;
+  border: 1px solid #e9ecef !important;
+}
+
+.light-mode .text-dashboard-text {
+  color: #2c3e50 !important;
+}
+
+.light-mode .text-dashboard-text-secondary {
+  color: #6c757d !important;
+}
+
+.light-mode .text-dashboard-text-tertiary {
+  color: #94a3b8 !important;
+}
+
+.light-mode .text-dashboard-accent {
+  color: #3b82f6 !important; /* 使用藍色作為強調色 */
+}
+
+.light-mode .bg-dashboard-accent {
+  background-color: #60a5fa !important; /* 使用淺藍色背景 */
+}
+
+.light-mode .border-dashboard-accent {
+  border-color: rgba(96, 165, 250, 0.3) !important; /* 藍色邊框 */
+}
+
+.light-mode .hover\:bg-dashboard-accent:hover {
+  background-color: #3b82f6 !important;
+}
+
+.light-mode .focus\:ring-dashboard-accent:focus {
+  --tw-ring-color: rgba(59, 130, 246, 0.5) !important;
+}
+
+.light-mode .focus\:border-dashboard-accent:focus {
+  border-color: #60a5fa !important;
+}
+
+/* Light mode 下 dashboard 輸入框樣式 */
+.light-mode .bg-dashboard-input-bg {
+  background-color: #ffffff !important;
+  border: 1px solid #e9ecef !important;
+}
+
+.light-mode .placeholder-dashboard-text-tertiary::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Light mode 下 sidebar 的高亮樣式優化 */
+.light-mode .bg-dashboard-accent.bg-opacity-10 {
+  background-color: rgba(96, 165, 250, 0.1) !important;
+}
+
+.light-mode .hover\:bg-dashboard-accent.hover\:bg-opacity-10:hover {
+  background-color: rgba(96, 165, 250, 0.15) !important;
+}
+
+/* 卡片在淺色模式下的樣式 */
+.light-mode .bg-white {
+  background-color: #ffffff !important;
+}
+
+.light-mode .bg-gray-800 {
+  background-color: #ffffff !important;
+  border: 1px solid #e9ecef !important;
+}
+
+.light-mode .text-gray-900 {
+  color: #2c3e50 !important;
+}
+
+.light-mode .text-gray-600 {
+  color: #6c757d !important;
+}
+
+.light-mode .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+.light-mode .border-gray-200 {
+  border-color: #e9ecef !important;
+}
+
+.light-mode .border-gray-700 {
+  border-color: #e9ecef !important;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+  
+  .shadow-dark {
+    box-shadow: var(--shadow-dark);
+  }
+}
+
+/* 側邊欄縮放支援 */
+.sidebar-collapsed {
+  /* 當側邊欄縮放時的主要內容區域調整 */
+}
+
+.sidebar-collapsed main {
+  /* 主內容區域在縮放狀態下的調整 */
+  margin-left: 4rem; /* 64px in rem */
+}
+
+/* 側邊欄動畫過渡效果 */
+aside {
+  transition: width 0.3s ease-in-out;
+}
+
+/* 主題切換動畫 */
+* {
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+/* 深色模式下的捲軸樣式 */
+.dark-mode ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark-mode ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Tooltip 樣式 */
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1f2937;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 1000;
+}
+
+.tooltip:hover::after {
+  opacity: 1;
 }
