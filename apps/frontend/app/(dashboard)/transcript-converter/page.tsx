@@ -63,35 +63,35 @@ export default function TranscriptConverterPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-black">逐字稿轉換器</h1>
-        <p className="text-xl text-gray-800 mt-3">將 VTT 格式的逐字稿轉換為 Markdown 或 Excel 文件</p>
+        <h1 className="text-4xl font-bold text-dashboard-accent">逐字稿轉換器</h1>
+        <p className="text-xl text-dashboard-text-secondary mt-3">將 VTT 格式的逐字稿轉換為 Markdown 或 Excel 文件</p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-custom p-8">
+      <div className="bg-dashboard-card-bg rounded-lg shadow-dark p-8 border border-dashboard-accent border-opacity-10">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 檔案上傳區域 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-dashboard-text mb-2">
               選擇 VTT 檔案
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+            <div className="border-2 border-dashed border-dashboard-accent border-opacity-30 rounded-lg p-6 text-center hover:border-dashboard-accent hover:border-opacity-50 transition-colors">
               {file ? (
                 <div className="flex items-center justify-center">
-                  <svg className="w-8 h-8 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 text-dashboard-accent mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="text-gray-700">{file.name}</span>
+                  <span className="text-dashboard-text">{file.name}</span>
                   <button
                     type="button"
                     onClick={() => setFile(null)}
-                    className="ml-2 text-red-600 hover:text-red-800"
+                    className="ml-2 text-red-400 hover:text-red-300"
                   >
                     移除
                   </button>
                 </div>
               ) : (
                 <div>
-                  <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-12 h-12 text-dashboard-text-secondary mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
                   </svg>
                   <input
@@ -102,10 +102,10 @@ export default function TranscriptConverterPage() {
                     id="file-upload"
                   />
                   <label htmlFor="file-upload" className="cursor-pointer">
-                    <span className="text-blue-600 hover:text-blue-700 font-medium">點擊選擇檔案</span>
-                    <span className="text-gray-600"> 或拖放檔案到此處</span>
+                    <span className="text-dashboard-accent hover:text-dashboard-accent font-medium">點擊選擇檔案</span>
+                    <span className="text-dashboard-text-secondary"> 或拖放檔案到此處</span>
                   </label>
-                  <p className="text-sm text-gray-500 mt-2">支援 VTT 格式，最大 10MB</p>
+                  <p className="text-sm text-dashboard-text-tertiary mt-2">支援 VTT 格式，最大 10MB</p>
                 </div>
               )}
             </div>
@@ -113,37 +113,37 @@ export default function TranscriptConverterPage() {
 
           {/* 輸出格式選擇 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-dashboard-text mb-2">
               輸出格式
             </label>
             <div className="grid grid-cols-2 gap-4">
-              <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <label className="flex items-center p-4 border border-dashboard-accent border-opacity-30 rounded-lg cursor-pointer hover:bg-dashboard-accent hover:bg-opacity-10 transition-colors">
                 <input
                   type="radio"
                   name="outputFormat"
                   value="markdown"
                   checked={options.outputFormat === 'markdown'}
                   onChange={(e) => setOptions({...options, outputFormat: e.target.value as 'markdown' | 'excel'})}
-                  className="mr-3"
+                  className="mr-3 text-dashboard-accent"
                 />
                 <div>
-                  <div className="font-medium">Markdown (.md)</div>
-                  <div className="text-sm text-gray-600">適合閱讀和版本控制</div>
+                  <div className="font-medium text-dashboard-text">Markdown (.md)</div>
+                  <div className="text-sm text-dashboard-text-secondary">適合閱讀和版本控制</div>
                 </div>
               </label>
               
-              <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <label className="flex items-center p-4 border border-dashboard-accent border-opacity-30 rounded-lg cursor-pointer hover:bg-dashboard-accent hover:bg-opacity-10 transition-colors">
                 <input
                   type="radio"
                   name="outputFormat"
                   value="excel"
                   checked={options.outputFormat === 'excel'}
                   onChange={(e) => setOptions({...options, outputFormat: e.target.value as 'markdown' | 'excel'})}
-                  className="mr-3"
+                  className="mr-3 text-dashboard-accent"
                 />
                 <div>
-                  <div className="font-medium">Excel (.xlsx)</div>
-                  <div className="text-sm text-gray-600">適合數據分析和處理</div>
+                  <div className="font-medium text-dashboard-text">Excel (.xlsx)</div>
+                  <div className="text-sm text-dashboard-text-secondary">適合數據分析和處理</div>
                 </div>
               </label>
             </div>
@@ -152,7 +152,7 @@ export default function TranscriptConverterPage() {
           {/* 說話者設定 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="coachName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="coachName" className="block text-sm font-medium text-dashboard-text mb-2">
                 教練名稱
               </label>
               <input
@@ -160,13 +160,13 @@ export default function TranscriptConverterPage() {
                 id="coachName"
                 value={options.coachName}
                 onChange={(e) => setOptions({...options, coachName: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 bg-dashboard-bg border border-dashboard-accent border-opacity-30 rounded-lg focus:ring-2 focus:ring-dashboard-accent focus:border-dashboard-accent text-dashboard-text placeholder-dashboard-text-tertiary"
                 placeholder="Coach"
               />
             </div>
             
             <div>
-              <label htmlFor="clientName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="clientName" className="block text-sm font-medium text-dashboard-text mb-2">
                 客戶名稱
               </label>
               <input
@@ -174,7 +174,7 @@ export default function TranscriptConverterPage() {
                 id="clientName"
                 value={options.clientName}
                 onChange={(e) => setOptions({...options, clientName: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 bg-dashboard-bg border border-dashboard-accent border-opacity-30 rounded-lg focus:ring-2 focus:ring-dashboard-accent focus:border-dashboard-accent text-dashboard-text placeholder-dashboard-text-tertiary"
                 placeholder="Client"
               />
             </div>
@@ -187,9 +187,9 @@ export default function TranscriptConverterPage() {
                 type="checkbox"
                 checked={options.convertToTraditional}
                 onChange={(e) => setOptions({...options, convertToTraditional: e.target.checked})}
-                className="mr-2"
+                className="mr-2 text-dashboard-accent focus:ring-dashboard-accent"
               />
-              <span className="text-gray-700">轉換為繁體中文</span>
+              <span className="text-dashboard-text">轉換為繁體中文</span>
             </label>
           </div>
 
@@ -198,7 +198,7 @@ export default function TranscriptConverterPage() {
             <button
               type="submit"
               disabled={!file || isProcessing}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="px-8 py-3 bg-dashboard-accent text-dashboard-bg rounded-lg hover:bg-dashboard-accent hover:bg-opacity-90 disabled:bg-dashboard-text-secondary disabled:cursor-not-allowed transition-all duration-300 font-medium"
             >
               {isProcessing ? (
                 <div className="flex items-center">
@@ -217,14 +217,29 @@ export default function TranscriptConverterPage() {
       </div>
 
       {/* 使用說明 */}
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-blue-900 mb-3">使用說明</h3>
-        <ul className="text-blue-800 space-y-2">
-          <li>• 支援標準 WebVTT (.vtt) 格式檔案</li>
-          <li>• 系統會自動識別說話者並進行內容整理</li>
-          <li>• 可設定教練和客戶的顯示名稱以保護隱私</li>
-          <li>• 支援簡體轉繁體中文功能</li>
-          <li>• 處理完成後會自動下載結果檔案</li>
+      <div className="mt-8 bg-dashboard-card-bg border border-dashboard-accent border-opacity-20 rounded-lg p-6 shadow-dark">
+        <h3 className="text-xl font-semibold text-dashboard-accent mb-4">使用說明</h3>
+        <ul className="text-dashboard-text-secondary space-y-3">
+          <li className="flex items-start">
+            <span className="text-dashboard-accent mr-2">•</span>
+            <span>支援標準 WebVTT (.vtt) 格式檔案</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-dashboard-accent mr-2">•</span>
+            <span>系統會自動識別說話者並進行內容整理</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-dashboard-accent mr-2">•</span>
+            <span>可設定教練和客戶的顯示名稱以保護隱私</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-dashboard-accent mr-2">•</span>
+            <span>支援簡體轉繁體中文功能</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-dashboard-accent mr-2">•</span>
+            <span>處理完成後會自動下載結果檔案</span>
+          </li>
         </ul>
       </div>
     </div>
