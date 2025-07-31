@@ -91,12 +91,16 @@ async def format_transcript_endpoint(
         filename = file.filename or "transcript"
         base_filename = filename.rsplit('.', 1)[0] if '.' in filename else filename
         
+        # 清理檔案名稱，移除可能導致問題的字符
+        import re
+        safe_filename = re.sub(r'[^\w\-_]', '_', base_filename)
+        
         if output_format.lower() == 'excel':
-            output_filename = f"{base_filename}.xlsx"
+            output_filename = f"{safe_filename}.xlsx"
             media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            content_stream = result
+            content_stream = io.BytesIO(result)
         elif output_format.lower() == 'markdown':
-            output_filename = f"{base_filename}.md"
+            output_filename = f"{safe_filename}.md"
             media_type = "text/markdown; charset=utf-8"
             content_stream = io.BytesIO(result.encode('utf-8'))
         else:
