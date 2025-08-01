@@ -178,3 +178,4 @@ node_modules/
 apps/frontend/.next
 **/node_modules/
 .turbo/
+frontend/.next

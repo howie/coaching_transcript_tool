@@ -1,0 +1,148 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+      "title": "Doxa Coach-Review API - CF Workers",
+      "version": "2.2.0",
+      "description": "Turn coaching transcripts (VTT/SRT/Audio) into Excel/Markdown review sheets. Cloudflare Workers 版本."
+    },
+    "servers": [
+      { "url": "https://coaching-transcript-cf.workers.dev" }
+    ],
+    "paths": {
+      "/format": {
+        "post": {
+          "summary": "Format a transcript from file URL(s)",
+          "description": "Accept one or more temporary file URLs (VTT/SRT/MP3/M4A), download and convert to an Excel/Markdown review sheet, and return a downloadable link.",
+          "operationId": "formatTranscriptFromUrl",
+          "security": [ { "ApiKeyAuth": [] } ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FormatRequest" },
+                "examples": {
+                  "vttExample": {
+                    "value": {
+                      "file_urls": ["https://files.openai.com/temporary/abc.vtt"],
+                      "output": "excel",
+                      "language": "zh-TW"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Conversion finished",
+              "content": {
+                "application/json": {
+                  "schema": { "$ref": "#/components/schemas/FormatResponse" }
+                }
+              }
+            },
+            "400": { "description": "Bad request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+            "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+            "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          }
+        }
+      },
+      "/format-multipart": {
+        "post": {
+          "summary": "Format a transcript by uploading a file (fallback)",
+          "description": "Accept a single file upload using multipart/form-data. Use only if the client cannot pass temporary URLs.",
+          "operationId": "formatTranscriptMultipart",
+          "security": [ { "ApiKeyAuth": [] } ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "multipart/form-data": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "file": { "type": "string", "format": "binary", "description": "VTT, SRT, MP3, or M4A" },
+                    "output": { "type": "string", "enum": ["excel", "markdown"], "default": "excel" },
+                    "language": { "type": "string", "description": "Language hint, e.g. zh-TW or en-US" }
+                  },
+                  "required": ["file"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FormatResponse" } } } }
+          }
+        }
+      },
+      "/health": {
+        "get": {
+          "summary": "Health check",
+          "operationId": "health",
+          "responses": { "200": { "description": "OK" } }
+        }
+      }
+    },
+    "components": {
+      "securitySchemes": {
+        "ApiKeyAuth": {
+          "type": "apiKey",
+          "in": "header",
+          "name": "X-API-Key"
+        }
+      },
+      "schemas": {
+        "FormatRequest": {
+          "type": "object",
+          "oneOf": [
+            { "required": ["file_url"] },
+            { "required": ["file_urls"] }
+          ],
+          "properties": {
+            "file_url": {
+              "type": "string",
+              "format": "uri",
+              "description": "Single temporary file URL provided by ChatGPT; valid for a few minutes."
+            },
+            "file_urls": {
+              "type": "array",
+              "maxItems": 10,
+              "items": { "type": "string", "format": "uri" },
+              "description": "Up to 10 temporary file URLs."
+            },
+            "output": {
+              "type": "string",
+              "enum": ["excel", "markdown"],
+              "default": "excel"
+            },
+            "language": {
+              "type": "string",
+              "description": "Optional language hint for ASR (e.g., zh-TW, en-US)."
+            }
+          }
+        },
+        "FormatResponse": {
+          "type": "object",
+          "required": ["download_url", "format"],
+          "properties": {
+            "download_url": {
+              "type": "string",
+              "format": "uri",
+              "description": "Pre-signed URL for the generated file."
+            },
+            "format": { "type": "string", "enum": ["excel", "markdown"] },
+            "expires_at": { "type": "string", "format": "date-time" },
+            "job_id": { "type": "string" },
+            "summary": { "type": "string", "description": "Optional short summary." }
+          }
+        },
+        "Error": {
+          "type": "object",
+          "required": ["message"],
+          "properties": {
+            "message": { "type": "string" },
+            "code": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
