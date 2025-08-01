@@ -11,26 +11,37 @@
 
 ## 🚧 正在進行的工作
 
-### 1. Apps + Packages Monorepo 重構 (優先級：極高)
-**狀態：** 🚧 進行中 (20%)
+### 1. Monorepo 功能驗證測試 (優先級：極高)
+**狀態：** 🚧 進行中 (0%)
 **具體任務：**
-- [ ] **共享核心邏輯套件建立**
-  - [ ] 創建 `packages/core-logic/` 目錄
-  - [ ] 遷移 `backend/src/coaching_assistant/` → `packages/core-logic/src/coaching_assistant/`
-  - [ ] 設定 Python 套件配置 (`pyproject.toml`, `setup.py`)
-- [ ] **Apps 目錄重構**
-  - [ ] 創建 `apps/` 目錄
-  - [ ] `frontend/` → `apps/web/` (前端應用)
-  - [ ] `backend/` → `apps/container/` (容器化部署)
-  - [ ] `gateway/` → `apps/cloudflare/` (Serverless 部署)
-- [ ] **依賴關係重新配置**
-  - [ ] `apps/container/` 依賴 `packages/core-logic`
-  - [ ] `apps/cloudflare/` 依賴 `packages/core-logic`
-  - [ ] 更新各自的 `requirements.txt`
+- [ ] **前端應用測試 (apps/web/)**
+  - [ ] 驗證 Next.js 開發服務器正常啟動
+  - [ ] 測試 UI 組件渲染正確
+  - [ ] 驗證與後端 API 通訊功能
+- [ ] **容器化後端測試 (apps/container/)**
+  - [ ] 確認依賴 `packages/core-logic` 正確安裝
+  - [ ] 測試 FastAPI 服務啟動
+  - [ ] 驗證所有 API 路由功能正常
+  - [ ] 測試檔案上傳和轉換功能
+- [ ] **Serverless 後端測試 (apps/cloudflare/)**
+  - [ ] 確認依賴 `packages/core-logic` 正確引用
+  - [ ] 測試本地開發環境設置
+  - [ ] 驗證所有 API 功能與容器版本一致
+- [ ] **整合測試**
+  - [ ] 前端與兩種後端架構的完整功能測試
+  - [ ] 驗證業務邏輯在不同部署方式下行為一致
 - [ ] **配置差異動態化**
   - [ ] 檔案大小限制通過配置注入
   - [ ] S3 vs R2 存儲通過環境變數切換
   - [ ] 平台特定配置分離
+
+### 2. 已完成：Apps + Packages Monorepo 重構 ✅
+**狀態：** ✅ 已完成 (100%)
+**重構成果：**
+- ✅ 建立 `packages/core-logic/` 統一業務邏輯來源
+- ✅ 重構目錄結構符合現代 Monorepo 最佳實踐
+- ✅ 移除所有重複代碼，實現 Single Source of Truth
+- ✅ 配置依賴關係，兩個後端都依賴共享套件
 
 ### 2. 零重複程式碼架構驗證 (優先級：極高)
 **狀態：** 🚧 規劃中 (0% 完成)

@@ -175,7 +175,8 @@ cython_debug/
 
 .vscode/
 node_modules/
-apps/frontend/.next
 **/node_modules/
 .turbo/
-frontend/.next
+# Next.js build artifacts
+apps/web/.next/** 
+apps/web/.turob/**
