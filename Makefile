@@ -2,7 +2,7 @@
 
 # Variables
 PACKAGE_NAME = coaching_transcript_tool
-VERSION = $(shell grep -m 1 'version' pyproject.toml | cut -d '"' -f 2)
+VERSION = $(shell grep -m 1 'version' backend/pyproject.toml | cut -d '"' -f 2)
 DOCKER_IMAGE = $(PACKAGE_NAME):$(VERSION)
 DOCKER_LATEST = $(PACKAGE_NAME):latest
 PYTHON = python3
@@ -23,20 +23,20 @@ clean:
 
 # Build the package
 build: clean
-	$(PYTHON) -m pip install -r requirement.txt --break-system-packages
+	$(PYTHON) -m pip install -r backend/requirements.txt --break-system-packages
 
 # Install the package locally
 install: build
-	$(PIP) install -r requirement.txt --break-system-packages
+	$(PIP) install -r backend/requirements.txt --break-system-packages
 
 run: 
 # Start FastAPI and Flask applications simultaneously
-(sh -c 'uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 8000 & flask run --host 0.0.0.0 --port 8001')
+(sh -c 'cd backend && uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 8000 && cd ..')
 
 
 # Build Docker image
 docker:
-	docker build -t $(DOCKER_IMAGE) -t $(DOCKER_LATEST) .
+	docker build -t $(DOCKER_IMAGE) -t $(DOCKER_LATEST) -f backend/Dockerfile.cli backend
 
 # Run the Docker container with volume mapping
 docker-run:
@@ -56,17 +56,17 @@ docker-run:
 
 # Run tests
 test:
-	pytest tests/
+	pytest backend/tests/
 
 # Install development dependencies
 dev-setup:
-	$(PIP) install -r requirements.txt --break-system-packages
+	$(PIP) install -r backend/requirements.txt --break-system-packages
 	$(PIP) install setuptools wheel build flake8 pytest --break-system-packages
-	$(PIP) install -e . --break-system-packages
+	$(PIP) install -e backend --break-system-packages
 
 # Run linting
 lint: dev-setup
-	$(PYTHON) -m flake8 src/ tests/
+	$(PYTHON) -m flake8 backend/src/ backend/tests/
 
 # Create a distribution package
 dist: clean

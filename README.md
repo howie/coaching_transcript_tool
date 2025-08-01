@@ -36,26 +36,20 @@ A command-line tool to process and format coaching transcript files (VTT) into s
     ```
     This will install the tool in editable mode along with development dependencies.
 
+## 📁 Project Structure
+
+```
+coaching_transcript_tool/
+├── backend/           # FastAPI backend service
+├── frontend/          # Next.js frontend application
+├── gateway/           # (Future) Cloudflare Workers gateway
+├── packages/          # Shared packages (e.g., types, configs)
+├── docs/              # Project documentation
+├── memory-bank/       # AI assistant's working memory
+└── ...
+```
+
 ## 🐋 Docker Usage
-
-### Quick Start with Docker
-
-1. **Build the Docker image**:
-   ```bash
-   make docker
-   ```
-
-2. **Run a conversion**:
-   ```bash
-   # Convert VTT to Markdown
-   make docker-run INPUT=./input.vtt OUTPUT=./output.md
-   
-   # Convert VTT to Excel
-   make docker-run INPUT=./input.vtt OUTPUT=./output.xlsx FORMAT=excel
-   
-   # With additional options
-   make docker-run INPUT=./input.vtt OUTPUT=./output.md COACH="John Doe" CLIENT="Jane Smith" TRADITIONAL=true
-   ```
 
 ### Docker Compose
 
@@ -73,7 +67,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
+      - ./backend/src:/app/src
     environment:
       - PORT=8000
       # Add other environment variables as needed

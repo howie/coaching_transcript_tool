@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-dev] - 2025-08-01 (專案扁平化重構)
+
+### Changed
+- **Project Structure**: Flattened the project structure by moving `frontend`, `backend`, and `gateway` from the `apps/` directory to the root level. This improves clarity and simplifies pathing.
+
+### Technical
+- **NPM Workspaces**: Updated `package.json` to reflect the new flattened structure, changing from `"apps/*"` to explicit paths (`"frontend"`, `"backend"`, `"gateway"`).
+- **Docker Configuration**: Modified `docker-compose.yml` and `Dockerfile.api` to correctly reference the new paths for the backend service.
+- **Documentation**: Updated `README.md` to show the new project structure.
+
 ## [2.0.0-dev] - 2025-01-31 (配色系統修復)
 
 ### Fixed
