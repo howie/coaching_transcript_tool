@@ -176,3 +176,4 @@ cython_debug/
 .vscode/
 node_modules/
 apps/frontend/.next
+**/node_modules/

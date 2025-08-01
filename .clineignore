@@ -1,0 +1,49 @@
+# 相依套件
+node_modules/
+**/node_modules/
+.pnp
+.pnp.js
+
+# 建置輸出
+/build/
+/dist/
+/.next/
+/out/
+
+# 測試報告
+/coverage/
+
+# 環境變數檔案
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 大型資料檔
+*.csv
+*.xlsx
+
+# 版本控制目錄
+.git/
+/.hg/
+/svn/
+
+# 日誌檔案
+*.log
+
+# 編譯檔案
+*.o
+*.pyc
+*.class
+
+# OS 隱藏檔
+.DS_Store
+Thumbs.db
+
+# 自訂資料夾或檔案（示例）  
+/docs/legacy/  
+/temp-exports/  
+
+# 排除特定檔案不忽略（示例）  
+!.env.example  
