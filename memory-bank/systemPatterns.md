@@ -25,19 +25,19 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 簡化 Monorepo 模式
+### Monorepo 模式 (Apps + Packages)
 ```
 coaching_transcript_tool/
-├── frontend/               # Next.js 應用 (建置為靜態檔案)
-├── backend/                # FastAPI 服務 (本地開發用)
-├── gateway/                # CF Workers 整合服務 (生產部署)
-│   ├── wrangler.toml       # CF Workers 配置
-│   ├── main.py             # FastAPI 應用複本
-│   ├── src/                # 業務邏輯複本
-│   └── static/             # 前端建置輸出
-├── packages/               # 共用套件
+├── apps/                   # 可獨立部署的應用程式
+│   ├── web/                # 前端 Next.js 應用
+│   ├── container/          # 後端容器化部署 (Docker, Cloud Run)
+│   └── cloudflare/         # 後端 Serverless 部署 (CF Workers)
+│
+├── packages/               # 共用套件 (邏輯核心)
+│   ├── core-logic/         # 後端核心業務邏輯 (FastAPI)
 │   ├── shared-types/       # TypeScript 型別定義
 │   └── eslint-config/      # ESLint 共用配置
+│
 ├── docs/                   # 正式專案文檔
 ├── memory-bank/            # Cline 工作記憶
 └── legacy/                 # 舊版代碼保存

@@ -1,0 +1,61 @@
+# Coaching Transcript Tool - Cloudflare Workers Configuration
+name = "coaching-transcript-tool"
+
+# 使用 Python runtime 來執行 FastAPI 應用
+main = "main.py"
+
+# Cloudflare Workers 相容性日期
+compatibility_date = "2024-07-25"
+
+# 建置配置
+[build]
+# 安裝 Python 依賴到當前目錄
+command = "pip install -r requirements.txt -t ."
+
+# 靜態網站託管配置 (Next.js 前端)
+[site]
+# 前端靜態檔案目錄 (Next.js export 建置輸出)
+bucket = "./static"
+
+# 環境變數配置
+[vars]
+ENVIRONMENT = "production"
+# 可在此添加其他環境變數，如資料庫 URL、API 金鑰等
+
+# 開發環境配置
+[env.development]
+name = "coaching-transcript-tool-dev"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+
+# 預覽環境配置  
+[env.preview]
+name = "coaching-transcript-tool-preview"
+
+[env.preview.vars]
+ENVIRONMENT = "preview"
+
+# KV 命名空間 (用於快取和會話管理)
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "your-kv-id"
+# preview_id = "your-preview-kv-id"
+
+# R2 儲存配置 (用於檔案上傳)
+# [[r2_buckets]]
+# binding = "FILES"
+# bucket_name = "coaching-transcript-files"
+# preview_bucket_name = "coaching-transcript-files-preview"
+
+# 自訂域名配置
+# [triggers]
+# crons = ["0 0 * * *"]  # 每日午夜執行
+
+# 資源限制
+[limits]
+# CPU 時間限制 (毫秒)
+cpu_ms = 50
+
+# 記憶體限制 (MB) 
+memory_mb = 128

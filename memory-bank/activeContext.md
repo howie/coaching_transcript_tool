@@ -1,58 +1,55 @@
 # 當前工作重點 (Active Context)
 
-**更新時間：** 2025-08-01 20:50
-**當前階段：** Phase 2 - SaaS 化重構 + 架構重構 (85% 完成)
+**更新時間：** 2025-08-01 23:15
+**當前階段：** Phase 3 - Monorepo 架構重構 + CF Workers 遷移 (20% 完成)
 
 ## 🎯 當前主要目標
 
-### 階段目標：完成 SaaS 平台基礎建設 + 架構優化
-**預期完成時間：** 2025-08-20  
-**關鍵里程碑：** 用戶可以完整使用 Web 界面進行檔案轉換
+### 階段目標：完成 Apps + Packages Monorepo 重構 + Serverless 部署
+**預期完成時間：** 2025-08-15  
+**關鍵里程碑：** 無重複程式碼，支援多平台部署的專業架構
 
 ## 🚧 正在進行的工作
 
-### 1. 架構扁平化與 Docker 整合 (優先級：高)
-**狀態：** 🚧 進行中 (85%)
+### 1. Apps + Packages Monorepo 重構 (優先級：極高)
+**狀態：** 🚧 進行中 (20%)
 **具體任務：**
-- [x] 目錄搬遷 (apps/* → root)
-- [x] 配置文件路徑更新
-- [ ] **循序漸進驗證 (進行中)**
-  - [ ] **第一階段：** 本地開發環境驗證
-    - [ ] 後端本地啟動與測試
-    - [ ] 前端本地啟動與測試
-  - [x] **第二階段：** Dockerfile 單獨驗證
-    - [ ] 後端 Dockerfile 建置與運行
-    - [x] 前端 Dockerfile 建置與運行
-  - [ ] **第三階段：** Docker Compose 整合驗證
-    - [ ] `docker-compose up --build` 測試
-- [ ] **問題修復 (進行中)**
-  - [x] 後端缺少 `pydantic-settings` 依賴
-  - [x] 前端 Next.js `standalone` 模式配置
-  - [x] 前端 Dockerfile 路徑與圖片載入問題
-  - [ ] `docker-compose` 啟動問題排查
-- [ ] 文檔同步更新
+- [ ] **共享核心邏輯套件建立**
+  - [ ] 創建 `packages/core-logic/` 目錄
+  - [ ] 遷移 `backend/src/coaching_assistant/` → `packages/core-logic/src/coaching_assistant/`
+  - [ ] 設定 Python 套件配置 (`pyproject.toml`, `setup.py`)
+- [ ] **Apps 目錄重構**
+  - [ ] 創建 `apps/` 目錄
+  - [ ] `frontend/` → `apps/web/` (前端應用)
+  - [ ] `backend/` → `apps/container/` (容器化部署)
+  - [ ] `gateway/` → `apps/cloudflare/` (Serverless 部署)
+- [ ] **依賴關係重新配置**
+  - [ ] `apps/container/` 依賴 `packages/core-logic`
+  - [ ] `apps/cloudflare/` 依賴 `packages/core-logic`
+  - [ ] 更新各自的 `requirements.txt`
+- [ ] **配置差異動態化**
+  - [ ] 檔案大小限制通過配置注入
+  - [ ] S3 vs R2 存儲通過環境變數切換
+  - [ ] 平台特定配置分離
 
-### 2. Cloudflare Workers 全棧部署 (優先級：極高)
+### 2. 零重複程式碼架構驗證 (優先級：極高)
 **狀態：** 🚧 規劃中 (0% 完成)
-**負責：** 全棧架構重構
 **具體任務：**
-- [ ] **架構簡化決策 (新)**
-  - [x] 確認 FastAPI 可直接在 CF Workers 運行
-  - [x] 決定前後端整合到單一 Workers 服務
-  - [ ] 建立 gateway/ 目錄結構
-- [ ] **CF Workers 項目建立**
-  - [ ] wrangler.toml 配置
-  - [ ] 複製 FastAPI 後端代碼
-  - [ ] 前端靜態建置整合
-- [ ] **部署驗證**
-  - [ ] 本地 wrangler dev 測試
-  - [ ] 生產環境部署
-  - [ ] 功能完整性驗證
+- [ ] **Single Source of Truth 驗證**
+  - [ ] 確保所有業務邏輯只存在於 `packages/core-logic`
+  - [ ] 測試從兩個 apps 同時引用相同功能
+  - [ ] 驗證修改核心邏輯會同時影響兩個部署目標
+- [ ] **Build 流程建立**
+  - [ ] 容器化部署：Docker multi-stage build 引用共享套件
+  - [ ] Serverless 部署：wrangler 建置時自動引用共享套件
+- [ ] **開發工作流優化**
+  - [ ] 本地開發時如何同時測試兩種部署方式
+  - [ ] 熱重載 (hot reload) 在 monorepo 環境下的配置
 
 **技術挑戰：**
-- CF Workers Python runtime 相容性驗證
-- 靜態檔案託管整合
-- 環境變數和秘密管理
+- Python 套件在不同環境下的正確引用
+- Monorepo 工具鏈選擇和配置
+- 建置流程的複雜性管理
 
 ### 3. 用戶認證系統整合 (優先級：中)
 **狀態：** 🚧 進行中 (40% 完成)
