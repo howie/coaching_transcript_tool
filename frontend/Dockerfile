@@ -16,15 +16,15 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/frontend/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Copy the standalone output, flattening the structure
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/standalone/package.json ./package.json
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/standalone/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/standalone/frontend ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/ ./
 
 # Copy the static assets
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 EXPOSE 3000
