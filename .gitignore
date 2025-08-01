@@ -178,5 +178,7 @@ node_modules/
 **/node_modules/
 .turbo/
 # Next.js build artifacts
-apps/web/.next/** 
-apps/web/.turob/**
+apps/web/.next/
+apps/web/.turbo/
+.next/
+out/
