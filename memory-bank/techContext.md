@@ -1,7 +1,7 @@
 # 技術堆疊 (Tech Context)
 
-**更新時間：** 2025-01-31 09:18  
-**技術版本：** v2.0 (前後端分離架構)
+**更新時間：** 2025-08-01 22:02  
+**技術版本：** v2.2 (Serverless 優先 + CF Workers 整合)
 
 ## 🔧 前端技術棧
 
@@ -69,20 +69,37 @@
 - **pytest-asyncio** - 異步測試支援
 - **pytest-cov** - 覆蓋率測試
 
-## 🌐 Gateway 技術棧 (規劃中)
+## 🌐 Cloudflare Workers 全棧技術棧 (新架構)
 
 ### 執行環境
-- **Cloudflare Workers** - 邊緣運算平台
-- **Wrangler CLI** - CF Workers 開發工具
+- **Cloudflare Workers** - 全球邊緣運算平台
+- **Python Runtime** - 直接執行 FastAPI 應用
+- **V8 JavaScript Engine** - 前端靜態資源託管
+- **Wrangler CLI** - 開發和部署工具
 
-### 框架與庫
-- **Hono.js** - 輕量級 Web 框架
-- **TypeScript** - 類型安全
-- **Itty Router** - 備選路由方案
+### 後端整合
+- **FastAPI 完整支援** - 直接在 Workers 運行
+- **Python 標準庫** - 完整 Python 生態系統
+- **Async/Await** - 原生異步處理支援
+- **Request/Response** - Web 標準 API
 
-### 儲存服務
-- **Cloudflare KV** - 鍵值儲存
-- **Cloudflare R2** - 物件儲存 (規劃中)
+### 前端整合
+- **Next.js Static Export** - 靜態檔案產生
+- **Static Asset Serving** - 直接從 Workers 託管
+- **Client-Side Routing** - SPA 路由支援
+- **API Proxy** - 無縫前後端整合
+
+### 儲存與快取服務
+- **Cloudflare KV** - 全球分散式鍵值儲存
+- **Cloudflare R2** - 物件儲存 (檔案處理)
+- **Workers Cache API** - 邊緣快取
+- **Durable Objects** - 狀態持久化 (進階功能)
+
+### 開發工具
+- **wrangler dev** - 本地開發服務器
+- **wrangler deploy** - 一鍵部署
+- **Workers Dashboard** - 監控和日誌
+- **Edge-side Analytics** - 即時效能分析
 
 ## 📦 共用套件 (packages/)
 

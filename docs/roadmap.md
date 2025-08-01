@@ -27,6 +27,7 @@
 **🎯 目標：** 發布 MVP (Minimum Viable Product) 版本的 API 服務，並成功將其整合為 Custom GPT 的 Action，實現專案的核心價值。
 
 **🔑 主要任務 (對應 `todo.md`):**
+- **架構重構 (✅ 已完成):** 專案結構扁平化，提升可維護性。
 - **完善 API 功能:** 實現檔案上傳、處理、暫存與回傳的完整流程。(`todo.md #2`)
 - **雲端部署:** 將服務容器化 (Docker)，並建立自動化部署流程 (GitHub Actions) 到雲端平台 (如 Fly.io, Render)。(`todo.md #2`)
 - **建立 Custom GPT Action:** 撰寫並提供 OpenAPI schema，在 GPT Builder 中設定 Action，並進行端對端測試。(`todo.md #4`)

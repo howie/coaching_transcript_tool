@@ -1,9 +1,23 @@
 version: '3.8'
 
 services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
+
   api:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile.api
     ports:
       - "8000:8000"
@@ -11,7 +25,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     volumes:
-      - ./src:/app/src
+      - ./backend:/app
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
