@@ -200,6 +200,83 @@ packages/
 
 ---
 
+## ADR-006: Monorepo 架構重構實施
+
+**日期：** 2025-08-02  
+**狀態：** 已完成  
+**決策者：** 開發團隊  
+
+### 背景
+專案初期採用扁平化結構（`backend/`, `frontend/`, `gateway/`），隨著專案成長，需要更清晰的 monorepo 架構來管理多個應用和共享套件。
+
+### 決策
+將專案重構為標準 monorepo 架構：
+
+**重構前：**
+```
+coaching_transcript_tool/
+├── backend/           # FastAPI + CLI 混合
+├── frontend/          # Next.js 應用
+├── gateway/           # Cloudflare Workers
+└── packages/          # 共享套件
+```
+
+**重構後：**
+```
+coaching_transcript_tool/
+├── apps/              # 應用程式層
+│   ├── api-server/    # FastAPI 服務 (從 backend/ 分離)
+│   ├── cli/           # CLI 工具 (從 backend/ 分離)
+│   ├── web/           # Next.js 應用 (重命名自 frontend/)
+│   └── cloudflare/    # Cloudflare Workers (重命名自 gateway/)
+├── packages/          # 共享套件層
+│   ├── core-logic/    # 核心業務邏輯 (從 backend/src 提取)
+│   ├── shared-types/  # 共享型別定義
+│   └── eslint-config/ # 共享 ESLint 配置
+└── ...
+```
+
+### 實施細節
+
+**1. 應用程式分離：**
+- `backend/` 拆分為 `apps/api-server/` 和 `apps/cli/`
+- 將共同的業務邏輯提取到 `packages/core-logic/`
+- 測試檔案從 `apps/api-server/tests/` 移至 `packages/core-logic/tests/`
+
+**2. 路徑和配置更新：**
+- 更新 `Makefile` 中所有路徑引用
+- 修改 `docker-compose.yml` 和 Dockerfile 路徑
+- 調整 `requirements.txt` 中的相對路徑引用
+
+**3. 套件依賴管理：**
+- API 服務和 CLI 工具都依賴 `packages/core-logic/`
+- 使用相對路徑 `-e ../packages/core-logic` 建立本地依賴
+
+### 原因
+1. **清晰的關注點分離**：API 服務和 CLI 工具各自獨立
+2. **程式碼重用**：核心邏輯統一管理在 `packages/core-logic/`
+3. **獨立部署**：每個應用可獨立打包和部署
+4. **標準化架構**：符合現代 monorepo 最佳實踐
+5. **擴展性**：未來可輕鬆添加新的應用或套件
+
+### 後果
+- **正面**：
+  - 架構更清晰，職責分離明確
+  - 程式碼重用性提升
+  - 測試和部署流程更標準化
+  - 新開發者更容易理解專案結構
+- **負面**：
+  - 初期路徑調整需要全面測試
+  - Docker 構建需要重新驗證
+
+### 驗證結果
+- ✅ API Docker 映像構建成功
+- ✅ CLI Docker 映像構建成功  
+- ✅ 所有 Makefile 指令正常運作
+- ✅ 測試套件在新位置正常執行
+
+---
+
 ## 決策追蹤
 
 | ADR | 決策 | 狀態 | 實施日期 | 備註 |
@@ -209,8 +286,9 @@ packages/
 | ADR-003 | 技術棧選擇 | 🚧 進行中 | 2025-07-31 | 前端已完成，Gateway 待開發 |
 | ADR-004 | 部署策略 | ⏳ 待開始 | 2025-07-31 | 前端已部署，後端待配置 |
 | ADR-005 | 配色系統 | ✅ 已完成 | 2025-01-31 | 設計系統已實施 |
+| ADR-006 | Monorepo 架構重構實施 | ✅ 已完成 | 2025-08-02 | 標準化 monorepo 架構 |
 
 ---
 
-**最後更新：** 2025-01-31  
-**版本：** 1.0
+**最後更新：** 2025-08-02  
+**版本：** 1.1

@@ -1,0 +1,9 @@
+# CLI-specific dependencies
+typer[all]>=0.9.0
+
+# Core business logic (shared package)
+-e ./packages/core-logic
+
+# Additional CLI dependencies
+openpyxl>=3.1.0
+pandas>=2.0.0
