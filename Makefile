@@ -2,9 +2,11 @@
 
 # Variables
 PACKAGE_NAME = coaching_transcript_tool
-VERSION = $(shell grep -m 1 'version' backend/pyproject.toml | cut -d '"' -f 2)
-DOCKER_IMAGE = $(PACKAGE_NAME):$(VERSION)
-DOCKER_LATEST = $(PACKAGE_NAME):latest
+VERSION = $(shell grep -m 1 'version' packages/core-logic/pyproject.toml | cut -d '"' -f 2)
+DOCKER_API_IMAGE = $(PACKAGE_NAME)-api:$(VERSION)
+DOCKER_CLI_IMAGE = $(PACKAGE_NAME)-cli:$(VERSION)
+DOCKER_API_LATEST = $(PACKAGE_NAME)-api:latest
+DOCKER_CLI_LATEST = $(PACKAGE_NAME)-cli:latest
 PYTHON = python3
 PIP = pip
 
@@ -23,50 +25,58 @@ clean:
 
 # Build the package
 build: clean
-	$(PYTHON) -m pip install -r backend/requirements.txt --break-system-packages
+	$(PYTHON) -m pip install -r apps/api-server/requirements.txt --break-system-packages
 
 # Install the package locally
 install: build
-	$(PIP) install -r backend/requirements.txt --break-system-packages
+	$(PIP) install -r apps/api-server/requirements.txt --break-system-packages
 
-run: 
-# Start FastAPI and Flask applications simultaneously
-(sh -c 'cd backend && uvicorn src/coaching_assistant.main:app --host 0.0.0.0 --port 8000 && cd ..')
+# Start API server
+run-api: 
+	cd apps/api-server && $(PYTHON) main.py
 
+# Build Docker images
+docker-api:
+	docker build -t $(DOCKER_API_IMAGE) -t $(DOCKER_API_LATEST) -f apps/api-server/Dockerfile.api .
 
-# Build Docker image
-docker:
-	docker build -t $(DOCKER_IMAGE) -t $(DOCKER_LATEST) -f backend/Dockerfile.cli backend
+docker-cli:
+	docker build -t $(DOCKER_CLI_IMAGE) -t $(DOCKER_CLI_LATEST) -f apps/cli/Dockerfile .
 
-# Run the Docker container with volume mapping
-docker-run:
-	@echo "Running Docker container..."
+docker: docker-api docker-cli
+
+# Run the CLI Docker container with volume mapping
+docker-run-cli:
+	@echo "Running CLI Docker container..."
 	@echo "Example usage:"
-	@echo "  make docker-run INPUT=./input.vtt OUTPUT=./output.md"
-	@echo "  make docker-run INPUT=./input.vtt OUTPUT=./output.xlsx FORMAT=excel"
+	@echo "  make docker-run-cli INPUT=./input.vtt OUTPUT=./output.md"
+	@echo "  make docker-run-cli INPUT=./input.vtt OUTPUT=./output.xlsx FORMAT=excel"
 	@if [ -z "$(INPUT)" ] || [ -z "$(OUTPUT)" ]; then \
 		echo "Error: INPUT and OUTPUT parameters are required"; \
-		echo "Example: make docker-run INPUT=./input.vtt OUTPUT=./output.md"; \
+		echo "Example: make docker-run-cli INPUT=./input.vtt OUTPUT=./output.md"; \
 		exit 1; \
 	fi
 	docker run -it --rm \
-		-v $(shell pwd)/$(INPUT):/input.vtt:ro \
-		-v $(shell pwd)/$(dir $(OUTPUT)):/output \
-		$(DOCKER_IMAGE) format-command /input.vtt /output/$(notdir $(OUTPUT)) $(if $(FORMAT),--format $(FORMAT))
+		-v $(shell pwd)/$(INPUT):/data/input.vtt:ro \
+		-v $(shell pwd)/$(dir $(OUTPUT)):/data/output \
+		$(DOCKER_CLI_IMAGE) format-command /data/input.vtt /data/output/$(notdir $(OUTPUT)) $(if $(FORMAT),--format $(FORMAT))
+
+# Backward compatibility
+docker-run: docker-run-cli
 
 # Run tests
 test:
-	pytest backend/tests/
+	pytest packages/core-logic/tests/
 
 # Install development dependencies
 dev-setup:
-	$(PIP) install -r backend/requirements.txt --break-system-packages
+	$(PIP) install -r apps/api-server/requirements.txt --break-system-packages
+	$(PIP) install -r apps/cli/requirements.txt --break-system-packages
 	$(PIP) install setuptools wheel build flake8 pytest --break-system-packages
-	$(PIP) install -e backend --break-system-packages
+	$(PIP) install -e packages/core-logic --break-system-packages
 
 # Run linting
 lint: dev-setup
-	$(PYTHON) -m flake8 backend/src/ backend/tests/
+	$(PYTHON) -m flake8 packages/core-logic/src/ packages/core-logic/tests/
 
 # Create a distribution package
 dist: clean
@@ -80,15 +90,19 @@ dist-install: dist
 # Help target
 help:
 	@echo "Available targets:"
-	@echo "  all          : Clean and build the package"
-	@echo "  clean        : Remove build artifacts"
-	@echo "  build        : Build the package"
-	@echo "  install      : Install the package locally in development mode"
-	@echo "  dev-setup    : Install development dependencies"
-	@echo "  docker       : Build Docker image"
-	@echo "  docker-run   : Run the Docker container"
-	@echo "  test         : Run tests"
-	@echo "  lint         : Run linting"
-	@echo "  dist         : Create distribution package"
-	@echo "  dist-install : Install from distribution package"
-	@echo "  help         : Show this help message"
+	@echo "  all            : Clean and build the package"
+	@echo "  clean          : Remove build artifacts"
+	@echo "  build          : Build the package"
+	@echo "  install        : Install the package locally in development mode"
+	@echo "  run-api        : Start the API server"
+	@echo "  dev-setup      : Install development dependencies"
+	@echo "  docker         : Build both API and CLI Docker images"
+	@echo "  docker-api     : Build API Docker image"
+	@echo "  docker-cli     : Build CLI Docker image"
+	@echo "  docker-run-cli : Run the CLI Docker container"
+	@echo "  docker-run     : Run the CLI Docker container (backward compatibility)"
+	@echo "  test           : Run tests"
+	@echo "  lint           : Run linting"
+	@echo "  dist           : Create distribution package"
+	@echo "  dist-install   : Install from distribution package"
+	@echo "  help           : Show this help message"

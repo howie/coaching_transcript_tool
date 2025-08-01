@@ -13,21 +13,21 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only necessary files for installing dependencies first
-COPY pyproject.toml requirements.txt ./
+# Copy shared core logic package
+COPY packages/core-logic/ ./packages/core-logic/
+
+# Copy CLI application files
+COPY apps/cli/requirements.txt ./apps/cli/
+COPY apps/cli/main.py ./apps/cli/
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install openpyxl pandas
-
-# Copy the rest of the application code
-COPY src/ ./src
+RUN pip install --no-cache-dir -r ./apps/cli/requirements.txt
 
 # Create a volume mount point for data
 VOLUME ["/data"]
 
-# Set the entrypoint to the Python interpreter
-ENTRYPOINT ["python", "-m", "src.coaching_assistant.cli"]
+# Set the entrypoint to our CLI main.py
+ENTRYPOINT ["python", "./apps/cli/main.py"]
 
 # Default command to show help
 CMD ["--help"]

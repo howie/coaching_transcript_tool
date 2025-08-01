@@ -1,222 +1,89 @@
-# 當前工作重點 (Active Context)
+# 當前工作重點
 
-**更新時間：** 2025-08-01 23:15
-**當前階段：** Phase 3 - Monorepo 架構重構 + CF Workers 遷移 (20% 完成)
+## 專案重構完成 ✅
 
-## 🎯 當前主要目標
+### 已完成的重構任務
 
-### 階段目標：完成 Apps + Packages Monorepo 重構 + Serverless 部署
-**預期完成時間：** 2025-08-15  
-**關鍵里程碑：** 無重複程式碼，支援多平台部署的專業架構
+1. **目錄結構重組完成**
+   - ✅ `apps/container` → `apps/api-server`
+   - ✅ 測試檔案從 `apps/api-server/tests/` 移至 `packages/core-logic/tests/`
+   - ✅ CLI pyproject.toml 從 `apps/api-server/` 移至 `apps/cli/`
+   - ✅ 清理了 `apps/api-server/src/` 中的舊檔案
 
-## 🚧 正在進行的工作
+2. **配置檔案更新完成**
+   - ✅ 更新 Makefile 中所有對 `apps/container` 的引用為 `apps/api-server`
+   - ✅ 更新測試路徑從 `apps/container/tests/` 到 `packages/core-logic/tests/`
+   - ✅ 更新 docker-compose.yml 適應新架構
+   - ✅ 修復 Dockerfile.api 路徑問題
+   - ✅ 修復 `apps/api-server/requirements.txt` 中相對路徑
 
-### 1. Monorepo 功能驗證測試 (優先級：極高)
-**狀態：** 🚧 進行中 (0%)
-**具體任務：**
-- [ ] **前端應用測試 (apps/web/)**
-  - [ ] 驗證 Next.js 開發服務器正常啟動
-  - [ ] 測試 UI 組件渲染正確
-  - [ ] 驗證與後端 API 通訊功能
-- [ ] **容器化後端測試 (apps/container/)**
-  - [ ] 確認依賴 `packages/core-logic` 正確安裝
-  - [ ] 測試 FastAPI 服務啟動
-  - [ ] 驗證所有 API 路由功能正常
-  - [ ] 測試檔案上傳和轉換功能
-- [ ] **Serverless 後端測試 (apps/cloudflare/)**
-  - [ ] 確認依賴 `packages/core-logic` 正確引用
-  - [ ] 測試本地開發環境設置
-  - [ ] 驗證所有 API 功能與容器版本一致
-- [ ] **整合測試**
-  - [ ] 前端與兩種後端架構的完整功能測試
-  - [ ] 驗證業務邏輯在不同部署方式下行為一致
-- [ ] **配置差異動態化**
-  - [ ] 檔案大小限制通過配置注入
-  - [ ] S3 vs R2 存儲通過環境變數切換
-  - [ ] 平台特定配置分離
+3. **Docker 構建測試完成**
+   - ✅ API Docker 映像構建成功
+   - ✅ CLI Docker 映像之前已驗證可正常運作
 
-### 2. 已完成：Apps + Packages Monorepo 重構 ✅
-**狀態：** ✅ 已完成 (100%)
-**重構成果：**
-- ✅ 建立 `packages/core-logic/` 統一業務邏輯來源
-- ✅ 重構目錄結構符合現代 Monorepo 最佳實踐
-- ✅ 移除所有重複代碼，實現 Single Source of Truth
-- ✅ 配置依賴關係，兩個後端都依賴共享套件
+### 當前專案架構 (重構後)
 
-### 2. 零重複程式碼架構驗證 (優先級：極高)
-**狀態：** 🚧 規劃中 (0% 完成)
-**具體任務：**
-- [ ] **Single Source of Truth 驗證**
-  - [ ] 確保所有業務邏輯只存在於 `packages/core-logic`
-  - [ ] 測試從兩個 apps 同時引用相同功能
-  - [ ] 驗證修改核心邏輯會同時影響兩個部署目標
-- [ ] **Build 流程建立**
-  - [ ] 容器化部署：Docker multi-stage build 引用共享套件
-  - [ ] Serverless 部署：wrangler 建置時自動引用共享套件
-- [ ] **開發工作流優化**
-  - [ ] 本地開發時如何同時測試兩種部署方式
-  - [ ] 熱重載 (hot reload) 在 monorepo 環境下的配置
+```
+coaching_transcript_tool/
+├── apps/                    # 應用程式層
+│   ├── api-server/         # FastAPI 服務器 (重構前: backend/)
+│   │   ├── main.py         # FastAPI 應用入口
+│   │   ├── requirements.txt # API 服務依賴
+│   │   └── Dockerfile.api  # API Docker 檔案
+│   ├── cli/                # 命令列工具 (重構前: backend/)
+│   │   ├── main.py         # CLI 入口點
+│   │   ├── requirements.txt # CLI 依賴
+│   │   ├── pyproject.toml  # CLI 套件配置
+│   │   └── Dockerfile      # CLI Docker 檔案
+│   ├── cloudflare/         # Cloudflare Workers 閘道 (重構前: gateway/)
+│   │   ├── main.py         # Workers 入口點
+│   │   ├── requirements.txt # Workers 依賴
+│   │   ├── wrangler.toml   # Cloudflare 配置
+│   │   └── src/            # Workers 源碼
+│   └── web/                # Next.js 前端 (重構前: frontend/)
+│       ├── app/
+│       ├── components/
+│       └── package.json
+├── packages/               # 共享套件層
+│   ├── core-logic/         # 核心業務邏輯
+│   │   ├── src/coaching_assistant/ # 核心模組
+│   │   ├── tests/          # 測試檔案 (從 apps/api-server 移過來)
+│   │   └── pyproject.toml  # 核心套件配置
+│   └── shared-types/       # 共享類型定義 (預留)
+├── docs/                   # 正式專案文檔
+└── memory-bank/            # Cline AI 工作記憶
+```
 
-**技術挑戰：**
-- Python 套件在不同環境下的正確引用
-- Monorepo 工具鏈選擇和配置
-- 建置流程的複雜性管理
+### 驗證結果
 
-### 3. 用戶認證系統整合 (優先級：中)
-**狀態：** 🚧 進行中 (40% 完成)
-**負責：** 前端 + 後端協作
-**具體任務：**
-- ✅ NextAuth.js 基礎配置
-- 🚧 Google OAuth 2.0 整合
-- ⏳ 用戶資料庫模型設計
-- ⏳ 會話管理機制
-- ⏳ 前後端認證串接
+- ✅ API Docker 映像構建成功 (31.8s)
+- ✅ CLI Docker 映像之前測試正常
+- ✅ 所有路徑引用已更新
+- ✅ 測試配置已調整
 
-**技術挑戰：**
-- Next.js 與 FastAPI 的認證橋接
-- JWT token 的安全傳遞和驗證
-- 用戶狀態的持久化管理
+## 下一階段規劃
 
-### 4. 付費訂閱機制 (優先級：低)
-**狀態：** ⏳ 待開始
-**前置條件：** 認證系統完成
-**具體任務：**
-- 整合 Stripe 支付系統
-- 訂閱層級權限控制
-- 使用量追蹤和限制
-- 發票和收據系統
+### 短期目標
+1. 測試新架構下的完整功能
+2. 驗證 docker-compose 整體服務啟動
+3. 確認所有 make 指令正常運作
 
-### 5. API Gateway 開發 (優先級：已取消)
-**狀態：** ❌ 已整合到 CF Workers
-**說明：** Gateway 功能將直接整合到 CF Workers 服務中，不需要單獨開發
+### 中期目標  
+1. 實作前端與新 API 架構的整合
+2. 完善 `packages/shared-types` 的型別定義
+3. 優化 Docker 構建效率
 
-## ✅ 最近完成的工作 (2025-01-31)
+### 技術債務
+- 考慮使用 multi-stage build 優化 Docker 映像大小
+- 評估是否需要統一 Python 依賴管理 (poetry/pipenv)
+- 規劃 CI/CD pipeline 適應新架構
 
-### 配色系統修復
-- **問題：** Dashboard 和首頁配色不一致
-- **解決：** 建立統一的配色系統
-- **成果：** 
-  - Header/Sidebar 統一使用淺藍色 (#71c9f1)
-  - 統計數字改為淺藍色，與原設計一致
-  - Footer 配色與導航欄保持統一
+## 當前狀態
 
-### 架構文檔整理
-- **完成：** docs/ 目錄重組
-- **新增：** architecture-decisions.md 記錄重要決策
-- **移動：** changelog.md, design-system.md 到 docs/
+**專案架構重構已完成！** 🎉
 
-### Memory Bank 重構
-- **完成：** .clinerules 更新，明確文檔分工
-- **進行中：** 創建 6 個核心 memory-bank 文件
-
-## 📋 近期待辦事項 (按優先級排序)
-
-### 高優先級 (本週完成)
-1. **完成 Memory Bank 重構**
-   - 創建剩餘的核心文件
-   - 清理舊有文件
-   - 更新跨文件引用
-
-2. **Google OAuth 整合測試**
-   - 配置 Google Cloud Console
-   - 測試登入流程
-   - 錯誤處理優化
-
-3. **API 端點測試**
-   - 檔案上傳功能測試
-   - 轉換結果驗證
-   - 錯誤情況處理
-
-### 中優先級 (本月完成)
-1. **資料庫設計和實作**
-   - 用戶表結構設計
-   - 轉換記錄追蹤
-   - 資料庫遷移腳本
-
-2. **前端功能完善**
-   - 用戶設定頁面
-   - 轉換歷史記錄
-   - 響應式優化
-
-3. **基礎監控系統**
-   - 錯誤追蹤 (Sentry)
-   - 效能監控
-   - 用戶行為分析
-
-### 低優先級 (下月規劃)
-1. **批次處理功能**
-2. **API 文檔自動生成**
-3. **多語言支援 (i18n)**
-
-## 🔥 當前技術挑戰
-
-### 1. 認證架構複雜度
-**問題：** Next.js (前端) + CF Workers (中介) + FastAPI (後端) 的三層認證
-**影響：** 開發複雜度增加，調試困難
-**解決策略：** 
-- 優先完成前端-後端直連認證
-- Gateway 層後續再加入
-
-### 2. 狀態管理一致性
-**問題：** 用戶狀態在多個組件間同步
-**影響：** 用戶體驗可能不一致
-**解決策略：** 
-- 使用 Zustand 統一狀態管理
-- 建立統一的 API 客戶端
-
-### 3. 檔案處理效能
-**問題：** 大檔案上傳和處理時間
-**影響：** 用戶體驗下降
-**解決策略：** 
-- 實作進度條顯示
-- 異步處理機制
-- 檔案大小限制
-
-## 🎯 本週具體行動計劃
-
-### 週一 (2025-02-03)
-- [ ] 完成 systemPatterns.md
-- [ ] 完成 techContext.md
-- [ ] 完成 progress.md
-
-### 週二 (2025-02-04)
-- [ ] Google OAuth 配置
-- [ ] 認證流程測試
-- [ ] 用戶資料庫模型設計
-
-### 週三 (2025-02-05)
-- [ ] 前後端認證串接
-- [ ] JWT token 處理
-- [ ] 錯誤處理機制
-
-### 週四 (2025-02-06)
-- [ ] 檔案上傳測試
-- [ ] 轉換功能驗證
-- [ ] 用戶體驗優化
-
-### 週五 (2025-02-07)
-- [ ] 整合測試
-- [ ] 問題修復
-- [ ] 下週計劃制定
-
-## 📊 進度追蹤指標
-
-### 開發進度
-- **整體進度：** 70% (Phase 2)
-- **前端開發：** 85%
-- **後端 API：** 90%
-- **認證系統：** 40%
-- **部署配置：** 20%
-
-### 功能完成度
-- ✅ 基礎 UI/UX：100%
-- ✅ 檔案轉換 API：100%
-- 🚧 用戶認證：40%
-- ⏳ 付費系統：0%
-- ⏳ 部署自動化：20%
-
----
-
-**文件用途：** 讓 Cline 快速了解當前工作狀況和優先級  
-**更新頻率：** 每週更新，重大變化時即時更新  
-**相關文件：** progress.md, systemPatterns.md
+新的 monorepo 架構提供了：
+- 清晰的關注點分離
+- 更好的程式碼重用
+- 獨立的部署能力
+- 統一的開發體驗

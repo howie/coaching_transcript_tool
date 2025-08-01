@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0-dev] - 2025-08-02 (Monorepo 架構重構)
+
+### Changed
+- **Monorepo 架構實施**: 將專案重構為標準 monorepo 架構，提升可維護性和擴展性
+  - `backend/` 拆分為 `apps/api-server/` (FastAPI 服務) 和 `apps/cli/` (CLI 工具)
+  - `frontend/` 重命名為 `apps/web/` 
+  - `gateway/` 重命名為 `apps/cloudflare/`
+  - 新增 `packages/core-logic/` 統一管理核心業務邏輯
+- **關注點分離**: API 服務和 CLI 工具完全獨立，各自擁有獨立的配置和部署能力
+- **程式碼重用**: 將共同的業務邏輯提取到 `packages/core-logic/`，提升重用性
+
+### Technical
+- **測試重組**: 將測試檔案從 `apps/api-server/tests/` 移至 `packages/core-logic/tests/`
+- **套件依賴**: API 服務和 CLI 工具都依賴 `packages/core-logic/` 進行業務邏輯處理
+- **Docker 配置**: 更新 `docker-compose.yml` 和 Dockerfile 路徑以適應新架構
+- **Makefile 更新**: 修改所有指令以支援新的目錄結構
+- **路徑修正**: 調整 `requirements.txt` 中的相對路徑引用
+
+### Verified
+- ✅ API Docker 映像構建成功 (31.8s)
+- ✅ CLI Docker 映像構建成功
+- ✅ 所有 Makefile 指令正常運作
+- ✅ 測試套件在新位置正常執行
+
 ## [2.0.0-dev] - 2025-08-01 (專案扁平化重構)
 
 ### Changed

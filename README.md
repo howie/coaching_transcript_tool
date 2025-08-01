@@ -40,10 +40,15 @@ A command-line tool to process and format coaching transcript files (VTT) into s
 
 ```
 coaching_transcript_tool/
-├── backend/           # FastAPI backend service
-├── frontend/          # Next.js frontend application
-├── gateway/           # (Future) Cloudflare Workers gateway
-├── packages/          # Shared packages (e.g., types, configs)
+├── apps/              # Applications layer
+│   ├── api-server/    # FastAPI backend service
+│   ├── web/           # Next.js frontend application  
+│   ├── cloudflare/    # Cloudflare Workers gateway
+│   └── cli/           # Command-line interface
+├── packages/          # Shared packages
+│   ├── core-logic/    # Core business logic
+│   ├── shared-types/  # Shared TypeScript types
+│   └── eslint-config/ # Shared ESLint configuration
 ├── docs/              # Project documentation
 ├── memory-bank/       # AI assistant's working memory
 └── ...
@@ -63,11 +68,11 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: apps/api-server/Dockerfile.api
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/src:/app/src
+      - ./packages/core-logic/src:/app/src
     environment:
       - PORT=8000
       # Add other environment variables as needed
