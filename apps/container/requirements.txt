@@ -1,0 +1,5 @@
+# 引用共享核心邏輯套件
+-e ../../packages/core-logic
+
+# 基本 uvicorn（不需要 [standard] 以避免 C 擴展問題）
+uvicorn
