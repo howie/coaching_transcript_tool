@@ -35,3 +35,14 @@ name = "coachly-doxa-com-tw-dev"
 [env.development.vars]
 ENVIRONMENT = "development"
 NODE_ENV = "development"
+
+# Production route
+[triggers]
+routes = ["coachly.doxa.com.tw/*"]
+
+# wrangler.toml (wrangler v3.88.0^)
+[observability.logs]
+enabled = true
+
+
+
