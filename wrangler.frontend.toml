@@ -11,8 +11,8 @@ compatibility_date = "2024-07-25"
 
 # Define the build process for the Worker
 [build]
-# Use npm --prefix to run the build script in the correct directory.
-command = "npm run build --prefix apps/web"
+# Use the dedicated script in the root package.json to build the frontend.
+command = "npm run build:frontend"
 # The directory containing the static assets to be uploaded.
 # The path is now relative to the project root.
 watch_dir = ".vercel/output/static"
