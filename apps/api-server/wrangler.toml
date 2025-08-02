@@ -1,0 +1,30 @@
+# Cloudflare Worker Configuration for Backend API (api.doxa.com.tw)
+name = "api-doxa-com-tw"
+
+# The main entry point for the Worker, which is our FastAPI application
+main = "apps/api-server/main.py"
+
+# Set the compatibility date for the Workers runtime
+compatibility_date = "2024-07-25"
+
+# Define the build process for the Worker
+[build]
+# Command to install Python dependencies from requirements.txt
+# This makes the packages available to the Worker at runtime.
+command = "pip install -r apps/api-server/requirements.txt"
+
+# Environment variables for the production environment
+[vars]
+ENVIRONMENT = "production"
+
+# Configuration for the development environment
+[env.development]
+name = "api-doxa-com-tw-dev"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+
+# Resource limits for the Worker
+[limits]
+cpu_ms = 50
+memory_mb = 128
