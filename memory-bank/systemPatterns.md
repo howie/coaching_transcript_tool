@@ -29,9 +29,9 @@
 ```
 coaching_transcript_tool/
 ├── apps/                   # 可獨立部署的應用程式
-│   ├── web/                # 前端 Next.js 應用
-│   ├── container/          # 後端容器化部署 (Docker, Cloud Run)
-│   └── cloudflare/         # 後端 Serverless 部署 (CF Workers)
+│   ├── web/                # 前端 Worker 來源 (Next.js)
+│   ├── api-server/         # 後端備用部署來源 (e.g. Docker)
+│   └── cloudflare/         # 後端 Worker 來源 (FastAPI)
 │
 ├── packages/               # 共用套件 (邏輯核心)
 │   ├── core-logic/         # 後端核心業務邏輯 (FastAPI)
@@ -266,11 +266,15 @@ class APIError extends Error {
 
 ## 🚀 部署模式
 
-### 混合雲部署
-- **前端**：Cloudflare Pages (靜態資源 + SSR)
-- **Gateway**：Cloudflare Workers (邊緣運算)
-- **後端**：GCP Cloud Run (容器化服務)
-- **資料庫**：GCP Cloud SQL (託管 PostgreSQL)
+### 雙 Worker 部署 (Cloudflare)
+- **前端 Worker**:
+  - **來源**: `apps/web` (Next.js)
+  - **服務**: Cloudflare Workers
+  - **部署工具**: `wrangler.frontend.toml`
+- **後端 Worker**:
+  - **來源**: `apps/cloudflare` (FastAPI)
+  - **服務**: Cloudflare Workers
+  - **部署工具**: `wrangler.backend.toml`
 
 ### CI/CD 流程
 ```

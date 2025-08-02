@@ -3,7 +3,7 @@
 name = "api-doxa-com-tw"
 
 # The main entry point for the Worker, which is our FastAPI application
-main = "apps/api-server/main.py"
+main = "apps/cloudflare/main.py"
 
 # Set the compatibility date for the Workers runtime
 compatibility_date = "2024-07-25"
@@ -12,7 +12,7 @@ compatibility_date = "2024-07-25"
 [build]
 # Command to install Python dependencies from requirements.txt
 # This makes the packages available to the Worker at runtime.
-command = "pip install -r apps/api-server/requirements.txt"
+command = "pip install -r apps/cloudflare/requirements.txt"
 
 # Environment variables for the production environment
 [vars]
