@@ -182,3 +182,4 @@ apps/web/.next/
 apps/web/.turbo/
 .next/
 out/
+apps/web/.vercel/
