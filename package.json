@@ -19,9 +19,7 @@
   },
   "packageManager": "npm@9.0.0",
   "workspaces": [
-    "frontend",
-    "backend", 
-    "gateway",
+    "apps/*",
     "packages/*"
   ]
 }
