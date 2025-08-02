@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { apiClient, downloadBlob } from '@/lib/api'
-import { useI18n } from '@/contexts/i18n-context'
+import { apiClient, downloadBlob } from '../../../lib/api'
+import { useI18n } from '../../../contexts/i18n-context'
 
 interface ConversionOptions {
   outputFormat: 'markdown' | 'excel'
