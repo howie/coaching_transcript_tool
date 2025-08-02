@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "build:frontend": "npm run build --prefix apps/web",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "deploy:frontend": "./scripts/deploy-frontend.sh",
