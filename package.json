@@ -9,10 +9,7 @@
     "build:frontend": "npm run build --prefix apps/web",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "deploy:frontend": "./scripts/deploy-frontend.sh",
-    "deploy:gateway": "./scripts/deploy-gateway.sh",
-    "deploy:backend": "./scripts/deploy-backend.sh",
-    "deploy:all": "npm run deploy:backend && npm run deploy:gateway && npm run deploy:frontend"
+    "deploy:cf-worker": "npm run build:frontend && npx wrangler deploy -c wrangler.frontend.toml"
   },
   "devDependencies": {
     "turbo": "^1.10.0",
