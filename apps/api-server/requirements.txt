@@ -1,5 +1,15 @@
-# 引用共享核心邏輯套件
--e ./packages/core-logic
+# FastAPI and related
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
 
-# 基本 uvicorn（不需要 [standard] 以避免 C 擴展問題）
-uvicorn
+# Data processing
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# Utilities
+opencc-python-reimplemented>=0.1.7
+boto3>=1.34.0
+python-dotenv>=1.0.0
