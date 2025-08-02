@@ -11,8 +11,8 @@ compatibility_date = "2024-07-25"
 
 # Define the build process for the Worker
 [build]
-# Use turbo to run the build script specifically for the frontend package.
-command = "turbo run build --filter=@coaching-transcript-tool/frontend"
+# Change directory to the web app and run the build script there.
+command = "cd apps/web && npm run build"
 # The directory containing the static assets to be uploaded.
 # The path is now relative to the project root.
 watch_dir = ".vercel/output/static"
