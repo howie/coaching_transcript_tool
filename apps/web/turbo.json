@@ -3,8 +3,7 @@
   "globalDependencies": ["**/.env.*local"],
   "pipeline": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", ".vercel/**"]
     },
     "dev": {
       "cache": false,
@@ -17,7 +16,10 @@
     "lint": {
       "outputs": []
     },
-    "postbuild": {
+    "clean": {
+      "cache": false
+    },
+    "deploy": {
       "dependsOn": ["build"],
       "outputs": []
     }

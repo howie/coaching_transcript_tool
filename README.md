@@ -175,42 +175,102 @@ When running as a service, you can set these environment variables:
 
 ## 🔧 Development
 
-This project uses `Makefile` to streamline common development tasks.
+This project uses `Makefile` to provide unified management for both Python backend and Node.js frontend development.
 
-- **Install for development:**
+### Frontend Development (Node.js/Next.js)
+
+- **Install frontend dependencies:**
   ```bash
-  # Install development dependencies
+  make install-frontend
+  ```
+
+- **Start development server:**
+  ```bash
+  make dev-frontend
+  # Runs Next.js dev server at http://localhost:3000
+  ```
+
+- **Build for production:**
+  ```bash
+  make build-frontend
+  ```
+
+- **Deploy to Cloudflare Workers:**
+  ```bash
+  make deploy-frontend
+  ```
+
+- **Preview with Cloudflare Workers:**
+  ```bash
+  make preview-frontend
+  ```
+
+### Backend Development (Python)
+
+- **Install backend dependencies:**
+  ```bash
   make dev-setup
-  
-  # Or install directly
-  pip install -e .[dev]
+  # Or install directly: pip install -e .[dev]
+  ```
+
+- **Start API server:**
+  ```bash
+  make run-api
+  # Runs FastAPI server at http://localhost:8000
   ```
 
 - **Run tests:**
   ```bash
-  # Run all tests
   make test
-  
-  # Run specific test
-  pytest tests/test_processor.py -v
-  
-  # Run with coverage
-  pytest --cov=src tests/
+  # Or run specific test: pytest tests/test_processor.py -v
   ```
 
-- **Docker Commands:**
+### Full-stack Development
+
+- **Install all dependencies:**
   ```bash
-  # Build Docker image
-  make docker
-  
-  # Run container with volume mapping
-  make docker-run INPUT=./input.vtt OUTPUT=./output.md
-  
-  # Run API service
-  docker-compose up -d
-  
-  # View logs
-  docker-compose logs -f
+  make install-all
   ```
 
-For a full list of commands, run `make help`.
+- **Build all services:**
+  ```bash
+  make build-all
+  ```
+
+- **Development workflow:**
+  ```bash
+  # Terminal 1: Start backend
+  make run-api
+  
+  # Terminal 2: Start frontend  
+  make dev-frontend
+  ```
+
+### Docker Commands
+
+- **Build Docker images:**
+  ```bash
+  make docker        # Build both API and CLI images
+  make docker-api    # Build API image only
+  make docker-cli    # Build CLI image only
+  ```
+
+- **Run CLI container:**
+  ```bash
+  make docker-run-cli INPUT=./input.vtt OUTPUT=./output.md
+  ```
+
+- **Run API service:**
+  ```bash
+  docker-compose up -d
+  docker-compose logs -f  # View logs
+  ```
+
+### Available Make Commands
+
+For a complete list of available commands, run:
+```bash
+make help
+```
+
+This will show all backend, frontend, full-stack, and Docker commands with descriptions.

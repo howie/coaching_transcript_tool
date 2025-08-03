@@ -1,4 +1,4 @@
-.PHONY: clean build install docker docker-run test lint
+.PHONY: clean clean-frontend build install docker docker-run test lint dev-frontend build-frontend install-frontend deploy-frontend preview-frontend dev-all build-all install-all
 
 # Variables
 PACKAGE_NAME = coaching_transcript_tool
@@ -13,8 +13,9 @@ PIP = pip
 # Default target
 all: clean build
 
-# Clean build artifacts
-clean:
+# Clean all build artifacts (backend + frontend)
+clean: clean-frontend
+	@echo "Cleaning Python build artifacts..."
 	rm -rf build/
 	rm -rf dist/
 	rm -rf *.egg-info
@@ -23,6 +24,18 @@ clean:
 	find . -name '*.pyc' -delete
 	find . -name '__pycache__' -delete
 
+# Clean frontend build artifacts
+clean-frontend:
+	@echo "Cleaning frontend build artifacts..."
+	rm -rf apps/web/.next/
+	rm -rf apps/web/.turbo/
+	rm -rf apps/web/.vercel/
+	rm -rf apps/web/.open-next/
+	rm -rf apps/web/.wrangler/
+	rm -rf .next/
+	rm -rf out/
+	rm -rf apps/web/tsconfig.tsbuildinfo
+
 # Build the package
 build: clean
 	$(PYTHON) -m pip install -r apps/api-server/requirements.txt --break-system-packages
@@ -30,10 +43,44 @@ build: clean
 # Install the package locally
 install: build
 	$(PIP) install -r apps/api-server/requirements.txt --break-system-packages
+	$(PIP) install -e packages/core-logic --break-system-packages
 
 # Start API server
-run-api: 
+run-api: install
 	cd apps/api-server && $(PYTHON) main.py
+
+# Frontend Development
+dev-frontend:
+	@echo "Starting frontend development server..."
+	cd apps/web && npm run dev
+
+build-frontend:
+	@echo "Building frontend for production..."
+	cd apps/web && npm run build
+
+install-frontend:
+	@echo "Installing frontend dependencies..."
+	cd apps/web && npm install
+
+# Cloudflare Workers Deployment
+deploy-frontend:
+	@echo "Deploying frontend to Cloudflare Workers..."
+	cd apps/web && npm run deploy
+
+preview-frontend:
+	@echo "Starting Cloudflare Workers preview..."
+	cd apps/web && npm run preview
+
+# Unified Development Experience
+dev-all:
+	@echo "Starting full-stack development..."
+	@echo "Note: Run 'make run-api' and 'make dev-frontend' in separate terminals"
+
+build-all: build build-frontend
+	@echo "Building all services..."
+
+install-all: install install-frontend
+	@echo "Installing all dependencies..."
 
 # Build Docker images
 docker-api:
@@ -64,7 +111,7 @@ docker-run-cli:
 docker-run: docker-run-cli
 
 # Run tests
-test:
+test: dev-setup
 	pytest packages/core-logic/tests/
 
 # Install development dependencies
@@ -90,19 +137,39 @@ dist-install: dist
 # Help target
 help:
 	@echo "Available targets:"
+	@echo ""
+	@echo "Backend (Python):"
 	@echo "  all            : Clean and build the package"
-	@echo "  clean          : Remove build artifacts"
+	@echo "  clean          : Remove all build artifacts (backend + frontend)"
+	@echo "  clean-frontend : Remove only frontend build artifacts"
 	@echo "  build          : Build the package"
 	@echo "  install        : Install the package locally in development mode"
 	@echo "  run-api        : Start the API server"
 	@echo "  dev-setup      : Install development dependencies"
+	@echo "  test           : Run tests"
+	@echo "  lint           : Run linting"
+	@echo ""
+	@echo "Frontend (Node.js):"
+	@echo "  dev-frontend   : Start frontend development server"
+	@echo "  build-frontend : Build frontend for production"
+	@echo "  install-frontend : Install frontend dependencies"
+	@echo "  deploy-frontend : Deploy frontend to Cloudflare Workers"
+	@echo "  preview-frontend : Start Cloudflare Workers preview"
+	@echo ""
+	@echo "Full-stack:"
+	@echo "  dev-all        : Show instructions for full-stack development"
+	@echo "  build-all      : Build all services (backend + frontend)"
+	@echo "  install-all    : Install all dependencies"
+	@echo ""
+	@echo "Docker:"
 	@echo "  docker         : Build both API and CLI Docker images"
 	@echo "  docker-api     : Build API Docker image"
 	@echo "  docker-cli     : Build CLI Docker image"
 	@echo "  docker-run-cli : Run the CLI Docker container"
 	@echo "  docker-run     : Run the CLI Docker container (backward compatibility)"
-	@echo "  test           : Run tests"
-	@echo "  lint           : Run linting"
+	@echo ""
+	@echo "Distribution:"
 	@echo "  dist           : Create distribution package"
 	@echo "  dist-install   : Install from distribution package"
+	@echo ""
 	@echo "  help           : Show this help message"

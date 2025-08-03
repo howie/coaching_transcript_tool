@@ -1,0 +1,30 @@
+# Cloudflare Worker Configuration for Frontend Application (coachly.doxa.com.tw)
+# This file is located in apps/web/
+name = "coachly-doxa-com-tw"
+
+# OpenNext worker entry point
+main = ".open-next/worker.js"
+
+# Set the compatibility date for the Workers runtime
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Build process is handled separately, not in wrangler dev
+# [build]
+# command = "npm run build && npm run build:cf"
+# watch_dir = ["app", "components", "lib", "public", "next.config.js", "tailwind.config.ts", "postcss.config.js"]
+
+# OpenNext assets directory
+[assets]
+directory = ".open-next/assets"
+
+# Environment variables for the production environment
+[vars]
+ENVIRONMENT = "production"
+# NODE_ENV is required by Next.js
+NODE_ENV = "production"
+DUMMY_VAR = "dummy"
+
+# wrangler.toml (wrangler v3.88.0^)
+[observability.logs]
+enabled = true

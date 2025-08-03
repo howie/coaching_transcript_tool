@@ -5,11 +5,15 @@
   "description": "Next.js frontend for Coaching Transcript Tool",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && npx @cloudflare/next-on-pages --skip-build",
+    "build": "next build",
+    "build:cf": "npx @opennextjs/cloudflare build",
+    "clean": "rm -rf .next .vercel .turbo",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "deploy": "npm run build && npm run build:cf && npx wrangler deploy",
+    "preview": "npx wrangler dev"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -26,6 +30,7 @@
     "zustand": "^4.4.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.6.3",
     "@tailwindcss/forms": "^0.5.0",
     "@tailwindcss/typography": "^0.5.0",
     "@testing-library/jest-dom": "^6.1.0",
@@ -40,8 +45,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.3.0",
-    "typescript": "^5.2.0",
-    "@cloudflare/next-on-pages": "^1.13.13"
+    "typescript": "^5.2.0"
   },
   "keywords": [
     "nextjs",

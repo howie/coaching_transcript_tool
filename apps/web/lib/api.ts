@@ -5,11 +5,28 @@ interface TranscriptOptions {
   convertToTraditional: boolean
 }
 
+// Augment the global scope to include the Cloudflare service binding
+declare global {
+  var API_SERVICE: { fetch: typeof fetch } | undefined;
+}
+
 class ApiClient {
   private baseUrl: string
-  
+  private fetcher: typeof fetch
+
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    // In a Cloudflare Worker environment, a service binding `API_SERVICE` will be available.
+    // We use a robust check to see if it's a valid binding with a fetch method.
+    if (typeof globalThis !== 'undefined' && 
+        globalThis.API_SERVICE && 
+        typeof globalThis.API_SERVICE.fetch === 'function') {
+      this.fetcher = globalThis.API_SERVICE.fetch.bind(globalThis.API_SERVICE)
+      this.baseUrl = '' // Base URL is handled by the binding
+    } else {
+      // Fallback for local development or other environments
+      this.fetcher = globalThis.fetch || fetch
+      this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    }
   }
 
   private async getHeaders() {
@@ -20,7 +37,7 @@ class ApiClient {
 
   async healthCheck() {
     try {
-      const response = await fetch(`${this.baseUrl}/health`)
+      const response = await this.fetcher(`${this.baseUrl}/health`)
       
       if (!response.ok) {
         throw new Error(`Health check failed: ${response.statusText}`)
@@ -44,7 +61,7 @@ class ApiClient {
       formData.append('client_name', options.clientName)
       formData.append('convert_to_traditional_chinese', options.convertToTraditional.toString())
 
-      const response = await fetch(`${this.baseUrl}/api/v1/format`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/format`, {
         method: 'POST',
         body: formData,
       })
@@ -92,7 +109,7 @@ class ApiClient {
 
   async getUserProfile() {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/user/profile`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/profile`, {
         headers: await this.getHeaders(),
       })
 
@@ -112,12 +129,19 @@ export const apiClient = new ApiClient()
 
 // 下載辅助函式
 export function downloadBlob(blob: Blob, filename: string) {
-  const url = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  window.URL.revokeObjectURL(url)
+  // Check if we're in a browser environment
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } else {
+    // In Worker environment, this function shouldn't be called
+    // but we provide a fallback to avoid errors
+    console.warn('downloadBlob called in non-browser environment')
+  }
 }

@@ -128,6 +128,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .venv
 env/
 venv/
@@ -182,3 +183,9 @@ apps/web/.turbo/
 .next/
 out/
 apps/web/.vercel/
+apps/web/.open-next/
+apps/web/.wrangler/
+# Local development variables
+
+# Backup files from toolchain refactoring
+*.bk
