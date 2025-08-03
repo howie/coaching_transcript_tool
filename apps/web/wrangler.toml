@@ -23,7 +23,8 @@ directory = ".open-next/assets"
 ENVIRONMENT = "production"
 # NODE_ENV is required by Next.js
 NODE_ENV = "production"
-DUMMY_VAR = "dummy"
+# Production API URL
+NEXT_PUBLIC_API_URL = "https://api.doxa.com.tw"
 
 # wrangler.toml (wrangler v3.88.0^)
 [observability.logs]

@@ -73,9 +73,9 @@ install-frontend:
 	cd apps/web && npm install
 
 # Cloudflare Workers Deployment
-deploy-frontend: build-frontend-cf
+deploy-frontend:
 	@echo "Deploying frontend to Cloudflare Workers..."
-	cd apps/web && npx wrangler deploy
+	cd apps/web && npm run deploy
 
 preview-frontend: build-frontend-cf
 	@echo "Starting Cloudflare Workers preview..."

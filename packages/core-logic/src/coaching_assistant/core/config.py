@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",      # Next.js dev server
         "http://localhost:8787",      # Cloudflare Workers preview
-        "https://yourdomain.com"      # Production domain
+        "https://coachly-doxa-com-tw.howie-yu.workers.dev", # Cloudflare Workers production
+        "https://coachly.doxa.com.tw" # Production frontend domain
     ]
     
     # 資料庫設定
