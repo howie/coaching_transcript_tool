@@ -1,4 +1,4 @@
-.PHONY: clean clean-frontend build install docker docker-run test lint dev-frontend build-frontend install-frontend deploy-frontend preview-frontend dev-all build-all install-all
+.PHONY: clean clean-frontend build install docker docker-run test lint dev-frontend build-frontend build-frontend-cf install-frontend deploy-frontend preview-frontend dev-all build-all install-all
 
 # Variables
 PACKAGE_NAME = coaching_transcript_tool
@@ -54,22 +54,32 @@ dev-frontend:
 	@echo "Starting frontend development server..."
 	cd apps/web && npm run dev
 
-build-frontend:
-	@echo "Building frontend for production..."
+# File-based targets for efficient building
+apps/web/.next/BUILD_ID: apps/web/app/* apps/web/components/* apps/web/lib/* apps/web/next.config.js apps/web/package.json
+	@echo "Building Next.js frontend..."
 	cd apps/web && npm run build
+
+apps/web/.open-next/worker.js: apps/web/.next/BUILD_ID
+	@echo "Building frontend for Cloudflare Workers..."
+	cd apps/web && npm run build:cf
+
+# Convenience targets that depend on files
+build-frontend: apps/web/.next/BUILD_ID
+
+build-frontend-cf: apps/web/.open-next/worker.js
 
 install-frontend:
 	@echo "Installing frontend dependencies..."
 	cd apps/web && npm install
 
 # Cloudflare Workers Deployment
-deploy-frontend:
+deploy-frontend: build-frontend-cf
 	@echo "Deploying frontend to Cloudflare Workers..."
-	cd apps/web && npm run deploy
+	cd apps/web && npx wrangler deploy
 
-preview-frontend:
+preview-frontend: build-frontend-cf
 	@echo "Starting Cloudflare Workers preview..."
-	cd apps/web && npm run preview
+	cd apps/web && npx wrangler dev
 
 # Unified Development Experience
 dev-all:
@@ -150,10 +160,11 @@ help:
 	@echo "  lint           : Run linting"
 	@echo ""
 	@echo "Frontend (Node.js):"
-	@echo "  dev-frontend   : Start frontend development server"
-	@echo "  build-frontend : Build frontend for production"
+	@echo "  dev-frontend     : Start frontend development server"
+	@echo "  build-frontend   : Build Next.js frontend only"
+	@echo "  build-frontend-cf: Build frontend for Cloudflare Workers (includes Next.js build)"
 	@echo "  install-frontend : Install frontend dependencies"
-	@echo "  deploy-frontend : Deploy frontend to Cloudflare Workers"
+	@echo "  deploy-frontend  : Deploy frontend to Cloudflare Workers"
 	@echo "  preview-frontend : Start Cloudflare Workers preview"
 	@echo ""
 	@echo "Full-stack:"

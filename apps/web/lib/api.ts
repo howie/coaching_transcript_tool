@@ -37,7 +37,7 @@ class ApiClient {
 
   async healthCheck() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/health`)
+      const response = await this.fetcher(`${this.baseUrl}/api/health`)
       
       if (!response.ok) {
         throw new Error(`Health check failed: ${response.statusText}`)

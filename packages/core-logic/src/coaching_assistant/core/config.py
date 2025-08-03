@@ -15,7 +15,11 @@ class Settings(BaseSettings):
     
     # API 設定
     API_V1_STR: str = "/api/v1"
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "https://yourdomain.com"]
+    ALLOWED_ORIGINS: List[str] = [
+        "http://localhost:3000",      # Next.js dev server
+        "http://localhost:8787",      # Cloudflare Workers preview
+        "https://yourdomain.com"      # Production domain
+    ]
     
     # 資料庫設定
     DATABASE_URL: str = ""
