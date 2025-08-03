@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0-dev] - 2025-08-03 (Cloudflare Workers 環境變數修復)
+
+### Fixed
+- **環境變數建置時注入問題**: 
+  - 修復 Next.js 在 Cloudflare Workers 部署時環境變數無效問題
+  - 根本原因：`NEXT_PUBLIC_*` 環境變數是在建置時固化，而非運行時讀取
+  - 解決方案：創建 `apps/web/.env.production` 文件，確保建置時正確注入 production API URL
+- **CORS 跨域請求問題**:
+  - 更新後端 `ALLOWED_ORIGINS` 支援 production 前端域名 `https://coachly.doxa.com.tw`
+  - 修復前端 API client 健康檢查端點路徑從 `/health` 改為 `/api/health`
+
+### Added
+- **Cloudflare Workers 建置流程**: 新增 `build-frontend-cf` Makefile target 專門處理 Cloudflare 建置
+- **環境分離機制**: 建立清楚的本地開發/預覽/生產環境配置分離
+- **生產環境配置**: 創建 `apps/web/.env.production` 文件管理 production 專用環境變數
+
+### Changed
+- **部署流程優化**: `deploy-frontend` 現在使用完整建置流程 (`build` → `build:cf` → `wrangler deploy`)
+- **Makefile 建置依賴**: 優化建置流程避免重複建置，提升效率
+- **wrangler.toml 清理**: 移除無效的 `NEXT_PUBLIC_API_URL` 設定，加入適當註解說明
+
+### Verified
+- ✅ 成功部署到 Cloudflare Workers: `https://coachly-doxa-com-tw.howie-yu.workers.dev`
+- ✅ JavaScript 檔案包含正確的 production API URL: `https://api.doxa.com.tw`
+- ✅ 移除所有 localhost 引用，環境變數正確切換
+- ✅ 三種環境完全分離：Local Dev (localhost:3000) / Local Preview (localhost:8787) / Production
+
 ## [2.1.0-dev] - 2025-08-02 (Monorepo 架構重構)
 
 ### Changed

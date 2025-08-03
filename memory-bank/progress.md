@@ -319,3 +319,49 @@ coaching_transcript_tool/
 ```
 
 **下一步**: 驗證 Cloudflare Workers 部署和前端整合
+
+## 2025-08-03
+
+### 🎉 Cloudflare Workers 環境變數問題修復完成
+- **問題識別與分析**
+  - 部署到 Cloudflare 的前端仍然訪問 `localhost:8000`，而非 production API `api.doxa.com.tw`
+  - 根本原因：Next.js 的 `NEXT_PUBLIC_*` 環境變數是在**建置時**固化的，不是運行時讀取
+  - `wrangler.toml` 中的 `[vars]` 只對 Cloudflare Workers runtime 有效，對 Next.js 無效
+
+- **✅ 環境變數修復方案**
+  - 創建 `apps/web/.env.production` 文件設定 `NEXT_PUBLIC_API_URL=https://api.doxa.com.tw`
+  - 從 `wrangler.toml` 移除無效的 `NEXT_PUBLIC_API_URL` 設定
+  - 重新建置確保 production 環境變數正確注入
+
+- **✅ CORS 設定更新**
+  - 更新 `packages/core-logic/src/coaching_assistant/core/config.py`
+  - `ALLOWED_ORIGINS` 加入 `https://coachly.doxa.com.tw` 支援 production 前端域名
+  - 修復 `apps/web/lib/api.ts` 中健康檢查端點路徑
+
+- **✅ Makefile 建置流程優化**
+  - 新增 `build-frontend-cf` target 專門建置 Cloudflare Workers 版本
+  - 修復 `deploy-frontend` 使用完整部署流程 (`build` → `build:cf` → `wrangler deploy`)
+  - 優化依賴關係避免重複建置
+
+### 🚀 成功部署到 Cloudflare Workers
+- **部署結果**：`https://coachly-doxa-com-tw.howie-yu.workers.dev`
+- **驗證成功**：
+  - ✅ JavaScript 檔案包含正確的 `this.baseUrl="https://api.doxa.com.tw"`
+  - ✅ 移除了所有 `localhost:8000` 引用
+  - ✅ Next.js 正確讀取 `.env.production` 和 `.env` 文件
+  - ✅ Cloudflare Workers 環境變數正確綁定
+
+### 部署環境對應
+| 環境 | 前端域名 | 後端 API | 使用指令 |
+|------|----------|----------|----------|
+| **Local Dev** | `localhost:3000` | `localhost:8000` | `make dev-frontend` |
+| **Local Preview** | `localhost:8787` | `localhost:8000` | `make preview-frontend` |
+| **Production** | `coachly.doxa.com.tw` | `api.doxa.com.tw` | `make deploy-frontend` |
+
+### 技術債務清理
+- ✅ 解決 Next.js 環境變數建置時注入問題
+- ✅ 統一前後端環境配置管理
+- ✅ 優化 Makefile 建置依賴關係
+- ✅ 建立清楚的環境切換機制
+
+**當前狀態**: 前端 Cloudflare Workers 部署完全成功，環境變數配置正確，可連接 production API

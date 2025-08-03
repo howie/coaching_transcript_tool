@@ -167,11 +167,33 @@ transcript-tool --version
 
 ### Environment Variables
 
+#### Backend API Service
+
 When running as a service, you can set these environment variables:
 
 - `PORT`: Port to run the API server on (default: 8000)
 - `LOG_LEVEL`: Logging level (default: info)
 - `UPLOAD_FOLDER`: Folder to store uploaded files (default: ./data/uploads)
+
+#### Frontend Deployment
+
+The frontend supports different environments with automatic API URL switching:
+
+**Local Development** (`make dev-frontend`):
+- Uses `http://localhost:8000` for API calls
+- Next.js dev server on `http://localhost:3000`
+
+**Cloudflare Preview** (`make preview-frontend`):
+- Uses `http://localhost:8000` for API calls  
+- Workers dev server on `http://localhost:8787`
+
+**Production Deployment** (`make deploy-frontend`):
+- Uses `https://api.doxa.com.tw` for API calls
+- Deployed to Cloudflare Workers
+
+Environment configuration is managed through:
+- `apps/web/.env.production` - Production environment variables
+- `apps/web/wrangler.toml` - Cloudflare Workers configuration
 
 ## 🔧 Development
 
@@ -198,11 +220,19 @@ This project uses `Makefile` to provide unified management for both Python backe
 - **Deploy to Cloudflare Workers:**
   ```bash
   make deploy-frontend
+  # Builds and deploys to production with https://api.doxa.com.tw
   ```
 
 - **Preview with Cloudflare Workers:**
   ```bash
   make preview-frontend
+  # Local preview server at http://localhost:8787 with localhost:8000 API
+  ```
+
+- **Build for Cloudflare Workers:**
+  ```bash
+  make build-frontend-cf
+  # Builds both Next.js and OpenNext for Cloudflare Workers
   ```
 
 ### Backend Development (Python)
