@@ -41,6 +41,7 @@
 - 定期更新 memory-bank 文件反映當前狀態
 - 保持 memory-bank 內容簡潔且聚焦當前狀態
 
+
 ## Code Style & Patterns
 
 -   Generate API clients using OpenAPI Generator
