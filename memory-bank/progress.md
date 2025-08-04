@@ -84,11 +84,15 @@
 
 ## 🎯 下一步優先任務
 
-1. **完成 Render Web Service 部署** (今日)
-   - 在 Render Dashboard 建立 Web Service
-   - 連接 GitHub repository
-   - 設定環境變數 (參考 docs/deployment/render-deployment.md)
-   - 驗證 API 服務正常運作
+1. **完成 Render Web Service 部署** (進行中)
+   - ✅ 更新 config.py 支援所有 Render 環境變數
+   - ✅ 修改 main.py 支援 Render 啟動方式 ($PORT 環境變數)
+   - ✅ 生成安全的 SECRET_KEY
+   - ✅ 建立部署檢查清單 (docs/deployment/render-deployment-checklist.md)
+   - 🔄 在 Render Dashboard 建立 Web Service
+   - 🔄 連接 GitHub repository
+   - 🔄 設定環境變數
+   - 🔄 驗證 API 服務正常運作
 
 2. **Google Cloud 環境設定** (本週)
    - 建立 GCP 專案

@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     
     # API 設定
     API_V1_STR: str = "/api/v1"
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = 8000
     ALLOWED_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",      # Next.js dev server
         "http://localhost:8787",      # Cloudflare Workers preview
@@ -34,20 +36,36 @@ class Settings(BaseSettings):
     # 資料庫設定
     DATABASE_URL: str = ""
     
+    # JWT 認證設定
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    
     # Google Cloud 設定
     GOOGLE_PROJECT_ID: str = ""
     GOOGLE_STORAGE_BUCKET: str = ""
-    
-    # 認證設定
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    JWT_SECRET: str = "jwt-secret-key"
+    GOOGLE_APPLICATION_CREDENTIALS_JSON: str = ""  # JSON 格式的服務帳號憑證
+    
+    # 檔案上傳限制
+    MAX_FILE_SIZE: int = 500  # MB
+    MAX_AUDIO_DURATION: int = 3600  # seconds (1 hour)
+    
+    # 日誌設定
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"  # "json" or "text"
     
     # AWS 設定 (向後相容)
     S3_BUCKET_NAME: str = ""
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_REGION: str = ""
+    
+    # Redis/Celery 設定 (可選)
+    REDIS_URL: str = ""
+    CELERY_BROKER_URL: str = ""
+    CELERY_RESULT_BACKEND: str = ""
     
     # 監控設定
     SENTRY_DSN: str = ""
