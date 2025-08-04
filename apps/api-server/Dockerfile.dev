@@ -1,0 +1,32 @@
+FROM python:3.11-slim
+
+# 設定工作目錄
+WORKDIR /app
+
+# 安裝系統依賴
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# 複製 requirements
+COPY apps/api-server/requirements.txt /app/requirements.txt
+COPY packages/core-logic/pyproject.toml /app/packages/core-logic/pyproject.toml
+
+# 安裝 Python 依賴
+RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN pip install -e /app/packages/core-logic
+
+# 複製原始碼
+COPY packages/core-logic /app/packages/core-logic
+COPY apps/api-server /app/apps/api-server
+
+# 設定 Python 路徑
+ENV PYTHONPATH=/app/packages/core-logic/src:/app/apps/api-server:$PYTHONPATH
+
+# 暴露端口
+EXPOSE 8000
+
+# 預設指令
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 資料庫
+  postgres:
+    image: postgres:15-alpine
+    container_name: coach-postgres-dev
+    environment:
+      POSTGRES_DB: coaching_assistant_dev
+      POSTGRES_USER: coach_user
+      POSTGRES_PASSWORD: coach_pass_dev
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - coach-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coach_user -d coaching_assistant_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (Celery broker)
+  redis:
+    image: redis:7-alpine
+    container_name: coach-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - coach-network
+    command: redis-server --appendonly yes --requirepass redis_pass_dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_pass_dev", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin (資料庫管理界面)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: coach-pgadmin-dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@coaching-assistant.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - coach-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Celery Worker (背景任務處理)
+  celery-worker:
+    build:
+      context: .
+      dockerfile: apps/api-server/Dockerfile.dev
+    container_name: coach-celery-worker-dev
+    command: celery -A coaching_assistant.tasks worker --loglevel=info --concurrency=2
+    environment:
+      - DATABASE_URL=postgresql://coach_user:coach_pass_dev@postgres:5432/coaching_assistant_dev
+      - REDIS_URL=redis://:redis_pass_dev@redis:6379/0
+      - GOOGLE_APPLICATION_CREDENTIALS_JSON=${GOOGLE_APPLICATION_CREDENTIALS_JSON}
+      - GOOGLE_STORAGE_BUCKET=${GOOGLE_STORAGE_BUCKET}
+    volumes:
+      - ./packages/core-logic:/app/packages/core-logic
+      - ./apps/api-server:/app/apps/api-server
+    networks:
+      - coach-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Beat (任務排程器)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: apps/api-server/Dockerfile.dev
+    container_name: coach-celery-beat-dev
+    command: celery -A coaching_assistant.tasks beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://coach_user:coach_pass_dev@postgres:5432/coaching_assistant_dev
+      - REDIS_URL=redis://:redis_pass_dev@redis:6379/0
+    volumes:
+      - ./packages/core-logic:/app/packages/core-logic
+      - ./apps/api-server:/app/apps/api-server
+    networks:
+      - coach-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Flower (Celery 監控界面)
+  flower:
+    build:
+      context: .
+      dockerfile: apps/api-server/Dockerfile.dev
+    container_name: coach-flower-dev
+    command: celery -A coaching_assistant.tasks flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://:redis_pass_dev@redis:6379/0
+    networks:
+      - coach-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  coach-network:
+    driver: bridge

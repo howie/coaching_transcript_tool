@@ -92,37 +92,50 @@ coaching_transcript_tool/
 - 評估是否需要統一 Python 依賴管理 (poetry/pipenv)
 - 規劃 CI/CD pipeline 適應新架構
 
-## 當前狀態 - Cloudflare Workers 部署完全成功 🎉
+## 當前工作重點 - Coach Assistant MVP 實作 🚀
 
-**專案架構重構已完成！** ✅  
-**Cloudflare Workers 前端部署已成功！** ✅
+**MVP 架構設計已完成！** ✅  
+**基於 Render + PostgreSQL + GCS 的新架構** ✅
 
-### 🎯 最新成就 (2025-08-03)
-- **環境變數問題完全解決**：創建 `.env.production` 文件解決 Next.js 建置時環境變數注入問題
-- **CORS 配置更新**：後端支援 production 前端域名 `https://coachly.doxa.com.tw`
-- **成功部署到 Cloudflare Workers**：`https://coachly-doxa-com-tw.howie-yu.workers.dev`
-- **Makefile 建置流程優化**：新增 `build-frontend-cf` 專門處理 Cloudflare 建置
+### 🎯 最新架構決策 (2025-08-04)
+- **前端平台**：Cloudflare Workers (保持現狀)
+- **後端平台**：Render.com + FastAPI
+- **資料庫**：PostgreSQL (Render 內建)
+- **檔案儲存**：Google Cloud Storage
+- **STT 服務**：Google Speech-to-Text v2 (內建 diarization)
+- **背景任務**：Celery + Redis (Render Redis)
 
-### 🔧 技術修復成果
-- **✅ 環境變數修復**：使用 `.env.production` 取代無效的 `wrangler.toml` 配置
-- **✅ API 端點修復**：健康檢查端點路徑從 `/health` 改為 `/api/health`
-- **✅ 建置驗證**：JavaScript 檔案包含正確的 production API URL
-- **✅ 部署驗證**：前端成功連接到 `https://api.doxa.com.tw`
+### 🏗️ 新架構優勢
+- **開發友善**：Render 自動部署，PostgreSQL 熟悉度高
+- **成本可控**：免費版適合 MVP，付費版僅 $7/月
+- **Google 整合**：GCS + Speech-to-Text 深度整合
+- **遷移準備**：Repository Pattern 為未來 Cloud Run 遷移做準備
 
-### 🌟 部署環境完整對應
-| 環境 | 前端域名 | 後端 API | 使用指令 |
-|------|----------|----------|----------|
-| **Local Dev** | `localhost:3000` | `localhost:8000` | `make dev-frontend` |
-| **Local Preview** | `localhost:8787` | `localhost:8000` | `make preview-frontend` |
-| **Production** | `coachly.doxa.com.tw` | `api.doxa.com.tw` | `make deploy-frontend` |
+### 📋 實作計劃 (6週 MVP)
+#### Phase 1 (第1-2週)：基礎架構
+- ✅ 更新 MVP 設計文件 (v1.1)
+- 🔄 建立 Render 專案和 PostgreSQL
+- 🔄 Google Cloud 設定 (GCS + Speech-to-Text API)
+- 🔄 實作 Repository Pattern 和資料模型
 
-### 技術優勢
-- **零配置衝突**：環境變數根據部署環境自動切換
-- **完整相容性**：修復後的程式碼完全相容於其他部署方案
-- **專業化部署**：建立清楚的開發/預覽/生產環境分離機制
+#### Phase 2 (第3-4週)：核心功能
+- 🔄 Google OAuth 認證系統
+- 🔄 檔案上傳到 GCS
+- 🔄 Google Speech-to-Text 整合
+- 🔄 背景任務處理 (Celery)
 
-新的 monorepo 架構提供了：
-- 清晰的關注點分離
-- 更好的程式碼重用
-- 獨立的部署能力
-- 統一的開發體驗
+#### Phase 3 (第5-6週)：完善功能
+- 🔄 Speaker diarization 和角色標註
+- 🔄 WebSocket 進度推播
+- 🔄 使用量追蹤和限制
+
+### 🎯 當前任務
+1. **建立 Render 專案**：設定 Web Service 和 PostgreSQL
+2. **Google Cloud 設定**：建立專案、啟用 API、服務帳號
+3. **更新後端代碼**：整合 SQLAlchemy + PostgreSQL
+4. **實作認證系統**：Google OAuth + JWT
+
+### 💰 成本結構 (更新)
+- **固定成本**：$15/月 (Render Web + DB + GCS)
+- **變動成本**：$0.016/分鐘 (Google STT)
+- **目標毛利**：70-78% (Pro plan $599/月)

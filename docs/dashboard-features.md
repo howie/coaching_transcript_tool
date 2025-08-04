@@ -11,13 +11,14 @@
 
 **Replit Prompt：**
 ```text
-read memory bank ，開始實作 my profile = 個人設定，把位置移到儀表板下面，逐字稿轉換上面，另外右手邊 menu 用戶的個人資料可以移除，只需要保留帳戶設定
+read memory bank ，開始實作 my profile = 個人設定，把位置移到儀表板下面，逐字稿轉換上面，另外右手邊 menu 用戶的個人資料可以移除，只需要保留帳戶設定。
+以下是要開發的內容，先完成頁面設計，但是標注開發中
 
 Create a responsive user profile management dashboard in React. The UI should include:
 - Profile photo with edit button
 - Fields for name, email, phone (with country code selector), country, city, timezone
 - Language selection for coaching and notifications
-- Input fields for communication tools: Skype, WhatsApp, WeChat, toggle buttons for Zoom, Google Meet, MS Teams
+- Input fields for communication tools: Line, toggle buttons for Zoom, Google Meet, MS Teams
 - Section for password change with confirmation field
 - Stripe connect button for payout setup
 - Coaching experience dropdown, training institution, certification, LinkedIn, and website

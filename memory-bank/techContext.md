@@ -1,224 +1,315 @@
 # 技術堆疊 (Tech Context)
 
-**更新時間：** 2025-08-02 14:05
-**技術版本：** v2.2 (API on Render.com)
+**更新時間：** 2025-08-04 22:47  
+**技術版本：** v3.0 (Coach Assistant MVP - Render + PostgreSQL + GCS)
+
+## 🎯 MVP 核心技術架構
+
+### 混合雲模式
+- **前端平台**：Cloudflare Workers + Next.js 14
+- **後端平台**：Render.com + FastAPI + PostgreSQL
+- **AI 服務**：Google Cloud Speech-to-Text v2
+- **檔案儲存**：Google Cloud Storage
+- **背景任務**：Celery + Redis
 
 ## 🔧 前端技術棧
 
 ### 核心框架
-- **Next.js 14.0.4** - React 全端框架
-  - App Router (最新路由系統)
-  - Server-Side Rendering (SSR)
-  - Static Site Generation (SSG)
-  - API Routes
+- **Next.js 14.0.4** - React 全端框架 (App Router)
+- **TypeScript 5.0+** - 類型安全開發
+- **Tailwind CSS 3.3+** - 實用優先 CSS 框架
 
-### 開發語言
-- **TypeScript 5.0+** - 類型安全的 JavaScript
-- **JavaScript ES2022** - 現代 JavaScript 標準
-
-### UI/UX 工具
-- **Tailwind CSS 3.3+** - 實用優先的 CSS 框架
-- **Tailwind UI** - 預建元件庫
-- **Headless UI** - 無樣式可存取元件
-- **Lucide React** - 現代圖標庫
-
-### 狀態管理
+### 狀態管理與 UI
 - **Zustand 4.0+** - 輕量級狀態管理
-- **React Context** - 主題、語言等全域狀態
+- **React Hook Form 7.0+** - 高效能表單處理
+- **SWR 2.0+** - 資料獲取與快取
+- **Headless UI** - 無樣式可存取元件
 
-### 表單處理
-- **React Hook Form 7.0+** - 高效能表單庫
-- **Zod 3.0+** - TypeScript 優先的驗證庫
+### 認證與安全
+- **Google OAuth 2.0** - 用戶認證
+- **JWT Tokens** - 無狀態認證
+- **HTTPS Only** - 安全傳輸層
 
-### 認證系統
-- **NextAuth.js 4.0+** - Next.js 認證解決方案
-- **Google Provider** - Google OAuth 2.0 整合
-
-### 測試工具
-- **Jest 29.0+** - JavaScript 測試框架
-- **Testing Library** - React 元件測試
-- **Playwright** - E2E 測試 (規劃中)
+### 部署平台
+- **Cloudflare Workers** - 全球邊緣運算
+- **OpenNext** - Next.js on Workers 適配器
 
 ## 🖥️ 後端技術棧
 
 ### 核心框架
 - **FastAPI 0.104+** - 現代 Python Web 框架
 - **Python 3.11+** - 程式語言
-- **Pydantic 2.0+** - 資料驗證和設定管理
+- **Pydantic 2.0+** - 資料驗證和序列化
 
-### 資料處理
-- **pandas 2.0+** - 資料分析和處理
-- **openpyxl 3.1+** - Excel 檔案處理
-- **python-multipart** - 檔案上傳處理
-
-### 中文處理
-- **opencc-python-reimplemented** - 簡繁轉換
-- **jieba** - 中文分詞 (規劃中)
-
-### HTTP 客戶端
-- **httpx 0.25+** - 異步 HTTP 客戶端
-- **requests 2.31+** - 同步 HTTP 客戶端
-
-### 資料庫 (規劃中)
+### 資料庫層
+- **PostgreSQL 15+** - 主要資料庫
 - **SQLAlchemy 2.0+** - Python ORM
-- **asyncpg** - PostgreSQL 異步驅動
 - **Alembic** - 資料庫遷移工具
+- **asyncpg** - 異步 PostgreSQL 驅動
 
-### 測試工具
-- **pytest 7.0+** - Python 測試框架
-- **pytest-asyncio** - 異步測試支援
-- **pytest-cov** - 覆蓋率測試
+### 背景任務處理
+- **Celery 5.3+** - 分散式任務佇列
+- **Redis 7.0+** - 訊息代理與結果後端
+- **Celery Beat** - 任務排程器
 
-
-## 📦 共用套件 (packages/)
-
-### shared-types/
-```json
-{
-  "name": "@coaching-tool/shared-types",
-  "version": "1.0.0",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "dependencies": {
-    "typescript": "^5.0.0"
-  }
-}
+### Google Cloud 整合
+```python
+# 核心 Google Cloud 服務
+"google-cloud-speech==2.21.0"      # Speech-to-Text API
+"google-cloud-storage==2.10.0"     # Cloud Storage
+"google-auth==2.23.4"               # 認證庫
+"google-auth-oauthlib==1.1.0"      # OAuth 2.0 流程
 ```
 
-### eslint-config/
-```json
-{
-  "name": "@coaching-tool/eslint-config",
-  "version": "1.0.0",
-  "main": "index.js",
-  "dependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.0.0"
-  }
-}
+### Speech-to-Text 配置
+```python
+# STT 最佳化設定
+config = speech.RecognitionConfig(
+    encoding=speech.RecognitionConfig.AudioEncoding.MP3,
+    sample_rate_hertz=44100,
+    language_code='zh-TW',  # 中文繁體
+    enable_speaker_diarization=True,
+    diarization_speaker_count=2,
+    enable_automatic_punctuation=True,
+    model='latest_long'  # 長音檔最佳化
+)
 ```
 
-## 🛠️ 開發工具
+### WebSocket 支援
+- **FastAPI WebSocket** - 即時進度推播
+- **asyncio** - 異步編程模型
 
-### 建置工具
-- **Turborepo 1.10+** - Monorepo 建置系統
-- **Vite** - 快速建置工具 (部分使用)
-- **esbuild** - 快速 JavaScript 打包器
+### 部署平台
+- **Render.com** - PaaS 平台
+  - Web Service (FastAPI)
+  - PostgreSQL Database
+  - Redis Instance
+- **GitHub Integration** - 自動部署
+
+## � 資料模型與 ORM
+
+### SQLAlchemy 模型
+```python
+# 核心實體
+class User(Base):
+    # Google OAuth 用戶
+    google_id = Column(String, unique=True)
+    email = Column(String, unique=True)
+    plan = Column(Enum(UserPlan))  # FREE, PRO, ENTERPRISE
+    usage_minutes = Column(Integer, default=0)
+
+class Session(Base):
+    # 教練對話會議
+    user_id = Column(UUID, ForeignKey("users.id"))
+    status = Column(Enum(SessionStatus))  # UPLOADING, PROCESSING, COMPLETED
+    gcs_audio_path = Column(String)
+    transcription_job_id = Column(String)
+
+class TranscriptSegment(Base):
+    # 轉錄片段
+    session_id = Column(UUID, ForeignKey("sessions.id"))
+    speaker_id = Column(Integer)  # STT diarization
+    content = Column(Text)
+    confidence = Column(Float)    # STT 信心分數
+```
+
+### Repository Pattern
+```python
+# 資料存取抽象化
+class SessionRepository(BaseRepository):
+    def get_user_sessions(self, user_id: UUID) -> List[Session]
+    def update_status(self, session_id: UUID, status: SessionStatus)
+    def create_segments(self, segments: List[TranscriptSegment])
+```
+
+## 🔄 背景任務架構
+
+### Celery 任務佇列
+```python
+# 主要異步任務
+@celery_app.task(bind=True, max_retries=3)
+def process_audio_transcription(self, session_id: str, gcs_path: str):
+    # 1. 調用 Google Speech-to-Text
+    # 2. 處理 speaker diarization
+    # 3. 儲存轉錄結果到 PostgreSQL
+    # 4. 更新 WebSocket 進度
+    # 5. 清理暫存檔案
+```
+
+### Redis 配置
+```python
+# Celery Broker 設定
+celery_app = Celery(
+    'coaching_assistant',
+    broker='redis://localhost:6379/0',
+    backend='redis://localhost:6379/0',
+    include=['tasks.transcription']
+)
+```
+
+## 🛠️ 開發工具與流程
+
+### 專案管理
+- **Makefile** - 統一開發指令介面
+- **Monorepo** - apps/ + packages/ 架構
+- **Git Hooks** - 代碼品質檢查
+
+### 測試策略
+```bash
+# 後端測試
+pytest packages/core-logic/tests/ -v
+pytest --cov=coaching_assistant tests/
+
+# 前端測試  
+cd apps/web && npm test
+cd apps/web && npm run test:e2e
+```
 
 ### 代碼品質
-- **ESLint 8.0+** - JavaScript/TypeScript 檢查器
-- **Prettier 3.0+** - 代碼格式化工具
-- **Husky** - Git hooks 管理
-- **lint-staged** - 暫存檔案檢查
+- **Black** - Python 代碼格式化
+- **isort** - Import 排序
+- **ESLint + Prettier** - TypeScript/React 檢查
+- **MyPy** - Python 靜態類型檢查
 
-### 類型檢查
-- **TypeScript Compiler** - 類型檢查
-- **tsc-alias** - 路徑別名解析
+## 🚀 部署配置
 
-## 🚀 部署技術
+### Render.com Blueprint
+```yaml
+# render.yaml
+services:
+  - type: web
+    name: coach-api
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: coach-db, property: connectionString }
+      - key: REDIS_URL  
+        fromService: { name: coach-redis, type: redis }
+      - key: GOOGLE_APPLICATION_CREDENTIALS_JSON
+        fromGroup: google-cloud
 
-### 容器化
-- **Docker 24.0+** - 容器平台
-- **Docker Compose** - 多容器應用管理
-
-### CI/CD
-- **GitHub Actions** - 持續整合/部署
-- **Changesets** - 版本管理和發布
-
-### 雲端服務
-- **Render.com** - 後端 API 主要部署平台
-- **Cloudflare Pages** - 前端部署平台
-- **GCP Cloud Run** - 後端備選部署方案 (容器化)
-- **GCP Cloud SQL** - 託管資料庫 (規劃中)
-
-## 📊 監控工具
-
-### 錯誤追蹤
-- **Sentry** - 錯誤監控和效能追蹤
-- **Sentry JavaScript SDK** - 前端錯誤追蹤
-- **Sentry Python SDK** - 後端錯誤追蹤
-
-### 日誌管理
-- **Structlog** - Python 結構化日誌
-- **Winston** - Node.js 日誌庫 (如需要)
-
-### 分析工具
-- **Google Analytics 4** - 用戶行為分析
-- **Cloudflare Analytics** - 網站效能分析
-
-## 🔧 開發環境設定
-
-### 必要軟體
-```bash
-# Node.js 環境
-node >= 18.17.0
-npm >= 9.6.7
-
-# Python 環境  
-python >= 3.11.0
-pip >= 23.0.0
-
-# 容器環境
-docker >= 24.0.0
-docker-compose >= 2.0.0
+databases:
+  - name: coach-db
+    databaseName: coaching_assistant
+    user: coach_user
 ```
 
-### VS Code 擴充套件
-- **TypeScript Importer** - 自動 import
-- **Tailwind CSS IntelliSense** - CSS 類別提示
-- **Python** - Python 開發支援
-- **Prettier** - 代碼格式化
-- **ESLint** - 代碼檢查
+### Cloudflare Workers
+```toml
+# apps/web/wrangler.toml
+name = "coachly-frontend"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
 
-## 📋 套件版本管理
+[env.production]
+vars = { API_BASE_URL = "https://coach-api.onrender.com" }
+```
 
-### Frontend Dependencies
+## 🔐 安全與合規
+
+### 資料保護
+- **24小時音檔自毀** - GCS Lifecycle Rules
+- **GDPR 刪除權** - 完整資料清除 API
+- **加密傳輸** - 全程 HTTPS/TLS 1.3
+- **最小權限原則** - Google SA 權限管控
+
+### 認證機制
+```python
+# JWT Token 管理
+class JWTService:
+    def create_access_token(self, user_id: UUID) -> str
+    def verify_token(self, token: str) -> Optional[dict]
+    def refresh_token(self, refresh_token: str) -> str
+```
+
+## 📊 監控與可觀測性
+
+### 應用監控
+- **Render Metrics** - 系統效能監控
+- **Custom Metrics** - 業務指標追蹤
+- **Structured Logging** - 結構化日誌記錄
+
+### 關鍵指標
+```python
+# 業務監控指標
+metrics = {
+    "transcript_latency_sec": "轉錄處理延遲",
+    "stt_cost_usd": "語音轉文字成本", 
+    "active_users": "活躍用戶數",
+    "error_rate": "錯誤率",
+    "conversion_rate": "轉換率"
+}  
+```
+
+## 💰 成本優化技術
+
+### Google Cloud 成本控制
+```python
+# STT 成本最佳化
+stt_config = {
+    "model": "latest_long",           # 長音檔專用模型
+    "use_enhanced": False,            # 暫不使用增強模型  
+    "enable_word_time_offsets": True, # 精確時間戳
+    "profanity_filter": False         # 節省成本
+}
+```
+
+### 資源管理
+- **音檔自動清理** - 1天生命週期
+- **資料庫索引優化** - 查詢效能提升
+- **Redis 記憶體管理** - LRU 策略
+
+## 🔄 技術演進路線
+
+### Phase 1 (當前 MVP)
+- ✅ Render + PostgreSQL + GCS 基礎架構
+- ✅ Google Speech-to-Text 整合
+- 🔄 基礎 CRUD 和認證系統
+
+### Phase 2 (Q2 2025)  
+- 📋 AI 評分系統 (PCC Markers)
+- 📋 進階用戶管理 (Team accounts)
+- 📋 支付整合 (Stripe/NewebPay)
+
+### Phase 3 (Q3 2025)
+- 📋 遷移到 Google Cloud Run
+- 📋 Kubernetes 容器編排
+- 📋 Multi-region 部署
+
+## 📋 依賴管理
+
+### 後端核心依賴
+```python
+# requirements.txt
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+sqlalchemy[asyncio]==2.0.23
+alembic==1.13.1
+asyncpg==0.29.0
+celery[redis]==5.3.4
+google-cloud-speech==2.21.0
+google-cloud-storage==2.10.0
+pydantic==2.5.0
+jose[cryptography]==1.0.0
+```
+
+### 前端核心依賴
 ```json
 {
   "next": "14.0.4",
-  "react": "^18.2.0",
+  "react": "^18.2.0", 
   "typescript": "^5.0.0",
   "tailwindcss": "^3.3.0",
-  "next-auth": "^4.24.0",
   "zustand": "^4.4.0",
   "react-hook-form": "^7.47.0",
-  "zod": "^3.22.0"
+  "swr": "^2.2.4"
 }
 ```
 
-### Backend Dependencies
-```python
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pandas==2.1.3
-openpyxl==3.1.2
-python-multipart==0.0.6
-opencc-python-reimplemented==1.1.7
-httpx==0.25.2
-pydantic==2.5.0
-pydantic-settings==2.1.0
-```
-
-## 🔄 技術升級計劃
-
-### 短期 (Q1 2025)
-- **Next.js 15** - 升級到最新版本
-- **React 19** - 新功能採用
-- **FastAPI 0.105** - 效能改善
-
-### 中期 (Q2-Q3 2025)
-- **PostgreSQL 16** - 資料庫升級
-- **Python 3.12** - 語言版本升級
-- **Cloudflare Workers v2** - 新版 API
-
-### 長期 (Q4 2025)
-- **Rust** - 高效能核心模組
-- **WebAssembly** - 瀏覽器端處理
-- **GraphQL** - API 查詢語言
-
 ---
 
-**文件用途：** 提供 Cline 完整的技術環境資訊  
-**更新頻率：** 每次套件升級或技術選型變更時更新  
-**相關文件：** systemPatterns.md, activeContext.md
+**文件用途：** 為 Cline 提供 Coach Assistant MVP 完整技術環境  
+**更新頻率：** 技術選型變更或版本升級時更新  
+**相關文件：** systemPatterns.md, activeContext.md, mvp-v1.md
