@@ -28,6 +28,12 @@ export function DashboardSidebar() {
       current: pathname === '/dashboard'
     },
     {
+      name: t('menu.profile'),
+      href: '/dashboard/profile',
+      icon: UserIcon,
+      current: pathname === '/dashboard/profile'
+    },
+    {
       name: t('menu.converter'),
       href: '/dashboard/transcript-converter',
       icon: DocumentTextIcon,
@@ -45,13 +51,6 @@ export function DashboardSidebar() {
       href: '/dashboard/insights',
       icon: LightBulbIcon,
       current: pathname === '/dashboard/insights',
-      comingSoon: true
-    },
-    {
-      name: t('menu.profile'),
-      href: '/dashboard/profile',
-      icon: UserIcon,
-      current: pathname === '/dashboard/profile',
       comingSoon: true
     },
     {
