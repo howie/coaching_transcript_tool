@@ -1,0 +1,48 @@
+#!/bin/bash
+set -e
+
+echo "Starting application with database migration check..."
+
+# Wait for database to be ready (optional, but recommended)
+echo "Waiting for database to be ready..."
+python -c "
+import time
+import os
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
+
+database_url = os.getenv('DATABASE_URL')
+if not database_url:
+    print('Warning: DATABASE_URL not set, skipping database checks')
+    exit(0)
+
+engine = create_engine(database_url)
+max_attempts = 30
+attempt = 0
+
+while attempt < max_attempts:
+    try:
+        with engine.connect() as conn:
+            conn.execute(text('SELECT 1'))
+        print('Database is ready!')
+        break
+    except OperationalError as e:
+        attempt += 1
+        print(f'Database not ready yet (attempt {attempt}/{max_attempts}): {e}')
+        time.sleep(2)
+else:
+    print('Failed to connect to database after maximum attempts')
+    exit(1)
+"
+
+# Run database migrations
+echo "Running database migrations..."
+cd /app/packages/core-logic
+alembic upgrade head
+
+echo "Migrations completed successfully!"
+
+# Start the application
+echo "Starting FastAPI application..."
+cd /app
+exec python main.py
