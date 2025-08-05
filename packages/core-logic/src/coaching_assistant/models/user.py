@@ -1,7 +1,8 @@
 """User model and related enums."""
 
 import enum
-from sqlalchemy import Column, String, Integer, Enum
+import json
+from sqlalchemy import Column, String, Integer, Enum, Text
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -14,17 +15,25 @@ class UserPlan(enum.Enum):
 
 
 class User(BaseModel):
-    """User model for Google OAuth authenticated users."""
+    """User model for authenticated users."""
     
-    # Google OAuth fields
+    # Authentication fields
     email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=True)  # Nullable for SSO users
+    
+    # Profile fields
     name = Column(String(255), nullable=False)
     avatar_url = Column(String(512))
-    google_id = Column(String(255), unique=True, nullable=False, index=True)
+    
+    # SSO fields
+    google_id = Column(String(255), unique=True, nullable=True, index=True)
     
     # Subscription and usage
     plan = Column(Enum(UserPlan), default=UserPlan.FREE, nullable=False)
     usage_minutes = Column(Integer, default=0, nullable=False)
+    
+    # User preferences (stored as JSON)
+    preferences = Column(Text, nullable=True)
     
     # Relationships
     sessions = relationship(
@@ -60,3 +69,36 @@ class User(BaseModel):
     def reset_monthly_usage(self):
         """Reset usage counter (called monthly)."""
         self.usage_minutes = 0
+    
+    def get_preferences(self):
+        """Get user preferences as dict."""
+        if not self.preferences:
+            return {
+                'language': 'system',
+                'theme': 'system'
+            }
+        try:
+            return json.loads(self.preferences)
+        except (json.JSONDecodeError, TypeError):
+            return {
+                'language': 'system',
+                'theme': 'system'
+            }
+    
+    def set_preferences(self, preferences_dict):
+        """Set user preferences from dict."""
+        current_prefs = self.get_preferences()
+        current_prefs.update(preferences_dict)
+        self.preferences = json.dumps(current_prefs)
+    
+    @property
+    def auth_provider(self):
+        """Determine authentication provider."""
+        if self.google_id:
+            return 'google'
+        return 'email'
+    
+    @property
+    def google_connected(self):
+        """Check if Google account is connected."""
+        return bool(self.google_id)

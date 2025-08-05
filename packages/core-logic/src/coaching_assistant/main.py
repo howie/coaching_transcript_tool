@@ -45,6 +45,11 @@ app.include_router(format_routes.router, prefix="/api/v1", tags=["format"])
 app.include_router(user.router, prefix="/api/v1/user", tags=["user"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 
+# 僅在開發環境中載入偵錯路由
+if settings.ENVIRONMENT == "development":
+    from .api import debug
+    app.include_router(debug.router, prefix="/api/debug", tags=["debug"])
+
 @app.get("/")
 async def root():
     """

@@ -2,16 +2,33 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useI18n } from '@/contexts/i18n-context'
+import { apiClient } from '@/lib/api'
 
 export default function LoginPage() {
   const { t } = useI18n()
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
 
   const handleGoogleLogin = () => {
     // Redirect to backend Google login endpoint
     window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/auth/google/login`
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const data = await apiClient.login(email, password)
+      if (data.access_token) {
+        localStorage.setItem('token', data.access_token)
+        router.push('/dashboard')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred')
+    }
   }
 
   return (
@@ -41,7 +58,7 @@ export default function LoginPage() {
           <span className="h-px bg-gray-300 w-full"></span>
         </div>
 
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Email
@@ -52,6 +69,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               placeholder="you@example.com"
+              required
             />
           </div>
           <div>
@@ -64,8 +82,10 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               placeholder="••••••••"
+              required
             />
           </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
             className="w-full px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"

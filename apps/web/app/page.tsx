@@ -4,15 +4,20 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { I18nProvider, useI18n } from '@/contexts/i18n-context'
+import { useAuth } from '@/contexts/auth-context'
 
 function HomePageContent() {
   const { language, setLanguage, t } = useI18n()
+  const { isAuthenticated, isLoading } = useAuth()
   const [showLanguageMenu, setShowLanguageMenu] = useState(false)
 
   const handleLanguageChange = (newLanguage: 'zh' | 'en') => {
     setLanguage(newLanguage)
     setShowLanguageMenu(false)
   }
+
+  // Determine the correct link for "Get Started" button
+  const getStartedLink = isAuthenticated ? '/dashboard' : '/login'
   return (
     <>
       {/* Navigation Header */}
@@ -39,9 +44,15 @@ function HomePageContent() {
               </div>
             </div>
             <div className="flex items-center gap-5">
-              <Link href={'/login' as any} className="bg-accent-orange hover:bg-accent-orange-hover text-white px-4 py-2 rounded-md text-sm font-medium transition-all hover:-translate-y-0.5">
-                {t('nav.login')}
-              </Link>
+              {isAuthenticated ? (
+                <Link href="/dashboard" className="bg-accent-orange hover:bg-accent-orange-hover text-white px-4 py-2 rounded-md text-sm font-medium transition-all hover:-translate-y-0.5">
+                  {t('nav.dashboard')}
+                </Link>
+              ) : (
+                <Link href="/login" className="bg-accent-orange hover:bg-accent-orange-hover text-white px-4 py-2 rounded-md text-sm font-medium transition-all hover:-translate-y-0.5">
+                  {t('nav.login')}
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -97,7 +108,7 @@ function HomePageContent() {
                 <p className="text-xl mb-10 text-white/80 leading-relaxed">{t('landing.subtitle')}</p>
                 <div className="flex gap-5 flex-wrap">
                   <Link 
-                    href="/dashboard" 
+                    href={getStartedLink} 
                     className="bg-white text-nav-dark border-2 border-white px-8 py-4 text-base font-semibold rounded-lg hover:-translate-y-1 transition-all inline-block"
                   >
                     {t('landing.get_started')}
@@ -195,7 +206,7 @@ function HomePageContent() {
                 <p className="text-5xl font-bold mb-5">$0</p>
                 
                 <Link 
-                  href="/dashboard" 
+                  href={getStartedLink} 
                   className="bg-nav-dark text-white border-2 border-nav-dark px-8 py-4 rounded-lg text-center font-semibold hover:-translate-y-1 transition-all mb-5 inline-block"
                 >
                   {t('landing.get_started')}

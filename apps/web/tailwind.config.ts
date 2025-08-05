@@ -17,18 +17,30 @@ const config: Config = {
         'section-light': '#f8f9fa',
         'hero-bg': '#71c9f1',
         
-        // Dashboard 主題 - 深藍色+黃色系
-        'dashboard-bg': '#1C2E4A',
-        'dashboard-header': '#71c9f1', // Header 使用淺藍色
-        'dashboard-sidebar': '#71c9f1', // Sidebar 使用淺藍色
-        'dashboard-card-bg': 'rgba(255, 255, 255, 0.05)',
-        'dashboard-accent': '#F5C451', // 黃色強調色（按鈕等）
+        // Dashboard 主題 - 按照 design-system.md 定義
+        // Dark Mode (Primary)
+        'dashboard-bg': '#1C2E4A', // 主背景 - 深藍色系
+        'dashboard-header': '#1C2E4A', // Header - 深藍色 (修正)
+        'dashboard-sidebar': '#1C2E4A', // Sidebar - 深藍色 (修正)
+        'dashboard-card': 'rgba(255, 255, 255, 0.05)', // 卡片背景
+        'dashboard-accent': '#F5C451', // 黃色強調色
         'dashboard-accent-hover': '#f3c043',
-        'dashboard-stats-blue': '#71c9f1', // 統計數字使用淺藍色
-        'dashboard-text': '#ffffff',
-        'dashboard-text-secondary': '#b0bdc8',
-        'dashboard-text-tertiary': '#94a3b8',
-        'dashboard-input-bg': 'rgba(255, 255, 255, 0.05)',
+        'dashboard-accent-bg': 'rgba(245, 196, 81, 0.1)', // 黃色背景
+        'dashboard-accent-border': 'rgba(245, 196, 81, 0.3)', // 黃色邊框
+        'dashboard-stats': '#71c9f1', // 統計數字 - 淺藍色
+        'dashboard-text': '#ffffff', // 主要文字
+        'dashboard-text-secondary': '#b0bdc8', // 次要文字
+        'dashboard-text-tertiary': '#94a3b8', // 第三級文字
+        'dashboard-input': 'rgba(255, 255, 255, 0.05)', // 輸入框背景
+        
+        // Light Mode - 遵循設計文件
+        'dashboard-bg-light': '#f8f9fa', // 淺色背景
+        'dashboard-header-light': '#71c9f1', // Header 淺藍色
+        'dashboard-sidebar-light': '#71c9f1', // Sidebar 淺藍色  
+        'dashboard-card-light': '#ffffff', // 白色卡片
+        'dashboard-text-light': '#000000', // 主要文字 - 黑色
+        'dashboard-text-secondary-light': '#6c757d', // 次要文字 - 灰色
+        'dashboard-stats-light': '#71c9f1', // 統計數字 - 淺藍色
         
         // 通用色彩
         black: '#000000',

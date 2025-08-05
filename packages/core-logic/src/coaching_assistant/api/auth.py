@@ -6,22 +6,58 @@ Google OAuth authentication routes.
 from datetime import datetime, timedelta
 from typing import Optional
 import httpx
+from uuid import UUID
 from jose import JWTError, jwt
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from pydantic import BaseModel, EmailStr
+from passlib.context import CryptContext
 from sqlalchemy import select
 
 from ..core.config import settings
 from ..core.database import get_db
-from ..models.user import User
+from ..models.user import User, UserPlan
 
-router = APIRouter(prefix="/auth", tags=["authentication"])
+router = APIRouter(tags=["authentication"])
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+
+class UserResponse(BaseModel):
+    id: UUID
+    email: EmailStr
+    name: str
+    plan: UserPlan
+    auth_provider: Optional[str] = None
+    google_connected: Optional[bool] = None
+    preferences: Optional[dict] = None
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 # Google OAuth 2.0 endpoints
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
 def create_access_token(user_id: str) -> str:
     """建立 Access Token"""
@@ -42,6 +78,30 @@ def create_refresh_token(user_id: str) -> str:
         "type": "refresh"
     }
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+@router.post("/signup", response_model=UserResponse)
+async def signup(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    hashed_password = get_password_hash(user.password)
+    db_user = User(email=user.email, hashed_password=hashed_password, name=user.name)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@router.post("/login", response_model=Token)
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token(str(user.id))
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/google/login")
 async def google_login(redirect_uri: Optional[str] = None):
@@ -109,30 +169,56 @@ async def google_callback(
         "grant_type": "authorization_code"
     }
     
-    async with httpx.AsyncClient() as client:
-        # 獲取 access token
-        token_response = await client.post(GOOGLE_TOKEN_URL, data=token_data)
-        
-        if token_response.status_code != 200:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to exchange authorization code: {token_response.text}"
-            )
-        
-        tokens = token_response.json()
-        google_access_token = tokens.get("access_token")
-        
-        # 2. 使用 access token 獲取用戶資訊
-        headers = {"Authorization": f"Bearer {google_access_token}"}
-        userinfo_response = await client.get(GOOGLE_USERINFO_URL, headers=headers)
-        
-        if userinfo_response.status_code != 200:
-            raise HTTPException(
-                status_code=400,
-                detail="Failed to get user information from Google"
-            )
-        
-        google_user = userinfo_response.json()
+    # 設定 httpx 客戶端超時和重試
+    timeout = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=10.0)
+    
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            # 獲取 access token
+            token_response = await client.post(GOOGLE_TOKEN_URL, data=token_data)
+            
+            if token_response.status_code != 200:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to exchange authorization code: {token_response.text}"
+                )
+            
+            tokens = token_response.json()
+            google_access_token = tokens.get("access_token")
+            
+            if not google_access_token:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No access token received from Google"
+                )
+            
+            # 2. 使用 access token 獲取用戶資訊
+            headers = {"Authorization": f"Bearer {google_access_token}"}
+            userinfo_response = await client.get(GOOGLE_USERINFO_URL, headers=headers)
+            
+            if userinfo_response.status_code != 200:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Failed to get user information from Google"
+                )
+            
+            google_user = userinfo_response.json()
+            
+    except httpx.ConnectTimeout:
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to connect to Google services. Please try again later."
+        )
+    except httpx.ReadTimeout:
+        raise HTTPException(
+            status_code=503,
+            detail="Google services took too long to respond. Please try again later."
+        )
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Network error while connecting to Google: {str(e)}"
+        )
     
     # 3. 查找或建立用戶
     email = google_user.get("email")
@@ -157,8 +243,7 @@ async def google_callback(
             name=google_user.get("name", email.split("@")[0]),
             google_id=google_user.get("id"),
             avatar_url=google_user.get("picture"),
-            email_verified=google_user.get("verified_email", False),
-            plan="FREE"  # 新用戶預設為免費方案
+            plan=UserPlan.FREE  # 新用戶預設為免費方案
         )
         db.add(user)
         db.commit()
@@ -177,7 +262,7 @@ async def google_callback(
 
 @router.post("/refresh")
 async def refresh_token(
-    refresh_token: str,
+    request: RefreshTokenRequest,
     db: Session = Depends(get_db)
 ):
     """
@@ -186,7 +271,7 @@ async def refresh_token(
     try:
         # 驗證 refresh token
         payload = jwt.decode(
-            refresh_token,
+            request.refresh_token,
             settings.SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM]
         )
@@ -199,7 +284,7 @@ async def refresh_token(
             raise HTTPException(status_code=401, detail="Invalid token")
         
         # 確認用戶存在
-        stmt = select(User).where(User.id == user_id)
+        stmt = select(User).where(User.id == UUID(user_id))
         user = db.execute(stmt).scalar_one_or_none()
         
         if not user:
@@ -255,7 +340,7 @@ async def get_current_user_dependency(
             raise HTTPException(status_code=401, detail="Invalid token")
         
         # 獲取用戶
-        stmt = select(User).where(User.id == user_id)
+        stmt = select(User).where(User.id == UUID(user_id))
         user = db.execute(stmt).scalar_one_or_none()
         
         if not user:
@@ -266,19 +351,17 @@ async def get_current_user_dependency(
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-@router.get("/me")
-async def get_current_user(
-    current_user: User = Depends(get_current_user_dependency)
-):
+@router.get("/me", response_model=UserResponse)
+async def get_current_user(current_user: User = Depends(get_current_user_dependency)):
     """
     獲取當前登入用戶資訊
     """
-    return {
-        "id": str(current_user.id),
-        "email": current_user.email,
-        "name": current_user.name,
-        "avatar_url": current_user.avatar_url,
-        "plan": current_user.plan,
-        "monthly_minutes_used": current_user.monthly_minutes_used,
-        "created_at": current_user.created_at
-    }
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        name=current_user.name,
+        plan=current_user.plan,
+        auth_provider=current_user.auth_provider,
+        google_connected=current_user.google_connected,
+        preferences=current_user.get_preferences()
+    )

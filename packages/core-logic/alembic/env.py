@@ -9,7 +9,7 @@ from sqlalchemy import pool
 from alembic import context
 
 # Add the parent directory to Python path so we can import our models
-sys.path.insert(0, str(Path(__file__).parents[2]))
+sys.path.insert(0, str(Path(__file__).parents[1]))
 
 # Import our models
 from src.coaching_assistant.models.base import Base

@@ -9,6 +9,7 @@ import { Bars3Icon } from '@heroicons/react/24/solid'
 import { useTheme } from '@/contexts/theme-context'
 import { useI18n } from '@/contexts/i18n-context'
 import { useSidebar } from '@/contexts/sidebar-context'
+import { useAuth } from '@/contexts/auth-context'
 
 export function DashboardHeader() {
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -18,6 +19,7 @@ export function DashboardHeader() {
   const { theme, setTheme } = useTheme()
   const { language, setLanguage, t } = useI18n()
   const { toggleSidebar, toggleCollapse } = useSidebar()
+  const { user, logout } = useAuth()
   const router = useRouter()
 
   const handleLogout = async () => {
@@ -26,6 +28,9 @@ export function DashboardHeader() {
       localStorage.removeItem('theme')
       localStorage.removeItem('language')
       localStorage.removeItem('sidebarCollapsed')
+      
+      // 調用 auth context 的 logout
+      logout()
       
       // 重定向到首頁
       router.push('/')
@@ -127,15 +132,15 @@ export function DashboardHeader() {
               className="flex items-center space-x-2 p-2 text-white hover:text-dashboard-accent transition-colors rounded-md hover:bg-dashboard-accent hover:bg-opacity-10"
             >
               <div className="w-6 h-6 bg-dashboard-accent rounded-full flex items-center justify-center text-white text-sm font-medium">
-                U
+                {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
-              <span className="text-sm font-medium">用戶</span>
+              <span className="text-sm font-medium">{user?.name || '用戶'}</span>
               <ChevronDownIcon className="h-4 w-4" />
             </button>
 
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
-                <Link href={'/dashboard/profile' as any} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
+                <Link href={'/dashboard/account-settings' as any} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
                   <span className="text-dashboard-accent">⚙️</span>
                   <span>帳戶設定</span>
                 </Link>

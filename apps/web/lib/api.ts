@@ -30,9 +30,16 @@ class ApiClient {
   }
 
   private async getHeaders() {
-    return {
+    const token = localStorage.getItem('token')
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    return headers
   }
 
   async healthCheck() {
@@ -120,6 +127,174 @@ class ApiClient {
       return await response.json()
     } catch (error) {
       console.error('Get profile error:', error)
+      throw error
+    }
+  }
+
+  async signup(name: string, email: string, password: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/auth/signup`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify({ name, email, password }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Signup failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Signup error:', error)
+      throw error
+    }
+  }
+
+  async login(email: string, password: string) {
+    try {
+      const formData = new URLSearchParams()
+      formData.append('username', email)
+      formData.append('password', password)
+
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Login failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Login error:', error)
+      throw error
+    }
+  }
+
+  async updateProfile(data: { name: string }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/profile`, {
+        method: 'PUT',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update profile failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Update profile error:', error)
+      throw error
+    }
+  }
+
+  async updateUserPreferences(preferences: { language?: 'zh' | 'en' | 'system', theme?: 'light' | 'dark' | 'system' }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/preferences`, {
+        method: 'PUT',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(preferences),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update preferences failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Update preferences error:', error)
+      throw error
+    }
+  }
+  
+  async updateUserProfile(profile: { name?: string }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/profile`, {
+        method: 'PUT',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(profile),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update profile failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Update profile error:', error)
+      throw error
+    }
+  }
+
+  async setPassword(newPassword: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/set-password`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify({ new_password: newPassword }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Set password failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Set password error:', error)
+      throw error
+    }
+  }
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/change-password`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify({ 
+          current_password: currentPassword,
+          new_password: newPassword 
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Change password failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Change password error:', error)
+      throw error
+    }
+  }
+
+  async deleteAccount() {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/account`, {
+        method: 'DELETE',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Delete account failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Delete account error:', error)
       throw error
     }
   }
