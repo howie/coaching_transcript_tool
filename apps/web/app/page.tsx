@@ -39,9 +39,8 @@ function HomePageContent() {
               </div>
             </div>
             <div className="flex items-center gap-5">
-              <Link href="/dashboard" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.login')}</Link>
-              <Link href="/dashboard" className="bg-accent-orange hover:bg-accent-orange-hover text-white px-4 py-2 rounded-md text-sm font-medium transition-all hover:-translate-y-0.5">
-                {t('nav.signup')}
+              <Link href={'/login' as any} className="bg-accent-orange hover:bg-accent-orange-hover text-white px-4 py-2 rounded-md text-sm font-medium transition-all hover:-translate-y-0.5">
+                {t('nav.login')}
               </Link>
             </div>
           </div>

@@ -135,10 +135,14 @@ export function DashboardHeader() {
 
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
-                <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
+                <Link href={'/dashboard/profile' as any} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
                   <span className="text-dashboard-accent">⚙️</span>
                   <span>帳戶設定</span>
-                </a>
+                </Link>
+                <Link href={'/dashboard/billing' as any} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
+                  <span className="text-dashboard-accent">💳</span>
+                  <span>Billing</span>
+                </Link>
                 
                 <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                 

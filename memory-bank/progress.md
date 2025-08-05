@@ -66,12 +66,24 @@
 - ✅ 開發環境配置
 
 ### Phase 2: Google Cloud 整合 (進行中)
-- 🔄 Google OAuth 認證系統
-- 🔄 Google Cloud Storage 整合
+- ✅ **Google OAuth 認證系統啟用**
+  - ✅ 現有 OAuth 程式碼已整合至 FastAPI
+  - ✅ JWT Token 生成與刷新邏輯已啟用
+- ✅ **Google Cloud Storage 整合準備完成**
+  - ✅ `gcs_uploader.py` 公用模組已建立
+  - ✅ 支援透過服務帳號 JSON 金鑰進行認證
 - 🔄 Google Speech-to-Text API 整合
 - 🔄 Render.com 部署配置
 
-### Phase 3: 核心功能實作 (待開始)
+### Phase 3: 核心功能實作 (進行中)
+- 🔄 **UI/UX 調整與認證流程**
+  - 🔄 簡化首頁，專注於登入連結
+  - 🔄 建立登入/註冊頁面
+  - 🔄 建立 Billing 頁面
+- 🔄 **自訂帳號密碼認證**
+  - 🔄 更新 User 模型支援密碼
+  - 🔄 建立資料庫遷移腳本
+  - 🔄 新增註冊/登入 API 端點
 - 📝 檔案上傳與處理
 - 📝 背景任務處理 (Celery + Redis)
 - 📝 WebSocket 進度推播
@@ -101,10 +113,14 @@
    - 建立 Cloud Storage bucket
 
 3. **Google OAuth 認證實作** (本週)
-   - 在 Google Cloud Console 設定 OAuth 2.0 憑證
-   - 取得 Client ID 和 Client Secret
-   - 實作 OAuth 登入流程
-   - JWT token 生成與驗證
+   - ✅ **後端邏輯已完成**
+     - ✅ 在 Google Cloud Console 設定 OAuth 2.0 憑證
+     - ✅ 取得 Client ID 和 Client Secret
+     - ✅ 實作 OAuth 登入流程
+     - ✅ JWT token 生成與驗證
+   - 🔄 **待辦事項**
+     - 需在前端應用中整合登入按鈕並處理回呼。
+     - 需在生產環境中安全地設定 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET`。
 
 ## 💰 成本結構規劃
 

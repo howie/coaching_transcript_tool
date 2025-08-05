@@ -38,12 +38,14 @@ clean-frontend:
 
 # Build the package
 build: clean
+	@echo "Installing core logic package..."
+	$(PYTHON) -m pip install -e packages/core-logic --break-system-packages
+	@echo "Installing api-server dependencies..."
 	$(PYTHON) -m pip install -r apps/api-server/requirements.txt --break-system-packages
 
 # Install the package locally
 install: build
-	$(PIP) install -r apps/api-server/requirements.txt --break-system-packages
-	$(PIP) install -e packages/core-logic --break-system-packages
+	@echo "Installation complete."
 
 # Start API server
 run-api: install

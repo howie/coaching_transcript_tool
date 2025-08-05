@@ -9,7 +9,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 import logging
 import os
 
-from .api import health, format_routes, user
+from .api import health, format_routes, user, auth
 from .middleware.logging import setup_logging
 from .middleware.error_handler import error_handler
 from .core.config import settings
@@ -43,6 +43,7 @@ app.add_exception_handler(Exception, error_handler)
 app.include_router(health.router, prefix="/api/health", tags=["health"])
 app.include_router(format_routes.router, prefix="/api/v1", tags=["format"])
 app.include_router(user.router, prefix="/api/v1/user", tags=["user"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 
 @app.get("/")
 async def root():

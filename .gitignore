@@ -187,5 +187,6 @@ apps/web/.open-next/
 apps/web/.wrangler/
 # Local development variables
 
-# Backup files from toolchain refactoring
-*.bk
+#tmp 
+terraform-preview-only/
+
