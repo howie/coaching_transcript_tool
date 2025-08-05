@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/contexts/i18n-context'
+import { useAuth } from '@/contexts/auth-context'
 import { apiClient } from '@/lib/api'
 
 export default function LoginPage() {
   const { t } = useI18n()
   const router = useRouter()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -23,7 +25,7 @@ export default function LoginPage() {
     try {
       const data = await apiClient.login(email, password)
       if (data.access_token) {
-        localStorage.setItem('token', data.access_token)
+        await login(data.access_token)
         router.push('/dashboard')
       }
     } catch (err) {

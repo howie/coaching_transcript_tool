@@ -195,7 +195,6 @@ export const translations = {
     'billing.usageHistory': '用量歷史',
     'billing.choosePlan': '選擇您的方案',
     'billing.save31': '省 31%',
-    'billing.currentPlan': '目前方案',
     'billing.popular': '最受歡迎',
     'billing.upgradeTo': '升級至',
     'billing.billedAnnually': '按年計費'

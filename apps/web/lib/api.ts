@@ -177,7 +177,7 @@ class ApiClient {
     }
   }
 
-  async updateProfile(data: { name: string }) {
+  async updateProfile(data: { name?: string }) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/user/profile`, {
         method: 'PUT',
@@ -197,7 +197,7 @@ class ApiClient {
     }
   }
 
-  async updateUserPreferences(preferences: { language?: 'zh' | 'en' | 'system', theme?: 'light' | 'dark' | 'system' }) {
+  async updateUserPreferences(preferences: { language?: 'zh' | 'en' | 'system' }) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/user/preferences`, {
         method: 'PUT',
@@ -217,25 +217,6 @@ class ApiClient {
     }
   }
   
-  async updateUserProfile(profile: { name?: string }) {
-    try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/profile`, {
-        method: 'PUT',
-        headers: await this.getHeaders(),
-        body: JSON.stringify(profile),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Update profile failed')
-      }
-
-      return await response.json()
-    } catch (error) {
-      console.error('Update profile error:', error)
-      throw error
-    }
-  }
 
   async setPassword(newPassword: string) {
     try {

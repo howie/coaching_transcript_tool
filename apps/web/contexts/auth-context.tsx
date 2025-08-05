@@ -13,7 +13,6 @@ interface User {
   google_connected?: boolean
   preferences?: {
     language?: 'zh' | 'en' | 'system'
-    theme?: 'light' | 'dark' | 'system'
   }
 }
 
@@ -25,7 +24,7 @@ interface AuthState {
   login: (token: string) => Promise<void>
   logout: () => void
   loadUser: () => Promise<void>
-  updateUserPreferences: (preferences: { language?: 'zh' | 'en' | 'system', theme?: 'light' | 'dark' | 'system' }) => Promise<void>
+  updateUserPreferences: (preferences: { language?: 'zh' | 'en' | 'system' }) => Promise<void>
   updateProfile: (profile: { name?: string }) => Promise<void>
   setPassword: (newPassword: string) => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
@@ -62,18 +61,11 @@ const authStore = createStore<AuthState>((set, get) => ({
         if (user.preferences) {
           localStorage.setItem('userPreferences', JSON.stringify(user.preferences))
           
-          // Apply language preference
+          // Apply language preference only (theme stays local)
           if (user.preferences.language) {
             localStorage.setItem('language', user.preferences.language)
             // Trigger language change event
             window.dispatchEvent(new CustomEvent('languageChange', { detail: user.preferences.language }))
-          }
-          
-          // Apply theme preference  
-          if (user.preferences.theme) {
-            localStorage.setItem('theme', user.preferences.theme)
-            // Trigger theme change event
-            window.dispatchEvent(new CustomEvent('themeChange', { detail: user.preferences.theme }))
           }
         }
         
@@ -103,14 +95,10 @@ const authStore = createStore<AuthState>((set, get) => ({
       // Update localStorage
       localStorage.setItem('userPreferences', JSON.stringify(updatedUser.preferences))
       
-      // Apply preferences immediately
+      // Apply language preference immediately (theme stays local)
       if (preferences.language) {
         localStorage.setItem('language', preferences.language)
         window.dispatchEvent(new CustomEvent('languageChange', { detail: preferences.language }))
-      }
-      if (preferences.theme) {
-        localStorage.setItem('theme', preferences.theme)
-        window.dispatchEvent(new CustomEvent('themeChange', { detail: preferences.theme }))
       }
       
     } catch (error) {
@@ -123,7 +111,7 @@ const authStore = createStore<AuthState>((set, get) => ({
     if (!currentUser) return
     
     try {
-      const updatedUser = await apiClient.updateUserProfile(profile)
+      const updatedUser = await apiClient.updateProfile(profile)
       set({ user: updatedUser })
     } catch (error) {
       console.error('Failed to update profile', error)
@@ -165,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       authStore.getState().login(token)
     } else {
-      authStore.getState().loadUser()
+      authStore.setState({ isLoading: false })
     }
   }, [])
 

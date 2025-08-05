@@ -74,15 +74,13 @@ class User(BaseModel):
         """Get user preferences as dict."""
         if not self.preferences:
             return {
-                'language': 'system',
-                'theme': 'system'
+                'language': 'system'
             }
         try:
             return json.loads(self.preferences)
         except (json.JSONDecodeError, TypeError):
             return {
-                'language': 'system',
-                'theme': 'system'
+                'language': 'system'
             }
     
     def set_preferences(self, preferences_dict):

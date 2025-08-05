@@ -29,7 +29,7 @@ interface UserProfile {
 export default function AccountSettingsPage() {
   const { t, language, setLanguage } = useI18n()
   const { theme, setTheme } = useTheme()
-  const { user, loadUser, updateUserPreferences } = useAuth()
+  const { user, loadUser, updateUserPreferences, updateProfile } = useAuth()
   const themeClasses = useThemeClasses()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -55,16 +55,21 @@ export default function AccountSettingsPage() {
   // Load user profile on mount
   useEffect(() => {
     loadUserProfile()
-  }, [])
+  }, [user])
 
   const loadUserProfile = async () => {
     try {
-      const data = await apiClient.getUserProfile()
-      setProfile(data)
-      setPersonalInfo({
-        name: data.name || '',
-        email: data.email || ''
-      })
+      if (user) {
+        // Use user from auth context first
+        setProfile(user)
+        setPersonalInfo({
+          name: user.name || '',
+          email: user.email || ''
+        })
+      } else {
+        // Fallback to API call if user not loaded in context
+        await loadUser()
+      }
     } catch (error) {
       console.error('Failed to load profile:', error)
     }
@@ -77,8 +82,7 @@ export default function AccountSettingsPage() {
     setUpdateSuccess('')
     
     try {
-      await apiClient.updateProfile({ name: personalInfo.name })
-      await loadUser() // Reload user data in auth context
+      await updateProfile({ name: personalInfo.name })
       setUpdateSuccess(t('account.updateSuccess'))
       setTimeout(() => setUpdateSuccess(''), 3000)
     } catch (error) {
@@ -399,14 +403,7 @@ export default function AccountSettingsPage() {
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <button
-                    onClick={async () => {
-                      setTheme('dark')
-                      try {
-                        await updateUserPreferences({ theme: 'dark' })
-                      } catch (error) {
-                        console.error('Failed to save theme preference:', error)
-                      }
-                    }}
+                    onClick={() => setTheme('dark')}
                     className={`p-4 rounded-lg border ${
                       theme === 'dark' 
                         ? 'border-dashboard-accent bg-dashboard-accent bg-opacity-10' 
@@ -417,14 +414,7 @@ export default function AccountSettingsPage() {
                     <div className="font-medium">{t('account.darkTheme')}</div>
                   </button>
                   <button
-                    onClick={async () => {
-                      setTheme('light')
-                      try {
-                        await updateUserPreferences({ theme: 'light' })
-                      } catch (error) {
-                        console.error('Failed to save theme preference:', error)
-                      }
-                    }}
+                    onClick={() => setTheme('light')}
                     className={`p-4 rounded-lg border ${
                       theme === 'light' 
                         ? 'border-dashboard-accent bg-dashboard-accent bg-opacity-10' 

@@ -38,7 +38,6 @@ class UpdateProfileRequest(BaseModel):
 
 class UpdatePreferencesRequest(BaseModel):
     language: Optional[str] = None
-    theme: Optional[str] = None
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -107,11 +106,6 @@ async def update_user_preferences(
         if preferences_data.language not in ['zh', 'en', 'system']:
             raise HTTPException(status_code=400, detail="Invalid language preference")
         prefs_update['language'] = preferences_data.language
-    
-    if preferences_data.theme is not None:
-        if preferences_data.theme not in ['light', 'dark', 'system']:
-            raise HTTPException(status_code=400, detail="Invalid theme preference")
-        prefs_update['theme'] = preferences_data.theme
     
     # Update preferences
     current_user.set_preferences(prefs_update)

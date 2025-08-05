@@ -68,7 +68,7 @@ export function DashboardHeader() {
           
           <Link href="/dashboard" className="flex items-center space-x-2">
             <Image 
-              src="/images/Coachly-logo-white.png" 
+              src="/images/Coachly-logo-transparent-300px.png" 
               alt="Coachly Logo" 
               width={24} 
               height={24}
