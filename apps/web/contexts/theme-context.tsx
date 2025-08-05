@@ -36,6 +36,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }, [])
 
   const applyTheme = (newTheme: Theme) => {
+    // 使用 data-theme 屬性統一主題選擇器
+    document.documentElement.setAttribute('data-theme', newTheme)
+    
+    // 保持向後相容性的類別（可以考慮在後續版本移除）
     if (newTheme === 'dark') {
       document.body.classList.add('dark-mode')
       document.documentElement.classList.add('dark')

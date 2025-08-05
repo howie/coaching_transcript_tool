@@ -143,12 +143,12 @@ export default function AccountSettingsPage() {
   const canChangePassword = profile?.auth_provider === 'email'
 
   return (
-    <div className="min-h-screen bg-dashboard-bg text-white">
+    <div className="min-h-screen" style={{backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)'}}>
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Page Title */}
         <div className="flex items-center space-x-3 mb-8">
           <UserCircleIcon className="h-8 w-8 text-dashboard-accent" />
-          <h1 className="text-3xl font-bold text-white">{t('account.title')}</h1>
+          <h1 className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>{t('account.title')}</h1>
         </div>
 
         {/* Success/Error Messages */}
@@ -169,34 +169,34 @@ export default function AccountSettingsPage() {
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
             <div className="flex items-center space-x-3 mb-6">
               <UserCircleIcon className="h-6 w-6 text-dashboard-accent" />
-              <h2 className="text-xl font-semibold">{t('account.personalInfo')}</h2>
+              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>{t('account.personalInfo')}</h2>
             </div>
             
             <form onSubmit={handlePersonalInfoSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="label">
                   {t('account.fullName')}
                 </label>
                 <input
                   type="text"
                   value={personalInfo.name}
                   onChange={(e) => setPersonalInfo(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
+                  className="input-base"
                   placeholder={t('account.fullNamePlaceholder')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="label">
                   {t('account.email')}
                 </label>
                 <input
                   type="email"
                   value={personalInfo.email}
                   disabled
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+                  className="input-base"
                 />
-                <p className="text-xs text-gray-400 mt-1">{t('account.emailHint')}</p>
+                <p className="helper mt-1">{t('account.emailHint')}</p>
               </div>
 
               <div className="pt-4">
@@ -215,11 +215,11 @@ export default function AccountSettingsPage() {
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
             <div className="flex items-center space-x-3 mb-6">
               <LinkIcon className="h-6 w-6 text-dashboard-accent" />
-              <h2 className="text-xl font-semibold">{t('account.connectedAccounts')}</h2>
+              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>{t('account.connectedAccounts')}</h2>
             </div>
             
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
+              <div className="flex items-center justify-between p-4 rounded-lg" style={{backgroundColor: 'var(--card-bg)'}}>
                 <div className="flex items-center space-x-4">
                   <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
                     <svg className="w-6 h-6" viewBox="0 0 48 48">
@@ -230,8 +230,8 @@ export default function AccountSettingsPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium">Google</p>
-                    <p className="text-sm text-gray-400">
+                    <p className="font-medium" style={{color: 'var(--text-primary)'}}>Google</p>
+                    <p className="text-sm" style={{color: 'var(--text-tertiary)'}}>
                       {profile?.auth_provider === 'google' 
                         ? t('account.primaryLogin')
                         : profile?.google_connected 
@@ -260,7 +260,7 @@ export default function AccountSettingsPage() {
             <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
               <div className="flex items-center space-x-3 mb-6">
                 <KeyIcon className="h-6 w-6 text-dashboard-accent" />
-                <h2 className="text-xl font-semibold">{t('account.passwordManagement')}</h2>
+                <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>{t('account.passwordManagement')}</h2>
               </div>
               
               {passwordSuccess && (
@@ -277,14 +277,14 @@ export default function AccountSettingsPage() {
               
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="label">
                     {t('account.currentPassword')}
                   </label>
                   <input
                     type="password"
                     value={passwordData.currentPassword}
                     onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
+                    className="input-base"
                     placeholder="••••••••"
                     required
                   />
@@ -292,28 +292,28 @@ export default function AccountSettingsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="label">
                       {t('account.newPassword')}
                     </label>
                     <input
                       type="password"
                       value={passwordData.newPassword}
                       onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
+                      className="input-base"
                       placeholder="••••••••"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="label">
                       {t('account.confirmPassword')}
                     </label>
                     <input
                       type="password"
                       value={passwordData.confirmPassword}
                       onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
+                      className="input-base"
                       placeholder="••••••••"
                       required
                     />
@@ -343,13 +343,13 @@ export default function AccountSettingsPage() {
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
             <div className="flex items-center space-x-3 mb-6">
               <PaintBrushIcon className="h-6 w-6 text-dashboard-accent" />
-              <h2 className="text-xl font-semibold">{t('account.preferences')}</h2>
+              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>{t('account.preferences')}</h2>
             </div>
             
             <div className="space-y-6">
               {/* Language Setting */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="label">
                   {t('account.preferredLanguage')}
                 </label>
                 <div className="grid grid-cols-2 gap-4">
@@ -394,7 +394,7 @@ export default function AccountSettingsPage() {
 
               {/* Theme Setting */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="label">
                   {t('account.preferredTheme')}
                 </label>
                 <div className="grid grid-cols-2 gap-4">

@@ -61,8 +61,8 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+    <div className="flex items-center justify-center min-h-screen" style={{backgroundColor: 'var(--section-light)'}}>
+      <div className="w-full max-w-md p-8 space-y-6 rounded-lg shadow-md" style={{backgroundColor: 'var(--white)', boxShadow: 'var(--shadow)'}}>
         {showSuccess ? (
           // Success message
           <div className="text-center space-y-4">
@@ -71,10 +71,10 @@ export default function SignupPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h2 className="text-2xl font-bold" style={{color: 'var(--text-primary)'}}>
               註冊成功！
             </h2>
-            <p className="text-gray-600 dark:text-gray-300">
+            <p style={{color: 'var(--text-secondary)'}}>
               歡迎加入 Coachly！正在為您跳轉到個人資料頁面...
             </p>
             <div className="flex justify-center">
@@ -83,13 +83,13 @@ export default function SignupPage() {
           </div>
         ) : (
           <>
-            <h1 className="text-2xl font-bold text-center text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-center" style={{color: 'var(--text-primary)'}}>
               建立您的帳號
             </h1>
         
         <button
           onClick={handleGoogleSignup}
-          className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+          className="w-full flex items-center justify-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors" style={{borderColor: 'var(--input-border)', backgroundColor: 'var(--input-bg)', color: 'var(--input-text)'}}
         >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 48 48">
             <path fill="#4285F4" d="M24 9.5c3.9 0 6.9 1.6 9.1 3.7l6.9-6.9C35.2 2.5 30.1 0 24 0 14.8 0 7.1 5.3 3 12.9l8.4 6.5C13.1 13.3 18.1 9.5 24 9.5z"></path>
@@ -109,69 +109,69 @@ export default function SignupPage() {
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="label">
               Name
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="input-base"
               placeholder="Your Name"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="label">
               Email
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="input-base"
               placeholder="you@example.com"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="label">
               密碼
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="input-base"
               placeholder="••••••••"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="label">
               確認密碼
             </label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="input-base"
               placeholder="••••••••"
               required
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="error-text">{error}</p>}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 rounded-md transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed" style={{backgroundColor: 'var(--accent-color)', color: 'var(--bg-primary)'}}
           >
             {isLoading ? '註冊中...' : '註冊'}
           </button>
         </form>
-        <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-center" style={{color: 'var(--text-secondary)'}}>
           已經有帳號了嗎？{' '}
-          <Link href={'/login' as any} className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link href={'/login' as any} className="font-medium hover:opacity-80" style={{color: 'var(--accent-color)'}}>
             登入
           </Link>
         </p>

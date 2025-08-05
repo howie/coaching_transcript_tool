@@ -2,31 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
-/* CSS 變數定義 */
-:root {
+/* Light 主題變數 - Landing Page */
+:root[data-theme="light"] {
+  /* 主色調 - 天藍色系 */
+  --primary-blue: #71c9f1;
+  --primary-blue-rgb: 113, 201, 241;
+  
+  /* 導航背景 */
+  --nav-background: #2c3e50;
+  
+  /* 強調色 - 更新為藍色系統一 */
+  --accent-primary: #71c9f1;
+  --accent-primary-hover: #60a5fa;
+  --accent-orange: #ff6b35;
+  --accent-orange-hover: #e55a2b;
+  
+  /* 背景色 */
+  --hero-background: #71c9f1;
+  --section-light: #f8f9fa;
+  --section-dark: #71c9f1;
+  --footer-background: #2c3e50;
+  
+  /* 舊版相容性變數 */
   --primary-color: #F5C451;
   --accent-color: #F5C451;
+  --bg-primary: #f8f9fa;
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --border-color: rgba(203, 213, 225, 0.5);
+  
+  /* 文字色 */
+  --text-primary: #000000;
+  --text-secondary: #6c757d;
+  --text-tertiary: #94a3b8;
+  --text-on-blue: #ffffff;
+  --text-on-blue-secondary: rgba(255, 255, 255, 0.8);
+  
+  /* 其他 */
+  --white: #ffffff;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-light: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-dark: 0 4px 20px rgba(0, 0, 0, 0.2);
+  --border-radius: 8px;
+  --transition: all 0.3s ease;
+  
+  /* 表單輸入（Light） */
+  --input-bg: #F8FAFC;
+  --input-text: #0F172A;
+  --input-placeholder: #94A3B8;
+  --input-border: #CBD5E1;
+  --input-border-focus: #94A3B8;
+  --focus-ring-rgb: 245, 196, 81;
+  --error-text: #B91C1C;
+  --error-border: #EF4444;
+  --success-text: #166534;
+  --disabled-bg: #E5E7EB;
+  --disabled-text: #9CA3AF;
+  --disabled-border: #E5E7EB;
+}
+
+/* Dark 主題變數 - Dashboard */
+:root[data-theme="dark"] {
+  /* 主背景 - 深藍色系 */
+  --primary-bg: #1C2E4A;
+  
+  /* Header 和 Sidebar - 淺藍色系 */
+  --header-sidebar-bg: #71c9f1;
+  
+  /* 強調色 - 黃色系 */
+  --accent-color: #F5C451;
+  --accent-hover: #f3c043;
+  --accent-rgba: rgba(245, 196, 81, 0.1);
+  --accent-border: rgba(245, 196, 81, 0.3);
+  
+  /* 統計數字 - 淺藍色系 */
+  --stats-color: #71c9f1;
+  
+  /* 文字色 */
   --text-primary: #ffffff;
   --text-secondary: #b0bdc8;
   --text-tertiary: #94a3b8;
-  --bg-primary: #1C2E4A;
+  --text-on-light-blue: #ffffff;
+  
+  /* 介面元素 */
+  --sidebar-width: 250px;
+  --header-height: 60px;
   --card-bg: rgba(255, 255, 255, 0.05);
+  --card-border: rgba(245, 196, 81, 0.1);
+  --bg-primary: #1C2E4A;
   --border-color: rgba(245, 196, 81, 0.2);
-  --shadow-light: 0 4px 20px rgba(0, 0, 0, 0.1);
-  --shadow-dark: 0 4px 20px rgba(0, 0, 0, 0.3);
-  --radius: 8px;
-  --transition: all 0.3s ease;
-}
-
-/* 深色模式變數 */
-.dark-mode {
-  --text-primary: #ffffff;
-  --text-secondary: #e2e8f0;
-  --text-tertiary: #cbd5e1;
-  --bg-primary: #0f172a;
-  --card-bg: rgba(255, 255, 255, 0.08);
-  --border-color: rgba(245, 196, 81, 0.3);
+  
+  /* 陰影與效果 */
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-light: 0 4px 20px rgba(0, 0, 0, 0.2);
   --shadow-dark: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --border-radius: 8px;
+  --transition: all 0.3s ease;
+  
+  /* 表單輸入（Dark） */
+  --input-bg: #1F2A3B;
+  --input-text: #F8FAFC;
+  --input-placeholder: #94A3B8;
+  --input-border: #334155;
+  --input-border-focus: #64748B;
+  --focus-ring-rgb: 245, 196, 81;
+  --error-text: #FCA5A5;
+  --error-border: #EF4444;
+  --success-text: #86EFAC;
+  --disabled-bg: #111827;
+  --disabled-text: #6B7280;
+  --disabled-border: #374151;
 }
 
 /* 移除預設樣式，讓 Tailwind 設計系統正確生效 */
@@ -168,6 +252,46 @@ body {
 .light-mode .border-gray-700 {
   border-color: #e9ecef !important;
 }
+
+/* 共用 Input 元件基礎樣式 */
+.input-base {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--input-border);
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease, color .15s ease;
+}
+
+.input-base::placeholder {
+  color: var(--input-placeholder);
+}
+
+.input-base:focus {
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 4px rgba(var(--focus-ring-rgb), .40);
+}
+
+.input-base:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+}
+
+/* 狀態 */
+.input-error {
+  border-color: var(--error-border) !important;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, .25);
+}
+
+.label { color: var(--text-secondary); font-weight: 600; font-size: 14px; }
+.helper { color: var(--text-tertiary, #94a3b8); font-size: 12px; }
+.error-text { color: var(--error-text); font-size: 12px; }
+.success-text { color: var(--success-text); font-size: 12px; }
 
 @layer utilities {
   .text-balance {

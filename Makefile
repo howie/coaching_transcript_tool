@@ -32,8 +32,7 @@ clean-frontend:
 	rm -rf apps/web/.vercel/
 	rm -rf apps/web/.open-next/
 	rm -rf apps/web/.wrangler/
-	rm -rf .next/
-	rm -rf out/
+	rm -rf apps/web/out/
 	rm -rf apps/web/tsconfig.tsbuildinfo
 
 # Build the package

@@ -75,7 +75,7 @@ export default function ChangePlanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-dashboard-bg py-12">
+    <div className="min-h-screen py-12" style={{backgroundColor: 'var(--bg-primary)'}}>
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
@@ -83,8 +83,8 @@ export default function ChangePlanPage() {
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
             返回 Billing
           </Link>
-          <h1 className="text-3xl font-bold text-white">選擇方案</h1>
-          <p className="text-gray-300 mt-2">選擇最適合您需求的方案</p>
+          <h1 className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>選擇方案</h1>
+          <p className="mt-2" style={{color: 'var(--text-secondary)'}}>選擇最適合您需求的方案</p>
         </div>
 
         {/* 開發中標籤 */}
@@ -100,14 +100,18 @@ export default function ChangePlanPage() {
 
         {/* Billing Cycle Toggle */}
         <div className="text-center mb-12">
-          <div className="inline-flex bg-gray-700 rounded-full p-1">
+          <div className="inline-flex rounded-full p-1" style={{backgroundColor: 'var(--card-bg)'}}>
             <button
               onClick={() => setBillingCycle('annual')}
               className={`px-6 py-2 text-sm font-medium rounded-full transition-colors ${
                 billingCycle === 'annual'
-                  ? 'bg-dashboard-accent text-white shadow'
-                  : 'text-gray-400'
+                  ? 'shadow'
+                  : ''
               }`}
+              style={{
+                backgroundColor: billingCycle === 'annual' ? 'var(--accent-color)' : 'transparent',
+                color: billingCycle === 'annual' ? 'var(--bg-primary)' : 'var(--text-tertiary)'
+              }}
             >
               年繳 <span className="ml-2 bg-green-600 bg-opacity-20 text-green-400 text-xs font-semibold px-2 py-1 rounded-full">省 31%</span>
             </button>
@@ -115,9 +119,13 @@ export default function ChangePlanPage() {
               onClick={() => setBillingCycle('monthly')}
               className={`px-6 py-2 text-sm font-medium rounded-full transition-colors ${
                 billingCycle === 'monthly'
-                  ? 'bg-dashboard-accent text-white shadow'
-                  : 'text-gray-400'
+                  ? 'shadow'
+                  : ''
               }`}
+              style={{
+                backgroundColor: billingCycle === 'monthly' ? 'var(--accent-color)' : 'transparent',
+                color: billingCycle === 'monthly' ? 'var(--bg-primary)' : 'var(--text-tertiary)'
+              }}
             >
               月繳
             </button>
@@ -145,7 +153,7 @@ export default function ChangePlanPage() {
               )}
               
               <div className="flex justify-between items-start mb-4">
-                <h2 className="text-2xl font-semibold text-white">{plan.name}</h2>
+                <h2 className="text-2xl font-semibold" style={{color: 'var(--text-primary)'}}>{plan.name}</h2>
                 {plan.isCurrent && (
                   <span className="px-3 py-1 bg-green-600 bg-opacity-20 text-green-400 rounded-full text-sm font-medium">
                     目前方案
@@ -153,21 +161,21 @@ export default function ChangePlanPage() {
                 )}
               </div>
               
-              <p className="text-4xl font-bold text-white">
+              <p className="text-4xl font-bold" style={{color: 'var(--text-primary)'}}>
                 ${billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
-                <span className="text-lg font-medium text-gray-400">/月</span>
+                <span className="text-lg font-medium" style={{color: 'var(--text-tertiary)'}}>/月</span>
               </p>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm mb-4" style={{color: 'var(--text-tertiary)'}}>
                 {billingCycle === 'annual' && plan.price.annual > 0 ? '按年計費' : ''}
               </p>
-              <p className="text-gray-300 mb-6">{plan.description}</p>
+              <p className="mb-6" style={{color: 'var(--text-secondary)'}}>{plan.description}</p>
               
               <div className="flex-grow">
                 <ul className="space-y-3">
                   {plan.features.map((feature, index) => (
                     <li key={index} className="flex items-start">
                       <CheckIcon className="w-5 h-5 text-dashboard-accent mr-3 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-300 text-sm">{feature}</span>
+                      <span className="text-sm" style={{color: 'var(--text-secondary)'}}>{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -175,23 +183,23 @@ export default function ChangePlanPage() {
 
               <div className="mt-8">
                 {plan.isCurrent ? (
-                  <div className="text-center text-gray-400 font-medium">
+                  <div className="text-center font-medium" style={{color: 'var(--text-tertiary)'}}>
                     目前使用中
                   </div>
                 ) : plan.name === 'Pro' ? (
                   <div className="text-center">
-                    <div className="text-dashboard-accent font-medium mb-2">Upgrade to Pro</div>
-                    <div className="text-sm text-gray-400">(Coming Soon)</div>
+                    <div className="font-medium mb-2" style={{color: 'var(--accent-color)'}}>Upgrade to Pro</div>
+                    <div className="text-sm" style={{color: 'var(--text-tertiary)'}}>(Coming Soon)</div>
                   </div>
                 ) : plan.name === 'Business' ? (
                   <div className="text-center">
-                    <div className="text-dashboard-accent font-medium mb-2">Upgrade to Business</div>
-                    <div className="text-sm text-gray-400">(Coming Soon)</div>
+                    <div className="font-medium mb-2" style={{color: 'var(--accent-color)'}}>Upgrade to Business</div>
+                    <div className="text-sm" style={{color: 'var(--text-tertiary)'}}>(Coming Soon)</div>
                   </div>
                 ) : (
-                  <div className={`text-center font-medium ${
-                    selectedPlan === plan.name ? 'text-dashboard-accent' : 'text-gray-400'
-                  }`}>
+                  <div className="text-center font-medium" style={{
+                    color: selectedPlan === plan.name ? 'var(--accent-color)' : 'var(--text-tertiary)'
+                  }}>
                     {selectedPlan === plan.name ? '✓ 已選擇' : '點擊選擇'}
                   </div>
                 )}
@@ -203,38 +211,38 @@ export default function ChangePlanPage() {
         {/* Confirmation Section */}
         {selectedPlan && (
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
-            <h3 className="text-xl font-semibold text-white mb-4">確認方案變更</h3>
+            <h3 className="text-xl font-semibold mb-4" style={{color: 'var(--text-primary)'}}>確認方案變更</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <p className="text-sm text-gray-400 mb-1">新方案</p>
-                <p className="text-lg font-medium text-white">{selectedPlan}</p>
+                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>新方案</p>
+                <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>{selectedPlan}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-400 mb-1">計費週期</p>
-                <p className="text-lg font-medium text-white">{billingCycle === 'annual' ? '年繳' : '月繳'}</p>
+                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>計費週期</p>
+                <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>{billingCycle === 'annual' ? '年繳' : '月繳'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-400 mb-1">每月費用</p>
-                <p className="text-lg font-medium text-white">
+                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>每月費用</p>
+                <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>
                   ${plans.find(p => p.name === selectedPlan)?.[billingCycle === 'annual' ? 'price' : 'price'][billingCycle === 'annual' ? 'annual' : 'monthly']}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-400 mb-1">生效日期</p>
-                <p className="text-lg font-medium text-white">立即生效</p>
+                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>生效日期</p>
+                <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>立即生效</p>
               </div>
             </div>
             
             <div className="flex space-x-4">
               <button
                 onClick={() => setSelectedPlan(null)}
-                className="flex-1 px-6 py-3 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                className="flex-1 px-6 py-3 border rounded-lg transition-colors" style={{borderColor: 'var(--input-border)', color: 'var(--text-secondary)'}}
               >
                 取消
               </button>
               <button
                 onClick={handleConfirmChange}
-                className="flex-1 px-6 py-3 bg-dashboard-accent text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" style={{backgroundColor: 'var(--accent-color)', color: 'var(--bg-primary)'}}
                 disabled
               >
                 確認變更（功能開發中）

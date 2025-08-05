@@ -12,7 +12,7 @@ Coachly 採用**情境式雙主題設計系統**，根據不同使用場景提�
 ### 色彩系統
 
 ```css
-:root {
+:root[data-theme="light"] {
   /* 主色調 - 天藍色系 */
   --primary-blue: #71c9f1;
   --primary-blue-rgb: 113, 201, 241;
@@ -43,6 +43,20 @@ Coachly 採用**情境式雙主題設計系統**，根據不同使用場景提�
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   --border-radius: 8px;
   --transition: all 0.3s ease;
+  
+  /* 表單輸入（Light） */
+  --input-bg: #F8FAFC;
+  --input-text: #0F172A;
+  --input-placeholder: #94A3B8;
+  --input-border: #CBD5E1;
+  --input-border-focus: #94A3B8;
+  --focus-ring-rgb: 245, 196, 81; /* #F5C451 (RGB for alpha) */
+  --error-text: #B91C1C;
+  --error-border: #EF4444;
+  --success-text: #166534;
+  --disabled-bg: #E5E7EB;
+  --disabled-text: #9CA3AF;
+  --disabled-border: #E5E7EB;
 }
 ```
 
@@ -73,7 +87,7 @@ Coachly 採用**情境式雙主題設計系統**，根據不同使用場景提�
 ### 色彩系統
 
 ```css
-:root {
+:root[data-theme="dark"] {
   /* 主背景 - 深藍色系 */
   --primary-bg: #1C2E4A;
   
@@ -100,12 +114,25 @@ Coachly 採用**情境式雙主題設計系統**，根據不同使用場景提�
   --header-height: 60px;
   --card-bg: rgba(255, 255, 255, 0.05);
   --card-border: rgba(245, 196, 81, 0.1);
-  --input-bg: rgba(255, 255, 255, 0.05);
+  --input-bg: #1F2A3B; /* 深灰藍 */
   
   /* 陰影與效果 */
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   --border-radius: 8px;
   --transition: all 0.3s ease;
+  
+  /* 表單輸入（Dark） */
+  --input-text: #F8FAFC;
+  --input-placeholder: #94A3B8;
+  --input-border: #334155;
+  --input-border-focus: #64748B;
+  --focus-ring-rgb: 245, 196, 81; /* 與 Light 共用 */
+  --error-text: #FCA5A5;
+  --error-border: #EF4444;
+  --success-text: #86EFAC;
+  --disabled-bg: #111827;
+  --disabled-text: #6B7280;
+  --disabled-border: #374151;
 }
 ```
 
@@ -195,6 +222,57 @@ Coachly 採用**情境式雙主題設計系統**，根據不同使用場景提�
 - **按鈮內邊距**: 12px 20px (標準), 15px 30px (大型)
 - **元素間距**: 15px, 20px, 30px, 40px, 60px
 
+### 表單輸入（Light/Dark 共用元件）
+
+> 使用語意化 Token（見上方 Light / Dark `--input-*` 與 `--focus-ring-rgb`）。請勿在 input 上硬編碼 `text-white` 或色碼。
+
+```css
+.input-base {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--input-border);
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease, color .15s ease;
+}
+
+.input-base::placeholder {
+  color: var(--input-placeholder);
+}
+
+.input-base:focus {
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 4px rgba(var(--focus-ring-rgb), .40);
+}
+
+.input-base:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+}
+
+/* 狀態 */
+.input-error {
+  border-color: var(--error-border) !important;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, .25);
+}
+
+.label { color: var(--text-secondary); font-weight: 600; font-size: 14px; }
+.helper { color: var(--text-tertiary, #94a3b8); font-size: 12px; }
+.error-text { color: var(--error-text); font-size: 12px; }
+.success-text { color: var(--success-text); font-size: 12px; }
+```
+
+#### 可用性與驗收
+- **對比度（AA）**: 一般文字 ≥ 4.5:1、placeholder ≥ 4.5:1
+- **Focus**: 需有明顯外框（黃環）
+- **鍵盤操作**: Tab/Shift+Tab 焦點可見
+- **Disabled/Error**: 狀態明顯且可讀
+
 ## 📱 響應式設計
 
 ### 斷點
@@ -234,11 +312,13 @@ Coachly 採用**情境式雙主題設計系統**，根據不同使用場景提�
 
 ---
 
-**文件版本**: 1.1  
-**最後更新**: 2025/01/31  
+**文件版本**: 1.2  
+**最後更新**: 2025/08/05  
 **更新內容**: 
-- 修復首頁 Footer 配色統一問題 (深藍色背景 + 淺藍色強調色)
-- Dashboard Header 和 Sidebar 統一使用淺藍色背景 (#71c9f1)
-- 統計數字改為淺藍色，保持與原始設計一致
-- 完善響應式設計和可訪問性  
+- 主題選擇器統一：將 `:root` 改為 `:root[data-theme="light"]` 和 `:root[data-theme="dark"]`
+- 新增表單輸入語意色 Token（Light/Dark 各一組）：`--input-bg`、`--input-text`、`--input-placeholder`、`--input-border`、`--input-border-focus`、`--focus-ring-rgb`
+- 新增共用 Input 元件基礎樣式：`.input-base`、`.input-error`、`.label`、`.helper`、`.error-text`、`.success-text`
+- 移除硬編碼色彩，統一使用語意化 Token
+- 完善表單可用性與驗收標準
+**前版本 (1.1)**: 修復首頁 Footer 配色統一問題、Dashboard Header 和 Sidebar 統一使用淺藍色背景、統計數字改為淺藍色、完善響應式設計和可訪問性  
 **基於**: 原始 app/static 和 app/templates 檔案分析 + Next.js 重構實作
