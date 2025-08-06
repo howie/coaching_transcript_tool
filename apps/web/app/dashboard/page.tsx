@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { DashboardStats } from '@/components/sections/dashboard-stats'
 import { GettingStarted } from '@/components/sections/getting-started'
 import { AuthDiagnostics } from '@/components/debug/auth-diagnostics'
+import { AuthResetButton } from '@/components/debug/auth-reset-button'
 
 function DashboardContent() {
   const { t } = useI18n()
@@ -114,6 +115,9 @@ function DashboardContent() {
 
       {/* Auth Diagnostics Tool */}
       <AuthDiagnostics />
+      
+      {/* Auth Reset Button - for debugging */}
+      {!user && <AuthResetButton />}
     </div>
   )
 }
