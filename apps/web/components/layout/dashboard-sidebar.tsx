@@ -10,7 +10,9 @@ import {
   UserIcon, 
   ChatBubbleBottomCenterTextIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  CalendarDaysIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline'
 import { useI18n } from '@/contexts/i18n-context'
 import { useSidebar } from '@/contexts/sidebar-context'
@@ -26,6 +28,18 @@ export function DashboardSidebar() {
       href: '/dashboard',
       icon: HomeIcon,
       current: pathname === '/dashboard'
+    },
+    {
+      name: t('menu.sessions'),
+      href: '/dashboard/sessions',
+      icon: CalendarDaysIcon,
+      current: pathname.startsWith('/dashboard/sessions')
+    },
+    {
+      name: t('menu.clients'),
+      href: '/dashboard/clients',
+      icon: UsersIcon,
+      current: pathname.startsWith('/dashboard/clients')
     },
     {
       name: t('menu.profile'),

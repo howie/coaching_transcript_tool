@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(alembic revision:*)",
+      "Bash(make test:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": []
+  }
+}
