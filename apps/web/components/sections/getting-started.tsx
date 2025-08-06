@@ -35,7 +35,7 @@ function Step({ number, title, description, href }: StepProps) {
 
   if (href) {
     return (
-      <Link href={href} className={className}>
+      <Link href={href as any} className={className}>
         {content}
       </Link>
     )
