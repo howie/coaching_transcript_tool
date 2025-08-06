@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Coaching Transcript Tool API",
-    description="Backend API for processing coaching transcripts - v2.2.0 Unified",
-    version="2.2.0",
+    description="Backend API for processing coaching transcripts - v2.3.0 Unified",
+    version="2.3.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
@@ -58,11 +58,11 @@ async def root():
     """
     API 根端點
     """
-    return {"message": "Coaching Transcript Tool API v2.2.0", "status": "running"}
+    return {"message": "Coaching Transcript Tool API v2.3.0", "status": "running"}
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Starting Coaching Transcript Tool Backend API v2.2.0")
+    logger.info("Starting Coaching Transcript Tool Backend API v2.3.0")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
