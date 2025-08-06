@@ -9,7 +9,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 import logging
 import os
 
-from .api import health, format_routes, user, auth
+from .api import health, format_routes, user, auth, clients, coaching_sessions, summary
 from .middleware.logging import setup_logging
 from .middleware.error_handler import error_handler
 from .core.config import settings
@@ -44,6 +44,9 @@ app.include_router(health.router, prefix="/api/health", tags=["health"])
 app.include_router(format_routes.router, prefix="/api/v1", tags=["format"])
 app.include_router(user.router, prefix="/api/v1/user", tags=["user"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
+app.include_router(clients.router, prefix="/api/v1/clients", tags=["clients"])
+app.include_router(coaching_sessions.router, prefix="/api/v1/sessions", tags=["coaching-sessions"])
+app.include_router(summary.router, prefix="/api/v1/dashboard", tags=["summary"])
 
 # 僅在開發環境中載入偵錯路由
 if settings.ENVIRONMENT == "development":

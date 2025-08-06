@@ -2,6 +2,8 @@ from .base import Base, TimestampMixin
 from .user import User, UserPlan
 from .session import Session, SessionStatus
 from .transcript import TranscriptSegment, SessionRole, SpeakerRole
+from .client import Client
+from .coaching_session import CoachingSession
 
 __all__ = [
     "Base",
@@ -13,4 +15,6 @@ __all__ = [
     "TranscriptSegment",
     "SessionRole",
     "SpeakerRole",
+    "Client",
+    "CoachingSession",
 ]
