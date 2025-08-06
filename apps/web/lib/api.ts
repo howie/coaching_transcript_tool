@@ -1,3 +1,5 @@
+import { debugLog, debugWarn } from '@/lib/debug'
+
 interface TranscriptOptions {
   outputFormat: 'markdown' | 'excel'
   coachName: string
@@ -48,7 +50,7 @@ class ApiClient {
         token = localStorage.getItem('token')
       }
     } catch (error) {
-      console.warn('Failed to access localStorage:', error)
+      debugWarn('Failed to access localStorage:', error)
     }
     
     const headers: Record<string, string> = {
@@ -57,9 +59,9 @@ class ApiClient {
     
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
-      console.log('API request with token present')
+      debugLog('API request with token present')
     } else {
-      console.log('API request without token')
+      debugLog('API request without token')
     }
     
     return headers
