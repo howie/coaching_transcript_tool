@@ -5,6 +5,11 @@ import { useAuth } from '@/contexts/auth-context'
 export function AuthResetButton() {
   const { logout } = useAuth()
 
+  // Only render in development mode
+  if (process.env.NODE_ENV !== 'development') {
+    return null
+  }
+
   const handleReset = () => {
     try {
       // Clear all auth-related localStorage items

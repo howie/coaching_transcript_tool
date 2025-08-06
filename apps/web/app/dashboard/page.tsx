@@ -113,11 +113,13 @@ function DashboardContent() {
       {/* Getting Started Guide */}
       <GettingStarted />
 
-      {/* Auth Diagnostics Tool */}
-      <AuthDiagnostics />
-      
-      {/* Auth Reset Button - for debugging */}
-      {!user && <AuthResetButton />}
+      {/* Debug tools - only in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <>
+          <AuthDiagnostics />
+          {!user && <AuthResetButton />}
+        </>
+      )}
     </div>
   )
 }

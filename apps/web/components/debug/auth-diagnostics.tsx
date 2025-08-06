@@ -31,6 +31,11 @@ export function AuthDiagnostics() {
   const [diagnostics, setDiagnostics] = useState<DiagnosticInfo | null>(null)
   const [showDiagnostics, setShowDiagnostics] = useState(false)
 
+  // Only render in development mode
+  if (process.env.NODE_ENV !== 'development') {
+    return null
+  }
+
   useEffect(() => {
     const runDiagnostics = () => {
       try {
