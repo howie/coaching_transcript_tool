@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-08-06 Progress Snapshot
+
+### 後端認證與 Dashboard API 系統完善 (最新)
+- ✅ **關鍵認證錯誤修復**
+  - 修復 API 檔案中認證函數導入錯誤 (get_current_user → get_current_user_dependency)
+  - 解決了所有 401 認證錯誤的根本原因
+  - 修復 Dashboard Summary API 中的枚舉值錯誤 (小寫 'completed' → SessionStatus.COMPLETED)
+  - Dashboard API 現在正確返回統計數據而非 500 錯誤
+- ✅ **Dashboard UI/UX 增強**
+  - 優化收入顯示，在右下角以小字體顯示貨幣單位 (NTD)
+  - 改進 StatCard 組件，支持靈活的貨幣和數值顯示
+  - 提升視覺層次和可讀性
+- ✅ **完整 API 測試基礎設施建立**
+  - 建立 scripts/api-tests/ 目錄與完整測試套件
+  - test_auth.sh - 認證流程測試
+  - test_clients.sh - 客戶管理 CRUD 操作測試  
+  - test_sessions.sh - 教練會談管理測試
+  - test_dashboard.sh - Dashboard 統計摘要測試
+  - run_all_tests.sh - 統一測試執行器
+  - README.md - 詳細使用文檔與 API 規範
+- ✅ **系統穩定性驗證**
+  - 使用 curl 驗證 Dashboard API 返回正確的真實數據
+  - 確認統計數據準確性：90 分鐘總時長，1 位客戶，NTD 2700 收入
+  - 所有主要 API 端點功能正常，認證機制運作穩定
+
+### 其他完成項目
+- ✅ ✅ SQLAlchemy 資料模型實作
+- ✅ ✅ 完整單元測試覆蓋
+- ✅ ✅ 開發環境配置
+- ✅ ✅ **Google OAuth 認證系統啟用**
+- ✅ ✅ 現有 OAuth 程式碼已整合至 FastAPI
+- ✅ ✅ JWT Token 生成與刷新邏輯已啟用
+- ✅ ✅ **Google Cloud Storage 整合準備完成**
+- ✅ ✅ `gcs_uploader.py` 公用模組已建立
+- ✅ ✅ 支援透過服務帳號 JSON 金鑰進行認證
+- ✅ ✅ 更新 config.py 支援所有 Render 環境變數
+- ✅ ✅ 修改 main.py 支援 Render 啟動方式 ($PORT 環境變數)
+- ✅ ✅ 生成安全的 SECRET_KEY
+- ✅ ✅ 建立部署檢查清單 (docs/deployment/render-deployment-checklist.md)
+- ✅ ✅ **後端邏輯已完成**
+- ✅ ✅ 在 Google Cloud Console 設定 OAuth 2.0 憑證
+- ✅ ✅ 取得 Client ID 和 Client Secret
+- ✅ ✅ 實作 OAuth 登入流程
+- ✅ ✅ JWT token 生成與驗證
+- ✅ ✅ 消除程式碼重複：架構重構完成
+- ✅ ✅ 測試覆蓋率：資料模型 100% 覆蓋
+- ✅ ✅ 開發環境：Docker 配置完善
+
+
 ## 2025-08-05 Progress Snapshot
 ### 2025-08-05 完成項目 (Part 2)
 - ✅ **Render Web Service 部署準備完成**

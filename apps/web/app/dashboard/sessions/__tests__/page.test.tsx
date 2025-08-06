@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import SessionsPage from '../page';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/contexts/i18n-context';
+import { apiClient } from '@/lib/api';
 
 // Mock modules
 jest.mock('next/navigation', () => ({
@@ -19,8 +20,15 @@ jest.mock('@/contexts/i18n-context', () => ({
   useI18n: jest.fn(),
 }));
 
-// Mock fetch
-global.fetch = jest.fn();
+// Mock API client
+jest.mock('@/lib/api', () => ({
+  apiClient: {
+    getClients: jest.fn(),
+    getCurrencies: jest.fn(),
+    getSessions: jest.fn(),
+    createSession: jest.fn(),
+  },
+}));
 
 const mockRouter = {
   push: jest.fn(),
@@ -57,34 +65,17 @@ describe('SessionsPage', () => {
     (useAuth as jest.Mock).mockReturnValue({ user: { id: '1' } });
     (useI18n as jest.Mock).mockReturnValue({ t: mockT });
     
-    // Mock fetch responses
-    (fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/clients')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ items: mockClients })
-        });
-      }
-      if (url.includes('/currencies')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockCurrencies)
-        });
-      }
-      if (url.includes('/sessions')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ 
-            items: [], 
-            total: 0, 
-            page: 1, 
-            page_size: 20, 
-            total_pages: 0 
-          })
-        });
-      }
-      return Promise.resolve({ ok: false });
+    // Mock API client methods
+    (apiClient.getClients as jest.Mock).mockResolvedValue({ items: mockClients });
+    (apiClient.getCurrencies as jest.Mock).mockResolvedValue(mockCurrencies);
+    (apiClient.getSessions as jest.Mock).mockResolvedValue({ 
+      items: [], 
+      total: 0, 
+      page: 1, 
+      page_size: 20, 
+      total_pages: 0 
     });
+    (apiClient.createSession as jest.Mock).mockResolvedValue({ id: '1', session_date: '2024-01-15' });
   });
 
   afterEach(() => {

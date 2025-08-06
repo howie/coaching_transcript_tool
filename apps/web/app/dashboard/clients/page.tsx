@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/contexts/i18n-context';
+import { apiClient } from '@/lib/api';
 
 interface Client {
   id: string;
@@ -39,23 +40,9 @@ const ClientsPage = () => {
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        page_size: pageSize.toString(),
-        ...(searchQuery && { query: searchQuery })
-      });
-
-      const response = await fetch(`/api/v1/clients?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setClients(data.items);
-        setTotalPages(data.total_pages);
-      }
+      const data = await apiClient.getClients(currentPage, pageSize, searchQuery);
+      setClients(data.items);
+      setTotalPages(data.total_pages);
     } catch (error) {
       console.error('Failed to fetch clients:', error);
     } finally {
@@ -71,20 +58,13 @@ const ClientsPage = () => {
     if (!confirm(t('clients.confirmDelete').replace('{name}', client.name))) return;
 
     try {
-      const response = await fetch(`/api/v1/clients/${client.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        fetchClients();
-      } else if (response.status === 409) {
-        alert(t('clients.deleteError'));
-      }
+      await apiClient.deleteClient(client.id);
+      fetchClients();
     } catch (error) {
       console.error('Failed to delete client:', error);
+      if (error instanceof Error && error.message.includes('existing sessions')) {
+        alert(t('clients.deleteError'));
+      }
     }
   };
 
@@ -92,16 +72,8 @@ const ClientsPage = () => {
     if (!confirm(t('clients.confirmAnonymize').replace('{name}', client.name))) return;
 
     try {
-      const response = await fetch(`/api/v1/clients/${client.id}/anonymize`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        fetchClients();
-      }
+      await apiClient.anonymizeClient(client.id);
+      fetchClients();
     } catch (error) {
       console.error('Failed to anonymize client:', error);
     }

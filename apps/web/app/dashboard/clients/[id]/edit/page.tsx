@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/select';
 import { TagInput } from '@/components/ui/tag-input';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/contexts/i18n-context';
+import { apiClient } from '@/lib/api';
 
 interface Client {
   id: string;
@@ -67,27 +68,20 @@ const EditClientPage = () => {
 
   const fetchClient = async () => {
     try {
-      const response = await fetch(`/api/v1/clients/${clientId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      const clientData = await apiClient.getClient(clientId);
+      setClient(clientData);
+      setFormData({
+        name: clientData.name || '',
+        email: clientData.email || '',
+        phone: clientData.phone || '',
+        memo: clientData.memo || '',
+        source: clientData.source || '',
+        client_type: clientData.client_type || '',
+        issue_types: clientData.issue_types || ''
       });
-
-      if (response.ok) {
-        const clientData = await response.json();
-        setClient(clientData);
-        setFormData({
-          name: clientData.name || '',
-          email: clientData.email || '',
-          phone: clientData.phone || '',
-          memo: clientData.memo || '',
-          source: clientData.source || '',
-          client_type: clientData.client_type || '',
-          issue_types: clientData.issue_types || ''
-        });
-      }
     } catch (error) {
       console.error('Failed to fetch client:', error);
+      setClient(null);
     } finally {
       setFetching(false);
     }
@@ -95,26 +89,18 @@ const EditClientPage = () => {
 
   const fetchOptions = async () => {
     try {
-      const [sourcesRes, typesRes] = await Promise.all([
-        fetch('/api/v1/clients/options/sources'),
-        fetch('/api/v1/clients/options/types')
+      const [sourcesData, typesData] = await Promise.all([
+        apiClient.getClientSources(),
+        apiClient.getClientTypes()
       ]);
 
-      if (sourcesRes.ok) {
-        const sourcesData = await sourcesRes.json();
-        setSourceOptions(sourcesData);
-      } else {
-        console.error('Failed to fetch sources:', sourcesRes.status, sourcesRes.statusText);
-      }
-
-      if (typesRes.ok) {
-        const typesData = await typesRes.json();
-        setTypeOptions(typesData);
-      } else {
-        console.error('Failed to fetch types:', typesRes.status, typesRes.statusText);
-      }
+      setSourceOptions(sourcesData);
+      setTypeOptions(typesData);
     } catch (error) {
       console.error('Failed to fetch options:', error);
+      // Set empty arrays as fallback
+      setSourceOptions([]);
+      setTypeOptions([]);
     }
   };
 
@@ -123,24 +109,11 @@ const EditClientPage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/v1/clients/${clientId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        router.push('/dashboard/clients');
-      } else {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        console.error('Failed to update client:', response.status, errorData);
-        alert(`更新客戶失敗: ${errorData.detail || 'Unknown error'}`);
-      }
+      await apiClient.updateClient(clientId, formData);
+      router.push('/dashboard/clients');
     } catch (error) {
       console.error('Failed to update client:', error);
+      alert(`更新客戶失敗: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }

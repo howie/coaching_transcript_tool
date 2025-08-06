@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/contexts/i18n-context'
 import { useAuth } from '@/contexts/auth-context'
+import { apiClient } from '@/lib/api'
 
 interface StatCardProps {
   number: string
   label: string
   loading?: boolean
+  currency?: string
 }
 
 interface SummaryData {
@@ -18,15 +20,20 @@ interface SummaryData {
   unique_clients_total: number
 }
 
-function StatCard({ number, label, loading = false }: StatCardProps) {
+function StatCard({ number, label, loading = false, currency }: StatCardProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center shadow-sm hover:shadow-md transition-shadow relative">
       <div className="text-3xl font-bold text-dashboard-stats-blue mb-2">
         {loading ? '...' : number}
       </div>
       <div className="text-sm text-gray-600 dark:text-gray-400">
         {label}
       </div>
+      {currency && (
+        <div className="absolute bottom-2 right-2 text-xs text-gray-400 dark:text-gray-500">
+          {currency}
+        </div>
+      )}
     </div>
   )
 }
@@ -46,16 +53,8 @@ export function DashboardStats() {
   const fetchSummaryData = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/v1/dashboard/summary', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setSummaryData(data)
-      }
+      const data = await apiClient.getSummary()
+      setSummaryData(data)
     } catch (error) {
       console.error('Failed to fetch summary data:', error)
     } finally {
@@ -65,13 +64,14 @@ export function DashboardStats() {
 
   const formatRevenue = (revenue: Record<string, number>) => {
     const entries = Object.entries(revenue)
-    if (entries.length === 0) return '0'
+    if (entries.length === 0) return { amount: '0', currency: '' }
     if (entries.length === 1) {
       const [currency, amount] = entries[0]
-      return `${currency} ${amount.toLocaleString()}`
+      return { amount: amount.toLocaleString(), currency }
     }
     // Multiple currencies, show primary one or total count
-    return entries.map(([currency, amount]) => `${currency} ${amount.toLocaleString()}`).join(', ')
+    const formattedEntries = entries.map(([currency, amount]) => `${currency} ${amount.toLocaleString()}`)
+    return { amount: formattedEntries.join(', '), currency: '' }
   }
 
   const stats = [
@@ -94,18 +94,32 @@ export function DashboardStats() {
   ]
 
   // Add revenue stat if there's data
-  if (summaryData && Object.keys(summaryData.current_month_revenue_by_currency).length > 0) {
-    stats.splice(2, 0, {
-      number: formatRevenue(summaryData.current_month_revenue_by_currency),
-      label: t('dashboard.stats.monthly_revenue')
-    })
-  }
+  const revenueData = summaryData && Object.keys(summaryData.current_month_revenue_by_currency).length > 0 
+    ? formatRevenue(summaryData.current_month_revenue_by_currency)
+    : null
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-      {stats.map((stat, index) => (
+      {stats.slice(0, 2).map((stat, index) => (
         <StatCard 
           key={index}
+          number={stat.number}
+          label={stat.label}
+          loading={loading}
+        />
+      ))}
+      {revenueData && (
+        <StatCard 
+          key="revenue"
+          number={revenueData.amount}
+          label={t('dashboard.stats.monthly_revenue')}
+          loading={loading}
+          currency={revenueData.currency}
+        />
+      )}
+      {stats.slice(2).map((stat, index) => (
+        <StatCard 
+          key={index + 2 + (revenueData ? 1 : 0)}
           number={stat.number}
           label={stat.label}
           loading={loading}

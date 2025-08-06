@@ -279,6 +279,342 @@ class ApiClient {
       throw error
     }
   }
+
+  // Client management methods
+  async getClients(page = 1, pageSize = 20, query?: string) {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        page_size: pageSize.toString(),
+      })
+      
+      if (query) {
+        params.append('query', query)
+      }
+
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients?${params}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get clients failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get clients error:', error)
+      throw error
+    }
+  }
+
+  async getClient(clientId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get client failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get client error:', error)
+      throw error
+    }
+  }
+
+  async createClient(clientData: {
+    name: string
+    email?: string
+    phone?: string
+    memo?: string
+    source?: string
+    client_type?: string
+    issue_types?: string
+  }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(clientData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Create client failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Create client error:', error)
+      throw error
+    }
+  }
+
+  async updateClient(clientId: string, clientData: {
+    name?: string
+    email?: string
+    phone?: string
+    memo?: string
+    source?: string
+    client_type?: string
+    issue_types?: string
+  }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}`, {
+        method: 'PATCH',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(clientData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update client failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Update client error:', error)
+      throw error
+    }
+  }
+
+  async deleteClient(clientId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}`, {
+        method: 'DELETE',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Delete client failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Delete client error:', error)
+      throw error
+    }
+  }
+
+  async anonymizeClient(clientId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}/anonymize`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Anonymize client failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Anonymize client error:', error)
+      throw error
+    }
+  }
+
+  async getClientSources() {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/options/sources`)
+
+      if (!response.ok) {
+        throw new Error(`Get client sources failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get client sources error:', error)
+      throw error
+    }
+  }
+
+  async getClientTypes() {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/options/types`)
+
+      if (!response.ok) {
+        throw new Error(`Get client types failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get client types error:', error)
+      throw error
+    }
+  }
+
+  // Coaching Sessions methods
+  async getSessions(page = 1, pageSize = 20, filters?: {
+    from_date?: string
+    to_date?: string
+    client_id?: string
+    currency?: string
+    sort?: string
+  }) {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        page_size: pageSize.toString(),
+      })
+      
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) {
+            params.append(key, value)
+          }
+        })
+      }
+
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions?${params}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get sessions failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get sessions error:', error)
+      throw error
+    }
+  }
+
+  async getSession(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get session failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get session error:', error)
+      throw error
+    }
+  }
+
+  async createSession(sessionData: {
+    session_date: string
+    client_id: string
+    duration_min: number
+    fee_currency: string
+    fee_amount: number
+    notes?: string
+  }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(sessionData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Create session failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Create session error:', error)
+      throw error
+    }
+  }
+
+  async updateSession(sessionId: string, sessionData: {
+    session_date?: string
+    client_id?: string
+    duration_min?: number
+    fee_currency?: string
+    fee_amount?: number
+    notes?: string
+  }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(sessionData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update session failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Update session error:', error)
+      throw error
+    }
+  }
+
+  async deleteSession(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Delete session failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Delete session error:', error)
+      throw error
+    }
+  }
+
+  async getCurrencies() {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/options/currencies`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get currencies failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get currencies error:', error)
+      throw error
+    }
+  }
+
+  // Dashboard summary methods
+  async getSummary(month?: string) {
+    try {
+      const params = new URLSearchParams()
+      if (month) {
+        params.append('month', month)
+      }
+
+      const url = `${this.baseUrl}/api/v1/dashboard/summary${params.toString() ? `?${params}` : ''}`
+      const response = await this.fetcher(url, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get summary failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get summary error:', error)
+      throw error
+    }
+  }
 }
 
 export const apiClient = new ApiClient()

@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from ..core.database import get_db
 from ..models import CoachingSession, Client, User
-from ..api.auth import get_current_user
+from ..api.auth import get_current_user_dependency
 
 router = APIRouter()
 
@@ -82,7 +82,7 @@ async def list_coaching_sessions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """List coaching sessions for the current user."""
     query_filter = and_(CoachingSession.coach_id == current_user.id)
@@ -161,7 +161,7 @@ async def list_coaching_sessions(
 async def get_coaching_session(
     session_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """Get a specific coaching session."""
     session = (
@@ -204,7 +204,7 @@ async def get_coaching_session(
 async def create_coaching_session(
     session_data: CoachingSessionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """Create a new coaching session."""
     # Verify client belongs to current user
@@ -267,7 +267,7 @@ async def update_coaching_session(
     session_id: UUID,
     session_data: CoachingSessionUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """Update a coaching session."""
     session = db.query(CoachingSession).filter(
@@ -334,7 +334,7 @@ async def update_coaching_session(
 async def delete_coaching_session(
     session_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """Delete a coaching session (hard delete)."""
     session = db.query(CoachingSession).filter(

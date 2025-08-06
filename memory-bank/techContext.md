@@ -1,7 +1,7 @@
 # 技術堆疊 (Tech Context)
 
-**更新時間：** 2025-08-04 22:47  
-**技術版本：** v3.0 (Coach Assistant MVP - Render + PostgreSQL + GCS)
+**更新時間：** 2025-08-06 10:30  
+**技術版本：** v3.1 (Coach Assistant MVP - Client Management Enhanced)
 
 ## 🎯 MVP 核心技術架構
 
@@ -163,6 +163,38 @@ pytest --cov=coaching_assistant tests/
 # 前端測試  
 cd apps/web && npm test
 cd apps/web && npm run test:e2e
+
+# API 整合測試 (已建立完整測試套件)
+scripts/api-tests/run_all_tests.sh    # 執行所有 API 測試
+scripts/api-tests/test_auth.sh        # 認證流程測試
+scripts/api-tests/test_clients.sh     # 客戶管理測試
+scripts/api-tests/test_sessions.sh    # 教練會談測試
+scripts/api-tests/test_dashboard.sh   # Dashboard 統計測試
+
+# 客戶管理功能測試覆蓋
+# - 客戶編輯頁面錯誤處理測試
+# - 教練會談客戶篩選器測試
+# - 客戶數據加載測試
+# - API 錯誤處理和後備機制測試
+```
+
+### API 測試基礎設施
+```bash
+# 完整 curl 測試套件位於 scripts/api-tests/
+├── README.md                 # API 測試文檔與使用指南
+├── run_all_tests.sh         # 主要測試執行器
+├── test_auth.sh            # 用戶認證與 JWT token 測試
+├── test_clients.sh         # 客戶管理 CRUD 操作測試
+├── test_sessions.sh        # 教練會談管理測試
+└── test_dashboard.sh       # Dashboard 統計與摘要測試
+
+# 測試環境變數
+export API_BASE_URL="http://localhost:8000"
+export AUTH_TOKEN="your_jwt_token_here"
+
+# 執行方式
+chmod +x scripts/api-tests/run_all_tests.sh
+./scripts/api-tests/run_all_tests.sh
 ```
 
 ### 代碼品質
