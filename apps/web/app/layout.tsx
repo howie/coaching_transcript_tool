@@ -10,6 +10,11 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Coachly - 你的 AI 教練夥伴',
   description: '從新手教練到執業認證，Coachly 幫你記錄、成長與實踐。',
+  icons: {
+    icon: '/images/coachly-favicon.ico',
+    shortcut: '/images/coachly-favicon.ico',
+    apple: '/images/coachly-favicon.ico',
+  },
 }
 
 export default function RootLayout({
@@ -20,6 +25,7 @@ export default function RootLayout({
   return (
     <html lang="zh-TW">
       <head>
+        <link rel="icon" href="/images/coachly-favicon.ico" sizes="any" />
         <link 
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" 
           rel="stylesheet" 
