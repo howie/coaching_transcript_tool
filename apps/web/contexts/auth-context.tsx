@@ -113,8 +113,15 @@ const authStore = createStore<AuthState>((set, get) => ({
       } catch (error) {
         console.error('Failed to load user:', error)
         console.error('Error details:', error instanceof Error ? error.message : error)
-        get().logout()
-        set({ isLoading: false })
+        
+        // Check if it's the Safari fetch error
+        if (error instanceof Error && error.message.includes('Window.fetch')) {
+          console.error('Safari fetch binding error detected - clearing state')
+        }
+        
+        // Don't logout on error, just set loading to false
+        // This prevents clearing valid tokens due to temporary API issues
+        set({ isLoading: false, isAuthenticated: false })
       }
     } else {
       console.log('No token found, setting not authenticated')
@@ -199,12 +206,17 @@ const AuthContext = createContext<typeof authStore | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let token: string | null = null
+    let refreshToken: string | null = null
     
     // Safe localStorage access with error handling
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         token = localStorage.getItem('token')
-        console.log('AuthProvider: Retrieved token from localStorage:', token ? 'present' : 'missing')
+        refreshToken = localStorage.getItem('refresh_token')
+        console.log('AuthProvider: Retrieved from localStorage:', {
+          token: token ? 'present' : 'missing',
+          refreshToken: refreshToken ? 'present' : 'missing'
+        })
       } else {
         console.log('AuthProvider: localStorage not available')
       }
@@ -215,8 +227,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       console.log('AuthProvider: Attempting login with existing token')
       authStore.getState().login(token)
+    } else if (refreshToken) {
+      console.log('AuthProvider: Have refresh token but no access token - user may need to re-authenticate')
+      // TODO: Implement refresh token flow here
+      authStore.setState({ isLoading: false })
     } else {
-      console.log('AuthProvider: No token found, setting not loading')
+      console.log('AuthProvider: No tokens found, setting not loading')
       authStore.setState({ isLoading: false })
     }
   }, [])

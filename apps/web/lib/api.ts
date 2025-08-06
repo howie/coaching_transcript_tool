@@ -24,7 +24,17 @@ class ApiClient {
       this.baseUrl = '' // Base URL is handled by the binding
     } else {
       // Fallback for local development or other environments
-      this.fetcher = globalThis.fetch || fetch
+      // IMPORTANT: We need to bind fetch to the correct context for Safari compatibility
+      if (typeof window !== 'undefined' && window.fetch) {
+        // In browser environment, bind fetch to window
+        this.fetcher = window.fetch.bind(window)
+      } else if (typeof globalThis !== 'undefined' && globalThis.fetch) {
+        // In other environments, bind to globalThis
+        this.fetcher = globalThis.fetch.bind(globalThis)
+      } else {
+        // Last resort fallback
+        this.fetcher = fetch
+      }
       this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
     }
   }
