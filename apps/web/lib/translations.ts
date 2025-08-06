@@ -182,6 +182,8 @@ export const translations = {
     'common.cancel': '取消',
     'common.updating': '更新中...',
     'common.confirmDelete': '確認刪除',
+    'common.create': '建立',
+    'common.creating': '建立中...',
     
     // Billing & Usage
     'billing.title': 'Billing & Usage',
@@ -221,9 +223,11 @@ export const translations = {
     'clients.emailPlaceholder': '請輸入電子信箱',
     'clients.phonePlaceholder': '請輸入電話號碼',
     'clients.memo': '備註',
+    'clients.memoPlaceholder': '請輸入備註...',
     'clients.confirmDelete': '確定要刪除客戶「{name}」嗎？',
     'clients.confirmAnonymize': '確定要匿名化客戶「{name}」嗎？此操作無法復原。',
     'clients.deleteError': '此客戶有會談紀錄，無法直接刪除。請使用匿名化功能。',
+    'clients.createError': '建立客戶失敗，請稍後再試。',
     'clients.create': '建立',
     'clients.update': '更新',
     'clients.loading': '載入中...',
@@ -452,6 +456,8 @@ export const translations = {
     'common.cancel': 'Cancel',
     'common.updating': 'Updating...',
     'common.confirmDelete': 'Confirm Delete',
+    'common.create': 'Create',
+    'common.creating': 'Creating...',
     
     // Billing & Usage
     'billing.title': 'Billing & Usage',
@@ -491,9 +497,11 @@ export const translations = {
     'clients.emailPlaceholder': 'Enter email address',
     'clients.phonePlaceholder': 'Enter phone number',
     'clients.memo': 'Notes',
+    'clients.memoPlaceholder': 'Enter notes...',
     'clients.confirmDelete': 'Are you sure you want to delete "{name}"?',
     'clients.confirmAnonymize': 'Are you sure you want to anonymize "{name}"? This action cannot be undone.',
     'clients.deleteError': 'This client has sessions and cannot be deleted. Please use anonymization instead.',
+    'clients.createError': 'Failed to create client. Please try again.',
     'clients.create': 'Create',
     'clients.update': 'Update',
     'clients.loading': 'Loading...',
