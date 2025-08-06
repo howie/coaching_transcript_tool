@@ -8,8 +8,8 @@ from sqlalchemy import and_, func, extract
 from pydantic import BaseModel
 
 from ..core.database import get_db
-from ..models import CoachingSession, Client, User, Session as TranscriptSession
-from ..api.auth import get_current_user
+from ..models import CoachingSession, Client, User, Session as TranscriptSession, SessionStatus
+from ..api.auth import get_current_user_dependency
 
 router = APIRouter()
 
@@ -26,7 +26,7 @@ class SummaryResponse(BaseModel):
 async def get_dashboard_summary(
     month: Optional[str] = Query(None, regex=r"^\d{4}-\d{2}$", description="Month in YYYY-MM format"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """Get dashboard summary statistics."""
     # Default to current month if not specified
@@ -60,7 +60,7 @@ async def get_dashboard_summary(
     transcripts_converted_count = db.query(TranscriptSession).filter(
         and_(
             TranscriptSession.user_id == current_user.id,
-            TranscriptSession.status == 'completed'
+            TranscriptSession.status == SessionStatus.COMPLETED
         )
     ).count()
     

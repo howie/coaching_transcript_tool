@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import NewClientPage from '../page';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/contexts/i18n-context';
+import { apiClient } from '@/lib/api';
 
 // Mock modules
 jest.mock('next/navigation', () => ({
@@ -19,8 +20,14 @@ jest.mock('@/contexts/i18n-context', () => ({
   useI18n: jest.fn(),
 }));
 
-// Mock fetch
-global.fetch = jest.fn();
+// Mock API client
+jest.mock('@/lib/api', () => ({
+  apiClient: {
+    getClientSources: jest.fn(),
+    getClientTypes: jest.fn(),
+    createClient: jest.fn(),
+  },
+}));
 
 const mockRouter = {
   push: jest.fn(),
@@ -49,32 +56,22 @@ describe('NewClientPage', () => {
     (useAuth as jest.Mock).mockReturnValue({ user: { id: '1' } });
     (useI18n as jest.Mock).mockReturnValue({ t: mockT });
     
-    // Mock successful options fetch
-    (fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/sources')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            { value: 'referral', label: '別人推薦' },
-            { value: 'organic', label: '自來客' },
-            { value: 'friend', label: '朋友' },
-            { value: 'social_media', label: '社群媒體' }
-          ])
-        });
-      }
-      if (url.includes('/types')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            { value: 'paid', label: '付費客戶' },
-            { value: 'pro_bono', label: '公益客戶' },
-            { value: 'free_practice', label: '免費練習' },
-            { value: 'other', label: '其他' }
-          ])
-        });
-      }
-      return Promise.resolve({ ok: false });
-    });
+    // Mock API client methods
+    (apiClient.getClientSources as jest.Mock).mockResolvedValue([
+      { value: 'referral', label: '別人推薦' },
+      { value: 'organic', label: '自來客' },
+      { value: 'friend', label: '朋友' },
+      { value: 'social_media', label: '社群媒體' }
+    ]);
+    
+    (apiClient.getClientTypes as jest.Mock).mockResolvedValue([
+      { value: 'paid', label: '付費客戶' },
+      { value: 'pro_bono', label: '公益客戶' },
+      { value: 'free_practice', label: '免費練習' },
+      { value: 'other', label: '其他' }
+    ]);
+    
+    (apiClient.createClient as jest.Mock).mockResolvedValue({ id: '1', name: 'Test Client' });
   });
 
   afterEach(() => {
@@ -100,38 +97,13 @@ describe('NewClientPage', () => {
     render(<NewClientPage />);
     
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('/api/v1/clients/options/sources');
-      expect(fetch).toHaveBeenCalledWith('/api/v1/clients/options/types');
+      expect(apiClient.getClientSources).toHaveBeenCalled();
+      expect(apiClient.getClientTypes).toHaveBeenCalled();
     });
   });
 
   it('submits form with correct data', async () => {
     const user = userEvent.setup();
-    
-    // Mock successful create
-    (fetch as jest.Mock).mockImplementation((url: string, options: any) => {
-      if (options?.method === 'POST') {
-        return Promise.resolve({ ok: true });
-      }
-      // Return options as before for GET requests
-      if (url.includes('/sources')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            { value: 'referral', label: '別人推薦' }
-          ])
-        });
-      }
-      if (url.includes('/types')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            { value: 'paid', label: '付費客戶' }
-          ])
-        });
-      }
-      return Promise.resolve({ ok: false });
-    });
     
     render(<NewClientPage />);
     
@@ -144,21 +116,14 @@ describe('NewClientPage', () => {
     await user.click(screen.getByRole('button', { name: /新增/i }));
     
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('/api/v1/clients', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer null'
-        },
-        body: JSON.stringify({
-          name: '測試客戶',
-          email: 'test@example.com',
-          phone: '0912345678',
-          memo: '',
-          source: '',
-          client_type: '',
-          issue_types: ''
-        })
+      expect(apiClient.createClient).toHaveBeenCalledWith({
+        name: '測試客戶',
+        email: 'test@example.com',
+        phone: '0912345678',
+        memo: '',
+        source: '',
+        client_type: '',
+        issue_types: ''
       });
     });
     
@@ -169,23 +134,7 @@ describe('NewClientPage', () => {
     const user = userEvent.setup();
     
     // Mock failed create
-    (fetch as jest.Mock).mockImplementation((url: string, options: any) => {
-      if (options?.method === 'POST') {
-        return Promise.resolve({ 
-          ok: false, 
-          status: 400,
-          json: () => Promise.resolve({ detail: 'Validation error' })
-        });
-      }
-      // Return options as before for GET requests
-      if (url.includes('/sources') || url.includes('/types')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([])
-        });
-      }
-      return Promise.resolve({ ok: false });
-    });
+    (apiClient.createClient as jest.Mock).mockRejectedValue(new Error('Validation error'));
     
     // Mock alert
     window.alert = jest.fn();

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from ..core.database import get_db
 from ..models import Client, CoachingSession, User
-from ..api.auth import get_current_user
+from ..api.auth import get_current_user_dependency
 
 router = APIRouter()
 
@@ -66,9 +66,9 @@ class ClientListResponse(BaseModel):
 async def list_clients(
     query: Optional[str] = Query(None, description="Search by name or email"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=50),
+    page_size: int = Query(20, ge=1, le=1000),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """List clients for the current user."""
     query_filter = and_(Client.coach_id == current_user.id)
@@ -132,7 +132,7 @@ async def list_clients(
 async def get_client(
     client_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """Get a specific client."""
     client = db.query(Client).filter(
@@ -169,7 +169,7 @@ async def get_client(
 async def create_client(
     client_data: ClientCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """Create a new client."""
     # Check for duplicate email if provided
@@ -227,7 +227,7 @@ async def update_client(
     client_id: UUID,
     client_data: ClientUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """Update a client."""
     client = db.query(Client).filter(
@@ -295,7 +295,7 @@ async def update_client(
 async def delete_client(
     client_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """Delete a client (hard delete, only if no sessions)."""
     client = db.query(Client).filter(
@@ -326,7 +326,7 @@ async def delete_client(
 async def anonymize_client(
     client_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_dependency)
 ):
     """Anonymize a client for GDPR compliance."""
     client = db.query(Client).filter(

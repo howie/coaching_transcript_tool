@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/select';
 import { TagInput } from '@/components/ui/tag-input';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/contexts/i18n-context';
+import { apiClient } from '@/lib/api';
 
 interface ClientFormData {
   name: string;
@@ -47,24 +48,13 @@ const NewClientPage = () => {
 
   const fetchOptions = async () => {
     try {
-      const [sourcesRes, typesRes] = await Promise.all([
-        fetch('/api/v1/clients/options/sources'),
-        fetch('/api/v1/clients/options/types')
+      const [sourcesData, typesData] = await Promise.all([
+        apiClient.getClientSources(),
+        apiClient.getClientTypes()
       ]);
 
-      if (sourcesRes.ok) {
-        const sourcesData = await sourcesRes.json();
-        setSourceOptions(sourcesData);
-      } else {
-        console.error('Failed to fetch sources:', sourcesRes.status, sourcesRes.statusText);
-      }
-
-      if (typesRes.ok) {
-        const typesData = await typesRes.json();
-        setTypeOptions(typesData);
-      } else {
-        console.error('Failed to fetch types:', typesRes.status, typesRes.statusText);
-      }
+      setSourceOptions(sourcesData);
+      setTypeOptions(typesData);
     } catch (error) {
       console.error('Failed to fetch options:', error);
     }
@@ -75,24 +65,11 @@ const NewClientPage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/v1/clients', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        router.push('/dashboard/clients');
-      } else {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        console.error('Failed to create client:', response.status, errorData);
-        alert(`創建客戶失敗: ${errorData.detail || 'Unknown error'}`);
-      }
+      await apiClient.createClient(formData);
+      router.push('/dashboard/clients');
     } catch (error) {
       console.error('Failed to create client:', error);
+      alert(`創建客戶失敗: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }

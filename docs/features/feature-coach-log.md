@@ -340,3 +340,17 @@ CREATE INDEX IF NOT EXISTS idx_sessions_coach_currency_date ON coaching_sessions
 - 後端 Schema：`fee_amount: conint(ge=0)`；`fee_currency: constr(min_length=3, max_length=3)`。
 - 前端 Input：限制為整數；顯示／輸出皆不含小數點。
 - 跨幣別金額不比較大小（除非指定匯率），列表排序以（`fee_currency`, `fee_amount`）。
+
+
+----
+
+任何修正都要有 unit test
+功能完成開啟瀏覽器自己測試看畫面和行為模式正確與否
+
+錯誤修正：
+- 客戶管理--> 編輯客戶資訊沒有實作
+- create seesion --> 新增客戶，這邊跳轉畫面動作太大，變成 modal windows 
+- create session --> 客戶資料沒有讀取
+- create session --> currency 沒資料，請給出世界常見幣別 (非必填欄位)
+- crearte session --> amount 非必填欄位
+- Dashboard total client 沒有顯示真實數據

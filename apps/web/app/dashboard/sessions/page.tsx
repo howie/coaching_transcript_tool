@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
-import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/contexts/i18n-context';
+import { apiClient } from '@/lib/api';
+import { ClientModal } from '@/components/ClientModal';
 
 interface Client {
   id: string;
@@ -43,13 +44,13 @@ interface SessionFormData {
 
 
 const SessionsPage = () => {
-  const { user } = useAuth();
   const { t } = useI18n();
   const [sessions, setSessions] = useState<CoachingSession[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [currencies, setCurrencies] = useState<string[]>([]);
+  const [currencies, setCurrencies] = useState<string[]>(['NTD', 'USD', 'EUR', 'JPY', 'CNY', 'HKD', 'GBP', 'AUD', 'CAD', 'SGD']);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showClientModal, setShowClientModal] = useState(false);
   const [editingSession, setEditingSession] = useState<CoachingSession | null>(null);
   const [formData, setFormData] = useState<SessionFormData>({
     session_date: '',
@@ -79,53 +80,34 @@ const SessionsPage = () => {
 
   const fetchInitialData = async () => {
     try {
-      const [clientsRes, currenciesRes] = await Promise.all([
-        fetch('/api/v1/clients?page_size=1000', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        fetch('/api/v1/sessions/options/currencies')
-      ]);
-
-      if (clientsRes.ok) {
-        const clientsData = await clientsRes.json();
-        setClients(clientsData.items);
-      }
-
-      if (currenciesRes.ok) {
-        const currenciesData = await currenciesRes.json();
-        setCurrencies(currenciesData);
+      const clientsData = await apiClient.getClients(1, 1000);
+      setClients(clientsData.items || []);
+      
+      // Try to fetch currencies from API, fallback to defaults if fails
+      try {
+        const currenciesData = await apiClient.getCurrencies();
+        if (currenciesData && currenciesData.length > 0) {
+          setCurrencies(currenciesData);
+        }
+      } catch (error) {
+        console.log('Using default currencies');
       }
     } catch (error) {
       console.error('Failed to fetch initial data:', error);
+      // Set empty array as fallback
+      setClients([]);
     }
   };
 
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        page_size: pageSize.toString(),
+      const data = await apiClient.getSessions(currentPage, pageSize, {
+        ...filters,
         sort: '-session_date'
       });
-
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-          params.append(key, value);
-        }
-      });
-
-      const response = await fetch(`/api/v1/sessions?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSessions(data.items);
-        setTotalPages(data.total_pages);
-      }
+      setSessions(data.items);
+      setTotalPages(data.total_pages);
     } catch (error) {
       console.error('Failed to fetch sessions:', error);
     } finally {
@@ -137,32 +119,24 @@ const SessionsPage = () => {
     e.preventDefault();
     try {
       const payload = {
-        ...formData,
+        session_date: formData.session_date,
+        client_id: formData.client_id,
         duration_min: parseInt(formData.duration_min),
-        fee_amount: parseInt(formData.fee_amount)
+        fee_currency: formData.fee_currency,
+        fee_amount: formData.fee_amount ? parseInt(formData.fee_amount) : 0,
+        notes: formData.notes
       };
 
-      const url = editingSession 
-        ? `/api/v1/sessions/${editingSession.id}`
-        : '/api/v1/sessions';
-      
-      const method = editingSession ? 'PATCH' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        setShowModal(false);
-        setEditingSession(null);
-        resetForm();
-        fetchSessions();
+      if (editingSession) {
+        await apiClient.updateSession(editingSession.id, payload);
+      } else {
+        await apiClient.createSession(payload);
       }
+
+      setShowModal(false);
+      setEditingSession(null);
+      resetForm();
+      fetchSessions();
     } catch (error) {
       console.error('Failed to save session:', error);
     }
@@ -185,16 +159,8 @@ const SessionsPage = () => {
     if (!confirm(t('sessions.confirmDelete'))) return;
 
     try {
-      const response = await fetch(`/api/v1/sessions/${session.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        fetchSessions();
-      }
+      await apiClient.deleteSession(session.id);
+      fetchSessions();
     } catch (error) {
       console.error('Failed to delete session:', error);
     }
@@ -211,10 +177,25 @@ const SessionsPage = () => {
     });
   };
 
-  const openCreateModal = () => {
+  const openCreateModal = async () => {
     setEditingSession(null);
     resetForm();
     setShowModal(true);
+    
+    // Refresh clients list when opening modal
+    try {
+      const clientsData = await apiClient.getClients(1, 1000);
+      setClients(clientsData.items || []);
+    } catch (error) {
+      console.error('Failed to refresh clients:', error);
+      // Keep existing clients if refresh fails
+    }
+  };
+
+  const handleClientCreated = async (newClient: Client) => {
+    // Add new client to the list and select it
+    setClients([...clients, newClient]);
+    setFormData({ ...formData, client_id: newClient.id });
   };
 
   const handleUploadTranscript = (sessionId: string) => {
@@ -426,8 +407,7 @@ const SessionsPage = () => {
                   value={formData.client_id}
                   onChange={(e) => {
                     if (e.target.value === 'new') {
-                      setShowModal(false);
-                      router.push('/dashboard/clients/new');
+                      setShowClientModal(true);
                     } else {
                       setFormData({ ...formData, client_id: e.target.value });
                     }
@@ -476,14 +456,14 @@ const SessionsPage = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('sessions.amount')} *
+                  {t('sessions.amount')}
                 </label>
                 <Input
                   type="number"
-                  required
                   min="0"
                   value={formData.fee_amount}
                   onChange={(e) => setFormData({ ...formData, fee_amount: e.target.value })}
+                  placeholder="0"
                 />
               </div>
             </div>
@@ -515,6 +495,13 @@ const SessionsPage = () => {
           </form>
         </div>
       </Modal>
+
+      {/* Client Creation Modal */}
+      <ClientModal
+        isOpen={showClientModal}
+        onClose={() => setShowClientModal(false)}
+        onClientCreated={handleClientCreated}
+      />
     </div>
   );
 };

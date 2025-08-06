@@ -3,7 +3,8 @@
     "allow": [
       "Bash(alembic revision:*)",
       "Bash(make test:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm test:*)"
     ],
     "deny": []
   }
