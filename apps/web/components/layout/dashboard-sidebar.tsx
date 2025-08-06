@@ -8,7 +8,6 @@ import {
   ChartBarIcon, 
   LightBulbIcon, 
   UserIcon, 
-  ChatBubbleBottomCenterTextIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CalendarDaysIcon,
@@ -65,13 +64,6 @@ export function DashboardSidebar() {
       href: '/dashboard/insights',
       icon: LightBulbIcon,
       current: pathname === '/dashboard/insights',
-      comingSoon: true
-    },
-    {
-      name: t('menu.feedback'),
-      href: '/dashboard/feedback',
-      icon: ChatBubbleBottomCenterTextIcon,
-      current: pathname === '/dashboard/feedback',
       comingSoon: true
     },
   ]

@@ -24,7 +24,7 @@ export const translations = {
     'landing.welcome_back': '歡迎回來',
     
     // Dashboard
-    'dashboard.title': '歡迎使用 Coachly',
+    'dashboard.title': 'Hi {name}，歡迎使用 Coachly',
     'dashboard.subtitle': 'AI 驅動的工具，提升您的教練實踐',
     'dashboard.stats.total_hours': '總時數 (小時)',
     'dashboard.stats.monthly_hours': '本月時數 (小時)',
@@ -33,12 +33,12 @@ export const translations = {
     'dashboard.stats.total_clients': '累積客戶數',
     'dashboard.stats.icf_competency': 'ICF 核心能力達成',
     'dashboard.getting_started': '快速開始指南',
-    'dashboard.step1.title': '上傳逐字稿',
-    'dashboard.step1.desc': '從您的教練對話中上傳 VTT 或 SRT 逐字稿檔案。',
-    'dashboard.step2.title': '配置選項',
-    'dashboard.step2.desc': '設定教練和客戶姓名以進行匿名化處理和其他偏好設定。',
-    'dashboard.step3.title': '下載 Excel',
-    'dashboard.step3.desc': '獲取結構化的 Excel 檔案，準備進行分析和檢視。',
+    'dashboard.step1.title': '新增客戶',
+    'dashboard.step1.desc': '創建並管理您的客戶資料，為教練會談做好準備。',
+    'dashboard.step2.title': '新增教練 session',
+    'dashboard.step2.desc': '記錄您的教練會談，包含時間、收費和詳細備註。',
+    'dashboard.step3.title': '上傳逐字稿',
+    'dashboard.step3.desc': '上傳會談錄音的逐字稿檔案，進行分析和檢視。',
     
     // Sidebar Menu
     'menu.dashboard': '儀表板',
@@ -46,7 +46,7 @@ export const translations = {
     'menu.clients': '客戶管理',
     'menu.converter': '逐字稿轉換',
     'menu.analysis': 'ICF 分析',
-    'menu.insights': 'AI 洞察',
+    'menu.insights': '你的 AI 督導',
     'menu.profile': '個人設定',
     'menu.feedback': '意見回饋',
     'menu.coming_soon': '即將推出',
@@ -100,7 +100,7 @@ export const translations = {
     'feature.converter.btn': '上傳逐字稿',
     'feature.analysis.title': 'ICF Marker Analysis',
     'feature.analysis.desc': '自動識別和分析您教練對話中的 ICF 教練核心能力和標記，提升專業水準。',
-    'feature.insights.title': 'AI Insights',
+    'feature.insights.title': '你的 AI 督導',
     'feature.insights.desc': '透過 AI 深度分析獲得見解和建議，改善您的教練效能和客戶體驗。',
     
     // Coming Soon
@@ -298,7 +298,7 @@ export const translations = {
     'landing.welcome_back': 'Welcome back',
     
     // Dashboard
-    'dashboard.title': 'Welcome to Coachly',
+    'dashboard.title': 'Hi {name}, Welcome to Coachly',
     'dashboard.subtitle': 'AI-powered tools to enhance your coaching practice',
     'dashboard.stats.total_hours': 'Total Hours',
     'dashboard.stats.monthly_hours': 'Monthly Hours',
@@ -307,12 +307,12 @@ export const translations = {
     'dashboard.stats.total_clients': 'Total Clients',
     'dashboard.stats.icf_competency': 'ICF Competency Achievement',
     'dashboard.getting_started': 'Getting Started',
-    'dashboard.step1.title': 'Upload Transcript',
-    'dashboard.step1.desc': 'Upload your VTT or SRT transcript file from your coaching session.',
-    'dashboard.step2.title': 'Configure Options',
-    'dashboard.step2.desc': 'Set coach and client names for anonymization and other preferences.',
-    'dashboard.step3.title': 'Download Excel',
-    'dashboard.step3.desc': 'Get your structured Excel file ready for analysis and review.',
+    'dashboard.step1.title': 'Add Client',
+    'dashboard.step1.desc': 'Create and manage your client profiles to prepare for coaching sessions.',
+    'dashboard.step2.title': 'Add Coaching Session',
+    'dashboard.step2.desc': 'Record your coaching sessions including time, fees, and detailed notes.',
+    'dashboard.step3.title': 'Upload Transcript',
+    'dashboard.step3.desc': 'Upload transcript files from session recordings for analysis and review.',
     
     // Sidebar Menu
     'menu.dashboard': 'Dashboard',
@@ -320,7 +320,7 @@ export const translations = {
     'menu.clients': 'Clients',
     'menu.converter': 'Converter',
     'menu.analysis': 'Analysis',
-    'menu.insights': 'Insights',
+    'menu.insights': 'Your AI Supervisor',
     'menu.profile': 'Profile',
     'menu.feedback': 'Feedback',
     'menu.coming_soon': 'Coming Soon',
@@ -374,7 +374,7 @@ export const translations = {
     'feature.converter.btn': 'Upload Transcript',
     'feature.analysis.title': 'ICF Marker Analysis',
     'feature.analysis.desc': 'Automatically identify and analyze ICF coaching competencies and markers in your sessions.',
-    'feature.insights.title': 'AI Insights',
+    'feature.insights.title': 'Your AI Supervisor',
     'feature.insights.desc': 'Get AI-powered insights and suggestions to improve your coaching effectiveness.',
     
     // Coming Soon

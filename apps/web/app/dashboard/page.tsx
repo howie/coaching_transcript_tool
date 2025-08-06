@@ -5,12 +5,11 @@ import { useSearchParams } from 'next/navigation'
 import { useI18n } from '@/contexts/i18n-context'
 import { useAuth } from '@/contexts/auth-context'
 import { DashboardStats } from '@/components/sections/dashboard-stats'
-import { FeatureCards } from '@/components/sections/feature-cards'
 import { GettingStarted } from '@/components/sections/getting-started'
 
 function DashboardContent() {
   const { t } = useI18n()
-  const { login } = useAuth()
+  const { login, user } = useAuth()
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -37,7 +36,7 @@ function DashboardContent() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-dashboard-accent mb-2">
-          {t('dashboard.title')}
+          {t('dashboard.title').replace('{name}', user?.name || '')}
         </h1>
         <p className="text-lg text-gray-600 dark:text-gray-400">
           {t('dashboard.subtitle')}
@@ -46,9 +45,6 @@ function DashboardContent() {
 
       {/* Dashboard Stats */}
       <DashboardStats />
-
-      {/* Feature Cards */}
-      <FeatureCards />
 
       {/* Getting Started Guide */}
       <GettingStarted />
