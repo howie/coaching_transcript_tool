@@ -30,13 +30,26 @@ class ApiClient {
   }
 
   private async getHeaders() {
-    const token = localStorage.getItem('token')
+    let token: string | null = null
+    
+    // Safe localStorage access with error handling
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        token = localStorage.getItem('token')
+      }
+    } catch (error) {
+      console.warn('Failed to access localStorage:', error)
+    }
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
     
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
+      console.log('API request with token present')
+    } else {
+      console.log('API request without token')
     }
     
     return headers

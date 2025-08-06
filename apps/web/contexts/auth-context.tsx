@@ -37,44 +37,87 @@ const authStore = createStore<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoading: true,
   login: async (token) => {
-    localStorage.setItem('token', token)
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('token', token)
+        console.log('Token stored successfully in localStorage')
+      } else {
+        console.warn('localStorage not available during login')
+      }
+    } catch (error) {
+      console.error('Failed to store token in localStorage:', error)
+    }
+    
     set({ token, isAuthenticated: true })
     await get().loadUser()
   },
   logout: () => {
-    localStorage.removeItem('token')
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('userPreferences')
+        console.log('Cleared tokens from localStorage')
+      } else {
+        console.warn('localStorage not available during logout')
+      }
+    } catch (error) {
+      console.error('Failed to clear tokens from localStorage:', error)
+    }
+    
     set({ user: null, token: null, isAuthenticated: false })
-    // Clear user preferences from localStorage when logging out
-    localStorage.removeItem('userPreferences')
   },
   loadUser: async () => {
-    const token = get().token || localStorage.getItem('token')
+    let token = get().token
+    
+    if (!token) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          token = localStorage.getItem('token')
+        }
+      } catch (error) {
+        console.error('Failed to access localStorage in loadUser:', error)
+      }
+    }
+    
+    console.log('Loading user with token:', token ? 'present' : 'missing')
+    
     if (token) {
       try {
         // Set token for API calls
         set({ token })
         
+        console.log('Calling getUserProfile API...')
         const user = await apiClient.getUserProfile()
+        console.log('User profile loaded:', user?.name || 'No name', user?.email || 'No email')
+        
         set({ user, isAuthenticated: true, isLoading: false })
         
         // Apply user preferences if they exist
         if (user.preferences) {
-          localStorage.setItem('userPreferences', JSON.stringify(user.preferences))
-          
-          // Apply language preference only (theme stays local)
-          if (user.preferences.language) {
-            localStorage.setItem('language', user.preferences.language)
-            // Trigger language change event
-            window.dispatchEvent(new CustomEvent('languageChange', { detail: user.preferences.language }))
+          try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              localStorage.setItem('userPreferences', JSON.stringify(user.preferences))
+              
+              // Apply language preference only (theme stays local)
+              if (user.preferences.language) {
+                localStorage.setItem('language', user.preferences.language)
+                // Trigger language change event
+                window.dispatchEvent(new CustomEvent('languageChange', { detail: user.preferences.language }))
+              }
+            }
+          } catch (error) {
+            console.error('Failed to store user preferences in localStorage:', error)
           }
         }
         
       } catch (error) {
-        console.error('Failed to load user', error)
+        console.error('Failed to load user:', error)
+        console.error('Error details:', error instanceof Error ? error.message : error)
         get().logout()
         set({ isLoading: false })
       }
     } else {
+      console.log('No token found, setting not authenticated')
       set({ isLoading: false })
     }
   },
@@ -92,13 +135,19 @@ const authStore = createStore<AuthState>((set, get) => ({
       }
       set({ user: updatedUser })
       
-      // Update localStorage
-      localStorage.setItem('userPreferences', JSON.stringify(updatedUser.preferences))
-      
-      // Apply language preference immediately (theme stays local)
-      if (preferences.language) {
-        localStorage.setItem('language', preferences.language)
-        window.dispatchEvent(new CustomEvent('languageChange', { detail: preferences.language }))
+      // Update localStorage safely
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('userPreferences', JSON.stringify(updatedUser.preferences))
+          
+          // Apply language preference immediately (theme stays local)
+          if (preferences.language) {
+            localStorage.setItem('language', preferences.language)
+            window.dispatchEvent(new CustomEvent('languageChange', { detail: preferences.language }))
+          }
+        }
+      } catch (error) {
+        console.error('Failed to update localStorage in updateUserPreferences:', error)
       }
       
     } catch (error) {
@@ -149,10 +198,25 @@ const AuthContext = createContext<typeof authStore | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    let token: string | null = null
+    
+    // Safe localStorage access with error handling
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        token = localStorage.getItem('token')
+        console.log('AuthProvider: Retrieved token from localStorage:', token ? 'present' : 'missing')
+      } else {
+        console.log('AuthProvider: localStorage not available')
+      }
+    } catch (error) {
+      console.error('AuthProvider: Failed to access localStorage:', error)
+    }
+    
     if (token) {
+      console.log('AuthProvider: Attempting login with existing token')
       authStore.getState().login(token)
     } else {
+      console.log('AuthProvider: No token found, setting not loading')
       authStore.setState({ isLoading: false })
     }
   }, [])
