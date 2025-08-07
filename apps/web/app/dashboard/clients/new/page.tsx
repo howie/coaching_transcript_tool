@@ -42,10 +42,6 @@ const NewClientPage = () => {
     issue_types: ''
   });
 
-  useEffect(() => {
-    fetchOptions();
-  }, [fetchOptions]); // Use fetchOptions as dependency
-
   const fetchOptions = useCallback(async () => {
     try {
       const [sourcesData, typesData] = await Promise.all([
@@ -85,6 +81,10 @@ const NewClientPage = () => {
       ]);
     }
   }, [t]);
+
+  useEffect(() => {
+    fetchOptions();
+  }, [fetchOptions]); // Use fetchOptions as dependency
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
