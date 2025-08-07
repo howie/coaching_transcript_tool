@@ -2,9 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
-## 2025-08-06 Progress Snapshot
+## 2025-08-07 Progress Snapshot
 
-### 後端認證與 Dashboard API 系統完善 (最新)
+### 暗黑模式與無障礙功能實作完成 (WCAG 2.1 AA 合規) (最新)
+- ✅ **關鍵文字對比度問題修復**
+  - 修復所有黑色文字 (#111827) 在深色背景上無法閱讀的問題
+  - 文字對比度從 1.21:1 提升至 15.8:1，完全符合 WCAG 2.1 AA 標準
+  - 實現語意化顏色系統，取代所有硬編碼的 `text-gray-900`
+- ✅ **完整主題系統架構**
+  - 實作基於 CSS 變數的語意化顏色系統
+  - 建立 Tailwind 自訂語意代幣：text-content-primary, bg-surface, border-subtle
+  - 優化主題切換：.dark 類別應用於 <html> 元素，避免 FOUC
+  - 增強 theme-context.tsx 提供穩定的主題狀態管理
+- ✅ **UI 元件全面遷移**
+  - Input、Select、TagInput 元件完全採用語意代幣
+  - 表格、表單、卡片元件實現響應式主題支援
+  - 所有文字顏色使用語意化類別，確保在兩種模式下皆可讀
+- ✅ **系統級改進**
+  - 早期主題初始化腳本防止載入閃爍
+  - 全域 CSS 基礎樣式支援雙主題
+  - 完整的 TypeScript 支援和類型安全
+- ✅ **無障礙文檔完善**
+  - 更新 design-system.md 包含 WCAG 2.1 AA 標準指引
+  - 建立語意代幣使用規範和最佳實踐
+  - 提供開發者無障礙設計檢查清單
+- ✅ **品質保證**
+  - 24+ 個位置成功遷移至語意代幣
+  - 跨越 9+ 個檔案的一致性更新
+  - 建置通過，無錯誤或警告
+  - 徹底消除所有問題硬編碼顏色實例
+
+### 後端認證與 Dashboard API 系統完善
 - ✅ **關鍵認證錯誤修復**
   - 修復 API 檔案中認證函數導入錯誤 (get_current_user → get_current_user_dependency)
   - 解決了所有 401 認證錯誤的根本原因

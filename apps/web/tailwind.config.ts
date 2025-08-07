@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
+  darkMode: 'class', // Enable class-based dark mode
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,6 +10,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Semantic tokens for consistent theming
+        bg: "var(--bg)",
+        card: "var(--card)", 
+        border: "var(--border)",
+        foreground: "var(--foreground)",
+        muted: "var(--muted)",
+        "muted-foreground": "var(--muted-foreground)",
+        accent: "var(--accent)",
+        ring: "var(--ring)",
+        input: "var(--input)",
+        placeholder: "var(--placeholder)",
+        
         // Landing Page 主題 - 天藍色系
         'primary-blue': '#71c9f1',
         'nav-dark': '#2c3e50',
@@ -52,12 +65,8 @@ const config: Config = {
           600: '#6c757d',
           800: '#343a40',
         },
-        // 保持原有的 shadcn/ui 色彩系統
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        // shadcn/ui 色彩系統 (using semantic tokens)
+        background: "var(--bg)",
         primary: {
           DEFAULT: "#71c9f1", // Landing 使用天藍色
           foreground: "#ffffff",
@@ -70,22 +79,12 @@ const config: Config = {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
+        // muted and accent are already defined above as semantic tokens
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
+        // card is already defined above as semantic token
       },
       borderRadius: {
         lg: "8px", // 統一使用 8px 圓角

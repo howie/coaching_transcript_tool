@@ -14,15 +14,15 @@ interface FeatureCardProps {
 function FeatureCard({ title, description, buttonText, href, comingSoon }: FeatureCardProps) {
   if (comingSoon) {
     return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm opacity-60">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+      <div className="bg-card border border-border rounded-lg p-6 shadow-sm opacity-60">
+        <h3 className="text-lg font-semibold text-foreground mb-3">
           {title}
         </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">
+        <p className="text-muted-foreground mb-4 text-sm leading-relaxed">
           {description}
         </p>
         <div className="pt-2">
-          <span className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-500 dark:text-gray-400 cursor-not-allowed">
+          <span className="inline-flex items-center px-3 py-2 border border-border text-sm font-medium rounded-md text-muted-foreground cursor-not-allowed">
             {buttonText}
           </span>
         </div>
@@ -31,11 +31,11 @@ function FeatureCard({ title, description, buttonText, href, comingSoon }: Featu
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <div className="bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+      <h3 className="text-lg font-semibold text-foreground mb-3">
         {title}
       </h3>
-      <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">
+      <p className="text-muted-foreground mb-4 text-sm leading-relaxed">
         {description}
       </p>
       <div className="pt-2">

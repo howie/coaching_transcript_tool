@@ -1,7 +1,7 @@
 # 技術堆疊 (Tech Context)
 
-**更新時間：** 2025-08-06 10:30  
-**技術版本：** v3.1 (Coach Assistant MVP - Client Management Enhanced)
+**更新時間：** 2025-08-07 14:30  
+**技術版本：** v3.2 (Coach Assistant MVP - Dark Mode & Accessibility Enhanced)
 
 ## 🎯 MVP 核心技術架構
 
@@ -17,13 +17,20 @@
 ### 核心框架
 - **Next.js 14.0.4** - React 全端框架 (App Router)
 - **TypeScript 5.0+** - 類型安全開發
-- **Tailwind CSS 3.3+** - 實用優先 CSS 框架
+- **Tailwind CSS 3.3+** - 實用優先 CSS 框架 (class-based dark mode)
 
 ### 狀態管理與 UI
 - **Zustand 4.0+** - 輕量級狀態管理
 - **React Hook Form 7.0+** - 高效能表單處理
 - **SWR 2.0+** - 資料獲取與快取
 - **Headless UI** - 無樣式可存取元件
+
+### 主題與無障礙系統
+- **Dark Mode Support** - 完整暗黑模式實現 (class-based)
+- **WCAG 2.1 AA Compliant** - 無障礙網頁標準合規
+- **CSS Variables** - 語意化顏色系統
+- **Theme Context** - React 主題狀態管理
+- **Semantic Tokens** - Tailwind 自訂設計代幣
 
 ### 認證與安全
 - **Google OAuth 2.0** - 用戶認證

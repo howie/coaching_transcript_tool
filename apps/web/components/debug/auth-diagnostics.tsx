@@ -139,7 +139,7 @@ export function AuthDiagnostics() {
       {showDiagnostics && (
         <div className="absolute bottom-12 right-0 bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-md max-h-96 overflow-auto">
           <div className="mb-3 flex justify-between items-center">
-            <h3 className="font-bold text-gray-900">認證診斷</h3>
+            <h3 className="font-bold text-foreground">認證診斷</h3>
             <button
               onClick={() => setShowDiagnostics(false)}
               className="text-gray-500 hover:text-gray-700"

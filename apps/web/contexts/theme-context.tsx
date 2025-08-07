@@ -36,19 +36,19 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }, [])
 
   const applyTheme = (newTheme: Theme) => {
-    // 使用 data-theme 屬性統一主題選擇器
-    document.documentElement.setAttribute('data-theme', newTheme)
-    
-    // 保持向後相容性的類別（可以考慮在後續版本移除）
+    // Apply .dark class to html for class-based dark mode
     if (newTheme === 'dark') {
-      document.body.classList.add('dark-mode')
       document.documentElement.classList.add('dark')
+      document.body.classList.add('dark-mode')
       document.body.classList.remove('light-mode')
     } else {
-      document.body.classList.remove('dark-mode')
       document.documentElement.classList.remove('dark')
+      document.body.classList.remove('dark-mode')
       document.body.classList.add('light-mode')
     }
+    
+    // Also set data-theme for legacy compatibility
+    document.documentElement.setAttribute('data-theme', newTheme)
   }
 
   const setTheme = (newTheme: Theme) => {

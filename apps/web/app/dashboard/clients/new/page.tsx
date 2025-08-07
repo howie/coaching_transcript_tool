@@ -79,14 +79,14 @@ const NewClientPage = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">{t('clients.newClient')}</h1>
+          <h1 className="text-3xl font-bold text-white">{t('clients.newClient')}</h1>
         </div>
 
-        <div className="bg-white shadow-sm rounded-lg p-6">
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 border border-gray-200 dark:border-gray-700">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {t('clients.name')} *
                 </label>
                 <Input
@@ -99,7 +99,7 @@ const NewClientPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {t('clients.email')}
                 </label>
                 <Input
@@ -113,7 +113,7 @@ const NewClientPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {t('clients.phone')}
                 </label>
                 <Input
@@ -125,7 +125,7 @@ const NewClientPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   客戶來源
                 </label>
                 <Select
@@ -144,7 +144,7 @@ const NewClientPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   客戶屬性
                 </label>
                 <Select
@@ -161,7 +161,7 @@ const NewClientPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   議題類型
                 </label>
                 <TagInput
@@ -177,7 +177,7 @@ const NewClientPage = () => {
                 {t('clients.memo')}
               </label>
               <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-accent"
                 rows={4}
                 value={formData.memo}
                 onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
