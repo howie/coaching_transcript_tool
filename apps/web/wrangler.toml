@@ -9,6 +9,11 @@ main = ".open-next/worker.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
+# Optimize for chunk loading performance
+[build]
+command = ""
+watch_dir = []
+
 # Build process is handled separately, not in wrangler dev
 # [build]
 # command = "npm run build && npm run build:cf"

@@ -40,6 +40,7 @@
 ### 部署平台
 - **Cloudflare Workers** - 全球邊緣運算
 - **OpenNext** - Next.js on Workers 適配器
+- **Chunk Loading 優化** - 一致性 build ID 與快取策略
 
 ## 🖥️ 後端技術棧
 
@@ -238,12 +239,52 @@ databases:
 ### Cloudflare Workers
 ```toml
 # apps/web/wrangler.toml
-name = "coachly-frontend"
-compatibility_date = "2024-01-01"
+name = "coachly-doxa-com-tw"
+main = ".open-next/worker.js"
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-[env.production]
-vars = { API_BASE_URL = "https://coach-api.onrender.com" }
+# Chunk loading 效能最佳化
+[assets]
+directory = ".open-next/assets"
+
+[vars]
+ENVIRONMENT = "production"
+NODE_ENV = "production"
+
+[observability.logs]
+enabled = true
+```
+
+### Next.js Build 配置 (Chunk Loading 修復)
+```javascript
+// next.config.js - 解決 chunk loading 404 錯誤
+const nextConfig = {
+  // 一致性 build ID 生成防止 chunk hash 不匹配
+  generateBuildId: async () => {
+    if (process.env.VERCEL_GIT_COMMIT_SHA) {
+      return process.env.VERCEL_GIT_COMMIT_SHA
+    }
+    if (process.env.CF_PAGES_COMMIT_SHA) {
+      return process.env.CF_PAGES_COMMIT_SHA
+    }
+    return `v${require('./package.json').version}-${Date.now()}`
+  },
+  output: 'standalone',
+}
+```
+
+### Cloudflare 快取策略
+```text
+# public/_headers - 靜態資源快取配置
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/images/*
+  Cache-Control: public, max-age=86400
+
+/*
+  Cache-Control: no-cache, no-store, must-revalidate
 ```
 
 ## 🔐 安全與合規
