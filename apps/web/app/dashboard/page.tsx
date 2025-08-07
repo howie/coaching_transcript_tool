@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, Suspense } from 'react'
+import { useEffect, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useI18n } from '@/contexts/i18n-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -13,6 +13,7 @@ function DashboardContent() {
   const { t } = useI18n()
   const { login, user, isLoading } = useAuth()
   const searchParams = useSearchParams()
+  const hasProcessedOAuth = useRef(false)
 
   useEffect(() => {
     // Handle Google OAuth callback tokens from URL parameters
@@ -38,8 +39,9 @@ function DashboardContent() {
       return
     }
     
-    if (access_token && refresh_token) {
+    if (access_token && refresh_token && !hasProcessedOAuth.current) {
       console.log('Processing OAuth callback with tokens...')
+      hasProcessedOAuth.current = true // Prevent duplicate processing
       
       // Add a small delay for Safari to ensure everything is ready
       const processOAuth = async () => {
@@ -67,6 +69,7 @@ function DashboardContent() {
         } catch (loginError) {
           console.error('Failed to process OAuth callback:', loginError)
           console.error('OAuth error details:', loginError instanceof Error ? loginError.message : loginError)
+          hasProcessedOAuth.current = false // Allow retry on error
           
           // Try to redirect back to login on failure
           setTimeout(() => {
@@ -93,7 +96,19 @@ function DashboardContent() {
         console.error('Failed to check localStorage for existing token:', error)
       }
     }
-  }, [searchParams, login, user, isLoading])
+  }, [searchParams, login]) // Remove user and isLoading from dependencies to prevent re-renders
+
+  // Show loading state while processing OAuth or loading user
+  if (isLoading || (searchParams.get('access_token') && !user)) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-dashboard-accent mx-auto"></div>
+          <p className="text-gray-600 dark:text-gray-400">{t('common.loading')}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -126,7 +141,14 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-dashboard-accent mx-auto"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
       <DashboardContent />
     </Suspense>
   )
