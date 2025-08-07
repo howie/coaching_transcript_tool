@@ -179,6 +179,7 @@ export const translations = {
     // Common
     'common.save': '儲存',
     'common.saving': '儲存中...',
+    'common.loading': '載入中...',
     'common.cancel': '取消',
     'common.back': '返回',
     'common.edit': '編輯',
@@ -511,6 +512,7 @@ export const translations = {
     // Common
     'common.save': 'Save',
     'common.saving': 'Saving...',
+    'common.loading': 'Loading...',
     'common.cancel': 'Cancel',
     'common.back': 'Back',
     'common.edit': 'Edit',
