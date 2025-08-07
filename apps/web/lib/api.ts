@@ -765,13 +765,19 @@ class ApiClient {
       })
 
       if (!response.ok) {
+        // Return empty array for 404 - endpoint not yet deployed
+        if (response.status === 404) {
+          console.log('Coaching plans endpoint not available, returning empty array')
+          return []
+        }
         throw new Error(`Get coaching plans failed: ${response.statusText}`)
       }
 
       return await response.json()
     } catch (error) {
       console.error('Get coaching plans error:', error)
-      throw error
+      // Return empty array instead of throwing for network errors
+      return []
     }
   }
 
