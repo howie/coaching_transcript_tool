@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ interface Client {
   name: string;
 }
 
-const NewSessionPage = () => {
+const NewSessionContent = () => {
   const { user } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
@@ -219,6 +219,24 @@ const NewSessionPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const NewSessionPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-surface border border-border rounded-lg p-6">
+            <div className="flex justify-center items-center h-32">
+              <div className="text-content-secondary">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <NewSessionContent />
+    </Suspense>
   );
 };
 
