@@ -71,3 +71,17 @@ This is a monorepo project using Python (FastAPI) for backend and Next.js for fr
 - Makefile provides unified interface for all common operations
 - Memory bank files in `memory-bank/` contain detailed context about the project
 - CORS is enabled in production for cross-origin API requests
+
+### API Response Format Handling
+When backend returns i18n keys instead of actual labels (e.g., dropdown options):
+- Backend returns: `{"value": "referral", "labelKey": "clients.sourceReferral"}`
+- Frontend needs to convert `labelKey` to actual label using i18n `t()` function
+- Example transformation:
+  ```typescript
+  const processedOptions = apiData.map((item: any) => ({
+    value: item.value,
+    label: item.labelKey ? t(item.labelKey) : item.label || item.value
+  }));
+  ```
+- Always check if backend returns `labelKey` instead of `label` when dropdowns appear empty
+- Don't assume API failure - check the actual response format first

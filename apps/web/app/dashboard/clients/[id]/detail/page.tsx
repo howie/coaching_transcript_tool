@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { PencilIcon, PlusIcon, EyeIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
@@ -92,7 +92,7 @@ const ClientDetailPage = () => {
       fetchSessions();
       fetchOptions();
     }
-  }, [clientId]);
+  }, [clientId, fetchOptions]);
 
   const getStatusLabel = (status: string) => {
     const statusMap = {
@@ -178,7 +178,7 @@ const ClientDetailPage = () => {
     return typeLabels[value] || value;
   };
 
-  const fetchOptions = async () => {
+  const fetchOptions = useCallback(async () => {
     try {
       const [sourcesData, typesData, statusesData] = await Promise.all([
         apiClient.getClientSources(),
@@ -186,16 +186,50 @@ const ClientDetailPage = () => {
         apiClient.getClientStatuses()
       ]);
 
-      setSourceOptions(sourcesData);
-      setTypeOptions(typesData);
-      setStatusOptions(statusesData);
+      // Convert labelKey to label using i18n
+      const processedSources = sourcesData.map((item: any) => ({
+        value: item.value,
+        label: item.labelKey ? t(item.labelKey) : item.label || item.value
+      }));
+      
+      const processedTypes = typesData.map((item: any) => ({
+        value: item.value,
+        label: item.labelKey ? t(item.labelKey) : item.label || item.value
+      }));
+      
+      const processedStatuses = statusesData.map((item: any) => ({
+        value: item.value,
+        label: item.labelKey ? t(item.labelKey) : item.label || item.value
+      }));
+
+      setSourceOptions(processedSources);
+      setTypeOptions(processedTypes);
+      setStatusOptions(processedStatuses);
     } catch (error) {
       console.error('Failed to fetch options:', error);
-      setSourceOptions([]);
-      setTypeOptions([]);
-      setStatusOptions([]);
+      // Set default options when API fails
+      setSourceOptions([
+        { value: 'referral', label: '轉介' },
+        { value: 'website', label: '網站' },
+        { value: 'social_media', label: '社群媒體' },
+        { value: 'event', label: '活動' },
+        { value: 'other', label: '其他' }
+      ]);
+      setTypeOptions([
+        { value: 'individual', label: '個人' },
+        { value: 'corporate', label: '企業' },
+        { value: 'student', label: '學生' },
+        { value: 'professional', label: '專業人士' },
+        { value: 'other', label: '其他' }
+      ]);
+      setStatusOptions([
+        { value: 'first_session', label: '首次會談' },
+        { value: 'active', label: '進行中' },
+        { value: 'paused', label: '暫停' },
+        { value: 'completed', label: '已完成' }
+      ]);
     }
-  };
+  }, [t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
