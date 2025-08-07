@@ -159,9 +159,12 @@ export default function ProfilePage() {
   const fetchCoachingPlans = async () => {
     try {
       const plans = await apiClient.getCoachingPlans()
-      setCoachingPlans(plans)
+      // Ensure plans is always an array
+      setCoachingPlans(Array.isArray(plans) ? plans : [])
     } catch (error) {
       console.error('Error fetching coaching plans:', error)
+      // Set empty array on error
+      setCoachingPlans([])
     }
   }
   

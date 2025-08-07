@@ -1,6 +1,6 @@
 {
-  "version": "2.3.4",
-  "displayVersion": "v2.3.4",
+  "version": "2.3.5",
+  "displayVersion": "v2.3.5",
   "description": "Coaching Transcript Tool",
   "releaseDate": "2025-08-07",
   "releaseNotes": "Fixed translation issues: common translations, client options i18n, session translations, NTD/TWD currency duplicate, statistics charts debugging"
