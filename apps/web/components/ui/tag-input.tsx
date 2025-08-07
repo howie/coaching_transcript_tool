@@ -51,14 +51,14 @@ export const TagInput: React.FC<TagInputProps> = ({
         {tags.map((tag, index) => (
           <span
             key={index}
-            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
           >
             {tag}
             {!disabled && (
               <button
                 type="button"
                 onClick={() => removeTag(index)}
-                className="ml-1 p-0.5 rounded-full hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="ml-1 p-0.5 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label={`Remove ${tag} tag`}
               >
                 <XMarkIcon className="h-3 w-3" />
@@ -79,9 +79,9 @@ export const TagInput: React.FC<TagInputProps> = ({
         }}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+        className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-muted disabled:cursor-not-allowed"
       />
-      <p className="text-xs text-gray-500 mt-1">
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
         輸入議題類型後按 Enter 新增標籤，點擊標籤旁的 × 可刪除
       </p>
     </div>

@@ -2,6 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    /* Light mode semantic colors - WCAG AA compliant */
+    --bg: #ffffff;
+    --card: #ffffff;
+    --border: #e5e7eb;          /* gray-200 */
+    --foreground: #111827;      /* gray-900 - 4.5:1 contrast on white */
+    --muted: #f9fafb;           /* gray-50 */
+    --muted-foreground: #6b7280; /* gray-500 - 4.61:1 contrast on white */
+    --accent: #71c9f1;          /* Primary blue - brand color */
+    --ring: #d1d5db;            /* gray-300 */
+    --input: #111827;
+    --placeholder: #9ca3af;     /* gray-400 */
+  }
+
+  .dark {
+    /* Dark mode semantic colors - WCAG AA compliant */
+    --bg: #0f172a;              /* slate-900 */
+    --card: #1e293b;            /* slate-800 */
+    --border: #334155;          /* slate-600 */
+    --foreground: #f3f4f6;      /* gray-100 - 15.8:1 contrast on slate-900 */
+    --muted: #1e293b;           /* slate-800 */
+    --muted-foreground: #cbd5e1; /* slate-300 - 9.85:1 contrast on slate-900 */
+    --accent: #F5C451;          /* Brand yellow - excellent contrast */
+    --ring: #475569;            /* slate-600 */
+    --input: #f3f4f6;
+    --placeholder: #94a3b8;     /* slate-400 */
+  }
+
+  html, body {
+    @apply bg-bg text-foreground;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-foreground;
+  }
+
+  p, span, li, th, td, label {
+    @apply text-foreground;
+  }
+
+  a {
+    @apply text-accent;
+  }
+  
+  a:hover {
+    color: color-mix(in srgb, var(--accent) 80%, transparent);
+  }
+
+  input, textarea, select {
+    @apply text-input bg-card border-border;
+  }
+
+  ::placeholder {
+    color: var(--placeholder);
+    opacity: 1;
+  }
+}
+
 /* Light 主題變數 - Landing Page */
 :root[data-theme="light"] {
   /* 主色調 - 天藍色系 */

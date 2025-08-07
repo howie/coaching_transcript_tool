@@ -19,7 +19,7 @@ function Step({ number, title, description, href }: StepProps) {
         </div>
       </div>
       <div className="flex-1">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        <h3 className="text-lg font-semibold text-foreground mb-2">
           {title}
         </h3>
         <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
@@ -74,7 +74,7 @@ export function GettingStarted() {
 
   return (
     <div className="mb-8">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+      <h2 className="text-xl font-bold text-foreground mb-6">
         {t('dashboard.getting_started')}
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -34,6 +34,26 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" 
           rel="stylesheet" 
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const stored = localStorage.getItem("theme");
+                  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                  const isDark = stored ? stored === "dark" : prefersDark;
+                  if (isDark) {
+                    document.documentElement.classList.add("dark");
+                    document.body.classList.add("dark-mode");
+                  } else {
+                    document.body.classList.add("light-mode");
+                  }
+                  document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body className={inter.className}>
         <AuthProvider>
