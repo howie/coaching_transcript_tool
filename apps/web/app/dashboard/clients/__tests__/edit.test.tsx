@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useRouter, useParams } from 'next/navigation';
-import EditClientPage from '../[id]/edit/page';
+import ClientDetailPage from '../[id]/detail/page';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/contexts/i18n-context';
 
@@ -23,7 +23,7 @@ jest.mock('@/contexts/i18n-context', () => ({
 // Mock fetch
 global.fetch = jest.fn();
 
-describe('EditClientPage', () => {
+describe('ClientDetailPage', () => {
   const mockPush = jest.fn();
   const mockRouter = { push: mockPush };
   const mockUser = { id: 'user-123', email: 'test@example.com' };
@@ -89,7 +89,7 @@ describe('EditClientPage', () => {
       return Promise.resolve({ ok: false });
     });
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Test Client')).toBeInTheDocument();
@@ -106,7 +106,7 @@ describe('EditClientPage', () => {
       json: () => Promise.resolve(anonymizedClient),
     });
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Cannot edit anonymized client')).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe('EditClientPage', () => {
       });
     });
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Test Client')).toBeInTheDocument();
@@ -173,7 +173,7 @@ describe('EditClientPage', () => {
       });
     });
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Test Client')).toBeInTheDocument();
@@ -216,7 +216,7 @@ describe('EditClientPage', () => {
       return Promise.resolve({ ok: false });
     });
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Test Client')).toBeInTheDocument();

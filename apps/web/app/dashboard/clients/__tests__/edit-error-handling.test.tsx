@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useRouter, useParams } from 'next/navigation';
-import EditClientPage from '../[id]/edit/page';
+import ClientDetailPage from '../[id]/detail/page';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/contexts/i18n-context';
 
@@ -23,7 +23,7 @@ jest.mock('@/contexts/i18n-context', () => ({
 // Mock fetch
 global.fetch = jest.fn();
 
-describe('EditClientPage Error Handling', () => {
+describe('ClientDetailPage Error Handling', () => {
   const mockPush = jest.fn();
   const mockRouter = { push: mockPush };
   const mockUser = { id: 'user-123', email: 'test@example.com' };
@@ -63,7 +63,7 @@ describe('EditClientPage Error Handling', () => {
       });
     });
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Client not found')).toBeInTheDocument();
@@ -81,7 +81,7 @@ describe('EditClientPage Error Handling', () => {
       });
     });
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Client not found')).toBeInTheDocument();
@@ -103,7 +103,7 @@ describe('EditClientPage Error Handling', () => {
       });
     });
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Client not found')).toBeInTheDocument();
@@ -141,7 +141,7 @@ describe('EditClientPage Error Handling', () => {
       });
     });
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     // Should still display client data even if options fail to load
     await waitFor(() => {

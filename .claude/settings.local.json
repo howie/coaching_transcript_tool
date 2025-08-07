@@ -6,7 +6,10 @@
       "Bash(curl:*)",
       "Bash(npm test:*)",
       "Bash(alembic upgrade:*)",
-      "Bash(python -m pytest tests/models/test_coach_profile.py -v)"
+      "Bash(python -m pytest tests/models/test_coach_profile.py -v)",
+      "Bash(mv:*)",
+      "Bash(grep:*)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }

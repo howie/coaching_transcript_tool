@@ -357,6 +357,7 @@ class ApiClient {
     source?: string
     client_type?: string
     issue_types?: string
+    client_status?: string
   }) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/clients`, {
@@ -385,6 +386,7 @@ class ApiClient {
     source?: string
     client_type?: string
     issue_types?: string
+    client_status?: string
   }) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}`, {
@@ -445,7 +447,9 @@ class ApiClient {
 
   async getClientSources() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/options/sources`)
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/options/sources`, {
+        headers: await this.getHeaders(),
+      })
 
       if (!response.ok) {
         throw new Error(`Get client sources failed: ${response.statusText}`)
@@ -460,7 +464,9 @@ class ApiClient {
 
   async getClientTypes() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/options/types`)
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/options/types`, {
+        headers: await this.getHeaders(),
+      })
 
       if (!response.ok) {
         throw new Error(`Get client types failed: ${response.statusText}`)
@@ -469,6 +475,40 @@ class ApiClient {
       return await response.json()
     } catch (error) {
       console.error('Get client types error:', error)
+      throw error
+    }
+  }
+
+  async getClientStatuses() {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/options/statuses`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get client statuses failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get client statuses error:', error)
+      throw error
+    }
+  }
+
+  async getClientStatistics() {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/statistics`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get client statistics failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get client statistics error:', error)
       throw error
     }
   }
