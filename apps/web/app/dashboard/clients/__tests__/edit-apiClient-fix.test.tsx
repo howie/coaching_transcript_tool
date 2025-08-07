@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useRouter, useParams } from 'next/navigation';
-import EditClientPage from '../[id]/edit/page';
+import ClientDetailPage from '../[id]/detail/page';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/contexts/i18n-context';
 import { apiClient } from '@/lib/api';
@@ -30,7 +30,7 @@ jest.mock('@/lib/api', () => ({
   },
 }));
 
-describe('EditClientPage ApiClient Fix', () => {
+describe('ClientDetailPage ApiClient Fix', () => {
   const mockPush = jest.fn();
   const mockRouter = { push: mockPush };
   const mockUser = { id: 'user-123', email: 'test@example.com' };
@@ -73,7 +73,7 @@ describe('EditClientPage ApiClient Fix', () => {
   });
 
   it('should successfully load client data using apiClient', async () => {
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(apiClient.getClient).toHaveBeenCalledWith('client-123');
@@ -84,7 +84,7 @@ describe('EditClientPage ApiClient Fix', () => {
   });
 
   it('should load client options using apiClient', async () => {
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(apiClient.getClientSources).toHaveBeenCalled();
@@ -93,7 +93,7 @@ describe('EditClientPage ApiClient Fix', () => {
   });
 
   it('should handle successful form submission using apiClient', async () => {
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Test Client')).toBeInTheDocument();
@@ -122,7 +122,7 @@ describe('EditClientPage ApiClient Fix', () => {
   it('should handle API errors gracefully', async () => {
     (apiClient.getClient as jest.Mock).mockRejectedValue(new Error('Client not found'));
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Client not found')).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe('EditClientPage ApiClient Fix', () => {
     (apiClient.getClientSources as jest.Mock).mockRejectedValue(new Error('Sources API failed'));
     (apiClient.getClientTypes as jest.Mock).mockRejectedValue(new Error('Types API failed'));
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       // Should still load client data even if options fail
@@ -145,7 +145,7 @@ describe('EditClientPage ApiClient Fix', () => {
     window.alert = jest.fn();
     (apiClient.updateClient as jest.Mock).mockRejectedValue(new Error('Update failed'));
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Test Client')).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe('EditClientPage ApiClient Fix', () => {
     const anonymizedClient = { ...mockClient, is_anonymized: true };
     (apiClient.getClient as jest.Mock).mockResolvedValue(anonymizedClient);
 
-    render(<EditClientPage />);
+    render(<ClientDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Cannot edit anonymized client')).toBeInTheDocument();

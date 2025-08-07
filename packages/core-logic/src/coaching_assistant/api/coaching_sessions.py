@@ -350,30 +350,29 @@ async def delete_coaching_session(
     return {"message": "Coaching session deleted successfully"}
 
 
-@router.get("/options/currencies", response_model=List[str])
+@router.get("/options/currencies")
 async def get_currencies():
     """Get available currency options."""
     return [
-        "USD",  # US Dollar
-        "EUR",  # Euro
-        "JPY",  # Japanese Yen
-        "GBP",  # British Pound
-        "AUD",  # Australian Dollar
-        "CAD",  # Canadian Dollar
-        "CHF",  # Swiss Franc
-        "CNY",  # Chinese Yuan
-        "SEK",  # Swedish Krona
-        "NZD",  # New Zealand Dollar
-        "MXN",  # Mexican Peso
-        "SGD",  # Singapore Dollar
-        "HKD",  # Hong Kong Dollar
-        "NOK",  # Norwegian Krone
-        "KRW",  # South Korean Won
-        "TRY",  # Turkish Lira
-        "RUB",  # Russian Ruble
-        "INR",  # Indian Rupee
-        "BRL",  # Brazilian Real
-        "ZAR",  # South African Rand
-        "NTD",  # New Taiwan Dollar
-        "TWD"   # Taiwan Dollar (alternative code)
+        {"value": "USD", "label": "USD - US Dollar"},
+        {"value": "EUR", "label": "EUR - Euro"},
+        {"value": "JPY", "label": "JPY - Japanese Yen"},
+        {"value": "GBP", "label": "GBP - British Pound"},
+        {"value": "AUD", "label": "AUD - Australian Dollar"},
+        {"value": "CAD", "label": "CAD - Canadian Dollar"},
+        {"value": "CHF", "label": "CHF - Swiss Franc"},
+        {"value": "CNY", "label": "CNY - Chinese Yuan"},
+        {"value": "SEK", "label": "SEK - Swedish Krona"},
+        {"value": "NZD", "label": "NZD - New Zealand Dollar"},
+        {"value": "MXN", "label": "MXN - Mexican Peso"},
+        {"value": "SGD", "label": "SGD - Singapore Dollar"},
+        {"value": "HKD", "label": "HKD - Hong Kong Dollar"},
+        {"value": "NOK", "label": "NOK - Norwegian Krone"},
+        {"value": "KRW", "label": "KRW - South Korean Won"},
+        {"value": "TRY", "label": "TRY - Turkish Lira"},
+        {"value": "RUB", "label": "RUB - Russian Ruble"},
+        {"value": "INR", "label": "INR - Indian Rupee"},
+        {"value": "BRL", "label": "BRL - Brazilian Real"},
+        {"value": "ZAR", "label": "ZAR - South African Rand"},
+        {"value": "TWD", "label": "TWD - Taiwan Dollar"}
     ]

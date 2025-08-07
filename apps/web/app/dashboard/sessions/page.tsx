@@ -47,7 +47,18 @@ const SessionsPage = () => {
   const { t } = useI18n();
   const [sessions, setSessions] = useState<CoachingSession[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [currencies, setCurrencies] = useState<string[]>(['NTD', 'USD', 'EUR', 'JPY', 'CNY', 'HKD', 'GBP', 'AUD', 'CAD', 'SGD']);
+  const [currencies, setCurrencies] = useState<{value: string, label: string}[]>([
+    { value: 'TWD', label: 'TWD - 新台幣' },
+    { value: 'USD', label: 'USD - 美元' },
+    { value: 'EUR', label: 'EUR - 歐元' },
+    { value: 'JPY', label: 'JPY - 日圓' },
+    { value: 'CNY', label: 'CNY - 人民幣' },
+    { value: 'HKD', label: 'HKD - 港幣' },
+    { value: 'GBP', label: 'GBP - 英鎊' },
+    { value: 'AUD', label: 'AUD - 澳幣' },
+    { value: 'CAD', label: 'CAD - 加幣' },
+    { value: 'SGD', label: 'SGD - 新加坡幣' }
+  ]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
@@ -56,7 +67,7 @@ const SessionsPage = () => {
     session_date: '',
     client_id: '',
     duration_min: '',
-    fee_currency: 'NTD',
+    fee_currency: 'TWD',
     fee_amount: '',
     notes: ''
   });
@@ -171,7 +182,7 @@ const SessionsPage = () => {
       session_date: '',
       client_id: '',
       duration_min: '',
-      fee_currency: 'NTD',
+      fee_currency: 'TWD',
       fee_amount: '',
       notes: ''
     });
@@ -261,8 +272,8 @@ const SessionsPage = () => {
             >
               <option value="">{t('sessions.allCurrencies')}</option>
               {currencies.map((currency) => (
-                <option key={currency} value={currency}>
-                  {currency}
+                <option key={currency.value} value={currency.value}>
+                  {currency.label}
                 </option>
               ))}
             </Select>
@@ -447,8 +458,8 @@ const SessionsPage = () => {
                   onChange={(e) => setFormData({ ...formData, fee_currency: e.target.value })}
                 >
                   {currencies.map((currency) => (
-                    <option key={currency} value={currency}>
-                      {currency}
+                    <option key={currency.value} value={currency.value}>
+                      {currency.label}
                     </option>
                   ))}
                 </Select>
@@ -456,11 +467,12 @@ const SessionsPage = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('sessions.amount')}
+                  {t('sessions.amount')} *
                 </label>
                 <Input
                   type="number"
                   min="0"
+                  required
                   value={formData.fee_amount}
                   onChange={(e) => setFormData({ ...formData, fee_amount: e.target.value })}
                   placeholder="0"

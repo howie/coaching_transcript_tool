@@ -26,7 +26,7 @@ class CoachingSession(BaseModel):
     
     # Duration and fee
     duration_min = Column(Integer, nullable=False)
-    fee_currency = Column(String(3), nullable=False, default="NTD")  # ISO 4217
+    fee_currency = Column(String(3), nullable=False, default="TWD")  # ISO 4217
     fee_amount = Column(Integer, nullable=False, default=0)  # Integer amount, no decimals
     
     # File associations (optional)

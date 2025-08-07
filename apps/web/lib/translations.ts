@@ -180,10 +180,15 @@ export const translations = {
     'common.save': '儲存',
     'common.saving': '儲存中...',
     'common.cancel': '取消',
+    'common.back': '返回',
+    'common.edit': '編輯',
+    'common.delete': '刪除',
     'common.updating': '更新中...',
     'common.confirmDelete': '確認刪除',
     'common.create': '建立',
     'common.creating': '建立中...',
+    'common.createdAt': '建立時間',
+    'common.updatedAt': '更新時間',
     
     // Billing & Usage
     'billing.title': 'Billing & Usage',
@@ -235,6 +240,54 @@ export const translations = {
     'clients.prevPage': '上一頁',
     'clients.nextPage': '下一頁',
     
+    // Client Status  
+    'clients.statusFirstSession': '首次會談',
+    'clients.statusInProgress': '進行中',
+    'clients.statusPaused': '暫停',
+    'clients.statusCompleted': '結案',
+    
+    // Client Detail Page
+    'clients.detail': '客戶詳情',
+    'clients.detailTitle': '客戶詳細資訊',
+    'clients.viewMode': '檢視',
+    'clients.editMode': '編輯',
+    'clients.sessionList': '會談記錄',
+    'clients.addSession': '新增會談',
+    'clients.noSessions': '尚無會談記錄',
+    'clients.sessionDate': '會談日期',
+    'clients.viewDetails': '檢視詳情',
+    'clients.sessionCount': '會談次數',
+    'clients.totalPayment': '付款總額',
+    'clients.clientSource': '客戶來源',
+    'clients.clientType': '客戶屬性',
+    'clients.issueTypes': '議題類型',
+    'clients.clientStatus': '客戶狀態',
+    'clients.selectSource': '請選擇來源',
+    'clients.selectType': '請選擇屬性',
+    'clients.selectStatus': '請選擇狀態',
+    'clients.issueTypesPlaceholder': '例如：職涯發展、人際關係、領導力',
+    'clients.updateError': '更新客戶失敗',
+    'clients.times': '次',
+    'clients.chartSourceTitle': '客戶來源',
+    'clients.chartTypeTitle': '客戶屬性',
+    'clients.chartIssueTitle': '議題類型',
+    
+    // Client Source Options
+    'clients.sourceReferral': '別人推薦',
+    'clients.sourceOrganic': '自來客',
+    'clients.sourceFriend': '朋友',
+    'clients.sourceSocialMedia': '社群媒體',
+    'clients.sourceAdvertisement': '廣告',
+    'clients.sourceWebsite': '官方網站',
+    'clients.sourceUnknown': '未知',
+    
+    // Client Type Options  
+    'clients.typePaid': '付費客戶',
+    'clients.typeProBono': '公益客戶',
+    'clients.typeFreePractice': '免費練習',
+    'clients.typeOther': '其他',
+    'clients.typeUnknown': '未知',
+    
     // Coaching Sessions
     'sessions.title': '教練會談紀錄',
     'sessions.addSession': '新增紀錄',
@@ -271,7 +324,12 @@ export const translations = {
     'sessions.minutes': '分鐘',
     'sessions.page': '第 {current} 頁，共 {total} 頁',
     'sessions.prevPage': '上一頁',
-    'sessions.nextPage': '下一頁'
+    'sessions.nextPage': '下一頁',
+    'sessions.sessionDetail': '會談詳情',
+    'sessions.updateError': '更新會談失敗',
+    'sessions.deleteError': '刪除會談失敗',
+    'sessions.createError': '建立會談失敗',
+    'sessions.notesPlaceholder': '會談備註...'
   },
   
   en: {
@@ -454,10 +512,15 @@ export const translations = {
     'common.save': 'Save',
     'common.saving': 'Saving...',
     'common.cancel': 'Cancel',
+    'common.back': 'Back',
+    'common.edit': 'Edit',
+    'common.delete': 'Delete',
     'common.updating': 'Updating...',
     'common.confirmDelete': 'Confirm Delete',
     'common.create': 'Create',
     'common.creating': 'Creating...',
+    'common.createdAt': 'Created At',
+    'common.updatedAt': 'Updated At',
     
     // Billing & Usage
     'billing.title': 'Billing & Usage',
@@ -509,6 +572,54 @@ export const translations = {
     'clients.prevPage': 'Previous',
     'clients.nextPage': 'Next',
     
+    // Client Status
+    'clients.statusFirstSession': 'First Session',
+    'clients.statusInProgress': 'In Progress',  
+    'clients.statusPaused': 'Paused',
+    'clients.statusCompleted': 'Completed',
+    
+    // Client Detail Page
+    'clients.detail': 'Client Detail',
+    'clients.detailTitle': 'Client Details',
+    'clients.viewMode': 'View',
+    'clients.editMode': 'Edit',
+    'clients.sessionList': 'Session Records',
+    'clients.addSession': 'Add Session',
+    'clients.noSessions': 'No sessions yet',
+    'clients.sessionDate': 'Session Date',
+    'clients.viewDetails': 'View Details',
+    'clients.sessionCount': 'Session Count',
+    'clients.totalPayment': 'Total Payment',
+    'clients.clientSource': 'Client Source',
+    'clients.clientType': 'Client Type',
+    'clients.issueTypes': 'Issue Types',
+    'clients.clientStatus': 'Client Status',
+    'clients.selectSource': 'Select source',
+    'clients.selectType': 'Select type',
+    'clients.selectStatus': 'Select status',
+    'clients.issueTypesPlaceholder': 'e.g., Career Development, Relationships, Leadership',
+    'clients.updateError': 'Failed to update client',
+    'clients.times': 'times',
+    'clients.chartSourceTitle': 'Client Source',
+    'clients.chartTypeTitle': 'Client Type',
+    'clients.chartIssueTitle': 'Issue Types',
+    
+    // Client Source Options
+    'clients.sourceReferral': 'Referral',
+    'clients.sourceOrganic': 'Organic',
+    'clients.sourceFriend': 'Friend',
+    'clients.sourceSocialMedia': 'Social Media',
+    'clients.sourceAdvertisement': 'Advertisement',
+    'clients.sourceWebsite': 'Website',
+    'clients.sourceUnknown': 'Unknown',
+    
+    // Client Type Options  
+    'clients.typePaid': 'Paid Client',
+    'clients.typeProBono': 'Pro Bono',
+    'clients.typeFreePractice': 'Free Practice',
+    'clients.typeOther': 'Other',
+    'clients.typeUnknown': 'Unknown',
+    
     // Coaching Sessions
     'sessions.title': 'Coaching Sessions',
     'sessions.addSession': 'Add Session',
@@ -545,7 +656,12 @@ export const translations = {
     'sessions.minutes': 'minutes',
     'sessions.page': 'Page {current} of {total}',
     'sessions.prevPage': 'Previous',
-    'sessions.nextPage': 'Next'
+    'sessions.nextPage': 'Next',
+    'sessions.sessionDetail': 'Session Detail',
+    'sessions.updateError': 'Failed to update session',
+    'sessions.deleteError': 'Failed to delete session',
+    'sessions.createError': 'Failed to create session',
+    'sessions.notesPlaceholder': 'Session notes...'
   }
 }
 
