@@ -97,8 +97,12 @@ const SessionsPage = () => {
       // Try to fetch currencies from API, fallback to defaults if fails
       try {
         const currenciesData = await apiClient.getCurrencies();
-        if (currenciesData && currenciesData.length > 0) {
+        // Validate that data is an array with the expected structure
+        if (Array.isArray(currenciesData) && currenciesData.length > 0 && 
+            currenciesData.every(item => item && typeof item === 'object' && 'value' in item && 'label' in item)) {
           setCurrencies(currenciesData);
+        } else {
+          console.warn('Invalid currency data format, using defaults');
         }
       } catch (error) {
         console.log('Using default currencies');
@@ -273,7 +277,7 @@ const SessionsPage = () => {
               <option value="">{t('sessions.allCurrencies')}</option>
               {currencies.map((currency) => (
                 <option key={currency.value} value={currency.value}>
-                  {currency.label}
+                  {String(currency.label || currency.value)}
                 </option>
               ))}
             </Select>
@@ -459,7 +463,7 @@ const SessionsPage = () => {
                 >
                   {currencies.map((currency) => (
                     <option key={currency.value} value={currency.value}>
-                      {currency.label}
+                      {String(currency.label || currency.value)}
                     </option>
                   ))}
                 </Select>
