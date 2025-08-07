@@ -64,6 +64,25 @@ const PieChart: React.FC<PieChartProps> = ({
     const startAngle = currentAngle;
     const endAngle = currentAngle + angle;
     
+    // Special case for 100% (full circle)
+    if (percentage === 100 && data.length === 1) {
+      // Draw a full circle using two arcs
+      const pathData = [
+        `M ${centerX} ${centerY - radius}`,
+        `A ${radius} ${radius} 0 0 1 ${centerX} ${centerY + radius}`,
+        `A ${radius} ${radius} 0 0 1 ${centerX} ${centerY - radius}`,
+        'Z'
+      ].join(' ');
+      
+      return {
+        path: pathData,
+        color: colors[index % colors.length],
+        name: item.name,
+        value: item.value,
+        percentage: percentage.toFixed(1)
+      };
+    }
+    
     const startAngleRad = (startAngle * Math.PI) / 180;
     const endAngleRad = (endAngle * Math.PI) / 180;
     
@@ -102,9 +121,9 @@ const PieChart: React.FC<PieChartProps> = ({
               key={index}
               d={slice.path}
               fill={slice.color}
-              stroke="white"
-              strokeWidth="2"
-              className="transition-opacity hover:opacity-80"
+              stroke="currentColor"
+              strokeWidth="1"
+              className="transition-opacity hover:opacity-80 stroke-surface"
             />
           ))}
         </svg>
