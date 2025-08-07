@@ -54,6 +54,12 @@ class User(BaseModel):
         cascade="all, delete-orphan",
         lazy="dynamic"
     )
+    coach_profile = relationship(
+        "CoachProfile",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False
+    )
     
     def __repr__(self):
         return f"<User(email={self.email}, plan={self.plan.value})>"

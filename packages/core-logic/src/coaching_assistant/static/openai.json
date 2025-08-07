@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
       "title": "Doxa Coach-Review API",
-      "version": "2.3.0",
+      "version": "2.3.1",
       "description": "Turn coaching transcripts (VTT/SRT/Audio) into Excel/Markdown review sheets."
     },
     "servers": [

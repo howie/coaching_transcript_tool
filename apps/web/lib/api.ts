@@ -617,6 +617,207 @@ class ApiClient {
     }
   }
 
+  // Coach profile methods
+  async getCoachProfile() {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/coach-profile/`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null // No profile exists yet
+        }
+        throw new Error(`Get coach profile failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get coach profile error:', error)
+      throw error
+    }
+  }
+
+  async createCoachProfile(profileData: {
+    display_name: string
+    profile_photo_url?: string
+    public_email?: string
+    phone_country_code?: string
+    phone_number?: string
+    country?: string
+    city?: string
+    timezone?: string
+    coaching_languages?: string[]
+    communication_tools?: any
+    line_id?: string
+    coach_experience?: string
+    training_institution?: string
+    certifications?: string[]
+    linkedin_url?: string
+    personal_website?: string
+    bio?: string
+    specialties?: string[]
+    is_public?: boolean
+  }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/coach-profile/`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(profileData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Create coach profile failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Create coach profile error:', error)
+      throw error
+    }
+  }
+
+  async updateCoachProfile(profileData: {
+    display_name?: string
+    profile_photo_url?: string
+    public_email?: string
+    phone_country_code?: string
+    phone_number?: string
+    country?: string
+    city?: string
+    timezone?: string
+    coaching_languages?: string[]
+    communication_tools?: any
+    line_id?: string
+    coach_experience?: string
+    training_institution?: string
+    certifications?: string[]
+    linkedin_url?: string
+    personal_website?: string
+    bio?: string
+    specialties?: string[]
+    is_public?: boolean
+  }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/coach-profile/`, {
+        method: 'PUT',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(profileData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update coach profile failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Update coach profile error:', error)
+      throw error
+    }
+  }
+
+  async getCoachingPlans() {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/coach-profile/plans`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get coaching plans failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get coaching plans error:', error)
+      throw error
+    }
+  }
+
+  async createCoachingPlan(planData: {
+    plan_type: string
+    title: string
+    description?: string
+    duration_minutes?: number
+    number_of_sessions: number
+    price: number
+    currency?: string
+    is_active?: boolean
+    max_participants?: number
+    booking_notice_hours?: number
+    cancellation_notice_hours?: number
+  }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/coach-profile/plans`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(planData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Create coaching plan failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Create coaching plan error:', error)
+      throw error
+    }
+  }
+
+  async updateCoachingPlan(planId: string, planData: {
+    plan_type?: string
+    title?: string
+    description?: string
+    duration_minutes?: number
+    number_of_sessions?: number
+    price?: number
+    currency?: string
+    is_active?: boolean
+    max_participants?: number
+    booking_notice_hours?: number
+    cancellation_notice_hours?: number
+  }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/coach-profile/plans/${planId}`, {
+        method: 'PUT',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(planData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update coaching plan failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Update coaching plan error:', error)
+      throw error
+    }
+  }
+
+  async deleteCoachingPlan(planId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/coach-profile/plans/${planId}`, {
+        method: 'DELETE',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Delete coaching plan failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Delete coaching plan error:', error)
+      throw error
+    }
+  }
+
   // Dashboard summary methods
   async getSummary(month?: string) {
     try {

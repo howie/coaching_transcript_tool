@@ -41,16 +41,16 @@ export function DashboardSidebar() {
       current: pathname.startsWith('/dashboard/clients')
     },
     {
-      name: t('menu.profile'),
-      href: '/dashboard/profile',
-      icon: UserIcon,
-      current: pathname === '/dashboard/profile'
-    },
-    {
       name: t('menu.converter'),
       href: '/dashboard/transcript-converter',
       icon: DocumentTextIcon,
       current: pathname === '/dashboard/transcript-converter'
+    },
+    {
+      name: t('menu.profile'),
+      href: '/dashboard/profile',
+      icon: UserIcon,
+      current: pathname === '/dashboard/profile'
     },
     {
       name: t('menu.analysis'),
