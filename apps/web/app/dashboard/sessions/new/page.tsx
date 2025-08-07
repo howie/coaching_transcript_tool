@@ -55,7 +55,18 @@ const NewSessionContent = () => {
   const fetchCurrencies = async () => {
     try {
       const data = await apiClient.getCurrencies();
-      setCurrencies(data);
+      // Validate that data is an array with the expected structure
+      if (Array.isArray(data) && data.length > 0 && 
+          data.every(item => item && typeof item === 'object' && 'value' in item && 'label' in item)) {
+        setCurrencies(data);
+      } else {
+        console.warn('Invalid currency data format, using defaults');
+        setCurrencies([
+          { value: 'TWD', label: 'TWD - 新台幣' },
+          { value: 'USD', label: 'USD - 美元' },
+          { value: 'CNY', label: 'CNY - 人民幣' }
+        ]);
+      }
     } catch (error) {
       console.error('Failed to fetch currencies:', error);
       // Fallback to default currencies
@@ -163,7 +174,7 @@ const NewSessionContent = () => {
                 >
                   {currencies.map((currency) => (
                     <option key={currency.value} value={currency.value}>
-                      {currency.label}
+                      {String(currency.label || currency.value)}
                     </option>
                   ))}
                 </Select>
