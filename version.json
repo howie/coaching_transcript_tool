@@ -1,0 +1,7 @@
+{
+  "version": "2.3.1",
+  "displayVersion": "v2.3.1",
+  "description": "Coaching Transcript Tool",
+  "releaseDate": "2025-01-08",
+  "releaseNotes": "Dark mode accessibility improvements - WCAG 2.1 AA compliant contrast ratios"
+}

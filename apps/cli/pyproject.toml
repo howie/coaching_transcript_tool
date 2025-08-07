@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "coaching_transcript_tool"
-version = "2.3.0"
+version = "2.3.1"
 authors = [
   { name="Howie Yu", email="howie.yu@gmail.com" },
 ]
