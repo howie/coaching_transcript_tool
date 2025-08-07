@@ -110,6 +110,35 @@
   - 徹底消除所有問題硬編碼顏色實例
 **技術成果：** 解決了關鍵的無障礙問題，確保所有用戶（包括視覺障礙者）都能正常使用應用程式，建立了可維護的主題系統基礎。
 
+### ✅ JavaScript 生產環境 Chunk Loading 修復完成
+- **Chunk Loading 錯誤根本原因解決**
+  - 修復生產環境中 JavaScript chunks 的 404 錯誤問題
+  - 問題源自快取的 manifest 與新部署的 chunk 檔案間的 build hash 不匹配
+  - 實現一致性 build ID 生成機制，防止 chunk hash 不匹配
+- **Next.js 建置配置優化**
+  - 在 next.config.js 中新增 generateBuildId 函數
+  - 優先使用 Git SHA (Vercel/Cloudflare Pages)，本地使用版本號+時間戳
+  - 確保每次部署的 chunk 檔名與 manifest 一致
+- **靜態資源快取策略改進**
+  - 建立 public/_headers 檔案配置 Cloudflare 快取規則
+  - JavaScript/CSS chunks: 一年不可變快取 (31536000s, immutable)
+  - HTML 頁面: 禁用快取確保內容新鮮度
+  - 圖片資源: 24小時快取平衡效能與更新
+- **Cloudflare Workers 部署配置最佳化**
+  - 更新 wrangler.toml 針對 chunk loading 效能優化
+  - 啟用 observability logs 以便監控部署狀況
+  - 優化 OpenNext 資產處理配置
+- **Client-Side 錯誤恢復機制**
+  - 在 app/layout.tsx 中新增 ChunkLoadError 監聽器
+  - 自動偵測 chunk loading 失敗並重新載入頁面
+  - 處理 Promise rejection 的 chunk loading 錯誤
+  - 提供使用者無縫的錯誤恢復體驗
+- **建置流程最佳化**
+  - 使用新的 chunk hash 重建整個應用程式
+  - 確保所有靜態資源具有一致的版本標識
+  - 驗證生產環境部署的穩定性和可靠性
+**技術成果：** 徹底解決生產環境的 JavaScript chunk loading 問題，提供穩定可靠的前端資源載入機制，大幅改善用戶體驗和系統穩定性。
+
 ### ✅ 後端認證與 Dashboard API 系統完善
 - **關鍵認證錯誤修復**
   - 修復 API 檔案中認證函數導入錯誤 (get_current_user → get_current_user_dependency)

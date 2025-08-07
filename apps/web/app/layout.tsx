@@ -51,6 +51,23 @@ export default function RootLayout({
                   document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
                 } catch (e) {}
               })();
+              
+              // Chunk loading error recovery
+              window.addEventListener('error', function(e) {
+                if (e.error && e.error.name === 'ChunkLoadError') {
+                  console.warn('Chunk loading failed, reloading page...', e);
+                  window.location.reload();
+                }
+              });
+              
+              // Unhandled promise rejection for chunk loading
+              window.addEventListener('unhandledrejection', function(e) {
+                if (e.reason && e.reason.name === 'ChunkLoadError') {
+                  console.warn('Chunk loading promise rejected, reloading page...', e);
+                  e.preventDefault();
+                  window.location.reload();
+                }
+              });
             `,
           }}
         />
