@@ -16,6 +16,7 @@
     "preview": "npx wrangler dev"
   },
   "dependencies": {
+    "@hcaptcha/react-hcaptcha": "^1.12.1",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^3.3.0",
     "clsx": "^2.0.0",
@@ -24,6 +25,7 @@
     "next-auth": "^4.24.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-google-recaptcha-v3": "^1.11.0",
     "react-hook-form": "^7.48.0",
     "tailwind-merge": "^2.0.0",
     "zod": "^3.22.0",

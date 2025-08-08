@@ -8,7 +8,7 @@ from typing import Optional
 import httpx
 from uuid import UUID
 from jose import JWTError, jwt
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -28,6 +28,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: str
+    recaptcha_token: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: UUID
@@ -79,11 +80,75 @@ def create_refresh_token(user_id: str) -> str:
     }
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
+async def verify_recaptcha(token: str, remote_ip: str) -> tuple[bool, float, str]:
+    """Verify reCAPTCHA token with Google's API"""
+    if not settings.RECAPTCHA_ENABLED:
+        return True, 1.0, "signup"  # Skip verification if disabled
+    
+    if not token:
+        return False, 0.0, ""
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://www.google.com/recaptcha/api/siteverify",
+                data={
+                    "secret": settings.RECAPTCHA_SECRET,
+                    "response": token,
+                    "remoteip": remote_ip,
+                },
+                timeout=5
+            )
+        
+        if resp.status_code != 200:
+            print(f"reCAPTCHA verification failed with status {resp.status_code}")
+            return False, 0.0, ""
+        
+        data = resp.json()
+        success = data.get("success", False)
+        score = data.get("score", 0.0)
+        action = data.get("action", "")
+        
+        # Log verification result for debugging
+        print(f"reCAPTCHA verification: success={success}, score={score}, action={action}")
+        
+        return success, score, action
+    except Exception as e:
+        print(f"reCAPTCHA verification error: {e}")
+        # Return failure but don't block signup if reCAPTCHA service is down
+        return False, 0.0, ""
+
 @router.post("/signup", response_model=UserResponse)
-async def signup(user: UserCreate, db: Session = Depends(get_db)):
+async def signup(user: UserCreate, request: Request, db: Session = Depends(get_db)):
+    # Verify reCAPTCHA if enabled
+    if settings.RECAPTCHA_ENABLED:
+        # Get client IP
+        client_ip = request.client.host if request.client else "127.0.0.1"
+        
+        # Verify reCAPTCHA token
+        success, score, action = await verify_recaptcha(user.recaptcha_token or "", client_ip)
+        
+        # Check verification result
+        if not success or (action and action != "signup"):
+            raise HTTPException(
+                status_code=403,
+                detail="Failed Human Verification"
+            )
+        
+        # Check score threshold
+        if score < settings.RECAPTCHA_MIN_SCORE:
+            print(f"reCAPTCHA score {score} below threshold {settings.RECAPTCHA_MIN_SCORE}")
+            raise HTTPException(
+                status_code=403,
+                detail="Failed Human Verification"
+            )
+    
+    # Check if user already exists
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create new user
     hashed_password = get_password_hash(user.password)
     db_user = User(email=user.email, hashed_password=hashed_password, name=user.name)
     db.add(db_user)

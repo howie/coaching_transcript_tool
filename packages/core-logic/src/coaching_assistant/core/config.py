@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_APPLICATION_CREDENTIALS_JSON: str = ""  # JSON 格式的服務帳號憑證
     
+    # Google reCAPTCHA 設定
+    RECAPTCHA_ENABLED: bool = True  # Enable/disable reCAPTCHA verification
+    RECAPTCHA_SITE_KEY: str = ""  # Frontend site key (not used in backend)
+    RECAPTCHA_SECRET: str = os.getenv("RECAPTCHA_SECRET", "6LeIxAcTAAAAABKJdbdotzKATjbpe4U93716OSsz")  # Test secret key for development
+    RECAPTCHA_MIN_SCORE: float = 0.5  # Minimum score to pass verification (0.0-1.0)
+    
     # 檔案上傳限制
     MAX_FILE_SIZE: int = 500  # MB
     MAX_AUDIO_DURATION: int = 3600  # seconds (1 hour)

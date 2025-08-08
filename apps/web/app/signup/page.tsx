@@ -1,16 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/contexts/i18n-context'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
+import { useReCaptcha } from '@/components/recaptcha-provider'
 
 export default function SignupPage() {
   const { t } = useI18n()
   const router = useRouter()
   const { login } = useAuth()
+  const { getReCaptchaToken } = useReCaptcha()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -18,13 +20,14 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [recaptchaError, setRecaptchaError] = useState(false)
 
   const handleGoogleSignup = () => {
     // Redirect to backend Google login endpoint
     window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/auth/google/login`
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (password !== confirmPassword) {
       setError('密碼不符')
@@ -33,9 +36,19 @@ export default function SignupPage() {
     
     setIsLoading(true)
     setError('')
+    setRecaptchaError(false)
     
     try {
-      const response = await apiClient.signup(name, email, password)
+      // Get reCAPTCHA token
+      const recaptchaToken = await getReCaptchaToken('signup');
+      if (!recaptchaToken) {
+        console.warn('Could not get reCAPTCHA token.');
+        setRecaptchaError(true);
+        // Depending on strictness, you might want to stop here
+        // For now, we'll proceed as per the spec's fallback suggestion
+      }
+      
+      const response = await apiClient.signup(name, email, password, recaptchaToken)
       
       // Show success message
       setShowSuccess(true)
@@ -55,10 +68,14 @@ export default function SignupPage() {
         }, 2000)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '發生未知錯誤')
+      if (err instanceof Error && err.message.includes('Human Verification')) {
+        setError('人機驗證失敗，請稍後再試')
+      } else {
+        setError(err instanceof Error ? err.message : '發生未知錯誤')
+      }
       setIsLoading(false)
     }
-  }
+  }, [name, email, password, confirmPassword, getReCaptchaToken, login, router])
 
   return (
     <div className="flex items-center justify-center min-h-screen" style={{backgroundColor: 'var(--section-light)'}}>
@@ -161,6 +178,13 @@ export default function SignupPage() {
             />
           </div>
           {error && <p className="error-text">{error}</p>}
+          {recaptchaError && (
+            <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200">
+              <p className="text-sm text-yellow-800">
+                ⚠️ 無法載入人機驗證服務，但您仍可以繼續註冊。如果遇到問題，請稍後再試。
+              </p>
+            </div>
+          )}
           <button
             type="submit"
             disabled={isLoading}
