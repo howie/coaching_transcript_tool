@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { ThemeProvider } from '@/contexts/theme-context'
 import { I18nProvider } from '@/contexts/i18n-context'
 import { AuthProvider } from '@/contexts/auth-context'
+import { ReCaptchaProvider } from '@/components/recaptcha-provider'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -76,7 +77,9 @@ export default function RootLayout({
         <AuthProvider>
           <ThemeProvider>
             <I18nProvider>
-              {children}
+              <ReCaptchaProvider>
+                {children}
+              </ReCaptchaProvider>
             </I18nProvider>
           </ThemeProvider>
         </AuthProvider>

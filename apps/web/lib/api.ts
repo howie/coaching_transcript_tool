@@ -156,12 +156,12 @@ class ApiClient {
     }
   }
 
-  async signup(name: string, email: string, password: string) {
+  async signup(name: string, email: string, password: string, recaptchaToken?: string) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/auth/signup`, {
         method: 'POST',
         headers: await this.getHeaders(),
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, recaptcha_token: recaptchaToken }),
       })
 
       if (!response.ok) {

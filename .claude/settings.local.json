@@ -9,7 +9,8 @@
       "Bash(python -m pytest tests/models/test_coach_profile.py -v)",
       "Bash(mv:*)",
       "Bash(grep:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
