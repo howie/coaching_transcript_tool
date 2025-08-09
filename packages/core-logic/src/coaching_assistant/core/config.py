@@ -77,7 +77,8 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = ""
     
     class Config:
-        env_file = ".env"
+        # 只在非 production 環境載入 .env 檔案，避免覆蓋 Render.com 環境變數
+        env_file = ".env" if os.getenv("ENVIRONMENT") != "production" else None
         case_sensitive = True
 
 settings = Settings()
