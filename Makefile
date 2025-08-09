@@ -62,7 +62,15 @@ apps/web/.next/BUILD_ID: apps/web/app/* apps/web/components/* apps/web/lib/* app
 
 apps/web/.open-next/worker.js: apps/web/.next/BUILD_ID
 	@echo "Building frontend for Cloudflare Workers..."
-	cd apps/web && npm run build:cf
+	@if [ -f apps/web/.env.local ]; then \
+		echo "  → Temporarily moving .env.local for production build"; \
+		mv apps/web/.env.local apps/web/.env.local.tmp; \
+	fi
+	cd apps/web && NODE_ENV=production npm run build:cf
+	@if [ -f apps/web/.env.local.tmp ]; then \
+		echo "  → Restoring .env.local"; \
+		mv apps/web/.env.local.tmp apps/web/.env.local; \
+	fi
 
 # Convenience targets that depend on files
 build-frontend: apps/web/.next/BUILD_ID
@@ -76,7 +84,22 @@ install-frontend:
 # Cloudflare Workers Deployment
 deploy-frontend:
 	@echo "Deploying frontend to Cloudflare Workers..."
+	@echo "Preparing production environment..."
+	@if [ -f apps/web/.env.local ]; then \
+		echo "  → Backing up .env.local to .env.local.bak"; \
+		mv apps/web/.env.local apps/web/.env.local.bak; \
+	fi
 	cd apps/web && npm run deploy
+	@if [ -f apps/web/.env.local.bak ]; then \
+		echo "  → Restoring .env.local from backup"; \
+		mv apps/web/.env.local.bak apps/web/.env.local; \
+	fi
+	@echo "✅ Deployment complete!"
+
+deploy-frontend-only: build-frontend-cf
+	@echo "Deploying frontend to Cloudflare Workers (without rebuild)..."
+	cd apps/web && npm run deploy:only
+	@echo "✅ Deployment complete!"
 
 preview-frontend: build-frontend-cf
 	@echo "Starting Cloudflare Workers preview..."
