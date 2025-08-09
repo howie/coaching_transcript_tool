@@ -11,7 +11,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CalendarDaysIcon,
-  UsersIcon
+  UsersIcon,
+  SpeakerWaveIcon
 } from '@heroicons/react/24/outline'
 import { useI18n } from '@/contexts/i18n-context'
 import { useSidebar } from '@/contexts/sidebar-context'
@@ -45,6 +46,13 @@ export function DashboardSidebar() {
       href: '/dashboard/transcript-converter',
       icon: DocumentTextIcon,
       current: pathname === '/dashboard/transcript-converter'
+    },
+    {
+      name: t('menu.audio_analysis'),
+      href: '/dashboard/audio-analysis',
+      icon: SpeakerWaveIcon,
+      current: pathname === '/dashboard/audio-analysis',
+      experimental: true
     },
     {
       name: t('menu.profile'),
@@ -142,7 +150,14 @@ export function DashboardSidebar() {
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
                     {(!isCollapsed || isMobile) && (
-                      <span className="ml-3">{item.name}</span>
+                      <>
+                        <span className="ml-3 flex-1">{item.name}</span>
+                        {item.experimental && (
+                          <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded-full ml-2">
+                            {t('menu.experimental')}
+                          </span>
+                        )}
+                      </>
                     )}
                     
                     {/* Active indicator for collapsed state */}
@@ -154,6 +169,11 @@ export function DashboardSidebar() {
                     {isCollapsed && !isMobile && (
                       <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                         {item.name}
+                        {item.experimental && (
+                          <span className="ml-2 text-xs bg-orange-600 px-1 rounded">
+                            {t('menu.experimental')}
+                          </span>
+                        )}
                         {item.comingSoon && (
                           <span className="ml-2 text-xs bg-gray-600 px-1 rounded">
                             {t('menu.coming_soon')}
