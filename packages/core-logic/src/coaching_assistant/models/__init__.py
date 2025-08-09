@@ -3,7 +3,7 @@ from .user import User, UserPlan
 from .session import Session, SessionStatus
 from .transcript import TranscriptSegment, SessionRole, SpeakerRole
 from .client import Client
-from .coaching_session import CoachingSession
+from .coaching_session import CoachingSession, SessionSource
 from .coach_profile import (
     CoachProfile,
     CoachingPlan,
@@ -25,6 +25,7 @@ __all__ = [
     "SpeakerRole",
     "Client",
     "CoachingSession",
+    "SessionSource",
     "CoachProfile",
     "CoachingPlan",
     "CoachingLanguage",
