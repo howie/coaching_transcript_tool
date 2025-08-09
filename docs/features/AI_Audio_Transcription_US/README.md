@@ -5,17 +5,17 @@ This directory contains user stories for the AI Audio Transcription feature, bro
 
 ## Story Map
 
-### Core Features (Ready for Development)
+### Core Features Implementation Status
 Essential functionality to get basic transcription working
 
-| Story | Title | Priority | Status |
-|-------|-------|----------|--------|
-| [US001](US001-audio-upload.md) | Audio File Upload | P0 | 🔵 Ready |
-| [US002](US002-transcription-processing.md) | Audio Transcription Processing | P0 | 🔵 Ready |
-| [US003](US003-speaker-role-detection.md) | Automatic Speaker Role Detection | P1 | 🔵 Ready |
-| [US004](US004-transcript-export.md) | Transcript Export | P0 | 🔵 Ready |
-| [US005](US005-status-tracking.md) | Processing Status Tracking | P1 | 🔵 Ready |
-| [US006](US006-language-selection.md) | Language Selection | P1 | 🔵 Ready |
+| Story | Title | Priority | Backend | Frontend | Status |
+|-------|-------|----------|---------|----------|--------|
+| [US001](US001-audio-upload.md) | Audio File Upload | P0 | ✅ Done | ❌ Fake UI | 🚧 Backend Complete |
+| [US002](US002-transcription-processing.md) | Audio Transcription Processing | P0 | ✅ Done | ❌ No UI | 🚧 Backend Complete |
+| [US003](US003-speaker-role-detection.md) | Automatic Speaker Role Detection | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
+| [US004](US004-transcript-export.md) | Transcript Export | P0 | ⚠️ Partial | ❌ TODO | 📝 Ready |
+| [US005](US005-status-tracking.md) | Processing Status Tracking | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
+| [US006](US006-language-selection.md) | Language Selection | P1 | ⚠️ Basic | ❌ TODO | 📝 Ready |
 
 ### Future Enhancements
 
@@ -40,24 +40,50 @@ Essential functionality to get basic transcription working
 
 ## Status Definitions
 
-- 🔵 **Ready**: Fully defined with AC and DoD, ready for development
-- 📝 **Draft**: Basic story written, needs refinement
+- 📝 **Ready**: Fully defined with AC and DoD, ready for development
+- 🚧 **Backend Complete**: Backend implemented, frontend needs real API integration
+- ✅ **Done**: Both backend and frontend completed and tested end-to-end
+- ⚠️ **Partial**: Some components implemented but incomplete
+- ❌ **TODO**: Not implemented yet
 - 💡 **Idea**: Concept identified, needs story writing
-- 🚧 **In Progress**: Currently being developed
-- ✅ **Done**: Completed and tested
-- ❌ **Blocked**: Cannot proceed due to dependencies
+
+### Implementation Status Legend
+- ✅ **Done**: Fully implemented and tested
+- ⚠️ **Partial**: Basic implementation, needs enhancement
+- ❌ **TODO**: Not implemented
+- ❌ **Fake UI**: UI exists but calls mock/placeholder code instead of real APIs
+- ❌ **No UI**: Backend exists but no frontend integration
 
 ## Implementation Order
 
-### Phase 1: Core Pipeline (Sprint 1)
-1. **US001** - Audio Upload (prerequisite for all)
-2. **US002** - Transcription Processing (parallel with US001)
-3. **US005** - Status Tracking (depends on US002)
+### ⚠️ Critical Issue: Frontend-Backend Gap
+Currently, **backend APIs are implemented but frontend still uses fake/mock data**. This prevents end-to-end testing and user validation.
 
-### Phase 2: User Experience (Sprint 2)
-4. **US004** - Export (depends on US002)
-5. **US003** - Speaker Detection (depends on US002)
-6. **US006** - Language Selection (enhances US002)
+### 📊 Implementation Gap Summary
+
+| Component | US001 Upload | US002 Process | US003 Speaker | US004 Export | US005 Status | US006 Language |
+|-----------|--------------|---------------|---------------|--------------|--------------|----------------|
+| **Backend** | ✅ Complete | ✅ Complete | ❌ Missing | ⚠️ Basic | ❌ Missing | ⚠️ Basic |
+| **Frontend** | ❌ Fake UI | ❌ No UI | ❌ Missing | ❌ Missing | ❌ Missing | ❌ Missing |
+| **End-to-End** | ❌ Broken | ❌ Broken | ❌ Missing | ❌ Missing | ❌ Missing | ❌ Missing |
+
+**Critical Finding:** No user story is actually complete end-to-end!
+
+### Immediate Priority: Complete Existing Stories
+1. **US001** - Replace fake upload simulation with real API integration
+2. **US002** - Add status tracking UI and real transcription flow  
+3. **US005** - Implement progress tracking (required for US002 frontend)
+4. **US004** - Complete export functionality (backend partially done)
+
+### Phase 1: End-to-End Basic Flow
+1. **US001** - Audio Upload (backend ✅, frontend ❌)
+2. **US002** - Transcription Processing (backend ✅, frontend ❌)  
+3. **US005** - Status Tracking (needed for US002 frontend)
+
+### Phase 2: Enhanced User Experience  
+4. **US004** - Export (backend ⚠️, frontend ❌)
+5. **US006** - Language Selection (backend ⚠️, frontend ❌)
+6. **US003** - Speaker Detection (backend ❌, frontend ❌)
 
 ### Phase 3: Advanced Features (Future)
 - Real-time updates
