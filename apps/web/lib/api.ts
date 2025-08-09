@@ -530,7 +530,9 @@ class ApiClient {
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
           if (value) {
-            params.append(key, value)
+            // Map front-end parameter names to API parameter names
+            const paramName = key === 'from_date' ? 'from' : key === 'to_date' ? 'to' : key
+            params.append(paramName, value)
           }
         })
       }
