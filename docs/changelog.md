@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-08-09 Progress Snapshot
+
+### 生產環境 SSO 重定向問題修復完成
+- ✅ **Next.js 環境變數載入順序問題解決**
+  - 識別關鍵問題：Next.js 環境變數載入順序 (.env.local > .env.production > .env)
+  - .env.local 覆蓋生產環境設定，導致 Google SSO 重定向到 localhost
+  - 建立自動化解決方案：建置/部署時暫時移除 .env.local
+- ✅ **後端配置檔案防護機制**
+  - 修改 packages/core-logic/src/coaching_assistant/core/config.py
+  - 在 production 環境下跳過 .env 檔案載入，防止覆蓋 Render.com 環境變數
+  - 確保生產環境使用正確的平台配置
+- ✅ **Makefile 部署流程改進**
+  - 更新 deploy-frontend: 自動處理 .env.local 備份與恢復
+  - 更新 build-frontend-cf: 建置時暫時移除 .env.local
+  - 新增 deploy-frontend-only: 支援不重新建置的快速部署
+- ✅ **package.json 腳本增強**
+  - 新增 deploy:only 腳本，支援純部署操作（跳過建置）
+  - 提升部署效率和彈性，適用於緊急修復部署
+- ✅ **環境變數管理機制優化**
+  - 建立完整的環境變數優先順序處理機制
+  - 提供無縫的開發到生產環境轉換
+  - 維持開發效率同時確保生產環境配置正確性
+
+**技術影響：** 徹底解決 Google SSO 生產環境重定向到 localhost 的問題，建立可靠的環境變數管理機制，提升系統部署的穩定性和可靠性。
+
 ## 2025-08-07 Progress Snapshot
 
 ### JavaScript 生產環境 Chunk Loading 修復完成 (最新)
