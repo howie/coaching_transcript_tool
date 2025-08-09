@@ -1,5 +1,17 @@
 # User Story: US006 - Language Selection
 
+## Implementation Status: ⚠️ BASIC BACKEND SUPPORT
+
+**Backend Status:** ⚠️ BASIC LANGUAGE PARAMETER SUPPORT (zh-TW, zh-CN, en-US in sessions API)  
+**Frontend Status:** ❌ NO LANGUAGE PICKER UI
+
+### Current Implementation
+- ⚠️ Backend accepts language parameter in session creation
+- ⚠️ Basic STT configuration for different languages exists
+- ❌ No frontend language selection interface
+- ❌ No auto-detection capability
+- ❌ No language preference persistence
+
 ## Story
 **As a** coach conducting sessions in different languages  
 **I want to** select the appropriate language for transcription  

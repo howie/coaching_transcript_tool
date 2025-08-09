@@ -1,5 +1,15 @@
 # User Story: US004 - Transcript Export
 
+## Implementation Status: ⚠️ PARTIALLY IMPLEMENTED
+
+**Backend Status:** ⚠️ BASIC IMPLEMENTATION (JSON, VTT, SRT export in `sessions.py`)  
+**Frontend Status:** ❌ NO DOWNLOAD UI
+
+### Current Implementation
+- ✅ Basic export endpoints exist in `sessions.py` for JSON, VTT, SRT, TXT formats
+- ❌ Missing comprehensive format options and download UI
+- ❌ No frontend integration for export buttons or format selection
+
 ## Story
 **As a** coach  
 **I want to** export transcripts in various formats  
