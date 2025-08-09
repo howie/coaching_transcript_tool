@@ -9,7 +9,7 @@ from sqlalchemy import and_, desc, asc, func
 from pydantic import BaseModel, Field
 
 from ..core.database import get_db
-from ..models import CoachingSession, Client, User
+from ..models import CoachingSession, Client, User, SessionSource
 from ..api.auth import get_current_user_dependency
 
 router = APIRouter()
@@ -19,6 +19,7 @@ router = APIRouter()
 class CoachingSessionCreate(BaseModel):
     session_date: date
     client_id: UUID
+    source: SessionSource = SessionSource.CLIENT  # Default to CLIENT
     duration_min: int = Field(..., gt=0)
     fee_currency: str = Field(..., min_length=3, max_length=3)
     fee_amount: int = Field(..., ge=0)
@@ -28,6 +29,7 @@ class CoachingSessionCreate(BaseModel):
 class CoachingSessionUpdate(BaseModel):
     session_date: Optional[date] = None
     client_id: Optional[UUID] = None
+    source: Optional[SessionSource] = None
     duration_min: Optional[int] = Field(None, gt=0)
     fee_currency: Optional[str] = Field(None, min_length=3, max_length=3)
     fee_amount: Optional[int] = Field(None, ge=0)
@@ -44,6 +46,7 @@ class CoachingSessionResponse(BaseModel):
     id: UUID
     session_date: str
     client: ClientSummary
+    source: SessionSource
     duration_min: int
     fee_currency: str
     fee_amount: int
@@ -133,6 +136,7 @@ async def list_coaching_sessions(
             "id": session.id,
             "session_date": session.session_date.isoformat(),
             "client": client_summary,
+            "source": session.source,
             "duration_min": session.duration_min,
             "fee_currency": session.fee_currency,
             "fee_amount": session.fee_amount,
@@ -185,6 +189,7 @@ async def get_coaching_session(
         "id": session.id,
         "session_date": session.session_date.isoformat(),
         "client": client_summary,
+        "source": session.source,
         "duration_min": session.duration_min,
         "fee_currency": session.fee_currency,
         "fee_amount": session.fee_amount,
@@ -219,6 +224,7 @@ async def create_coaching_session(
         coach_id=current_user.id,
         session_date=session_data.session_date,
         client_id=session_data.client_id,
+        source=session_data.source,
         duration_min=session_data.duration_min,
         fee_currency=session_data.fee_currency.upper(),
         fee_amount=session_data.fee_amount,
@@ -247,6 +253,7 @@ async def create_coaching_session(
         "id": session.id,
         "session_date": session.session_date.isoformat(),
         "client": client_summary,
+        "source": session.source,
         "duration_min": session.duration_min,
         "fee_currency": session.fee_currency,
         "fee_amount": session.fee_amount,
@@ -315,6 +322,7 @@ async def update_coaching_session(
         "id": session.id,
         "session_date": session.session_date.isoformat(),
         "client": client_summary,
+        "source": session.source,
         "duration_min": session.duration_min,
         "fee_currency": session.fee_currency,
         "fee_amount": session.fee_amount,

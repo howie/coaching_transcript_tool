@@ -11,8 +11,8 @@ def test_user(db_session: Session):
     """Create a test user."""
     user = User(
         email="test@example.com",
-        username="testuser",
-        hashed_password="hashed_password"
+        name="Test User",
+        google_id="test123"
     )
     db_session.add(user)
     db_session.commit()
@@ -123,5 +123,5 @@ def test_client_issue_types_preserved_after_anonymization(db_session: Session, t
     # Issue types should be preserved for analytical purposes
     assert client.issue_types == "職涯發展, 人際關係"
     assert client.is_anonymized is True
-    assert client.name.startswith("匿名客戶")
+    assert client.name.startswith("已刪除客戶")
     assert client.email is None  # PII should be removed

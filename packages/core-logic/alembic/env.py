@@ -16,6 +16,9 @@ from src.coaching_assistant.models.base import Base
 from src.coaching_assistant.models.user import User
 from src.coaching_assistant.models.session import Session, SessionStatus
 from src.coaching_assistant.models.transcript import TranscriptSegment, SessionRole, SpeakerRole
+from src.coaching_assistant.models.client import Client
+from src.coaching_assistant.models.coaching_session import CoachingSession, SessionSource
+from src.coaching_assistant.models.coach_profile import CoachProfile, CoachingPlan
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
