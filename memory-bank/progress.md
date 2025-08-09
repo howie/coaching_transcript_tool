@@ -139,6 +139,28 @@
   - 驗證生產環境部署的穩定性和可靠性
 **技術成果：** 徹底解決生產環境的 JavaScript chunk loading 問題，提供穩定可靠的前端資源載入機制，大幅改善用戶體驗和系統穩定性。
 
+### ✅ 生產環境 SSO 重定向問題修復完成
+- **Next.js 環境變數載入順序問題解決**
+  - 識別關鍵問題：Next.js 環境變數載入順序 (.env.local > .env.production > .env)
+  - .env.local 覆蓋生產環境設定，導致 Google SSO 重定向到 localhost
+  - 建立自動化解決方案：建置/部署時暫時移除 .env.local
+- **後端配置檔案防護機制**
+  - 修改 packages/core-logic/src/coaching_assistant/core/config.py
+  - 在 production 環境下跳過 .env 檔案載入，防止覆蓋 Render.com 環境變數
+  - 確保生產環境使用正確的平台配置
+- **Makefile 部署流程改進**
+  - 更新 deploy-frontend: 自動處理 .env.local 備份與恢復
+  - 更新 build-frontend-cf: 建置時暫時移除 .env.local
+  - 新增 deploy-frontend-only: 支援不重新建置的快速部署
+- **package.json 腳本增強**
+  - 新增 deploy:only 腳本，支援純部署操作（跳過建置）
+  - 提升部署效率和彈性，適用於緊急修復部署
+- **核心技術成果**
+  - 彼底解決 Google SSO 生產環境重定向到 localhost 的問題
+  - 建立健全的環境變數管理機制，防止未來類似問題
+  - 提供無縫的開發到生產環境轉換，維持開發效率
+**技術成果：** 彼底解決生產環境 SSO 配置問題，建立可靠的環境變數管理機制，提升系統部署的穩定性和可靠性。
+
 ### ✅ 後端認證與 Dashboard API 系統完善
 - **關鍵認證錯誤修復**
   - 修復 API 檔案中認證函數導入錯誤 (get_current_user → get_current_user_dependency)

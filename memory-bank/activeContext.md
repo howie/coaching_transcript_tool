@@ -90,6 +90,46 @@
     - **任務**: 解決 Next.js 建置錯誤和 TypeScript 問題
     - **狀態**: ✅ **已完成** - 生產環境部署穩定
 
+### Phase 6: 生產環境 SSO 重定向問題修復完成 (已完成) ✅
+
+1.  **Next.js 環境變數載入順序問題修復**
+    - **問題分析**: Next.js 環境變數載入順序 .env.local > .env.production > .env
+    - **根本原因**: .env.local 覆蓋生產環境設定，導致 localhost 重定向錯誤
+    - **狀態**: ✅ **已完成** - 解決生產環境 SSO 重定向到 localhost 的問題
+
+2.  **後端配置檔案防護機制**
+    - **任務**: 修改 packages/core-logic/src/coaching_assistant/core/config.py
+    - **實作**: 只在非 production 環境載入 .env 檔案，避免覆蓋 Render.com 環境變數
+    - **狀態**: ✅ **已完成** - 防止 .env 檔案干擾生產環境配置
+
+3.  **Makefile 自動化 .env.local 處理**
+    - **任務**: 更新建置和部署流程，自動處理 .env.local 檔案
+    - **實作**: 建置/部署時暫時移動 .env.local，完成後恢復
+    - **功能**: deploy-frontend, build-frontend-cf, deploy-frontend-only 目標
+    - **狀態**: ✅ **已完成** - 提供無縫的開發到生產環境轉換
+
+4.  **部署腳本優化**
+    - **任務**: 新增 deploy:only 腳本到 package.json
+    - **用途**: 支援不重新建置的快速部署
+    - **狀態**: ✅ **已完成** - 提升部署效率和彈性
+
+### 關鍵技術發現與解決方案
+
+**Next.js 環境變數優先順序:**
+- `.env.local` (最高優先權) > `.env.production` > `.env`
+- `.env.local` 覆蓋所有其他環境設定，包括生產環境變數
+
+**解決策略:**
+1. **開發時期**: 保留 .env.local 用於本地開發便利性
+2. **建置時期**: 暫時移除 .env.local，使用正確的生產環境設定
+3. **部署後**: 恢復 .env.local，維持開發體驗
+4. **後端防護**: 生產環境時跳過 .env 檔案載入
+
+**自動化流程改進:**
+- `make deploy-frontend`: 完整建置+部署流程，自動處理 .env.local
+- `make deploy-frontend-only`: 僅部署已建置檔案，適用於快速修復
+- `npm run deploy:only`: 跳過建置步驟的純部署指令
+
 ### 下一階段: UI/UX 調整與雙認證系統實作 (待續)
 
 1.  **簡化首頁 (`apps/web/app/page.tsx`)**
@@ -109,4 +149,4 @@
     - **狀態**: 📝 **待開始**
 
 ---
-**上次更新時間:** 2025-08-07 22:40
+**上次更新時間:** 2025-08-09 11:30

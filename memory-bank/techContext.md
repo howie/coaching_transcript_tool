@@ -1,7 +1,7 @@
 # 技術堆疊 (Tech Context)
 
-**更新時間：** 2025-08-07 14:30  
-**技術版本：** v3.2 (Coach Assistant MVP - Dark Mode & Accessibility Enhanced)
+**更新時間：** 2025-08-09 11:30  
+**技術版本：** v3.3 (Coach Assistant MVP - Production SSO & Environment Config Fixed)
 
 ## 🎯 MVP 核心技術架構
 
@@ -41,6 +41,8 @@
 - **Cloudflare Workers** - 全球邊緣運算
 - **OpenNext** - Next.js on Workers 適配器
 - **Chunk Loading 優化** - 一致性 build ID 與快取策略
+- **SSO 環境配置** - 防止 .env.local 覆蓋生產環境變數
+- **部署自動化** - Makefile 整合 .env.local 處理機制
 
 ## 🖥️ 後端技術棧
 
@@ -272,6 +274,28 @@ const nextConfig = {
   },
   output: 'standalone',
 }
+```
+
+### 環境變數優先順序與 SSO 修復
+```bash
+# Next.js 環境變數載入順序 (優先權從高到低)
+.env.local         # 最高優先權 - 開發環境覆蓋
+.env.production    # 生產環境設定
+.env               # 基礎設定
+
+# Makefile 自動化處理 .env.local
+deploy-frontend:
+	@if [ -f apps/web/.env.local ]; then \
+		mv apps/web/.env.local apps/web/.env.local.bak; \
+	fi
+	cd apps/web && npm run deploy
+	@if [ -f apps/web/.env.local.bak ]; then \
+		mv apps/web/.env.local.bak apps/web/.env.local; \
+	fi
+
+# 後端環境變數防護
+class Config:
+    env_file = ".env" if os.getenv("ENVIRONMENT") != "production" else None
 ```
 
 ### Cloudflare 快取策略
