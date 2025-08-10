@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useI18n } from '@/contexts/i18n-context'
+import { apiClient, downloadBlob } from '@/lib/api'
 import { SpeakerWaveIcon, CloudArrowUpIcon, DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 interface UploadState {
@@ -11,6 +12,8 @@ interface UploadState {
   error?: string
   sessionId?: string
   fileName?: string
+  taskId?: string
+  transcriptData?: any
 }
 
 export default function AudioAnalysisPage() {
@@ -84,36 +87,141 @@ export default function AudioAnalysisPage() {
     setUploadState({ status: 'uploading', progress: 0 })
 
     try {
-      // This is a placeholder for the actual upload implementation
-      // In the real implementation, you would:
-      // 1. Get signed URL from API
-      // 2. Upload file to GCS
-      // 3. Trigger transcription processing
-      // 4. Poll for status updates
+      // Step 1: Create transcription session
+      const session = await apiClient.createTranscriptionSession({
+        title: sessionTitle.trim(),
+        language: language === 'auto' ? 'zh-TW' : language
+      })
 
-      // Simulate upload progress
-      for (let i = 0; i <= 100; i += 10) {
-        setUploadState({ status: 'uploading', progress: i })
-        await new Promise(resolve => setTimeout(resolve, 200))
+      setUploadState(prev => ({ 
+        ...prev, 
+        sessionId: session.id,
+        progress: 10
+      }))
+
+      // Step 2: Get signed upload URL
+      const uploadData = await apiClient.getUploadUrl(session.id, selectedFile.name)
+      
+      setUploadState(prev => ({ 
+        ...prev, 
+        progress: 20
+      }))
+
+      // Step 3: Upload file to GCS with progress tracking
+      await apiClient.uploadToGCS(uploadData.upload_url, selectedFile, (progress) => {
+        setUploadState(prev => ({ 
+          ...prev, 
+          progress: 20 + (progress * 0.6) // 20% to 80% for upload progress
+        }))
+      })
+
+      setUploadState(prev => ({ 
+        ...prev, 
+        progress: 90
+      }))
+
+      // Step 4: Confirm upload
+      const confirmResult = await apiClient.confirmUpload(session.id)
+      
+      if (!confirmResult.file_exists || !confirmResult.ready_for_transcription) {
+        throw new Error('File upload verification failed: ' + confirmResult.message)
       }
 
-      // Simulate processing state
-      setUploadState({ 
-        status: 'processing', 
-        progress: 0,
-        estimatedTime: '約 15 分鐘',
-        sessionId: 'session-123'
-      })
+      setUploadState(prev => ({ 
+        ...prev, 
+        progress: 100
+      }))
 
-      // Note: In real implementation, you would start polling for status here
+      // Step 5: Start transcription processing
+      const transcriptionResult = await apiClient.startTranscription(session.id)
       
-    } catch (error) {
-      setUploadState({
+      setUploadState(prev => ({ 
+        ...prev, 
+        status: 'processing',
+        progress: 0,
+        estimatedTime: '約 15-30 分鐘',
+        taskId: transcriptionResult.task_id
+      }))
+
+      // Step 6: Start polling for transcription status
+      startPollingTranscriptionStatus(session.id)
+      
+    } catch (error: any) {
+      console.error('Upload error:', error)
+      setUploadState(prev => ({
+        ...prev,
         status: 'failed',
         progress: 0,
-        error: t('audio.upload_error')
-      })
+        error: error.message || t('audio.upload_error')
+      }))
     }
+  }
+
+  // Polling for transcription status
+  const startPollingTranscriptionStatus = async (sessionId: string) => {
+    const pollInterval = 5000 // Poll every 5 seconds
+    const maxPollingTime = 2 * 60 * 60 * 1000 // 2 hours maximum
+    const startTime = Date.now()
+
+    const poll = async () => {
+      try {
+        if (Date.now() - startTime > maxPollingTime) {
+          setUploadState(prev => ({
+            ...prev,
+            status: 'failed',
+            error: 'Transcription timed out. Please try again.'
+          }))
+          return
+        }
+
+        const session = await apiClient.getTranscriptionSession(sessionId)
+        
+        if (session.status === 'completed') {
+          setUploadState(prev => ({
+            ...prev,
+            status: 'completed',
+            progress: 100,
+            transcriptData: session
+          }))
+        } else if (session.status === 'failed') {
+          setUploadState(prev => ({
+            ...prev,
+            status: 'failed',
+            error: session.error_message || 'Transcription failed'
+          }))
+        } else if (session.status === 'processing') {
+          // Continue polling
+          setTimeout(poll, pollInterval)
+          
+          // Update estimated time based on duration if available
+          if (session.duration_minutes) {
+            const estimatedMinutes = Math.ceil(session.duration_minutes * 2) // Estimate 2x duration
+            setUploadState(prev => ({
+              ...prev,
+              estimatedTime: `約 ${estimatedMinutes} 分鐘`
+            }))
+          }
+        } else {
+          // Still processing, continue polling
+          setTimeout(poll, pollInterval)
+        }
+      } catch (error: any) {
+        console.error('Polling error:', error)
+        // Continue polling unless it's a serious error
+        if (error.message?.includes('404') || error.message?.includes('unauthorized')) {
+          setUploadState(prev => ({
+            ...prev,
+            status: 'failed',
+            error: 'Session not found or access denied'
+          }))
+        } else {
+          setTimeout(poll, pollInterval * 2) // Retry with longer interval
+        }
+      }
+    }
+
+    // Start polling
+    poll()
   }
 
   const resetUpload = () => {
@@ -122,6 +230,23 @@ export default function AudioAnalysisPage() {
     setSessionTitle('')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
+    }
+  }
+
+  // Handle transcript download
+  const handleDownloadTranscript = async (format: 'json' | 'vtt' | 'srt' | 'txt' = 'json') => {
+    if (!uploadState.sessionId) return
+
+    try {
+      const blob = await apiClient.exportTranscript(uploadState.sessionId, format)
+      const filename = `${sessionTitle.trim() || 'transcript'}.${format}`
+      downloadBlob(blob, filename)
+    } catch (error: any) {
+      console.error('Download error:', error)
+      setUploadState(prev => ({
+        ...prev,
+        error: `Download failed: ${error.message}`
+      }))
     }
   }
 
@@ -321,19 +446,47 @@ export default function AudioAnalysisPage() {
 
                 {uploadState.status === 'completed' && (
                   <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col space-y-3">
                       <div className="flex items-center space-x-2">
                         {getStatusIcon()}
                         <span className="text-sm font-medium text-green-800">{t('audio.status_completed')}</span>
+                        {uploadState.transcriptData?.segments_count && (
+                          <span className="text-sm text-green-700">
+                            ({uploadState.transcriptData.segments_count} 段對話)
+                          </span>
+                        )}
                       </div>
-                      <div className="space-x-2">
-                        <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                          {t('audio.download_transcript')}
+                      <div className="flex flex-wrap gap-2">
+                        <button 
+                          onClick={() => handleDownloadTranscript('json')}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
+                        >
+                          下載 JSON
                         </button>
-                        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                          {t('audio.view_analysis')}
+                        <button 
+                          onClick={() => handleDownloadTranscript('txt')}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
+                        >
+                          下載文本
+                        </button>
+                        <button 
+                          onClick={() => handleDownloadTranscript('vtt')}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
+                        >
+                          下載 VTT
+                        </button>
+                        <button 
+                          onClick={() => handleDownloadTranscript('srt')}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
+                        >
+                          下載 SRT
                         </button>
                       </div>
+                      {uploadState.transcriptData?.stt_cost_usd && (
+                        <div className="text-sm text-gray-600">
+                          轉錄費用: ${uploadState.transcriptData.stt_cost_usd} USD
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
