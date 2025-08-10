@@ -1,7 +1,7 @@
 {
-  "version": "2.3.6",
-  "displayVersion": "v2.3.6",
+  "version": "2.4.0",
+  "displayVersion": "v2.4.0",
   "description": "Coaching Transcript Tool",
-  "releaseDate": "2025-08-07",
-  "releaseNotes": "Add recaptcha v3 support, update dependencies, and improve performance.",
+  "releaseDate": "2025-08-10",
+  "releaseNotes": "Add status tracking for transcription processing with real-time progress updates."
 }

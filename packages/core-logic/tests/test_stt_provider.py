@@ -104,16 +104,16 @@ class TestGoogleSTTProvider:
     @patch('coaching_assistant.services.google_stt.speech_v2.SpeechClient')
     @patch('coaching_assistant.services.google_stt.settings')
     def test_transcribe_success(self, mock_settings, mock_client):
-        """Test successful transcription."""
+        """Test successful transcription with v2 API."""
         mock_settings.GOOGLE_APPLICATION_CREDENTIALS_JSON = ""
         mock_settings.GOOGLE_PROJECT_ID = "test-project"
         
-        # Mock the recognition result
+        # Mock the recognition result for v2 API
         mock_word = MagicMock()
         mock_word.word = "Hello"
-        mock_word.speaker_tag = 1
-        mock_word.start_time = MagicMock(seconds=0, microseconds=0)
-        mock_word.end_time = MagicMock(seconds=1, microseconds=0)
+        mock_word.speaker_label = "1"  # v2 API uses speaker_label instead of speaker_tag
+        mock_word.start_offset.total_seconds.return_value = 0.0
+        mock_word.end_offset.total_seconds.return_value = 1.0
         mock_word.confidence = 0.95
         
         mock_alternative = MagicMock()
@@ -170,13 +170,13 @@ class TestGoogleSTTProvider:
         
         provider = GoogleSTTProvider()
         
-        # Mock words
+        # Mock words for v2 API
         words = []
         for i, word in enumerate(["Hello", "world"]):
             mock_word = MagicMock()
             mock_word.word = word
-            mock_word.start_time = MagicMock(seconds=i, microseconds=0)
-            mock_word.end_time = MagicMock(seconds=i+1, microseconds=0)
+            mock_word.start_offset.total_seconds.return_value = float(i)
+            mock_word.end_offset.total_seconds.return_value = float(i+1)
             mock_word.confidence = 0.9
             words.append(mock_word)
         

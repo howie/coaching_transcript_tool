@@ -136,7 +136,6 @@ const SessionsPage = () => {
       const payload = {
         session_date: formData.session_date,
         client_id: formData.client_id,
-        source: "CLIENT",  // Default to CLIENT source
         duration_min: parseInt(formData.duration_min),
         fee_currency: formData.fee_currency,
         fee_amount: formData.fee_amount ? parseInt(formData.fee_amount) : 0,
@@ -218,7 +217,7 @@ const SessionsPage = () => {
     window.location.href = `/dashboard/transcript-converter?session_id=${sessionId}`;
   };
 
-  if (loading && !sessions) {
+  if (loading && (!sessions || sessions.length === 0)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">{t('sessions.loading')}</div>
@@ -361,7 +360,7 @@ const SessionsPage = () => {
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
           </tbody>
         </table>
       </div>

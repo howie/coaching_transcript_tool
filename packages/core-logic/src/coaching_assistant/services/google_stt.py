@@ -6,7 +6,7 @@ import logging
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 from google.cloud import speech_v2
-from google.cloud.speech_v2 import RecognitionConfig, SpeakerDiarizationConfig
+from google.cloud.speech_v2 import RecognitionConfig, RecognitionFeatures, SpeakerDiarizationConfig
 from google.api_core import exceptions as gcp_exceptions
 
 from .stt_provider import (
@@ -33,15 +33,30 @@ class GoogleSTTProvider(STTProvider):
             if settings.GOOGLE_APPLICATION_CREDENTIALS_JSON:
                 import tempfile
                 import os
+                import base64
                 from google.oauth2 import service_account
                 
-                # Create temporary credentials file
-                credentials_info = json.loads(settings.GOOGLE_APPLICATION_CREDENTIALS_JSON)
+                # Handle both raw JSON and Base64 encoded JSON
+                credentials_json = settings.GOOGLE_APPLICATION_CREDENTIALS_JSON
+                try:
+                    # First try to parse as raw JSON
+                    credentials_info = json.loads(credentials_json)
+                except json.JSONDecodeError:
+                    # If that fails, try Base64 decoding first
+                    try:
+                        decoded_json = base64.b64decode(credentials_json).decode('utf-8')
+                        credentials_info = json.loads(decoded_json)
+                        logger.info("Successfully decoded Base64 encoded credentials")
+                    except Exception as e:
+                        raise STTProviderError(f"Failed to decode credentials JSON (tried both raw and Base64): {e}")
+                
                 credentials = service_account.Credentials.from_service_account_info(credentials_info)
                 self.client = speech_v2.SpeechClient(credentials=credentials)
+                logger.info(f"Google STT client initialized with service account: {credentials_info.get('client_email', 'unknown')}")
             else:
                 # Use default credentials (for local development)
                 self.client = speech_v2.SpeechClient()
+                logger.info("Google STT client initialized with default credentials")
                 
             self.project_id = settings.GOOGLE_PROJECT_ID or "your-project-id"
             
@@ -61,31 +76,40 @@ class GoogleSTTProvider(STTProvider):
         try:
             logger.info(f"Starting Google STT transcription for {audio_uri}")
             
+            # Configure recognition features
+            features = RecognitionFeatures(
+                enable_automatic_punctuation=True,
+                enable_word_time_offsets=True,
+                enable_word_confidence=True
+            )
+            
+            # Configure speaker diarization if enabled
+            # In Speech-to-Text v2 API, speaker diarization is enabled by providing
+            # SpeakerDiarizationConfig with min/max counts (no enable_speaker_diarization field)
+            if enable_diarization:
+                features.diarization_config = SpeakerDiarizationConfig(
+                    min_speaker_count=min_speakers,
+                    max_speaker_count=max_speakers
+                )
+            
             # Configure recognition
             config = RecognitionConfig(
                 auto_decoding_config={},  # Auto-detect audio format
                 language_codes=[language] if language != "auto" else ["zh-TW", "zh-CN", "en-US"],
                 model="long",  # Use long model for better accuracy
-                features={
-                    "enable_automatic_punctuation": True,
-                    "enable_word_time_offsets": True,
-                    "enable_word_confidence": True,
-                }
+                features=features
             )
             
-            # Configure speaker diarization if enabled
-            if enable_diarization:
-                config.features["diarization_config"] = SpeakerDiarizationConfig(
-                    enable_speaker_diarization=True,
-                    min_speaker_count=min_speakers,
-                    max_speaker_count=max_speakers
-                )
-            
             # Start long-running recognition
+            # In v2 API, audio URI goes in files array, not as direct uri field
             request = {
                 "recognizer": f"projects/{self.project_id}/locations/global/recognizers/_",
                 "config": config,
-                "uri": audio_uri
+                "files": [
+                    {
+                        "uri": audio_uri
+                    }
+                ]
             }
             
             # Execute recognition (this is synchronous but can take time)

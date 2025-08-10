@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useI18n } from '@/contexts/i18n-context'
 import { apiClient, downloadBlob } from '@/lib/api'
+import { useTranscriptionStatus, formatTimeRemaining, formatDuration, getStatusMessage } from '@/hooks/useTranscriptionStatus'
+import { TranscriptionProgress, ProgressIndicator } from '@/components/ui/progress-bar'
 import { SpeakerWaveIcon, CloudArrowUpIcon, DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 interface UploadState {
@@ -23,7 +25,21 @@ export default function AudioAnalysisPage() {
   const [sessionTitle, setSessionTitle] = useState('')
   const [language, setLanguage] = useState('auto')
   const [dragActive, setDragActive] = useState(false)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Use the new transcription status hook
+  const {
+    status: transcriptionStatus,
+    session: transcriptionSession,
+    loading: statusLoading,
+    error: statusError,
+    startPolling,
+    stopPolling,
+    isPolling
+  } = useTranscriptionStatus(currentSessionId, {
+    enablePolling: currentSessionId !== null && uploadState.status === 'processing'
+  })
 
   const supportedFormats = ['mp3', 'wav', 'm4a', 'ogg', 'mp4']
   const maxFileSize = 1 * 1024 * 1024 * 1024 // 1GB
@@ -98,6 +114,7 @@ export default function AudioAnalysisPage() {
         sessionId: session.id,
         progress: 10
       }))
+      setCurrentSessionId(session.id)
 
       // Step 2: Get signed upload URL
       const uploadData = await apiClient.getUploadUrl(session.id, selectedFile.name)
@@ -143,8 +160,7 @@ export default function AudioAnalysisPage() {
         taskId: transcriptionResult.task_id
       }))
 
-      // Step 6: Start polling for transcription status
-      startPollingTranscriptionStatus(session.id)
+      // Step 6: The status hook will automatically start polling
       
     } catch (error: any) {
       console.error('Upload error:', error)
@@ -157,77 +173,43 @@ export default function AudioAnalysisPage() {
     }
   }
 
-  // Polling for transcription status
-  const startPollingTranscriptionStatus = async (sessionId: string) => {
-    const pollInterval = 5000 // Poll every 5 seconds
-    const maxPollingTime = 2 * 60 * 60 * 1000 // 2 hours maximum
-    const startTime = Date.now()
-
-    const poll = async () => {
-      try {
-        if (Date.now() - startTime > maxPollingTime) {
-          setUploadState(prev => ({
-            ...prev,
-            status: 'failed',
-            error: 'Transcription timed out. Please try again.'
-          }))
-          return
-        }
-
-        const session = await apiClient.getTranscriptionSession(sessionId)
-        
-        if (session.status === 'completed') {
-          setUploadState(prev => ({
-            ...prev,
-            status: 'completed',
-            progress: 100,
-            transcriptData: session
-          }))
-        } else if (session.status === 'failed') {
-          setUploadState(prev => ({
-            ...prev,
-            status: 'failed',
-            error: session.error_message || 'Transcription failed'
-          }))
-        } else if (session.status === 'processing') {
-          // Continue polling
-          setTimeout(poll, pollInterval)
-          
-          // Update estimated time based on duration if available
-          if (session.duration_minutes) {
-            const estimatedMinutes = Math.ceil(session.duration_minutes * 2) // Estimate 2x duration
-            setUploadState(prev => ({
-              ...prev,
-              estimatedTime: `約 ${estimatedMinutes} 分鐘`
-            }))
-          }
-        } else {
-          // Still processing, continue polling
-          setTimeout(poll, pollInterval)
-        }
-      } catch (error: any) {
-        console.error('Polling error:', error)
-        // Continue polling unless it's a serious error
-        if (error.message?.includes('404') || error.message?.includes('unauthorized')) {
-          setUploadState(prev => ({
-            ...prev,
-            status: 'failed',
-            error: 'Session not found or access denied'
-          }))
-        } else {
-          setTimeout(poll, pollInterval * 2) // Retry with longer interval
-        }
+  // Effect to sync transcription status with upload state
+  useEffect(() => {
+    if (transcriptionSession && transcriptionStatus) {
+      // Update upload state based on transcription status
+      if (transcriptionSession.status === 'completed') {
+        setUploadState(prev => ({
+          ...prev,
+          status: 'completed',
+          progress: 100,
+          transcriptData: transcriptionSession
+        }))
+      } else if (transcriptionSession.status === 'failed') {
+        setUploadState(prev => ({
+          ...prev,
+          status: 'failed',
+          progress: transcriptionStatus.progress,
+          error: transcriptionSession.error_message || 'Transcription failed'
+        }))
+      } else if (transcriptionSession.status === 'processing') {
+        setUploadState(prev => ({
+          ...prev,
+          status: 'processing',
+          progress: transcriptionStatus.progress,
+          estimatedTime: transcriptionStatus.estimated_completion ? 
+            formatTimeRemaining(transcriptionStatus.estimated_completion) : 
+            '約 15-30 分鐘'
+        }))
       }
     }
-
-    // Start polling
-    poll()
-  }
+  }, [transcriptionSession, transcriptionStatus])
 
   const resetUpload = () => {
     setSelectedFile(null)
     setUploadState({ status: 'idle', progress: 0 })
     setSessionTitle('')
+    setCurrentSessionId(null)
+    stopPolling()
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -411,52 +393,40 @@ export default function AudioAnalysisPage() {
 
                 {/* Upload Progress */}
                 {(uploadState.status === 'uploading' || uploadState.status === 'processing') && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon()}
-                        <span className="text-sm font-medium text-gray-900">{getStatusText()}</span>
-                      </div>
-                      {uploadState.estimatedTime && (
-                        <span className="text-sm text-gray-500">
-                          {t('audio.estimated_time')}: {uploadState.estimatedTime}
-                        </span>
-                      )}
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadState.progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
+                  <TranscriptionProgress
+                    progress={uploadState.progress}
+                    status={uploadState.status === 'uploading' ? 'pending' : 'processing'}
+                    message={
+                      transcriptionStatus?.message || 
+                      getStatusMessage(uploadState.status, uploadState.progress)
+                    }
+                    estimatedTime={
+                      uploadState.status === 'processing' ? uploadState.estimatedTime : undefined
+                    }
+                  />
                 )}
 
                 {/* Status Messages */}
-                {uploadState.status === 'failed' && uploadState.error && (
-                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                    <div className="flex">
-                      <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
-                      <div className="ml-3">
-                        <p className="text-sm text-red-800">{uploadState.error}</p>
-                      </div>
-                    </div>
-                  </div>
+                {uploadState.status === 'failed' && (
+                  <TranscriptionProgress
+                    progress={uploadState.progress}
+                    status="failed"
+                    message={uploadState.error || 'Processing failed'}
+                    showDetails={true}
+                  />
                 )}
 
                 {uploadState.status === 'completed' && (
-                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                    <div className="flex flex-col space-y-3">
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon()}
-                        <span className="text-sm font-medium text-green-800">{t('audio.status_completed')}</span>
-                        {uploadState.transcriptData?.segments_count && (
-                          <span className="text-sm text-green-700">
-                            ({uploadState.transcriptData.segments_count} 段對話)
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
+                  <div className="space-y-4">
+                    <TranscriptionProgress
+                      progress={100}
+                      status="completed"
+                      message={`Transcription complete! ${uploadState.transcriptData?.segments_count ? `(${uploadState.transcriptData.segments_count} segments)` : ''}`}
+                      showDetails={true}
+                    />
+                    
+                    <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                      <div className="flex flex-wrap gap-2 mb-3">
                         <button 
                           onClick={() => handleDownloadTranscript('json')}
                           className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"

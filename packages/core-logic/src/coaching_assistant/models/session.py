@@ -61,6 +61,12 @@ class Session(BaseModel):
         back_populates="session", 
         cascade="all, delete-orphan"
     )
+    status_history = relationship(
+        "ProcessingStatus",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="ProcessingStatus.created_at"
+    )
     
     def __repr__(self):
         return f"<Session(title={self.title}, status={self.status.value})>"
