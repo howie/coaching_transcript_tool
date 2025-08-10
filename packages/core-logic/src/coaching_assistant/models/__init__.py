@@ -4,6 +4,7 @@ from .session import Session, SessionStatus
 from .transcript import TranscriptSegment, SessionRole, SpeakerRole
 from .client import Client
 from .coaching_session import CoachingSession, SessionSource
+from .processing_status import ProcessingStatus
 from .coach_profile import (
     CoachProfile,
     CoachingPlan,
@@ -26,6 +27,7 @@ __all__ = [
     "Client",
     "CoachingSession",
     "SessionSource",
+    "ProcessingStatus",
     "CoachProfile",
     "CoachingPlan",
     "CoachingLanguage",

@@ -14,6 +14,7 @@ import logging
 
 from ..core.database import get_db
 from ..models.session import Session, SessionStatus
+from ..models.processing_status import ProcessingStatus
 from ..models.user import User
 from ..models.transcript import TranscriptSegment
 from ..api.auth import get_current_user_dependency
@@ -82,6 +83,23 @@ class TranscriptExportResponse(BaseModel):
     format: str
     filename: str
     content: str
+
+
+class SessionStatusResponse(BaseModel):
+    session_id: UUID
+    status: SessionStatus
+    progress: int
+    message: Optional[str]
+    duration_processed: Optional[int]
+    duration_total: Optional[int]
+    started_at: Optional[datetime]
+    estimated_completion: Optional[datetime]
+    processing_speed: Optional[float]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 @router.post("", response_model=SessionResponse)
@@ -440,6 +458,127 @@ async def export_transcript(
         media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+@router.get("/{session_id}/status", response_model=SessionStatusResponse)
+async def get_session_status(
+    session_id: UUID,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dependency)
+):
+    """Get detailed processing status for a session."""
+    # Check if session exists and belongs to user
+    session = db.query(Session).filter(
+        Session.id == session_id,
+        Session.user_id == current_user.id
+    ).first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Get or create latest processing status
+    latest_status = db.query(ProcessingStatus).filter(
+        ProcessingStatus.session_id == session_id
+    ).order_by(desc(ProcessingStatus.created_at)).first()
+    
+    # If no status exists, create a basic one based on session status
+    if not latest_status:
+        latest_status = _create_default_status(session, db)
+    
+    # Update progress calculation if processing
+    if session.status == SessionStatus.PROCESSING:
+        _update_processing_progress(session, latest_status, db)
+    
+    return SessionStatusResponse(
+        session_id=session.id,
+        status=session.status,
+        progress=latest_status.progress_percentage,
+        message=latest_status.message,
+        duration_processed=latest_status.duration_processed,
+        duration_total=latest_status.duration_total,
+        started_at=latest_status.started_at,
+        estimated_completion=latest_status.estimated_completion,
+        processing_speed=latest_status.processing_speed,
+        created_at=latest_status.created_at,
+        updated_at=latest_status.updated_at
+    )
+
+
+def _create_default_status(session: Session, db: DBSession) -> ProcessingStatus:
+    """Create default processing status based on session status."""
+    status_map = {
+        SessionStatus.UPLOADING: ("pending", 0, "Waiting for file upload"),
+        SessionStatus.PENDING: ("pending", 5, "File uploaded, queued for processing"),
+        SessionStatus.PROCESSING: ("processing", 10, "Processing audio..."),
+        SessionStatus.COMPLETED: ("completed", 100, "Transcription complete!"),
+        SessionStatus.FAILED: ("failed", 0, session.error_message or "Processing failed"),
+        SessionStatus.CANCELLED: ("failed", 0, "Processing cancelled")
+    }
+    
+    status_str, progress, message = status_map.get(session.status, ("pending", 0, "Unknown status"))
+    
+    processing_status = ProcessingStatus(
+        session_id=session.id,
+        status=status_str,
+        progress=progress,
+        message=message,
+        duration_total=session.duration_sec,
+        started_at=session.created_at if session.status == SessionStatus.PROCESSING else None
+    )
+    
+    db.add(processing_status)
+    db.commit()
+    db.refresh(processing_status)
+    
+    return processing_status
+
+
+def _update_processing_progress(session: Session, status: ProcessingStatus, db: DBSession):
+    """Update progress calculation for processing sessions."""
+    if not status.started_at:
+        status.started_at = datetime.utcnow()
+    
+    # Calculate elapsed time since processing started
+    elapsed_seconds = (datetime.utcnow() - status.started_at).total_seconds()
+    
+    # Estimate progress based on time elapsed
+    # Assume 4x real-time processing by default
+    if session.duration_sec:
+        expected_processing_time = session.duration_sec * 4  # 4x real-time
+        time_based_progress = min(95, (elapsed_seconds / expected_processing_time) * 100)
+        
+        # Use time-based progress if we don't have actual progress
+        if not status.duration_processed:
+            status.progress = int(time_based_progress)
+        else:
+            # Combine actual progress (70%) with time-based estimate (30%)
+            actual_progress = (status.duration_processed / session.duration_sec) * 100
+            status.progress = int((actual_progress * 0.7) + (time_based_progress * 0.3))
+        
+        # Calculate processing speed
+        if status.duration_processed and elapsed_seconds > 0:
+            status.processing_speed = status.duration_processed / elapsed_seconds
+        
+        # Update estimated completion
+        if status.progress < 95:
+            remaining_work = max(0, expected_processing_time - elapsed_seconds)
+            status.estimated_completion = datetime.utcnow() + datetime.timedelta(seconds=remaining_work)
+        else:
+            status.estimated_completion = datetime.utcnow() + datetime.timedelta(minutes=2)
+    
+    # Update message based on progress
+    if status.progress < 25:
+        status.message = "Starting audio processing..."
+    elif status.progress < 50:
+        status.message = "Processing audio segments..."
+    elif status.progress < 75:
+        status.message = "Analyzing speech patterns..."
+    elif status.progress < 95:
+        status.message = "Finalizing transcription..."
+    else:
+        status.message = "Almost done..."
+    
+    db.commit()
 
 
 def _export_json(session: Session, segments: List[TranscriptSegment]) -> str:

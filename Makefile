@@ -50,10 +50,24 @@ install: build
 run-api: install
 	cd apps/api-server && $(PYTHON) main.py
 
+# Start Celery worker
+run-celery: install
+	@echo "Starting Celery worker..."
+	celery -A coaching_assistant.core.celery_app worker --loglevel=info --concurrency=2 --pool=threads
+
+# Start Celery worker with debug logging
+run-celery-debug: install
+	@echo "Starting Celery worker with debug logging..."
+	celery -A coaching_assistant.core.celery_app worker --loglevel=debug --concurrency=1 --pool=threads
+
 # Frontend Development
 dev-frontend:
 	@echo "Starting frontend development server..."
-	cd apps/web && npm run dev
+	@if [ ! -d "apps/web/.next" ]; then \
+		echo "  → .next directory not found, running initial build..."; \
+		cd apps/web && npm run build; \
+	fi
+	@cd apps/web && npm run dev
 
 # File-based targets for efficient building
 apps/web/.next/BUILD_ID: apps/web/app/* apps/web/components/* apps/web/lib/* apps/web/next.config.js apps/web/package.json
@@ -123,7 +137,13 @@ docker-api:
 docker-cli:
 	docker build -t $(DOCKER_CLI_IMAGE) -t $(DOCKER_CLI_LATEST) -f apps/cli/Dockerfile .
 
-docker: docker-api docker-cli
+docker-worker:
+	docker build -t $(PACKAGE_NAME)-worker:$(VERSION) -t $(PACKAGE_NAME)-worker:latest -f apps/worker/Dockerfile .
+
+docker-worker-cloudrun:
+	docker build -t $(PACKAGE_NAME)-worker-cloudrun:$(VERSION) -t $(PACKAGE_NAME)-worker-cloudrun:latest -f apps/worker/Dockerfile.cloudrun .
+
+docker: docker-api docker-cli docker-worker
 
 # Run the CLI Docker container with volume mapping
 docker-run-cli:
@@ -179,6 +199,8 @@ help:
 	@echo "  build          : Build the package"
 	@echo "  install        : Install the package locally in development mode"
 	@echo "  run-api        : Start the API server"
+	@echo "  run-celery     : Start Celery worker"
+	@echo "  run-celery-debug : Start Celery worker with debug logging"
 	@echo "  dev-setup      : Install development dependencies"
 	@echo "  test           : Run tests"
 	@echo "  lint           : Run linting"
@@ -197,11 +219,13 @@ help:
 	@echo "  install-all    : Install all dependencies"
 	@echo ""
 	@echo "Docker:"
-	@echo "  docker         : Build both API and CLI Docker images"
-	@echo "  docker-api     : Build API Docker image"
-	@echo "  docker-cli     : Build CLI Docker image"
-	@echo "  docker-run-cli : Run the CLI Docker container"
-	@echo "  docker-run     : Run the CLI Docker container (backward compatibility)"
+	@echo "  docker           : Build API, CLI, and Worker Docker images"
+	@echo "  docker-api       : Build API Docker image"
+	@echo "  docker-cli       : Build CLI Docker image"
+	@echo "  docker-worker    : Build Worker Docker image (for Render/general use)"
+	@echo "  docker-worker-cloudrun : Build Worker Docker image for GCP Cloud Run"
+	@echo "  docker-run-cli   : Run the CLI Docker container"
+	@echo "  docker-run       : Run the CLI Docker container (backward compatibility)"
 	@echo ""
 	@echo "Distribution:"
 	@echo "  dist           : Create distribution package"

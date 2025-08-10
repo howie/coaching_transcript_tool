@@ -76,6 +76,22 @@ class Settings(BaseSettings):
     # 監控設定
     SENTRY_DSN: str = ""
     
+    # STT (Speech-to-Text) 設定
+    STT_PROVIDER: str = "google"
+    GOOGLE_STT_MODEL: str = "long"
+    MAX_SPEAKERS: int = 4
+    MIN_SPEAKERS: int = 2
+    ENABLE_PUNCTUATION: bool = True
+    
+    # Worker 設定
+    WORKER_CONCURRENCY: int = 4
+    TASK_TIME_LIMIT: int = 7200  # seconds
+    
+    # Storage 設定
+    STORAGE_BUCKET: str = "coaching-audio-{env}"
+    RETENTION_DAYS: int = 1
+    SIGNED_URL_EXPIRY_MINUTES: int = 30
+    
     class Config:
         # 只在非 production 環境載入 .env 檔案，避免覆蓋 Render.com 環境變數
         env_file = ".env" if os.getenv("ENVIRONMENT") != "production" else None

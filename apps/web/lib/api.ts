@@ -537,7 +537,7 @@ class ApiClient {
         })
       }
 
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions?${params}`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions?${params}`, {
         headers: await this.getHeaders(),
       })
 
@@ -554,7 +554,7 @@ class ApiClient {
 
   async getSession(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {
         headers: await this.getHeaders(),
       })
 
@@ -578,7 +578,7 @@ class ApiClient {
     notes?: string
   }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify(sessionData),
@@ -605,7 +605,7 @@ class ApiClient {
     notes?: string
   }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {
         method: 'PATCH',
         headers: await this.getHeaders(),
         body: JSON.stringify(sessionData),
@@ -625,7 +625,7 @@ class ApiClient {
 
   async deleteSession(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {
         method: 'DELETE',
         headers: await this.getHeaders(),
       })
@@ -644,7 +644,7 @@ class ApiClient {
 
   async getCurrencies() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/options/currencies`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/options/currencies`, {
         headers: await this.getHeaders(),
       })
 
@@ -1088,6 +1088,22 @@ class ApiClient {
       return response.blob()
     } catch (error) {
       console.error('Export transcript error:', error)
+      throw error
+    }
+  }
+
+  async getTranscriptionStatus(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/status`, {
+        headers: await this.getHeaders(),
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Get transcription status failed')
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Get transcription status error:', error)
       throw error
     }
   }
