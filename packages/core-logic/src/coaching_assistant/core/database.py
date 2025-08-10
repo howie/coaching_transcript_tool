@@ -1,8 +1,9 @@
 """
 Database connection and session management.
 """
+from contextlib import contextmanager
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from .config import settings
 
 # Create the SQLAlchemy engine
@@ -27,5 +28,22 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    finally:
+        db.close()
+
+
+@contextmanager
+def get_db_session():
+    """
+    Context manager for database sessions in Celery tasks.
+    Ensures proper session cleanup.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
