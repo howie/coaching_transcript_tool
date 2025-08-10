@@ -174,9 +174,21 @@ async def get_upload_url(
     gcs_path = f"audio-uploads/{current_user.id}/{gcs_filename}"
     full_gcs_path = f"gs://{settings.GOOGLE_STORAGE_BUCKET}/{gcs_path}"
     
+    # Map file extensions to proper MIME types
+    content_type_map = {
+        'mp3': 'audio/mpeg',
+        'wav': 'audio/wav',
+        'm4a': 'audio/mp4',
+        'flac': 'audio/flac',
+        'ogg': 'audio/ogg',
+        'mp4': 'audio/mp4'
+    }
+    content_type = content_type_map.get(file_extension, 'audio/mpeg')
+    
     logger.info(f"🗂️  GCS Path: {full_gcs_path}")
     logger.info(f"🪣 Bucket: {settings.GOOGLE_STORAGE_BUCKET}")
     logger.info(f"📁 Blob name: {gcs_path}")
+    logger.info(f"🏷️  Content-Type: {content_type}")
     
     try:
         # Create GCS uploader and get signed URL
@@ -188,7 +200,7 @@ async def get_upload_url(
         logger.info(f"🔗 Generating signed upload URL with 60min expiration...")
         upload_url, expires_at = uploader.generate_signed_upload_url(
             blob_name=gcs_path,
-            content_type=f"audio/{file_extension}",
+            content_type=content_type,
             expiration_minutes=60
         )
         

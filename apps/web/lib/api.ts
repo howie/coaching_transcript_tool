@@ -889,6 +889,208 @@ class ApiClient {
       throw error
     }
   }
+
+  // Audio transcription session methods
+  async createTranscriptionSession(sessionData: {
+    title: string
+    language?: string
+  }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(sessionData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Create transcription session failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Create transcription session error:', error)
+      throw error
+    }
+  }
+
+  async getUploadUrl(sessionId: string, filename: string) {
+    try {
+      const params = new URLSearchParams({ filename })
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/upload-url?${params}`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Get upload URL failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get upload URL error:', error)
+      throw error
+    }
+  }
+
+  async uploadToGCS(uploadUrl: string, file: File, onProgress?: (progress: number) => void) {
+    try {
+      return new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        
+        if (onProgress) {
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const progress = (event.loaded / event.total) * 100
+              onProgress(progress)
+            }
+          })
+        }
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve()
+          } else {
+            reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`))
+          }
+        })
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Upload failed: Network error'))
+        })
+
+        xhr.addEventListener('abort', () => {
+          reject(new Error('Upload cancelled'))
+        })
+
+        // Map file extensions to proper MIME types (must match backend)
+        const getContentType = (file: File): string => {
+          const extension = file.name.split('.').pop()?.toLowerCase()
+          const contentTypeMap: Record<string, string> = {
+            'mp3': 'audio/mpeg',
+            'wav': 'audio/wav',
+            'm4a': 'audio/mp4',
+            'flac': 'audio/flac',
+            'ogg': 'audio/ogg',
+            'mp4': 'audio/mp4'
+          }
+          return contentTypeMap[extension || ''] || file.type || 'audio/mpeg'
+        }
+
+        const contentType = getContentType(file)
+        
+        xhr.open('PUT', uploadUrl)
+        xhr.setRequestHeader('Content-Type', contentType)
+        xhr.send(file)
+      })
+    } catch (error) {
+      console.error('GCS upload error:', error)
+      throw error
+    }
+  }
+
+  async confirmUpload(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/confirm-upload`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Confirm upload failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Confirm upload error:', error)
+      throw error
+    }
+  }
+
+  async startTranscription(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/start-transcription`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Start transcription failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Start transcription error:', error)
+      throw error
+    }
+  }
+
+  async getTranscriptionSession(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Get transcription session failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get transcription session error:', error)
+      throw error
+    }
+  }
+
+  async listTranscriptionSessions(status?: string, limit = 50, offset = 0) {
+    try {
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString(),
+      })
+      
+      if (status) {
+        params.append('status', status)
+      }
+
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions?${params}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'List transcription sessions failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('List transcription sessions error:', error)
+      throw error
+    }
+  }
+
+  async exportTranscript(sessionId: string, format: 'json' | 'vtt' | 'srt' | 'txt' = 'json') {
+    try {
+      const params = new URLSearchParams({ format })
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/transcript?${params}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Export transcript failed')
+      }
+
+      return response.blob()
+    } catch (error) {
+      console.error('Export transcript error:', error)
+      throw error
+    }
+  }
 }
 
 export const apiClient = new ApiClient()
