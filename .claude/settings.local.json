@@ -11,7 +11,8 @@
       "Bash(grep:*)",
       "Bash(pkill:*)",
       "Bash(rm:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(terraform state rm:*)"
     ],
     "deny": []
   }
