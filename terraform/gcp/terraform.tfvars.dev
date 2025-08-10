@@ -1,0 +1,9 @@
+# Development environment Terraform variables
+
+# GCP Project Configuration
+gcp_project_id = "coachingassistant"
+gcp_region     = "asia-east1"
+environment    = "dev"
+
+# Development environment specific settings
+# Buckets will be named: coaching-audio-dev, coaching-transcript-dev
