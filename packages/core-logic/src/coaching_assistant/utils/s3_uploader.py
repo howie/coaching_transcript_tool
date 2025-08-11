@@ -47,14 +47,16 @@ def upload_snippet_to_s3(content: bytes, original_filename: str) -> None:
         snippet = content[:1024]
 
         # Create a unique filename for the snippet
+        # Ensure filename is ASCII-safe by encoding non-ASCII characters
         timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
-        s3_key = f"unrecognized_formats/{timestamp}_{original_filename}.txt"
+        safe_filename = original_filename.encode('ascii', 'replace').decode('ascii')
+        s3_key = f"unrecognized_formats/{timestamp}_{safe_filename}.txt"
 
         s3_client.put_object(
             Bucket=S3_BUCKET,
             Key=s3_key,
             Body=snippet,
-            ContentType='text/plain'
+            ContentType='text/plain; charset=utf-8'
         )
         logger.info(f"Successfully uploaded snippet to S3: s3://{S3_BUCKET}/{s3_key}")
 
