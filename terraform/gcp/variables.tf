@@ -9,7 +9,7 @@ variable "gcp_project_id" {
 variable "gcp_region" {
   description = "The GCP region for resources"
   type        = string
-  default     = "asia-east1"
+  default     = "asia-southeast1"
 }
 
 variable "environment" {

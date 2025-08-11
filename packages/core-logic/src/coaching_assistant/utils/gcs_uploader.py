@@ -58,7 +58,7 @@ def upload_to_gcs(
     Args:
         file_content: The content of the file in bytes.
         destination_blob_name: The name of the object in the GCS bucket.
-        bucket_name: The GCS bucket name. Defaults to settings.GOOGLE_STORAGE_BUCKET.
+        bucket_name: The GCS bucket name. Defaults to settings.AUDIO_STORAGE_BUCKET.
         content_type: The content type of the file (e.g., 'audio/mpeg').
 
     Returns:
@@ -69,7 +69,7 @@ def upload_to_gcs(
         logger.error("Cannot upload to GCS: client is not available.")
         return None
 
-    target_bucket = bucket_name or settings.GOOGLE_STORAGE_BUCKET
+    target_bucket = bucket_name or settings.AUDIO_STORAGE_BUCKET
     if not target_bucket:
         logger.error("Cannot upload to GCS: bucket name is not configured.")
         return None

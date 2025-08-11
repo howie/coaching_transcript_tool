@@ -116,7 +116,8 @@ def test_with_all_valid():
         "DATABASE_URL": "postgresql://user:pass@localhost:5432/test",
         "SECRET_KEY": "a-very-secure-secret-key-that-is-long-enough-for-production-use",
         "GOOGLE_PROJECT_ID": "test-project-id",
-        "GOOGLE_STORAGE_BUCKET": "test-bucket-name",
+        "AUDIO_STORAGE_BUCKET": "test-bucket-name",
+        "TRANSCRIPT_STORAGE_BUCKET": "test-transcript-bucket",
         "GOOGLE_APPLICATION_CREDENTIALS_JSON": """{
             "type": "service_account",
             "project_id": "test-project",

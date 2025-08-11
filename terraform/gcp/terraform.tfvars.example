@@ -3,7 +3,7 @@
 
 # GCP Project Configuration
 gcp_project_id = "coachingassistant"
-gcp_region     = "asia-east1"
+gcp_region     = "asia-southeast1"
 environment    = "prod"
 
 # Optional: Override default APIs if needed

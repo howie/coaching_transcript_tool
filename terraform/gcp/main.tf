@@ -49,7 +49,7 @@ resource "google_service_account_key" "coaching_storage_key" {
 
 # Cloud Storage bucket for audio files
 resource "google_storage_bucket" "audio_storage" {
-  name          = "coaching-audio-${var.environment}"
+  name          = "coaching-audio-${var.environment}-asia"
   location      = var.gcp_region
   project       = var.gcp_project_id
   force_destroy = false
@@ -84,7 +84,7 @@ resource "google_storage_bucket" "audio_storage" {
 
 # Cloud Storage bucket for processed transcripts (optional)
 resource "google_storage_bucket" "transcript_storage" {
-  name          = "coaching-transcript-${var.environment}"
+  name          = "coaching-transcript-${var.environment}-asia"
   location      = var.gcp_region
   project       = var.gcp_project_id
   force_destroy = false

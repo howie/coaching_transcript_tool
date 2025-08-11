@@ -28,7 +28,11 @@ router = APIRouter()
 # Pydantic models
 class SessionCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    language: str = Field(default="zh-TW", pattern="^(zh-TW|zh-CN|en-US|auto)$")
+    language: str = Field(
+        default="cmn-Hant-TW", 
+        pattern="^(cmn-Hant-TW|cmn-Hans-CN|zh-TW|zh-CN|en-US|en-GB|ja-JP|ko-KR|auto)$",
+        max_length=20
+    )
 
 
 class SessionResponse(BaseModel):
@@ -190,7 +194,7 @@ async def get_upload_url(
     file_extension = filename.split('.')[-1].lower()
     gcs_filename = f"{session_id}.{file_extension}"
     gcs_path = f"audio-uploads/{current_user.id}/{gcs_filename}"
-    full_gcs_path = f"gs://{settings.GOOGLE_STORAGE_BUCKET}/{gcs_path}"
+    full_gcs_path = f"gs://{settings.AUDIO_STORAGE_BUCKET}/{gcs_path}"
     
     # Map file extensions to proper MIME types
     content_type_map = {
@@ -204,14 +208,14 @@ async def get_upload_url(
     content_type = content_type_map.get(file_extension, 'audio/mpeg')
     
     logger.info(f"🗂️  GCS Path: {full_gcs_path}")
-    logger.info(f"🪣 Bucket: {settings.GOOGLE_STORAGE_BUCKET}")
+    logger.info(f"🪣 Bucket: {settings.AUDIO_STORAGE_BUCKET}")
     logger.info(f"📁 Blob name: {gcs_path}")
     logger.info(f"🏷️  Content-Type: {content_type}")
     
     try:
         # Create GCS uploader and get signed URL
         uploader = GCSUploader(
-            bucket_name=settings.GOOGLE_STORAGE_BUCKET,
+            bucket_name=settings.AUDIO_STORAGE_BUCKET,
             credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON
         )
         
@@ -276,16 +280,16 @@ async def confirm_upload(
     try:
         # Check if file exists in GCS
         uploader = GCSUploader(
-            bucket_name=settings.GOOGLE_STORAGE_BUCKET,
+            bucket_name=settings.AUDIO_STORAGE_BUCKET,
             credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON
         )
         
         # Extract blob name from GCS path
         # Format: gs://bucket/path/to/file -> path/to/file
-        blob_name = session.gcs_audio_path.replace(f"gs://{settings.GOOGLE_STORAGE_BUCKET}/", "")
+        blob_name = session.gcs_audio_path.replace(f"gs://{settings.AUDIO_STORAGE_BUCKET}/", "")
         
         logger.info(f"🔍 Checking file existence in GCS...")
-        logger.info(f"🪣 Bucket: {settings.GOOGLE_STORAGE_BUCKET}")
+        logger.info(f"🪣 Bucket: {settings.AUDIO_STORAGE_BUCKET}")
         logger.info(f"📄 Blob name: {blob_name}")
         logger.info(f"🔗 Full path: {session.gcs_audio_path}")
         
@@ -357,11 +361,11 @@ async def start_transcription(
     # Verify file exists before starting transcription
     try:
         uploader = GCSUploader(
-            bucket_name=settings.GOOGLE_STORAGE_BUCKET,
+            bucket_name=settings.AUDIO_STORAGE_BUCKET,
             credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON
         )
         
-        blob_name = session.gcs_audio_path.replace(f"gs://{settings.GOOGLE_STORAGE_BUCKET}/", "")
+        blob_name = session.gcs_audio_path.replace(f"gs://{settings.AUDIO_STORAGE_BUCKET}/", "")
         file_exists, file_size = uploader.check_file_exists(blob_name)
         
         if not file_exists:
@@ -387,7 +391,8 @@ async def start_transcription(
     task = transcribe_audio.delay(
         session_id=str(session_id),
         gcs_uri=session.gcs_audio_path,
-        language=session.language
+        language=session.language,
+        original_filename=session.audio_filename
     )
     
     # Store task ID for tracking

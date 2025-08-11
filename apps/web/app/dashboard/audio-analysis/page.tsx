@@ -106,7 +106,7 @@ export default function AudioAnalysisPage() {
       // Step 1: Create transcription session
       const session = await apiClient.createTranscriptionSession({
         title: sessionTitle.trim(),
-        language: language === 'auto' ? 'zh-TW' : language
+        language: language === 'auto' ? 'cmn-Hant-TW' : language
       })
 
       setUploadState(prev => ({ 
@@ -128,7 +128,7 @@ export default function AudioAnalysisPage() {
       await apiClient.uploadToGCS(uploadData.upload_url, selectedFile, (progress) => {
         setUploadState(prev => ({ 
           ...prev, 
-          progress: 20 + (progress * 0.6) // 20% to 80% for upload progress
+          progress: Math.round(20 + (progress * 0.6)) // 20% to 80% for upload progress
         }))
       })
 
@@ -384,8 +384,8 @@ export default function AudioAnalysisPage() {
                       disabled={uploadState.status === 'uploading' || uploadState.status === 'processing'}
                     >
                       <option value="auto">{t('audio.language_auto')}</option>
-                      <option value="zh-TW">{t('audio.language_zh_tw')}</option>
-                      <option value="zh-CN">{t('audio.language_zh_cn')}</option>
+                      <option value="cmn-Hant-TW">{t('audio.language_zh_tw')}</option>
+                      <option value="cmn-Hans-CN">{t('audio.language_zh_cn')}</option>
                       <option value="en-US">{t('audio.language_en')}</option>
                     </select>
                   </div>
@@ -403,6 +403,8 @@ export default function AudioAnalysisPage() {
                     estimatedTime={
                       uploadState.status === 'processing' ? uploadState.estimatedTime : undefined
                     }
+                    showDetails={true}
+                    className="animate-in slide-in-from-bottom-2 duration-300"
                   />
                 )}
 

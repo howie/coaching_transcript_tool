@@ -19,7 +19,7 @@ def check_gcs_config():
     print("=" * 50)
     
     # Check bucket name
-    bucket_name = settings.GOOGLE_STORAGE_BUCKET
+    bucket_name = settings.AUDIO_STORAGE_BUCKET
     print(f"📦 Bucket Name: {bucket_name or 'NOT SET'}")
     
     # Check if it matches what you expect
@@ -86,7 +86,7 @@ def test_upload_and_verify():
     print("\n🧪 Testing Upload and Verification...")
     print("=" * 50)
     
-    bucket_name = settings.GOOGLE_STORAGE_BUCKET
+    bucket_name = settings.AUDIO_STORAGE_BUCKET
     
     try:
         uploader = GCSUploader(
@@ -128,7 +128,7 @@ def check_signed_url_upload():
     print("\n🔗 Testing Signed URL Generation...")
     print("=" * 50)
     
-    bucket_name = settings.GOOGLE_STORAGE_BUCKET
+    bucket_name = settings.AUDIO_STORAGE_BUCKET
     
     try:
         uploader = GCSUploader(
@@ -166,9 +166,9 @@ def main():
     bucket_name, has_creds = check_gcs_config()
     
     if not bucket_name:
-        print("\n❌ GOOGLE_STORAGE_BUCKET not configured!")
+        print("\n❌ AUDIO_STORAGE_BUCKET not configured!")
         print("   Set it in your .env file:")
-        print("   GOOGLE_STORAGE_BUCKET=coaching-audio-dev")
+        print("   AUDIO_STORAGE_BUCKET=coaching-audio-dev")
         return
         
     if not has_creds:
@@ -195,7 +195,7 @@ def main():
     
     if bucket_name != "coaching-audio-dev":
         print(f"\n⚠️  IMPORTANT: Your bucket name doesn't match!")
-        print(f"   Either update GOOGLE_STORAGE_BUCKET to 'coaching-audio-dev'")
+        print(f"   Either update AUDIO_STORAGE_BUCKET to 'coaching-audio-dev'")
         print(f"   Or use: gcloud storage ls gs://{bucket_name}/")
 
 
