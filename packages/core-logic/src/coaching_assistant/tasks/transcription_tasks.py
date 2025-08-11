@@ -2,13 +2,14 @@
 
 import logging
 from uuid import UUID
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime
 from typing import Optional
 
 from celery import Task
 from celery.exceptions import Retry
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import DataError, IntegrityError
 
 from ..core.celery_app import celery_app
 from ..core.database import get_db_session
@@ -29,24 +30,28 @@ class TranscriptionTask(Task):
         session_id = args[0] if args else None
         if session_id:
             with get_db_session() as db:
-                session = db.query(SessionModel).filter(
-                    SessionModel.id == session_id
-                ).first()
-                if session:
-                    error_msg = f"Transcription failed: {str(exc)}"
-                    session.mark_failed(error_msg)
-                    
-                    # Also update processing status if exists
-                    processing_status = db.query(ProcessingStatus).filter(
-                        ProcessingStatus.session_id == session_id
-                    ).order_by(ProcessingStatus.created_at.desc()).first()
-                    
-                    if processing_status:
-                        processing_status.status = "failed"
-                        processing_status.message = error_msg
-                    
-                    db.commit()
-                    logger.error(f"Session {session_id} marked as failed: {error_msg}")
+                try:
+                    session = db.query(SessionModel).filter(
+                        SessionModel.id == session_id
+                    ).first()
+                    if session:
+                        error_msg = f"Transcription failed: {str(exc)}"
+                        session.mark_failed(error_msg)
+                        
+                        # Also update processing status if exists
+                        processing_status = db.query(ProcessingStatus).filter(
+                            ProcessingStatus.session_id == session_id
+                        ).order_by(ProcessingStatus.created_at.desc()).first()
+                        
+                        if processing_status:
+                            processing_status.status = "failed"
+                            processing_status.message = error_msg
+                        
+                        db.commit()
+                        logger.error(f"Session {session_id} marked as failed: {error_msg}")
+                except Exception as cleanup_exc:
+                    db.rollback()
+                    logger.error(f"Failed to mark session {session_id} as failed: {cleanup_exc}")
 
 
 @celery_app.task(
@@ -145,10 +150,20 @@ def transcribe_audio(
             processing_status.duration_processed = int(result.total_duration_sec)
             db.commit()
             
+            # Calculate actual duration from segments
+            actual_duration_sec = _calculate_actual_duration(db, session_uuid)
+            
+            # Format cost to fit VARCHAR(10) constraint
+            formatted_cost = None
+            if result.cost_usd:
+                cost_decimal = Decimal(str(result.cost_usd))
+                cost_rounded = cost_decimal.quantize(Decimal('0.000001'), rounding=ROUND_HALF_UP)
+                formatted_cost = f"{cost_rounded:.6f}"
+            
             # Update session as completed
             session.mark_completed(
-                duration_sec=int(result.total_duration_sec),
-                cost_usd=str(result.cost_usd) if result.cost_usd else None
+                duration_sec=actual_duration_sec,
+                cost_usd=formatted_cost
             )
             
             # Log processing metadata
@@ -192,6 +207,18 @@ def transcribe_audio(
             logger.error(f"Session {session_id} failed permanently: {error_msg}")
             raise
             
+        except (DataError, IntegrityError) as exc:
+            # Database constraint errors - don't retry, rollback and fail
+            error_msg = f"Database constraint error: {exc}"
+            logger.error(f"Session {session_id} database error: {error_msg}")
+            db.rollback()  # Important: rollback before trying to update
+            
+            session.mark_failed(error_msg)
+            processing_status.status = "failed"
+            processing_status.message = error_msg
+            db.commit()
+            raise
+            
         except Exception as exc:
             # Unexpected error - retry up to max_retries
             error_msg = f"Unexpected transcription error: {exc}"
@@ -201,7 +228,8 @@ def transcribe_audio(
                 logger.info(f"Retrying session {session_id} ({self.request.retries + 1}/{self.max_retries})")
                 raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
             else:
-                # Max retries exceeded
+                # Max retries exceeded - rollback before final failure
+                db.rollback()
                 session.mark_failed(error_msg)
                 processing_status.status = "failed"
                 processing_status.message = error_msg
@@ -234,3 +262,17 @@ def _save_transcript_segments(
     db.flush()  # Ensure segments are saved
     
     logger.info(f"Successfully saved {len(db_segments)} transcript segments")
+
+
+def _calculate_actual_duration(db: Session, session_id: UUID) -> int:
+    """Calculate actual duration from transcript segments."""
+    # Get the maximum end_sec from all segments
+    max_end_sec = db.query(TranscriptSegmentModel.end_sec).filter(
+        TranscriptSegmentModel.session_id == session_id
+    ).order_by(TranscriptSegmentModel.end_sec.desc()).first()
+    
+    if max_end_sec and max_end_sec[0]:
+        return int(max_end_sec[0])
+    
+    # Fallback to 0 if no segments found
+    return 0
