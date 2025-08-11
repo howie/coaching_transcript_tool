@@ -14,6 +14,7 @@ from ..core.celery_app import celery_app
 from ..core.database import get_db_session
 from ..models.session import Session as SessionModel, SessionStatus
 from ..models.transcript import TranscriptSegment as TranscriptSegmentModel
+from ..models.processing_status import ProcessingStatus
 from ..services import STTProviderFactory, STTProviderError, STTProviderUnavailableError
 from ..core.config import settings
 
@@ -34,6 +35,16 @@ class TranscriptionTask(Task):
                 if session:
                     error_msg = f"Transcription failed: {str(exc)}"
                     session.mark_failed(error_msg)
+                    
+                    # Also update processing status if exists
+                    processing_status = db.query(ProcessingStatus).filter(
+                        ProcessingStatus.session_id == session_id
+                    ).order_by(ProcessingStatus.created_at.desc()).first()
+                    
+                    if processing_status:
+                        processing_status.status = "failed"
+                        processing_status.message = error_msg
+                    
                     db.commit()
                     logger.error(f"Session {session_id} marked as failed: {error_msg}")
 
@@ -52,7 +63,8 @@ def transcribe_audio(
     session_id: str,
     gcs_uri: str,
     language: str = "zh-TW",
-    enable_diarization: bool = True
+    enable_diarization: bool = True,
+    original_filename: str = None
 ) -> dict:
     """
     Transcribe audio file using configured STT provider.
@@ -62,6 +74,7 @@ def transcribe_audio(
         gcs_uri: Google Cloud Storage URI of audio file
         language: Language code for transcription
         enable_diarization: Enable speaker separation
+        original_filename: Original uploaded filename for format detection
         
     Returns:
         Dictionary with transcription results
@@ -82,27 +95,55 @@ def transcribe_audio(
         
         # Update status to processing
         session.update_status(SessionStatus.PROCESSING)
+        
+        # Create initial processing status
+        processing_status = ProcessingStatus(
+            session_id=session_uuid,
+            status="processing",
+            progress=0,
+            message="Initializing transcription...",
+            started_at=start_time
+        )
+        db.add(processing_status)
         db.commit()
         
         try:
             # Create STT provider
             stt_provider = STTProviderFactory.create("google")
             
+            # Update progress: STT provider initialized
+            processing_status.update_progress(10, "Connecting to speech service...")
+            db.commit()
+            
             # Perform transcription
             logger.info(f"Sending audio to STT provider: {gcs_uri}")
+            processing_status.update_progress(25, "Processing audio with Google STT...")
+            db.commit()
+            
             result = stt_provider.transcribe(
                 audio_uri=gcs_uri,
                 language=language,
-                enable_diarization=enable_diarization
+                enable_diarization=enable_diarization,
+                original_filename=original_filename
             )
             
             logger.info(f"Transcription completed: {len(result.segments)} segments")
+            
+            # Update progress: transcription completed, now saving
+            processing_status.update_progress(80, "Saving transcript segments...")
+            db.commit()
             
             # Save transcript segments to database
             _save_transcript_segments(db, session_uuid, result.segments)
             
             # Calculate processing duration
             processing_duration = (datetime.utcnow() - start_time).total_seconds()
+            
+            # Update progress: finalizing
+            processing_status.update_progress(95, "Finalizing transcription...")
+            processing_status.duration_total = int(result.total_duration_sec)
+            processing_status.duration_processed = int(result.total_duration_sec)
+            db.commit()
             
             # Update session as completed
             session.mark_completed(
@@ -112,6 +153,10 @@ def transcribe_audio(
             
             # Log processing metadata
             session.transcription_job_id = self.request.id
+            
+            # Final progress update
+            processing_status.update_progress(100, "Transcription completed successfully!")
+            processing_status.status = "completed"
             
             db.commit()
             
@@ -141,6 +186,8 @@ def transcribe_audio(
             # Permanent failure - don't retry
             error_msg = f"STT provider error: {exc}"
             session.mark_failed(error_msg)
+            processing_status.status = "failed"
+            processing_status.message = error_msg
             db.commit()
             logger.error(f"Session {session_id} failed permanently: {error_msg}")
             raise
@@ -156,6 +203,8 @@ def transcribe_audio(
             else:
                 # Max retries exceeded
                 session.mark_failed(error_msg)
+                processing_status.status = "failed"
+                processing_status.message = error_msg
                 db.commit()
                 raise
 

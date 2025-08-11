@@ -159,7 +159,7 @@ class TestSessionsAPI:
         mock_db = Mock()
         mock_get_db.return_value = mock_db
         mock_get_user.return_value = mock_user
-        mock_settings.GOOGLE_STORAGE_BUCKET = "test-bucket"
+        mock_settings.AUDIO_STORAGE_BUCKET = "test-bucket"
         mock_settings.GOOGLE_APPLICATION_CREDENTIALS_JSON = "{}"
         
         # Mock session query

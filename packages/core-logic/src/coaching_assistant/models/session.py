@@ -32,7 +32,7 @@ class Session(BaseModel):
     # Audio file info
     audio_filename = Column(String(255))
     duration_sec = Column(Integer)  # Actual duration from STT
-    language = Column(String(10), default="auto")  # Language code (zh-TW, en-US, auto)
+    language = Column(String(20), default="auto")  # Language code (cmn-Hant-TW, cmn-Hans-CN, en-US, auto)
     
     # Processing status
     status = Column(Enum(SessionStatus), default=SessionStatus.UPLOADING, nullable=False)

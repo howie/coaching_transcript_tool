@@ -191,7 +191,7 @@ describe('AudioAnalysisPage', () => {
     await waitFor(() => {
       expect(mockApiClient.createTranscriptionSession).toHaveBeenCalledWith({
         title: 'Test Session',
-        language: 'zh-TW'
+        language: 'cmn-Hant-TW'
       })
     })
     

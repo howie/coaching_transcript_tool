@@ -28,5 +28,6 @@ async def get_debug_settings():
         "allowed_origins": settings.ALLOWED_ORIGINS,
         "google_client_id": settings.GOOGLE_CLIENT_ID,
         "google_client_secret": mask_secret(settings.GOOGLE_CLIENT_SECRET),
-        "google_storage_bucket": settings.GOOGLE_STORAGE_BUCKET,
+        "audio_storage_bucket": settings.AUDIO_STORAGE_BUCKET,
+        "transcript_storage_bucket": settings.TRANSCRIPT_STORAGE_BUCKET,
     }

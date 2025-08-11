@@ -20,7 +20,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   className,
   children
 }) => {
-  const clampedProgress = Math.max(0, Math.min(100, progress))
+  const clampedProgress = Math.round(Math.max(0, Math.min(100, progress)))
   
   const getBarColor = () => {
     switch (status) {
@@ -69,7 +69,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           )}
           {showPercentage && (
             <span className="font-medium text-gray-700 dark:text-gray-300">
-              {clampedProgress}%
+              {Math.round(clampedProgress)}%
             </span>
           )}
         </div>
@@ -81,13 +81,16 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       )}>
         <div
           className={cn(
-            'transition-all duration-300 ease-out rounded-full',
+            'transition-all duration-500 ease-out rounded-full',
             getBarColor(),
             {
               'animate-pulse': animated && status === 'processing'
             }
           )}
-          style={{ width: `${clampedProgress}%` }}
+          style={{ 
+            width: `${clampedProgress}%`,
+            transition: 'width 0.5s ease-out'
+          }}
         />
       </div>
     </div>
@@ -273,7 +276,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
           size === 'sm' ? 'text-xs' : 'text-sm',
           getColor()
         )}>
-          {progress}%
+          {Math.round(progress)}%
         </span>
       </div>
     </div>

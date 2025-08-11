@@ -50,7 +50,7 @@ class STTProvider(ABC):
         
         Args:
             audio_uri: URI to audio file (e.g., gs://bucket/file.mp3)
-            language: Language code (zh-TW, en-US, auto)
+            language: Language code (cmn-Hant-TW, cmn-Hans-CN, en-US, auto)
             enable_diarization: Enable speaker separation
             max_speakers: Maximum number of speakers to detect
             min_speakers: Minimum number of speakers to detect

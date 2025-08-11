@@ -24,7 +24,8 @@ class EnvironmentValidator:
         "DATABASE_URL": "PostgreSQL database connection URL",
         "SECRET_KEY": "Secret key for JWT token signing",
         "GOOGLE_PROJECT_ID": "Google Cloud project ID",
-        "GOOGLE_STORAGE_BUCKET": "Google Cloud Storage bucket name",
+        "AUDIO_STORAGE_BUCKET": "Google Cloud Storage bucket for audio files",
+        "TRANSCRIPT_STORAGE_BUCKET": "Google Cloud Storage bucket for transcript files",
         "GOOGLE_APPLICATION_CREDENTIALS_JSON": "Google service account credentials (JSON or base64)",
     }
     
@@ -168,7 +169,7 @@ class EnvironmentValidator:
             except Exception as e:
                 return False, f"Failed to validate credentials: {str(e)}"
         
-        elif var_name == "GOOGLE_STORAGE_BUCKET":
+        elif var_name in ["AUDIO_STORAGE_BUCKET", "TRANSCRIPT_STORAGE_BUCKET"]:
             # Validate bucket name format
             if not value:
                 return False, "Bucket name cannot be empty"

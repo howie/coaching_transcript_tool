@@ -43,10 +43,15 @@ class Settings(BaseSettings):
     
     # Google Cloud 設定
     GOOGLE_PROJECT_ID: str = ""
-    GOOGLE_STORAGE_BUCKET: str = ""
+    GCP_REGION: str = "asia-southeast1"  # Default GCP region
+    AUDIO_STORAGE_BUCKET: str = ""
+    TRANSCRIPT_STORAGE_BUCKET: str = ""
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_APPLICATION_CREDENTIALS_JSON: str = ""  # JSON 格式的服務帳號憑證
+    
+    # 向後相容性 - 將在未來版本移除
+    GOOGLE_STORAGE_BUCKET: str = ""
     
     # Google reCAPTCHA 設定
     RECAPTCHA_ENABLED: bool = True  # Enable/disable reCAPTCHA verification
@@ -78,7 +83,14 @@ class Settings(BaseSettings):
     
     # STT (Speech-to-Text) 設定
     STT_PROVIDER: str = "google"
-    GOOGLE_STT_MODEL: str = "long"
+    SPEECH_API_VERSION: str = "v2"  # Google Speech-to-Text API version
+    GOOGLE_STT_MODEL: str = "chirp_2"  # Default model (chirp supports more languages)
+    GOOGLE_STT_LOCATION: str = "asia-southeast1"  # Default location for STT
+    
+    # Language-specific STT configurations (JSON format)
+    # Example: {"zh-TW": {"location": "asia-southeast1", "model": "latest_long"}}
+    STT_LANGUAGE_CONFIGS: str = ""
+    
     MAX_SPEAKERS: int = 4
     MIN_SPEAKERS: int = 2
     ENABLE_PUNCTUATION: bool = True
