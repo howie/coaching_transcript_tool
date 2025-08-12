@@ -66,8 +66,8 @@ export const useTranscriptionStatus = (
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const startTimeRef = useRef<number | null>(null)
 
-  const fetchStatus = useCallback(async () => {
-    if (!sessionId) return
+  const fetchStatus = useCallback(async (): Promise<{ session: any; status: any } | null> => {
+    if (!sessionId) return null
 
     try {
       setLoading(true)
@@ -91,6 +91,10 @@ export const useTranscriptionStatus = (
       setLoading(false)
     }
   }, [sessionId])
+  
+  const refetch = useCallback(async (): Promise<void> => {
+    await fetchStatus()
+  }, [fetchStatus])
 
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
@@ -104,14 +108,24 @@ export const useTranscriptionStatus = (
   const startPolling = useCallback(() => {
     if (!sessionId || !enablePolling) return
 
-    stopPolling() // Clear any existing polling
+    // Clear any existing polling first
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
+    
     startTimeRef.current = Date.now()
     setIsPolling(true)
 
     const poll = async () => {
       // Check for timeout
       if (startTimeRef.current && Date.now() - startTimeRef.current > maxPollingTime) {
-        stopPolling()
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current)
+          pollingIntervalRef.current = null
+        }
+        setIsPolling(false)
+        startTimeRef.current = null
         setError('Polling timed out. The transcription may still be processing.')
         return
       }
@@ -132,9 +146,24 @@ export const useTranscriptionStatus = (
         statusData.status === 'completed' ||
         statusData.status === 'failed'
 
+      console.log('Initial polling check:', {
+        sessionId,
+        sessionStatus: sessionData.status,
+        statusDataStatus: statusData.status,
+        shouldStopPolling,
+        isPolling
+      })
+
       if (shouldStopPolling) {
-        stopPolling()
+        console.log('Stopping initial polling for sessionId:', sessionId)
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current)
+          pollingIntervalRef.current = null
+        }
+        setIsPolling(false)
+        startTimeRef.current = null
       } else {
+        console.log('Continuing initial polling for sessionId:', sessionId)
         // Continue polling
         pollingIntervalRef.current = setTimeout(poll, pollInterval)
       }
@@ -142,27 +171,120 @@ export const useTranscriptionStatus = (
 
     // Start initial poll
     poll()
-  }, [sessionId, enablePolling, maxPollingTime, pollInterval, fetchStatus, stopPolling])
+  }, [sessionId, enablePolling, maxPollingTime, pollInterval])
 
   // Auto-start polling when session changes and is processing
   useEffect(() => {
-    if (!sessionId || !enablePolling) return
+    if (!sessionId) {
+      // Clear any existing polling
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+      setIsPolling(false)
+      startTimeRef.current = null
+      return
+    }
 
     // Fetch initial status
-    fetchStatus().then((result) => {
-      if (result && (
-        result.session.status === 'processing' || 
-        result.status.status === 'processing'
-      )) {
-        startPolling()
+    const initializeStatus = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const [sessionData, statusData] = await Promise.all([
+          apiClient.getTranscriptionSession(sessionId),
+          apiClient.getTranscriptionStatus(sessionId)
+        ])
+
+        setSession(sessionData)
+        setStatus(statusData)
+
+        if ((sessionData.status === 'processing' || statusData.status === 'processing') && enablePolling) {
+          // Start polling inline to avoid callback dependencies
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current)
+            pollingIntervalRef.current = null
+          }
+          
+          startTimeRef.current = Date.now()
+          setIsPolling(true)
+
+          const poll = async () => {
+            if (startTimeRef.current && Date.now() - startTimeRef.current > maxPollingTime) {
+              if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current)
+                pollingIntervalRef.current = null
+              }
+              setIsPolling(false)
+              startTimeRef.current = null
+              setError('Polling timed out. The transcription may still be processing.')
+              return
+            }
+
+            try {
+              const [sessionData, statusData] = await Promise.all([
+                apiClient.getTranscriptionSession(sessionId),
+                apiClient.getTranscriptionStatus(sessionId)
+              ])
+
+              setSession(sessionData)
+              setStatus(statusData)
+
+              const shouldStopPolling = 
+                sessionData.status === 'completed' || 
+                sessionData.status === 'failed' ||
+                statusData.status === 'completed' ||
+                statusData.status === 'failed'
+
+              console.log('Polling check:', {
+                sessionId,
+                sessionStatus: sessionData.status,
+                statusDataStatus: statusData.status,
+                shouldStopPolling,
+                isPolling
+              })
+
+              if (shouldStopPolling) {
+                console.log('Stopping polling for sessionId:', sessionId)
+                if (pollingIntervalRef.current) {
+                  clearInterval(pollingIntervalRef.current)
+                  pollingIntervalRef.current = null
+                }
+                setIsPolling(false)
+                startTimeRef.current = null
+              } else {
+                console.log('Continuing polling for sessionId:', sessionId)
+                pollingIntervalRef.current = setTimeout(poll, pollInterval)
+              }
+            } catch (err: any) {
+              console.error('Error fetching transcription status:', err)
+              pollingIntervalRef.current = setTimeout(poll, pollInterval * 2)
+            }
+          }
+
+          poll()
+        }
+      } catch (err: any) {
+        console.error('Error fetching transcription status:', err)
+        setError(err.message || 'Failed to fetch status')
+      } finally {
+        setLoading(false)
       }
-    })
+    }
+
+    initializeStatus()
 
     // Cleanup on unmount
     return () => {
-      stopPolling()
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+      setIsPolling(false)
+      startTimeRef.current = null
     }
-  }, [sessionId, enablePolling, fetchStatus, startPolling, stopPolling])
+  }, [sessionId, enablePolling, maxPollingTime, pollInterval])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -179,9 +301,7 @@ export const useTranscriptionStatus = (
     startPolling,
     stopPolling,
     isPolling,
-    refetch: async () => {
-      await fetchStatus()
-    }
+    refetch
   }
 }
 

@@ -41,7 +41,7 @@ class TestCelerySTTIntegration:
             mock_client.return_value.batch_recognize.return_value = mock_operation
             
             try:
-                provider.transcribe("gs://test/audio.m4a", "zh-TW", enable_diarization=False)
+                provider.transcribe("gs://test/audio.mp3", "zh-TW", enable_diarization=False)
             except:
                 pass  # We're testing configuration, not the full flow
             
@@ -78,7 +78,7 @@ class TestCelerySTTIntegration:
             mock_client.return_value.batch_recognize.return_value = mock_operation
             
             try:
-                provider.transcribe("gs://test/audio.m4a", "zh-TW", enable_diarization=True)
+                provider.transcribe("gs://test/audio.mp3", "zh-TW", enable_diarization=True)
             except:
                 pass
             
@@ -97,7 +97,7 @@ class TestCelerySTTIntegration:
         """Test successful transcription task execution."""
         # Setup mocks
         session_id = str(uuid4())
-        gcs_uri = "gs://test-bucket/audio.m4a"
+        gcs_uri = "gs://test-bucket/audio.mp3"
         language = "zh-TW"
         
         # Mock database session
@@ -159,7 +159,7 @@ class TestCelerySTTIntegration:
         from coaching_assistant.services.stt_provider import STTProviderError
         
         session_id = str(uuid4())
-        gcs_uri = "gs://test-bucket/audio.m4a"
+        gcs_uri = "gs://test-bucket/audio.mp3"
         language = "zh-TW"
         
         # Mock database session
@@ -287,7 +287,7 @@ class TestCelerySTTIntegration:
                     mock_client.batch_recognize.return_value = mock_operation
                     
                     try:
-                        provider.transcribe("gs://test/audio.m4a", "zh-TW")
+                        provider.transcribe("gs://test/audio.mp3", "zh-TW")
                     except:
                         pass
                     
@@ -305,7 +305,7 @@ class TestCelerySTTIntegration:
                     mock_client.batch_recognize.return_value = mock_operation
                     
                     try:
-                        provider.transcribe("gs://test/audio.m4a", "auto")
+                        provider.transcribe("gs://test/audio.mp3", "auto")
                     except:
                         pass
                     

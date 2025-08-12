@@ -107,13 +107,14 @@ class GoogleSTTProvider(STTProvider):
             logger.error(f"Failed to create GCS Storage client: {e}")
             raise STTProviderError(f"Failed to create Storage client: {e}")
     
-    def _wait_for_operation_with_progress(self, operation, timeout_minutes=120):
+    def _wait_for_operation_with_progress(self, operation, timeout_minutes=120, progress_callback=None):
         """
         Wait for long-running operation with progress logging and reasonable timeouts.
         
         Args:
             operation: Google Cloud long-running operation
             timeout_minutes: Total timeout in minutes
+            progress_callback: Optional callback function(progress_percentage, message, elapsed_time)
             
         Returns:
             Operation result
@@ -124,8 +125,8 @@ class GoogleSTTProvider(STTProvider):
         start_time = datetime.utcnow()
         deadline = start_time + timedelta(minutes=timeout_minutes)
         last_log_time = start_time
-        check_interval = 30  # Check every 30 seconds
-        log_interval = 300   # Log progress every 5 minutes
+        check_interval = 15  # Check every 15 seconds (faster polling)
+        log_interval = 60    # Log progress every 1 minute (more frequent updates)
         
         logger.info(f"Started operation at {start_time.isoformat()}, timeout: {timeout_minutes} minutes")
         
@@ -147,8 +148,25 @@ class GoogleSTTProvider(STTProvider):
                     
                     if time_since_last_log >= log_interval:
                         remaining_minutes = (deadline - current_time).total_seconds() / 60
-                        logger.info(f"Transcription in progress... Elapsed: {elapsed/60:.1f} min, Remaining: {remaining_minutes:.1f} min")
+                        elapsed_minutes = elapsed / 60
+                        
+                        # Calculate estimated progress based on elapsed time
+                        # This is a rough estimate since Google doesn't provide actual progress
+                        progress_estimate = min(95, (elapsed_minutes / timeout_minutes) * 100)
+                        
+                        logger.info(f"Transcription in progress... Elapsed: {elapsed_minutes:.1f} min, Remaining: {remaining_minutes:.1f} min")
                         last_log_time = current_time
+                        
+                        # Call progress callback if provided
+                        if progress_callback:
+                            try:
+                                progress_callback(
+                                    progress_estimate,
+                                    f"Processing audio... ({elapsed_minutes:.1f} min elapsed)",
+                                    elapsed_minutes
+                                )
+                            except Exception as cb_error:
+                                logger.warning(f"Progress callback error: {cb_error}")
                         
                         # Check operation status if available
                         try:
@@ -403,12 +421,8 @@ class GoogleSTTProvider(STTProvider):
         
         # Map file extensions to Google STT v2 AudioEncoding with default settings
         format_mappings = {
-            # M4A files (usually AAC) - try multiple configurations
-            'm4a': {
-                'encoding': AudioEncoding.M4A_AAC,
-                'sample_rate': 44100,  # Changed from 48000 to more common 44100
-                'channels': 1  # Try mono first for better STT compatibility
-            },
+            # M4A format removed due to compatibility issues with Google STT batch API
+            
             
             # MP4 audio (usually AAC)  
             'mp4': {
@@ -468,13 +482,10 @@ class GoogleSTTProvider(STTProvider):
             logger.info(f"Audio format detected: {encoding}, {sample_rate}Hz, {channels} channel(s)")
             
             # For M4A files, add additional compatibility warning and suggest fallback
-            if file_extension == 'm4a':
-                logger.warning("M4A format detected - this format may cause processing delays or failures")
-                logger.warning("M4A files contain various codecs (AAC, ALAC) which can cause issues with batch recognition")
-                logger.warning("Consider using LINEAR16 fallback if operation times out")
+            # M4A format no longer supported - removed due to compatibility issues
             
             # For speech/coaching recordings, mono is often better
-            if file_extension in ['m4a', 'mp4', 'mp3', 'flac'] and channels == 2:
+            if file_extension in ['mp4', 'mp3', 'flac'] and channels == 2:
                 logger.info("Audio appears to be speech recording, using mono for better STT performance")
                 channels = 1  # Force mono for speech content
             
@@ -527,7 +538,8 @@ class GoogleSTTProvider(STTProvider):
         enable_diarization: bool = True,
         max_speakers: int = 4,
         min_speakers: int = 2,
-        original_filename: str = None
+        original_filename: str = None,
+        progress_callback=None
     ) -> TranscriptionResult:
         """Transcribe audio using Google Speech-to-Text v2."""
         try:
@@ -612,20 +624,21 @@ class GoogleSTTProvider(STTProvider):
             logger.info("Waiting for transcription to complete...")
             
             try:
-                # Use shorter timeout for M4A files due to known compatibility issues
-                timeout_minutes = 60 if original_filename and original_filename.lower().endswith('.m4a') else 120
+                # Standard timeout for supported formats
+                timeout_minutes = 120
                 logger.info(f"Using {timeout_minutes} minute timeout for this file type")
                 
-                response = self._wait_for_operation_with_progress(operation, timeout_minutes=timeout_minutes)
+                response = self._wait_for_operation_with_progress(
+                    operation, 
+                    timeout_minutes=timeout_minutes,
+                    progress_callback=progress_callback
+                )
                 logger.info("Batch recognition operation completed successfully")
             except (TimeoutError, Exception) as e:
                 error_type = type(e).__name__
                 logger.error(f"Batch recognition failed ({error_type}): {e}")
                 
-                # For M4A timeout, suggest LINEAR16 fallback in future
-                if "timeout" in str(e).lower() and original_filename and original_filename.lower().endswith('.m4a'):
-                    logger.error("M4A file timed out - this format may not be compatible with batch recognition")
-                    logger.error("Recommendation: Convert M4A to WAV/LINEAR16 format before transcription")
+                # M4A format is no longer supported - this code removed
                 
                 # Check if operation failed with specific error
                 if hasattr(operation, 'exception') and operation.exception():

@@ -21,7 +21,7 @@ class CoachingSession(BaseModel):
     """Coaching session model."""
 
     # Basic info
-    coach_id = Column(
+    coach_id = Column(  # TECHNICAL DEBT: Confusing name - actually stores user.id (the coach/user who created this session)
         UUID(as_uuid=True),
         ForeignKey("user.id", ondelete="CASCADE"),
         nullable=False,
@@ -42,8 +42,8 @@ class CoachingSession(BaseModel):
     fee_amount = Column(Integer, nullable=False, default=0)
 
     # File associations (optional)
-    transcript_timeseq_id = Column(UUID(as_uuid=True), nullable=True)
-    audio_timeseq_id = Column(UUID(as_uuid=True), nullable=True)
+    transcript_timeseq_id = Column(UUID(as_uuid=True), nullable=True)  # TECHNICAL DEBT: Purpose unclear, consider removing
+    audio_timeseq_id = Column(UUID(as_uuid=True), nullable=True)  # TECHNICAL DEBT: Confusing name - actually stores session.id (transcription session ID)
 
     # Notes
     notes = Column(Text, nullable=True)

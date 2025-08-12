@@ -10,26 +10,28 @@ Essential functionality to get basic transcription working
 
 | Story | Title | Priority | Backend | Frontend | Status |
 |-------|-------|----------|---------|----------|--------|
-| [US001](US001-audio-upload.md) | Audio File Upload | P0 | ✅ Done | ❌ Fake UI | 🚧 Backend Complete |
+| [US001](US001-audio-upload.md) | Audio File Upload | P0 | ✅ Done | ✅ Done | ✅ Complete |
 | [US002](US002-transcription-processing.md) | Audio Transcription Processing | P0 | ✅ Done | ❌ No UI | 🚧 Backend Complete |
-| [US003](US003-speaker-role-detection.md) | Automatic Speaker Role Detection | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
+| [US003](US003-status-tracking.md) | Processing Status Tracking | P1 | ✅ Done | ✅ Done | ✅ Complete |
 | [US004](US004-transcript-export.md) | Transcript Export | P0 | ⚠️ Partial | ❌ TODO | 📝 Ready |
-| [US005](US005-status-tracking.md) | Processing Status Tracking | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
+| [US005](US005-speaker-role-detection.md) | Automatic Speaker Role Detection | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
 | [US006](US006-language-selection.md) | Language Selection | P1 | ⚠️ Basic | ❌ TODO | 📝 Ready |
+| [US007](US007-experimental-STT.md) | Experimental STT Configuration | P2 | 📖 Analysis | - | 📖 Documentation |
+| [US008](US008-coaching-session-integration.md) | Coaching Session Integration | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
 
 ### Future Enhancements
 
 | Story | Title | Priority | Status |
 |-------|-------|----------|--------|
-| US007 | WebSocket Real-time Updates | P2 | 📝 Draft |
-| US008 | Advanced Export Options (PDF, DOCX) | P2 | 📝 Draft |
-| US009 | Email Notifications | P2 | 📝 Draft |
-| US010 | Additional Language Support | P2 | 📝 Draft |
-| US011 | Transcript Editing Interface | P2 | 📝 Draft |
-| US012 | Batch Upload Processing | P2 | 📝 Draft |
-| US013 | Admin Dashboard | P3 | 💡 Idea |
-| US014 | Usage Analytics | P3 | 💡 Idea |
-| US015 | Custom Vocabulary | P3 | 💡 Idea |
+| US009 | WebSocket Real-time Updates | P2 | 📝 Draft |
+| US010 | Advanced Export Options (PDF, DOCX) | P2 | 📝 Draft |
+| US011 | Email Notifications | P2 | 📝 Draft |
+| US012 | Additional Language Support | P2 | 📝 Draft |
+| US013 | Transcript Editing Interface | P2 | 📝 Draft |
+| US014 | Batch Upload Processing | P2 | 📝 Draft |
+| US015 | Admin Dashboard | P3 | 💡 Idea |
+| US016 | Usage Analytics | P3 | 💡 Idea |
+| US017 | Custom Vocabulary | P3 | 💡 Idea |
 
 ## Priority Definitions
 
@@ -94,21 +96,26 @@ Currently, **backend APIs are implemented but frontend still uses fake/mock data
 ## Dependencies Graph
 
 ```
-US001 (Upload) ──┬──> US002 (Transcribe) ──┬──> US003 (Speakers)
+US001 (Upload) ──┬──> US002 (Transcribe) ──┬──> US005 (Speakers)
                  │                          ├──> US004 (Export)
-                 │                          └──> US005 (Status)
+                 │                          ├──> US003 (Status) ✅
+                 │                          └──> US008 (Integration)
                  └──> US006 (Language)
+
+Coaching Sessions ──────────────────────────> US008 (Integration)
 ```
 
 ## Acceptance Testing Flow
 
 ### Happy Path Test Scenario
 1. User uploads a 30-minute coaching session in Chinese (US001)
-2. Selects Traditional Chinese as language (US006)
-3. Sees processing status with progress bar (US005)
-4. Transcription completes with speakers separated as "Speaker 1", "Speaker 2" (US002)
-5. System automatically identifies Speaker 1 as Coach, Speaker 2 as Client (US003)
-6. Downloads transcript in VTT format with role labels (US004)
+2. Links audio to existing coaching session record (US008)
+3. Selects Traditional Chinese as language (US006)
+4. Sees processing status with progress bar (US003) ✅
+5. Transcription completes with speakers separated as "Speaker 1", "Speaker 2" (US002)
+6. System automatically identifies Speaker 1 as Coach, Speaker 2 as Client (US005)
+7. Downloads transcript in VTT format with role labels (US004)
+8. Views full transcript from coaching session detail page (US008)
 
 ### Error Path Test Scenario
 1. User uploads corrupted audio file (US001 - validation)

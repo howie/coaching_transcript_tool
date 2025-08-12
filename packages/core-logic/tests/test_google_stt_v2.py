@@ -259,7 +259,7 @@ class TestGoogleSTTIntegration:
         
         # Execute transcription
         provider = GoogleSTTProvider()
-        result = provider.transcribe("gs://test-bucket/test.m4a", "zh-TW", enable_diarization=True)
+        result = provider.transcribe("gs://test-bucket/test.mp3", "zh-TW", enable_diarization=True)
         
         # Verify result structure
         assert isinstance(result, TranscriptionResult)

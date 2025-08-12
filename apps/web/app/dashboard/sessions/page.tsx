@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusIcon, PencilIcon, TrashIcon, DocumentTextIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
 import { useI18n } from '@/contexts/i18n-context';
+import { useAuth } from '@/contexts/auth-context';
 import { apiClient } from '@/lib/api';
 import { ClientModal } from '@/components/ClientModal';
 
@@ -45,6 +46,8 @@ interface SessionFormData {
 
 const SessionsPage = () => {
   const { t } = useI18n();
+  const { logout } = useAuth();
+  const router = useRouter();
   const [sessions, setSessions] = useState<CoachingSession[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [currencies, setCurrencies] = useState<{value: string, label: string}[]>([
@@ -123,8 +126,17 @@ const SessionsPage = () => {
       });
       setSessions(data.items);
       setTotalPages(data.total_pages);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch sessions:', error);
+      
+      // Check for authorization errors
+      const status = error.status;
+      if (status === 401 || status === 403) {
+        console.log(`Sessions fetch error (${status}): Unauthorized access, logging out...`);
+        logout();
+        router.push('/login');
+        return;
+      }
     } finally {
       setLoading(false);
     }
@@ -214,8 +226,8 @@ const SessionsPage = () => {
     setFormData({ ...formData, client_id: newClient.id });
   };
 
-  const handleUploadTranscript = (sessionId: string) => {
-    window.location.href = `/dashboard/transcript-converter?session_id=${sessionId}`;
+  const handleViewDetails = (sessionId: string) => {
+    router.push(`/dashboard/sessions/${sessionId}`);
   };
 
   if (loading && !sessions) {
@@ -328,6 +340,14 @@ const SessionsPage = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => handleViewDetails(session.id)}
+                      className="text-blue-600 hover:text-blue-900"
+                      title="查看詳情"
+                    >
+                      <EyeIcon className="h-4 w-4" />
+                    </button>
+                    
+                    <button
                       onClick={() => handleEdit(session)}
                       className="text-indigo-600 hover:text-indigo-900"
                       title="編輯"
@@ -341,22 +361,6 @@ const SessionsPage = () => {
                       title="刪除"
                     >
                       <TrashIcon className="h-4 w-4" />
-                    </button>
-                    
-                    <button
-                      onClick={() => handleUploadTranscript(session.id)}
-                      className="text-green-600 hover:text-green-900"
-                      title="上傳逐字稿"
-                    >
-                      <DocumentTextIcon className="h-4 w-4" />
-                    </button>
-                    
-                    <button
-                      onClick={() => console.log('Upload audio for', session.id)}
-                      className="text-blue-600 hover:text-blue-900"
-                      title="上傳錄音檔"
-                    >
-                      <MicrophoneIcon className="h-4 w-4" />
                     </button>
                   </div>
                 </td>

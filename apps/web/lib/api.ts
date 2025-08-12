@@ -7,6 +7,13 @@ interface TranscriptOptions {
   convertToTraditional: boolean
 }
 
+export class TranscriptNotAvailableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'TranscriptNotAvailableError'
+  }
+}
+
 // Augment the global scope to include the Cloudflare service binding
 declare global {
   var API_SERVICE: { fetch: typeof fetch } | undefined;
@@ -542,7 +549,10 @@ class ApiClient {
       })
 
       if (!response.ok) {
-        throw new Error(`Get sessions failed: ${response.statusText}`)
+        const error = new Error(`Get sessions failed: ${response.statusText}`) as any;
+        error.status = response.status;
+        error.statusText = response.statusText;
+        throw error;
       }
 
       return await response.json()
@@ -559,7 +569,10 @@ class ApiClient {
       })
 
       if (!response.ok) {
-        throw new Error(`Get session failed: ${response.statusText}`)
+        const error = new Error(`Get session failed: ${response.statusText}`) as any;
+        error.status = response.status;
+        error.statusText = response.statusText;
+        throw error;
       }
 
       return await response.json()
@@ -603,6 +616,7 @@ class ApiClient {
     fee_currency?: string
     fee_amount?: number
     notes?: string
+    audio_timeseq_id?: string  // TECHNICAL DEBT: Confusing name - actually stores session.id (transcription session ID)
   }) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {
@@ -923,8 +937,14 @@ class ApiClient {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Get upload URL failed')
+        let errorMessage = 'Get upload URL failed'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.detail || errorData.message || errorMessage
+        } catch (e) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
       }
 
       return await response.json()
@@ -970,7 +990,6 @@ class ApiClient {
           const contentTypeMap: Record<string, string> = {
             'mp3': 'audio/mpeg',
             'wav': 'audio/wav',
-            'm4a': 'audio/mp4',
             'flac': 'audio/flac',
             'ogg': 'audio/ogg',
             'mp4': 'audio/mp4'
@@ -1082,12 +1101,22 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = await response.json()
+        
+        // Handle specific error cases
+        if (response.status === 404 && errorData.detail === 'No transcript segments found') {
+          // This is a normal case when transcription hasn't completed or failed
+          throw new TranscriptNotAvailableError(errorData.detail)
+        }
+        
         throw new Error(errorData.detail || 'Export transcript failed')
       }
 
       return response.blob()
     } catch (error) {
-      console.error('Export transcript error:', error)
+      // Only log as error if it's not the expected TranscriptNotAvailableError
+      if (!(error instanceof TranscriptNotAvailableError)) {
+        console.error('Export transcript error:', error)
+      }
       throw error
     }
   }
