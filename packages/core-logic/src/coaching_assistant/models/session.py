@@ -61,6 +61,11 @@ class Session(BaseModel):
         back_populates="session", 
         cascade="all, delete-orphan"
     )
+    segment_roles = relationship(
+        "SegmentRole", 
+        back_populates="session", 
+        cascade="all, delete-orphan"
+    )
     status_history = relationship(
         "ProcessingStatus",
         back_populates="session",

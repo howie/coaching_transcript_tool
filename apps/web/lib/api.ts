@@ -1158,6 +1158,26 @@ class ApiClient {
       throw error
     }
   }
+
+  async updateSegmentRoles(sessionId: string, segmentRoles: { [segmentId: string]: 'coach' | 'client' }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/segment-roles`, {
+        method: 'PATCH',
+        headers: await this.getHeaders(),
+        body: JSON.stringify({
+          segment_roles: segmentRoles
+        }),
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update segment roles failed')
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Update segment roles error:', error)
+      throw error
+    }
+  }
 }
 
 export const apiClient = new ApiClient()
