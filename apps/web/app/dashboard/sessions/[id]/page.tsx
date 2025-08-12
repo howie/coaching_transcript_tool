@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { PencilIcon, TrashIcon, ArrowLeftIcon, DocumentArrowDownIcon, MicrophoneIcon, DocumentTextIcon, ChartBarIcon, ChatBubbleLeftRightIcon, DocumentMagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, ArrowLeftIcon, DocumentArrowDownIcon, MicrophoneIcon, DocumentTextIcon, ChartBarIcon, ChatBubbleLeftRightIcon, DocumentMagnifyingGlassIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -89,7 +89,7 @@ const SessionDetailPage = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'transcript' | 'analysis'>('overview');
   const [transcript, setTranscript] = useState<TranscriptData | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'vtt' | 'srt' | 'txt' | 'json'>('vtt');
+  const [exportFormat, setExportFormat] = useState<'vtt' | 'srt' | 'txt' | 'json' | 'xlsx'>('vtt');
   const [speakingStats, setSpeakingStats] = useState<SpeakingStats | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
@@ -98,6 +98,11 @@ const SessionDetailPage = () => {
   const [editingRoles, setEditingRoles] = useState(false);
   const [tempRoleAssignments, setTempRoleAssignments] = useState<{ [speakerId: number]: 'coach' | 'client' }>({});
   const [tempSegmentRoles, setTempSegmentRoles] = useState<{ [segmentId: string]: 'coach' | 'client' }>({});
+  const [uploadMode, setUploadMode] = useState<'audio' | 'transcript'>('audio');
+  const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
+  const [isUploadingTranscript, setIsUploadingTranscript] = useState(false);
+  const [speakerRoleMapping, setSpeakerRoleMapping] = useState<{[speakerId: string]: 'coach' | 'client'}>({});
+  const [previewSegments, setPreviewSegments] = useState<Array<{speaker_id: string, speaker_name: string, content: string, count: number}>>([]);
 
   // Use transcription status hook for progress tracking  
   // TECHNICAL DEBT: audio_timeseq_id is a confusing name - it actually stores transcription session.id
@@ -125,6 +130,9 @@ const SessionDetailPage = () => {
     // Always enable polling if audioSessionId exists, restrict polling by active tab only
     enablePolling: Boolean(audioSessionId && (activeTab === 'overview' || activeTab === 'transcript'))
   });
+
+  // Determine if this session was created from direct transcript upload (not audio)
+  const isTranscriptOnly = transcriptionSession?.audio_filename?.endsWith('.manual') || false;
 
   useEffect(() => {
     if (sessionId) {
@@ -275,9 +283,13 @@ const SessionDetailPage = () => {
         blob = response;
       } else {
         // Fallback for string response
-        blob = new Blob([response], { 
-          type: exportFormat === 'json' ? 'application/json' : 'text/plain' 
-        });
+        let contentType = 'text/plain';
+        if (exportFormat === 'json') {
+          contentType = 'application/json';
+        } else if (exportFormat === 'xlsx') {
+          contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        }
+        blob = new Blob([response], { type: contentType });
       }
       
       const url = URL.createObjectURL(blob);
@@ -468,6 +480,154 @@ const SessionDetailPage = () => {
     }
     
     setEditingRoles(false);
+  };
+
+  const handleTranscriptFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      if (fileExtension === 'vtt' || fileExtension === 'srt') {
+        setTranscriptFile(file);
+        // Parse and preview the file to identify speakers
+        await parseFilePreview(file);
+      } else {
+        alert('請選擇 VTT 或 SRT 格式的檔案');
+      }
+    }
+  };
+
+  const parseFilePreview = async (file: File) => {
+    try {
+      const content = await file.text();
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      
+      let speakers: {[speakerKey: string]: {speaker_name: string, content: string[], count: number}} = {};
+      
+      if (fileExtension === 'vtt') {
+        // Parse VTT content
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line.includes('-->')) {
+            i++;
+            if (i < lines.length) {
+              const contentLine = lines[i].trim();
+              let speakerName = 'Unknown Speaker';
+              let speakerKey = 'speaker_1';
+              let actualContent = contentLine;
+              
+              // Extract speaker from VTT format like <v jolly shih>content</v> or <v Speaker>content</v>
+              const speakerMatch = contentLine.match(/<v\s+([^>]+)>\s*(.*?)(?:<\/v>)?$/);
+              if (speakerMatch) {
+                speakerName = speakerMatch[1].trim();
+                actualContent = speakerMatch[2];
+                // Use speaker name as key, normalize for consistency
+                speakerKey = `speaker_${speakerName.toLowerCase().replace(/\s+/g, '_')}`;
+              } else {
+                // Handle case without explicit speaker tag
+                const fallbackMatch = contentLine.match(/^([^:：]+)[：:]\s*(.*)$/);
+                if (fallbackMatch) {
+                  speakerName = fallbackMatch[1].trim();
+                  actualContent = fallbackMatch[2];
+                  speakerKey = `speaker_${speakerName.toLowerCase().replace(/\s+/g, '_')}`;
+                }
+              }
+              
+              if (!speakers[speakerKey]) {
+                speakers[speakerKey] = { speaker_name: speakerName, content: [], count: 0 };
+              }
+              speakers[speakerKey].content.push(actualContent);
+              speakers[speakerKey].count++;
+            }
+          }
+        }
+      } else if (fileExtension === 'srt') {
+        // Parse SRT content
+        const blocks = content.split(/\n\s*\n/);
+        for (const block of blocks) {
+          const lines = block.trim().split('\n');
+          if (lines.length >= 3) {
+            const contentLines = lines.slice(2);
+            const contentText = contentLines.join(' ');
+            
+            let speakerName = 'Unknown Speaker';
+            let speakerKey = 'speaker_1';
+            let actualContent = contentText;
+            
+            // Extract speaker from SRT format like "jolly shih: content" or "教練: content"
+            const speakerMatch = contentText.match(/^([^:：]+)[：:]\s*(.*)$/);
+            if (speakerMatch) {
+              speakerName = speakerMatch[1].trim();
+              actualContent = speakerMatch[2];
+              speakerKey = `speaker_${speakerName.toLowerCase().replace(/\s+/g, '_')}`;
+            }
+            
+            if (!speakers[speakerKey]) {
+              speakers[speakerKey] = { speaker_name: speakerName, content: [], count: 0 };
+            }
+            speakers[speakerKey].content.push(actualContent);
+            speakers[speakerKey].count++;
+          }
+        }
+      }
+      
+      // Create preview segments
+      const segments = Object.entries(speakers).map(([speakerKey, data]) => ({
+        speaker_id: speakerKey,
+        speaker_name: data.speaker_name,
+        content: data.content.slice(0, 3).join(' ').substring(0, 100) + (data.content.length > 3 || data.content.join(' ').length > 100 ? '...' : ''),
+        count: data.count
+      }));
+      
+      setPreviewSegments(segments);
+      
+      // Initialize default role mapping - first speaker is coach, others are clients
+      const defaultMapping: {[speakerId: string]: 'coach' | 'client'} = {};
+      segments.forEach((segment, index) => {
+        // Try to guess based on name, otherwise first speaker is coach
+        const name = segment.speaker_name.toLowerCase();
+        if (name.includes('coach') || name.includes('教練') || name.includes('老師')) {
+          defaultMapping[segment.speaker_id] = 'coach';
+        } else if (name.includes('client') || name.includes('客戶') || name.includes('學員')) {
+          defaultMapping[segment.speaker_id] = 'client';
+        } else {
+          // Default: first speaker is coach, others are client
+          defaultMapping[segment.speaker_id] = index === 0 ? 'coach' : 'client';
+        }
+      });
+      setSpeakerRoleMapping(defaultMapping);
+      
+    } catch (error) {
+      console.error('Error parsing file preview:', error);
+      alert('無法解析檔案內容，請檢查檔案格式');
+    }
+  };
+
+  const handleTranscriptUpload = async () => {
+    if (!transcriptFile || !session) return;
+    
+    setIsUploadingTranscript(true);
+    try {
+      // Create a new API call for direct transcript upload to session
+      await apiClient.uploadSessionTranscript(session.id, transcriptFile, speakerRoleMapping);
+      
+      // Refresh session and transcript data
+      await fetchSession();
+      if (session.audio_timeseq_id) {
+        await fetchTranscript(session.audio_timeseq_id);
+      }
+      
+      // Reset upload state
+      setTranscriptFile(null);
+      setPreviewSegments([]);
+      setSpeakerRoleMapping({});
+      alert('逐字稿上傳成功！');
+    } catch (error) {
+      console.error('Failed to upload transcript:', error);
+      alert('逐字稿上傳失敗，請重試');
+    } finally {
+      setIsUploadingTranscript(false);
+    }
   };
 
   const fetchCurrencies = async () => {
@@ -812,27 +972,201 @@ const SessionDetailPage = () => {
             {/* Audio Analysis Card */}
             <div className="bg-surface border border-border rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4 text-content-primary flex items-center gap-2">
-                <MicrophoneIcon className="h-5 w-5" />
-                音檔分析
+                {isTranscriptOnly ? (
+                  <>
+                    <DocumentTextIcon className="h-5 w-5" />
+                    逐字稿內容
+                  </>
+                ) : (
+                  <>
+                    <MicrophoneIcon className="h-5 w-5" />
+                    音檔分析
+                  </>
+                )}
               </h3>
               
-              {/* Audio Uploader Component */}
-              <AudioUploader
-                sessionId={sessionId}
-                existingAudioSessionId={session?.audio_timeseq_id || undefined}
-                isSessionLoading={fetching}
-                transcriptionStatus={transcriptionStatus}
-                transcriptionSession={transcriptionSession}
-                onUploadComplete={(audioSessionId) => {
-                  // Update session with new audio session ID
-                  setSession(prev => prev ? {
-                    ...prev,
-                    audio_timeseq_id: audioSessionId
-                  } : null);
-                  // Trigger transcript fetch if needed
-                  fetchSession();
-                }}
-              />
+              {/* Upload Mode Selection */}
+              {!session?.audio_timeseq_id && !hasTranscript && (
+                <div className="mb-6">
+                  <p className="text-sm text-content-secondary mb-3">請選擇上傳方式：</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setUploadMode('audio')}
+                      className={`p-4 border-2 rounded-lg transition-all ${
+                        uploadMode === 'audio'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-border hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <MicrophoneIcon className="h-6 w-6 text-blue-600" />
+                        <div className="text-left">
+                          <div className="font-medium text-content-primary">音檔分析</div>
+                          <div className="text-sm text-content-secondary">上傳音檔進行 AI 轉錄</div>
+                        </div>
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => setUploadMode('transcript')}
+                      className={`p-4 border-2 rounded-lg transition-all ${
+                        uploadMode === 'transcript'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-border hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <DocumentTextIcon className="h-6 w-6 text-green-600" />
+                        <div className="text-left">
+                          <div className="font-medium text-content-primary">直接上傳逐字稿</div>
+                          <div className="text-sm text-content-secondary">上傳 VTT/SRT 檔案</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Audio Upload Mode */}
+              {uploadMode === 'audio' && (
+                <AudioUploader
+                  sessionId={sessionId}
+                  existingAudioSessionId={session?.audio_timeseq_id || undefined}
+                  isSessionLoading={fetching}
+                  transcriptionStatus={transcriptionStatus}
+                  transcriptionSession={transcriptionSession}
+                  onUploadComplete={(audioSessionId) => {
+                    // Update session with new audio session ID
+                    setSession(prev => prev ? {
+                      ...prev,
+                      audio_timeseq_id: audioSessionId
+                    } : null);
+                    // Trigger transcript fetch if needed
+                    fetchSession();
+                  }}
+                />
+              )}
+
+              {/* Transcript Upload Mode */}
+              {uploadMode === 'transcript' && (
+                <div className="space-y-4">
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4">
+                    <div className="flex">
+                      <div className="ml-3">
+                        <p className="text-sm text-yellow-700 dark:text-yellow-200">
+                          <strong>注意：</strong> 直接上傳的逐字稿將無法享有自動說話者辨識功能，需要手動編輯角色分配。
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {!transcriptFile ? (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                      <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="mt-4">
+                        <label htmlFor="transcript-upload" className="cursor-pointer">
+                          <span className="text-lg font-medium text-content-primary">點擊上傳逐字稿</span>
+                          <p className="text-sm text-content-secondary mt-1">支援 VTT、SRT 格式</p>
+                        </label>
+                        <input
+                          id="transcript-upload"
+                          type="file"
+                          accept=".vtt,.srt"
+                          onChange={handleTranscriptFileChange}
+                          className="hidden"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <DocumentTextIcon className="h-8 w-8 text-green-600" />
+                            <div>
+                              <p className="font-medium text-content-primary">{transcriptFile.name}</p>
+                              <p className="text-sm text-content-secondary">
+                                {(transcriptFile.size / 1024).toFixed(1)} KB
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setTranscriptFile(null);
+                              setPreviewSegments([]);
+                              setSpeakerRoleMapping({});
+                            }}
+                            className="text-red-600 hover:text-red-800 text-sm font-medium"
+                            disabled={isUploadingTranscript}
+                          >
+                            移除
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Speaker Role Assignment */}
+                      {previewSegments.length > 0 && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                          <h4 className="font-medium text-content-primary mb-3">說話者角色分配</h4>
+                          <p className="text-sm text-content-secondary mb-4">
+                            檔案中偵測到 {previewSegments.length} 位說話者，請為每位說話者指定角色：
+                          </p>
+                          
+                          <div className="space-y-3">
+                            {previewSegments.map((segment) => (
+                              <div key={segment.speaker_id} className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <span className="font-medium text-sm">
+                                        {segment.speaker_name}
+                                      </span>
+                                      <span className="text-xs text-content-secondary">
+                                        ({segment.count} 個片段)
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-content-secondary italic">
+                                      "{segment.content}"
+                                    </p>
+                                  </div>
+                                  <div className="flex-shrink-0">
+                                    <select
+                                      value={speakerRoleMapping[segment.speaker_id] || 'coach'}
+                                      onChange={(e) => setSpeakerRoleMapping(prev => ({
+                                        ...prev,
+                                        [segment.speaker_id]: e.target.value as 'coach' | 'client'
+                                      }))}
+                                      className="text-sm px-3 py-1 border border-border rounded-md bg-surface focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                      <option value="coach">教練</option>
+                                      <option value="client">客戶</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <Button
+                        onClick={handleTranscriptUpload}
+                        disabled={isUploadingTranscript || previewSegments.length === 0}
+                        className="w-full"
+                      >
+                        {isUploadingTranscript ? (
+                          <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            上傳中...
+                          </div>
+                        ) : (
+                          '上傳逐字稿'
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Speaking Statistics - shown when transcript is available */}
               {speakingStats && hasTranscript && (
@@ -949,6 +1283,7 @@ const SessionDetailPage = () => {
                       <option value="srt">SubRip (.srt)</option>
                       <option value="txt">純文字 (.txt)</option>
                       <option value="json">JSON (.json)</option>
+                      <option value="xlsx">Excel (.xlsx)</option>
                     </select>
                   </div>
                   <Button
@@ -1081,7 +1416,7 @@ const SessionDetailPage = () => {
                     className="mx-auto flex items-center gap-2"
                   >
                     <DocumentTextIcon className="h-4 w-4" />
-                    前往概覽頁面上傳音檔
+                    前往概覽頁面上傳{isTranscriptOnly ? '逐字稿' : '音檔'}
                   </Button>
                 </div>
               </div>
@@ -1095,14 +1430,18 @@ const SessionDetailPage = () => {
               <div className="bg-surface border border-border rounded-lg p-12 text-center">
                 <ChatBubbleLeftRightIcon className="h-16 w-16 text-content-secondary mx-auto mb-4" />
                 <p className="text-content-secondary mb-4">
-                  需要先上傳音檔並完成轉檔才能使用 AI 分析功能
+                  需要先上傳{isTranscriptOnly ? '逐字稿' : '音檔並完成轉檔'}才能使用 AI 分析功能
                 </p>
                 <Button
                   onClick={() => setActiveTab('overview')}
                   className="flex items-center gap-2 mx-auto"
                 >
-                  <MicrophoneIcon className="h-4 w-4" />
-                  前往概覽頁面上傳音檔
+                  {isTranscriptOnly ? (
+                    <DocumentTextIcon className="h-4 w-4" />
+                  ) : (
+                    <MicrophoneIcon className="h-4 w-4" />
+                  )}
+                  前往概覽頁面上傳{isTranscriptOnly ? '逐字稿' : '音檔'}
                 </Button>
               </div>
             ) : (

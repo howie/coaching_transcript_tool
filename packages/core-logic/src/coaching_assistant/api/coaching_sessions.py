@@ -1,16 +1,23 @@
 """Coaching sessions API endpoints."""
 
 from typing import List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File as FastAPIFile, Form
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc, asc, func
 from pydantic import BaseModel, Field
+import logging
+import re
+import json
 
 from ..core.database import get_db
 from ..models import CoachingSession, Client, User, SessionSource
+from ..models.session import Session, SessionStatus
+from ..models.transcript import TranscriptSegment
 from ..api.auth import get_current_user_dependency
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -399,3 +406,265 @@ async def get_currencies():
         {"value": "ZAR", "label": "ZAR - South African Rand"},
         {"value": "TWD", "label": "TWD - Taiwan Dollar"}
     ]
+
+
+@router.post("/{session_id}/transcript")
+async def upload_session_transcript(
+    session_id: UUID,
+    file: UploadFile = FastAPIFile(...),
+    speaker_roles: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_dependency)
+):
+    """Upload a VTT or SRT transcript file directly to a coaching session."""
+    
+    logger.info(f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, filename={file.filename}")
+    
+    # Parse speaker role mapping if provided
+    speaker_role_mapping = {}
+    if speaker_roles:
+        try:
+            speaker_role_mapping = json.loads(speaker_roles)
+            logger.info(f"📋 Speaker role mapping: {speaker_role_mapping}")
+        except json.JSONDecodeError:
+            logger.warning(f"⚠️ Invalid speaker roles JSON: {speaker_roles}")
+            raise HTTPException(status_code=400, detail="Invalid speaker roles format")
+    
+    # Check if session exists at all
+    session_exists = db.query(CoachingSession).filter(CoachingSession.id == session_id).first()
+    if not session_exists:
+        logger.warning(f"❌ Coaching session {session_id} does not exist in database")
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found in database")
+    
+    # Check if session belongs to user (note: coach_id actually stores user.id)
+    session = db.query(CoachingSession).filter(
+        CoachingSession.id == session_id,
+        CoachingSession.coach_id == current_user.id
+    ).first()
+    
+    if not session:
+        logger.warning(f"❌ Coaching session {session_id} exists but does not belong to user {current_user.id}")
+        logger.info(f"📊 Session owner: {session_exists.coach_id}, requesting user: {current_user.id}")
+        raise HTTPException(status_code=404, detail="Session not found or access denied")
+    
+    # Check file type
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+    
+    file_extension = file.filename.split('.')[-1].lower()
+    if file_extension not in ['vtt', 'srt']:
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid file format. Only VTT and SRT files are supported."
+        )
+    
+    try:
+        # Read file content
+        content = await file.read()
+        content_str = content.decode('utf-8')
+        
+        # Parse the transcript with speaker role mapping
+        segments = []
+        if file_extension == 'vtt':
+            segments = _parse_vtt_content(content_str, speaker_role_mapping)
+        elif file_extension == 'srt':
+            segments = _parse_srt_content(content_str, speaker_role_mapping)
+        
+        if not segments:
+            raise HTTPException(status_code=400, detail="No valid transcript segments found in file")
+        
+        # Calculate total duration
+        total_duration = 0
+        for segment_data in segments:
+            total_duration = max(total_duration, segment_data['end_sec'])
+        
+        # Create a transcription session for this manual upload
+        transcription_session_id = uuid4()
+        transcription_session = Session(
+            id=transcription_session_id,
+            user_id=current_user.id,
+            title=f"Manual Upload - {session.session_date}",
+            status=SessionStatus.COMPLETED,
+            language="auto",  # Will be determined from content
+            duration_sec=int(total_duration),
+            audio_filename=file.filename.replace('.vtt', '.manual').replace('.srt', '.manual')
+        )
+        db.add(transcription_session)
+        
+        # Save segments to database (linked to transcription session)
+        for i, segment_data in enumerate(segments):
+            segment = TranscriptSegment(
+                id=uuid4(),
+                session_id=transcription_session_id,  # Link to transcription session
+                speaker_id=segment_data.get('speaker_id', 1),  # Default to speaker 1
+                start_sec=segment_data['start_sec'],
+                end_sec=segment_data['end_sec'],
+                content=segment_data['content'],
+                confidence=1.0  # Manual upload, assume high confidence
+            )
+            db.add(segment)
+        
+        # Update coaching session to reference the transcription session
+        session.audio_timeseq_id = str(transcription_session_id)
+        session.duration_sec = int(total_duration)
+        
+        db.commit()
+        
+        logger.info(f"✅ Successfully uploaded transcript: {len(segments)} segments, {total_duration:.2f}s duration")
+        
+        return {
+            "message": "Transcript uploaded successfully",
+            "session_id": str(session_id),
+            "transcription_session_id": transcription_session_id,
+            "segments_count": len(segments),
+            "duration_sec": total_duration
+        }
+        
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="File encoding not supported. Please use UTF-8 encoding.")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error uploading transcript: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process transcript: {str(e)}")
+
+
+def _parse_vtt_content(content: str, speaker_role_mapping: dict = None) -> List[dict]:
+    """Parse VTT file content and return segments."""
+    segments = []
+    lines = content.strip().split('\n')
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        # Skip header and empty lines
+        if line == 'WEBVTT' or line == '' or line.startswith('NOTE'):
+            i += 1
+            continue
+        
+        # Look for timestamp line
+        if '-->' in line:
+            # Parse timestamp
+            timestamp_match = re.match(r'(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})', line)
+            if timestamp_match:
+                start_time = _parse_timestamp(timestamp_match.group(1))
+                end_time = _parse_timestamp(timestamp_match.group(2))
+                
+                # Get the content (next line)
+                i += 1
+                if i < len(lines):
+                    content_line = lines[i].strip()
+                    
+                    # Extract speaker and content from VTT format like "<v jolly shih>content</v>" or "<v Speaker>content</v>"
+                    speaker_id = 1
+                    content_text = content_line
+                    speaker_key = None
+                    
+                    # Match the frontend logic for extracting speaker names
+                    speaker_match = re.match(r'<v\s+([^>]+)>\s*(.*?)(?:</v>)?$', content_line)
+                    if speaker_match:
+                        speaker_name = speaker_match.group(1).strip()
+                        content_text = speaker_match.group(2)
+                        # Create speaker key like the frontend: speaker_jolly_shih, speaker_howie_yu
+                        speaker_key = f"speaker_{speaker_name.lower().replace(' ', '_')}"
+                    
+                    # Apply role mapping if provided, otherwise use default assignment
+                    final_speaker_id = speaker_id
+                    if speaker_role_mapping and speaker_key:
+                        # Use the speaker key to look up the role
+                        role = speaker_role_mapping.get(speaker_key, 'coach')
+                        final_speaker_id = 1 if role == 'coach' else 2
+                    elif speaker_match:
+                        # Fallback to name-based assignment when no role mapping is provided
+                        speaker_name = speaker_match.group(1).strip()
+                        final_speaker_id = 2 if '客戶' in speaker_name or 'Client' in speaker_name else 1
+                    
+                    segments.append({
+                        'start_sec': start_time,
+                        'end_sec': end_time,
+                        'content': content_text,
+                        'speaker_id': final_speaker_id
+                    })
+        
+        i += 1
+    
+    return segments
+
+
+def _parse_srt_content(content: str, speaker_role_mapping: dict = None) -> List[dict]:
+    """Parse SRT file content and return segments."""
+    segments = []
+    
+    # Split by double newline to get individual subtitle blocks
+    blocks = re.split(r'\n\s*\n', content.strip())
+    
+    for block in blocks:
+        lines = block.strip().split('\n')
+        if len(lines) < 3:
+            continue
+        
+        # Skip sequence number (line 0)
+        # Parse timestamp (line 1)
+        timestamp_line = lines[1].strip()
+        timestamp_match = re.match(r'(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})', timestamp_line)
+        
+        if timestamp_match:
+            start_time = _parse_timestamp(timestamp_match.group(1).replace(',', '.'))
+            end_time = _parse_timestamp(timestamp_match.group(2).replace(',', '.'))
+            
+            # Content (lines 2+)
+            content_lines = lines[2:]
+            content_text = ' '.join(content_lines)
+            
+            # Extract speaker info if present
+            speaker_id = 1
+            
+            # Look for speaker prefix like "教練: " or "Coach: " or "說話者 2:"
+            speaker_match = re.match(r'(.*?):\s*(.*)', content_text)
+            if speaker_match:
+                speaker_name = speaker_match.group(1)
+                content_text = speaker_match.group(2)
+                
+                # Try to extract speaker ID from name
+                speaker_num_match = re.search(r'(\d+)', speaker_name)
+                if speaker_num_match:
+                    speaker_id = int(speaker_num_match.group(1))
+                else:
+                    # Fallback to name-based assignment
+                    speaker_id = 2 if '客戶' in speaker_name or 'Client' in speaker_name else 1
+            
+            # Apply role mapping if provided, otherwise use default assignment
+            final_speaker_id = speaker_id
+            if speaker_role_mapping:
+                role = speaker_role_mapping.get(str(speaker_id), 'coach')
+                final_speaker_id = 1 if role == 'coach' else 2
+            
+            segments.append({
+                'start_sec': start_time,
+                'end_sec': end_time,
+                'content': content_text,
+                'speaker_id': final_speaker_id
+            })
+    
+    return segments
+
+
+def _parse_timestamp(timestamp_str: str) -> float:
+    """Convert timestamp string to seconds."""
+    # Handle format: HH:MM:SS.mmm
+    time_parts = timestamp_str.split(':')
+    if len(time_parts) != 3:
+        raise ValueError(f"Invalid timestamp format: {timestamp_str}")
+    
+    hours = int(time_parts[0])
+    minutes = int(time_parts[1])
+    seconds_str = time_parts[2]
+    
+    # Handle seconds with milliseconds
+    if '.' in seconds_str:
+        seconds, milliseconds = seconds_str.split('.')
+        total_seconds = hours * 3600 + minutes * 60 + int(seconds) + int(milliseconds) / 1000
+    else:
+        total_seconds = hours * 3600 + minutes * 60 + int(seconds_str)
+    
+    return total_seconds

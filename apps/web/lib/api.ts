@@ -1092,7 +1092,7 @@ class ApiClient {
     }
   }
 
-  async exportTranscript(sessionId: string, format: 'json' | 'vtt' | 'srt' | 'txt' = 'json') {
+  async exportTranscript(sessionId: string, format: 'json' | 'vtt' | 'srt' | 'txt' | 'xlsx' = 'json') {
     try {
       const params = new URLSearchParams({ format })
       const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/transcript?${params}`, {
@@ -1175,6 +1175,38 @@ class ApiClient {
       return await response.json()
     } catch (error) {
       console.error('Update segment roles error:', error)
+      throw error
+    }
+  }
+
+  async uploadSessionTranscript(sessionId: string, file: File, speakerRoleMapping?: {[speakerId: string]: 'coach' | 'client'}) {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      // Add speaker role mapping if provided
+      if (speakerRoleMapping) {
+        formData.append('speaker_roles', JSON.stringify(speakerRoleMapping))
+      }
+      
+      // Get base headers without Content-Type for FormData
+      const headers = await this.getHeaders()
+      delete headers['Content-Type'] // Remove Content-Type to let browser set it for FormData
+      
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}/transcript`, {
+        method: 'POST',
+        headers: headers,
+        body: formData,
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Upload transcript failed')
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Upload session transcript error:', error)
       throw error
     }
   }
