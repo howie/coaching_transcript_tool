@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 from uuid import UUID, uuid4
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File as FastAPIFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import desc
@@ -11,6 +11,7 @@ from datetime import datetime
 import io
 import json
 import logging
+import re
 
 from ..core.database import get_db
 from ..models.session import Session, SessionStatus
@@ -21,6 +22,7 @@ from ..api.auth import get_current_user_dependency
 from ..utils.gcs_uploader import GCSUploader
 from ..tasks.transcription_tasks import transcribe_audio
 from ..core.config import settings
+from ..exporters.excel import generate_excel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -409,7 +411,7 @@ async def start_transcription(
 @router.get("/{session_id}/transcript")
 async def export_transcript(
     session_id: UUID,
-    format: str = Query("json", pattern="^(json|vtt|srt|txt)$"),
+    format: str = Query("json", pattern="^(json|vtt|srt|txt|xlsx)$"),
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency)
 ):
@@ -440,15 +442,23 @@ async def export_transcript(
     if format == "json":
         content = _export_json(session, segments, db)
         media_type = "application/json"
+        response_io = io.StringIO(content)
     elif format == "vtt":
         content = _export_vtt(session, segments, db)
         media_type = "text/vtt"
+        response_io = io.StringIO(content)
     elif format == "srt":
         content = _export_srt(session, segments, db)
         media_type = "text/srt"
+        response_io = io.StringIO(content)
     elif format == "txt":
         content = _export_txt(session, segments, db)
         media_type = "text/plain"
+        response_io = io.StringIO(content)
+    elif format == "xlsx":
+        excel_buffer = _export_xlsx(session, segments, db)
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        response_io = excel_buffer
     else:
         raise HTTPException(status_code=400, detail="Invalid format")
     
@@ -458,7 +468,7 @@ async def export_transcript(
     
     # Return as streaming response
     return StreamingResponse(
-        io.StringIO(content),
+        response_io,
         media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
@@ -865,6 +875,54 @@ def _export_txt(session: Session, segments: List[TranscriptSegment], db: DBSessi
     return "\n".join(lines)
 
 
+def _export_xlsx(session: Session, segments: List[TranscriptSegment], db: DBSession) -> io.BytesIO:
+    """Export transcript as Excel file."""
+    from ..models.transcript import SessionRole, SegmentRole
+    
+    # Get role assignments (both speaker and segment level)
+    role_assignments = {}
+    roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
+    for role in roles:
+        role_assignments[role.speaker_id] = 'Coach' if role.role.value == 'coach' else 'Client'
+    
+    # Get segment-level role assignments
+    segment_roles = {}
+    segment_role_assignments = db.query(SegmentRole).filter(SegmentRole.session_id == session.id).all()
+    for seg_role in segment_role_assignments:
+        segment_roles[str(seg_role.segment_id)] = 'Coach' if seg_role.role.value == 'coach' else 'Client'
+    
+    # Prepare data for Excel export
+    data = []
+    for seg in segments:
+        # Use segment-level role if available, otherwise use speaker-level role
+        speaker_role = segment_roles.get(str(seg.id), role_assignments.get(seg.speaker_id))
+        
+        # Convert role to proper Chinese labels with fallback
+        if speaker_role == 'Coach':
+            speaker_label = '教練'
+        elif speaker_role == 'Client':
+            speaker_label = '客戶'
+        elif speaker_role == '教練':
+            speaker_label = '教練'
+        elif speaker_role == '客戶':
+            speaker_label = '客戶'
+        else:
+            # Fallback: assume speaker_id 1 is coach, others are clients
+            speaker_label = '教練' if seg.speaker_id == 1 else '客戶'
+        
+        # Format timestamp - only show start time
+        start_time = _format_timestamp_vtt(seg.start_sec)
+        
+        data.append({
+            'time': start_time,
+            'speaker': speaker_label,
+            'content': seg.content
+        })
+    
+    # Generate Excel file using the existing excel exporter
+    return generate_excel(data)
+
+
 def _format_timestamp_vtt(seconds: float) -> str:
     """Format timestamp for VTT format (HH:MM:SS.mmm)."""
     hours = int(seconds // 3600)
@@ -879,3 +937,214 @@ def _format_timestamp_srt(seconds: float) -> str:
     minutes = int((seconds % 3600) // 60)
     secs = seconds % 60
     return f"{hours:02d}:{minutes:02d}:{secs:06.3f}".replace('.', ',')
+
+
+@router.post("/{session_id}/transcript")
+async def upload_session_transcript(
+    session_id: UUID,
+    file: UploadFile = FastAPIFile(...),
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dependency)
+):
+    """Upload a VTT or SRT transcript file directly to a session."""
+    
+    logger.info(f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, filename={file.filename}")
+    
+    # Check if session exists at all
+    session_exists = db.query(Session).filter(Session.id == session_id).first()
+    if not session_exists:
+        logger.warning(f"❌ Session {session_id} does not exist in database")
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found in database")
+    
+    # Check if session belongs to user
+    session = db.query(Session).filter(
+        Session.id == session_id,
+        Session.user_id == current_user.id
+    ).first()
+    
+    if not session:
+        logger.warning(f"❌ Session {session_id} exists but does not belong to user {current_user.id}")
+        logger.info(f"📊 Session owner: {session_exists.user_id}, requesting user: {current_user.id}")
+        raise HTTPException(status_code=404, detail="Session not found or access denied")
+    
+    # Check file type
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+    
+    file_extension = file.filename.split('.')[-1].lower()
+    if file_extension not in ['vtt', 'srt']:
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid file format. Only VTT and SRT files are supported."
+        )
+    
+    try:
+        # Read file content
+        content = await file.read()
+        content_str = content.decode('utf-8')
+        
+        # Parse the transcript
+        segments = []
+        if file_extension == 'vtt':
+            segments = _parse_vtt_content(content_str)
+        elif file_extension == 'srt':
+            segments = _parse_srt_content(content_str)
+        
+        if not segments:
+            raise HTTPException(status_code=400, detail="No valid transcript segments found in file")
+        
+        # Create a transcription session ID for this manual upload
+        transcription_session_id = str(uuid4())
+        
+        # Save segments to database
+        total_duration = 0
+        for i, segment_data in enumerate(segments):
+            segment = TranscriptSegment(
+                id=uuid4(),
+                session_id=session_id,
+                speaker_id=segment_data.get('speaker_id', 1),  # Default to speaker 1
+                start_sec=segment_data['start_sec'],
+                end_sec=segment_data['end_sec'],
+                content=segment_data['content'],
+                confidence=1.0  # Manual upload, assume high confidence
+            )
+            total_duration = max(total_duration, segment_data['end_sec'])
+            db.add(segment)
+        
+        # Update session with transcript info
+        session.audio_timeseq_id = transcription_session_id
+        session.duration_sec = total_duration
+        session.status = SessionStatus.COMPLETED
+        
+        db.commit()
+        
+        return {
+            "message": "Transcript uploaded successfully",
+            "session_id": str(session_id),
+            "transcription_session_id": transcription_session_id,
+            "segments_count": len(segments),
+            "duration_sec": total_duration
+        }
+        
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="File encoding not supported. Please use UTF-8 encoding.")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error uploading transcript: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process transcript: {str(e)}")
+
+
+def _parse_vtt_content(content: str) -> List[dict]:
+    """Parse VTT file content and return segments."""
+    segments = []
+    lines = content.strip().split('\n')
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        # Skip header and empty lines
+        if line == 'WEBVTT' or line == '' or line.startswith('NOTE'):
+            i += 1
+            continue
+        
+        # Look for timestamp line
+        if '-->' in line:
+            # Parse timestamp
+            timestamp_match = re.match(r'(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})', line)
+            if timestamp_match:
+                start_time = _parse_timestamp(timestamp_match.group(1))
+                end_time = _parse_timestamp(timestamp_match.group(2))
+                
+                # Get the content (next line)
+                i += 1
+                if i < len(lines):
+                    content_line = lines[i].strip()
+                    
+                    # Extract speaker and content from VTT format like "<v Speaker>Content"
+                    speaker_id = 1
+                    content_text = content_line
+                    
+                    speaker_match = re.match(r'<v\s+([^>]+)>\s*(.*)', content_line)
+                    if speaker_match:
+                        speaker_name = speaker_match.group(1)
+                        content_text = speaker_match.group(2)
+                        # Simple speaker ID assignment based on name
+                        speaker_id = 2 if '客戶' in speaker_name or 'Client' in speaker_name else 1
+                    
+                    segments.append({
+                        'start_sec': start_time,
+                        'end_sec': end_time,
+                        'content': content_text,
+                        'speaker_id': speaker_id
+                    })
+        
+        i += 1
+    
+    return segments
+
+
+def _parse_srt_content(content: str) -> List[dict]:
+    """Parse SRT file content and return segments."""
+    segments = []
+    
+    # Split by double newline to get individual subtitle blocks
+    blocks = re.split(r'\n\s*\n', content.strip())
+    
+    for block in blocks:
+        lines = block.strip().split('\n')
+        if len(lines) < 3:
+            continue
+        
+        # Skip sequence number (line 0)
+        # Parse timestamp (line 1)
+        timestamp_line = lines[1].strip()
+        timestamp_match = re.match(r'(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})', timestamp_line)
+        
+        if timestamp_match:
+            start_time = _parse_timestamp(timestamp_match.group(1).replace(',', '.'))
+            end_time = _parse_timestamp(timestamp_match.group(2).replace(',', '.'))
+            
+            # Content (lines 2+)
+            content_lines = lines[2:]
+            content_text = ' '.join(content_lines)
+            
+            # Extract speaker info if present
+            speaker_id = 1
+            
+            # Look for speaker prefix like "教練: " or "Coach: "
+            speaker_match = re.match(r'(.*?):\s*(.*)', content_text)
+            if speaker_match:
+                speaker_name = speaker_match.group(1)
+                content_text = speaker_match.group(2)
+                speaker_id = 2 if '客戶' in speaker_name or 'Client' in speaker_name else 1
+            
+            segments.append({
+                'start_sec': start_time,
+                'end_sec': end_time,
+                'content': content_text,
+                'speaker_id': speaker_id
+            })
+    
+    return segments
+
+
+def _parse_timestamp(timestamp_str: str) -> float:
+    """Convert timestamp string to seconds."""
+    # Handle format: HH:MM:SS.mmm
+    time_parts = timestamp_str.split(':')
+    if len(time_parts) != 3:
+        raise ValueError(f"Invalid timestamp format: {timestamp_str}")
+    
+    hours = int(time_parts[0])
+    minutes = int(time_parts[1])
+    seconds_str = time_parts[2]
+    
+    # Handle seconds with milliseconds
+    if '.' in seconds_str:
+        seconds, milliseconds = seconds_str.split('.')
+        total_seconds = hours * 3600 + minutes * 60 + int(seconds) + int(milliseconds) / 1000
+    else:
+        total_seconds = hours * 3600 + minutes * 60 + int(seconds_str)
+    
+    return total_seconds

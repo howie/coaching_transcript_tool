@@ -65,7 +65,7 @@ def generate_excel(
     ws.title = "Transcript"
     
     # Add headers
-    headers = ['Time', 'Role', 'Content']
+    headers = ['時間', '角色', '內容']
     ws.append(headers)
     
     # Add data rows
@@ -128,7 +128,7 @@ def _apply_styles(ws, data, font_size, coach_color, client_color):
         cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
     for row_idx, item in enumerate(data, start=2):
-        fill = coach_fill if item['speaker'] == 'Coach' else client_fill
+        fill = coach_fill if item['speaker'] in ['Coach', '教練'] else client_fill
         for col_idx in range(1, 4):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.font = cell_font
