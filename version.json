@@ -1,8 +1,8 @@
 {
-  "version": "2.5.0",
-  "displayVersion": "v2.5.0",
-  "description": "Coachly transcription service with enhanced status tracking",
+  "version": "2.6.0",
+  "displayVersion": "v2.6.0",
+  "description": "Coachly transcription service - Production Ready with Complete Bug Fixes",
   "releaseDate": "2025-08-12",
-  "releaseNotes": " - Added support for real-time transcription status updates.\n - Improved error handling and logging.\n - Optimized performance for large audio files.\n - Updated dependencies to latest versions.",
+  "releaseNotes": " - ✅ All critical bugs resolved - system now production ready\n - ✅ Complete frontend-backend integration with real API calls\n - ✅ Fixed Google STT v2 compatibility issues and language codes\n - ✅ Resolved upload workflow issues (MP4 support, M4A removal)\n - ✅ Fixed progress bar visual glitches and precision rounding\n - ✅ Improved real-time polling with memory leak fixes\n - ✅ Enhanced database transaction handling and rollback mechanisms\n - ✅ End-to-end audio transcription workflow fully functional",
   "author": "Coachly Team"
 }
