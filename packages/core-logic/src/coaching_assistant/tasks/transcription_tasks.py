@@ -150,11 +150,20 @@ def transcribe_audio(
                     if progress_percentage > 90:
                         progress_message = "Almost done processing audio..."
                     
-                    processing_status.update_progress(int(mapped_progress), progress_message)
-                    db.commit()
+                    # Re-query the processing status to ensure we have the latest from DB
+                    current_status = db.query(ProcessingStatus).filter(
+                        ProcessingStatus.session_id == session_uuid
+                    ).first()
                     
-                    logger.info(f"STT Progress: {mapped_progress:.1f}% - {progress_message}")
+                    if current_status:
+                        current_status.update_progress(int(mapped_progress), progress_message)
+                        db.commit()
+                        logger.info(f"STT Progress: {mapped_progress:.1f}% - {progress_message} (DB updated)")
+                    else:
+                        logger.warning(f"Processing status not found for session {session_uuid}")
+                    
                 except Exception as e:
+                    db.rollback()
                     logger.warning(f"Failed to update progress: {e}")
             
             result = stt_provider.transcribe(

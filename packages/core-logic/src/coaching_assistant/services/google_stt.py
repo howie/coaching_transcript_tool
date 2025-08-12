@@ -823,6 +823,11 @@ class GoogleSTTProvider(STTProvider):
                         # Use word-level timing information to create more accurate segments
                         first_word = words[0]
                         last_word = words[-1]
+                        
+                        # Debug logging to understand the data structure
+                        logger.debug(f"Processing {len(words)} words, first word type: {type(first_word)}")
+                        if isinstance(first_word, dict):
+                            logger.debug(f"First word dict keys: {first_word.keys()}")
 
                         # Handle both object attributes and dict keys for timing
                         if hasattr(first_word, 'start_time'):
@@ -830,15 +835,18 @@ class GoogleSTTProvider(STTProvider):
                             end_time = last_word.end_time
                             start_sec = start_time.seconds + getattr(start_time, 'nanos', 0) / 1e9
                             end_sec = end_time.seconds + getattr(end_time, 'nanos', 0) / 1e9
+                            logger.debug(f"Using object timing: {start_sec:.2f}s - {end_sec:.2f}s")
                         elif isinstance(first_word, dict):
                             start_time = first_word.get('startTime', '0s')
                             end_time = last_word.get('endTime', '5s')
                             # Parse duration strings like "1.23s"
                             start_sec = float(start_time.rstrip('s')) if start_time.endswith('s') else 0.0
                             end_sec = float(end_time.rstrip('s')) if end_time.endswith('s') else 5.0
+                            logger.debug(f"Using dict timing: {start_sec:.2f}s - {end_sec:.2f}s (from {start_time} - {end_time})")
                         else:
                             start_sec = 0.0
                             end_sec = 5.0
+                            logger.warning(f"Unknown word format, using default timing")
 
                         # Calculate average confidence from words
                         word_confidences = []
@@ -858,10 +866,26 @@ class GoogleSTTProvider(STTProvider):
                         ))
                     else:
                         # Fallback for alternatives without word-level data
+                        # Use segment index to estimate timing based on average speaking rate
+                        # Average speaking rate is ~150 words per minute or ~2.5 words per second
+                        words_in_segment = len(transcript.split())
+                        estimated_duration = max(1.0, words_in_segment / 2.5)  # At least 1 second per segment
+                        
+                        # Use accumulated time from previous segments
+                        if segments:
+                            last_segment = segments[-1]
+                            start_sec = last_segment.end_sec + 0.5  # Add 0.5 second gap between segments
+                        else:
+                            start_sec = 0.0
+                        
+                        end_sec = start_sec + estimated_duration
+                        
+                        logger.warning(f"No word-level timing data available, using estimated timing: {start_sec:.1f}s - {end_sec:.1f}s for {words_in_segment} words")
+                        
                         segments.append(TranscriptSegment(
                             speaker_id=1,
-                            start_sec=0.0,
-                            end_sec=5.0,
+                            start_sec=start_sec,
+                            end_sec=end_sec,
                             content=transcript.strip(),
                             confidence=confidence
                         ))

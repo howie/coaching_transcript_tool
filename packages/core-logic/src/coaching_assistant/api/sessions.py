@@ -438,16 +438,16 @@ async def export_transcript(
     
     # Generate transcript content based on format
     if format == "json":
-        content = _export_json(session, segments)
+        content = _export_json(session, segments, db)
         media_type = "application/json"
     elif format == "vtt":
-        content = _export_vtt(session, segments)
+        content = _export_vtt(session, segments, db)
         media_type = "text/vtt"
     elif format == "srt":
-        content = _export_srt(session, segments)
+        content = _export_srt(session, segments, db)
         media_type = "text/srt"
     elif format == "txt":
-        content = _export_txt(session, segments)
+        content = _export_txt(session, segments, db)
         media_type = "text/plain"
     else:
         raise HTTPException(status_code=400, detail="Invalid format")
@@ -490,6 +490,7 @@ async def get_session_status(
         latest_status = _create_default_status(session, db)
     
     # Update progress calculation if processing
+    # NOTE: This should only estimate progress if not already set by Celery task
     if session.status == SessionStatus.PROCESSING:
         _update_processing_progress(session, latest_status, db)
     
@@ -511,6 +512,62 @@ async def get_session_status(
     logger.info(f"🔍 STATUS API DEBUG - Session {session_id}: progress={latest_status.progress_percentage}%, status={session.status}, message='{latest_status.message}'")
     
     return response
+
+
+class SpeakerRoleUpdateRequest(BaseModel):
+    speaker_roles: dict[int, str]
+
+
+@router.patch("/{session_id}/speaker-roles")
+async def update_speaker_roles(
+    session_id: UUID,
+    request: SpeakerRoleUpdateRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dependency)
+):
+    """Update speaker role assignments for a session."""
+    session = db.query(Session).filter(
+        Session.id == session_id,
+        Session.user_id == current_user.id
+    ).first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if session.status != SessionStatus.COMPLETED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot update speaker roles. Session status: {session.status.value}"
+        )
+    
+    # Import here to avoid circular imports
+    from ..models.transcript import SessionRole, SpeakerRole
+    
+    # Clear existing role assignments
+    db.query(SessionRole).filter(SessionRole.session_id == session_id).delete()
+    
+    # Create new role assignments
+    for speaker_id, role_str in request.speaker_roles.items():
+        if role_str not in ['coach', 'client']:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid role '{role_str}'. Must be 'coach' or 'client'"
+            )
+        
+        role = SpeakerRole.COACH if role_str == 'coach' else SpeakerRole.CLIENT
+        role_assignment = SessionRole(
+            session_id=session_id,
+            speaker_id=int(speaker_id),
+            role=role
+        )
+        db.add(role_assignment)
+    
+    db.commit()
+    
+    return {
+        "message": "Speaker roles updated successfully",
+        "speaker_roles": request.speaker_roles
+    }
 
 
 def _create_default_status(session: Session, db: DBSession) -> ProcessingStatus:
@@ -550,54 +607,70 @@ def _update_processing_progress(session: Session, status: ProcessingStatus, db: 
     # Calculate elapsed time since processing started
     elapsed_seconds = (datetime.utcnow() - status.started_at).total_seconds()
     
-    # Estimate progress based on time elapsed
-    # Assume 4x real-time processing by default
-    if session.duration_sec:
+    # Log current progress before any updates
+    logger.debug(f"Current progress before update: {status.progress}% for session {session.id}")
+    
+    # Only estimate progress if we don't have actual progress from Celery task
+    # The Celery task sets actual progress, so we should NOT override it here
+    if session.duration_sec and (status.progress is None or status.progress == 0):
+        # Only set time-based estimate if progress hasn't been set by the actual task
         expected_processing_time = session.duration_sec * 4  # 4x real-time
         time_based_progress = min(95, (elapsed_seconds / expected_processing_time) * 100)
+        status.progress = int(time_based_progress)
         
-        # Use time-based progress if we don't have actual progress
-        if not status.duration_processed:
-            status.progress = int(time_based_progress)
-        else:
-            # Combine actual progress (70%) with time-based estimate (30%)
-            actual_progress = (status.duration_processed / session.duration_sec) * 100
-            status.progress = int((actual_progress * 0.7) + (time_based_progress * 0.3))
+        # Update message only if not already set by task
+        if not status.message or status.message == "Processing...":
+            if status.progress < 25:
+                status.message = "Starting audio processing..."
+            elif status.progress < 50:
+                status.message = "Processing audio segments..."
+            elif status.progress < 75:
+                status.message = "Analyzing speech patterns..."
+            elif status.progress < 95:
+                status.message = "Finalizing transcription..."
+            else:
+                status.message = "Almost done..."
         
-        # Calculate processing speed
-        if status.duration_processed and elapsed_seconds > 0:
-            status.processing_speed = status.duration_processed / elapsed_seconds
-        
-        # Update estimated completion
-        if status.progress < 95:
-            remaining_work = max(0, expected_processing_time - elapsed_seconds)
-            status.estimated_completion = datetime.utcnow() + datetime.timedelta(seconds=remaining_work)
-        else:
-            status.estimated_completion = datetime.utcnow() + datetime.timedelta(minutes=2)
-    
-    # Update message based on progress
-    if status.progress < 25:
-        status.message = "Starting audio processing..."
-    elif status.progress < 50:
-        status.message = "Processing audio segments..."
-    elif status.progress < 75:
-        status.message = "Analyzing speech patterns..."
-    elif status.progress < 95:
-        status.message = "Finalizing transcription..."
+        logger.debug(f"Set time-based progress estimate: {status.progress}%")
     else:
-        status.message = "Almost done..."
+        # Log that we're keeping the existing progress
+        logger.debug(f"Keeping existing progress: {status.progress}%")
     
+    # Calculate processing speed if we have data
+    if status.duration_processed and elapsed_seconds > 0:
+        status.processing_speed = status.duration_processed / elapsed_seconds
+    
+    # Update estimated completion based on current progress
+    current_progress = status.progress or 0
+    if session.duration_sec and current_progress < 95:
+        expected_processing_time = session.duration_sec * 4  # 4x real-time
+        remaining_percentage = (100 - current_progress) / 100.0
+        remaining_time = expected_processing_time * remaining_percentage
+        status.estimated_completion = datetime.utcnow() + datetime.timedelta(seconds=remaining_time)
+    elif current_progress >= 95:
+        status.estimated_completion = datetime.utcnow() + datetime.timedelta(minutes=1)
+    
+    # Commit the updates
     db.commit()
 
 
-def _export_json(session: Session, segments: List[TranscriptSegment]) -> str:
+def _export_json(session: Session, segments: List[TranscriptSegment], db: DBSession) -> str:
     """Export transcript as JSON."""
+    # Get role assignments for this session
+    from ..models.transcript import SessionRole
+    
+    role_assignments = {}
+    roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
+    for role in roles:
+        role_assignments[role.speaker_id] = role.role.value
+    
     data = {
         "session_id": str(session.id),
         "title": session.title,
         "duration_sec": session.duration_sec,
         "language": session.language,
         "created_at": session.created_at.isoformat(),
+        "role_assignments": role_assignments,
         "segments": [
             {
                 "speaker_id": seg.speaker_id,
@@ -612,37 +685,63 @@ def _export_json(session: Session, segments: List[TranscriptSegment]) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
-def _export_vtt(session: Session, segments: List[TranscriptSegment]) -> str:
+def _export_vtt(session: Session, segments: List[TranscriptSegment], db: DBSession) -> str:
     """Export transcript as WebVTT."""
+    from ..models.transcript import SessionRole
+    
+    # Get role assignments
+    role_assignments = {}
+    roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
+    for role in roles:
+        role_assignments[role.speaker_id] = '教練' if role.role.value == 'coach' else '客戶'
+    
     lines = ["WEBVTT", f"NOTE {session.title}", ""]
     
     for seg in segments:
         start = _format_timestamp_vtt(seg.start_sec)
         end = _format_timestamp_vtt(seg.end_sec)
+        speaker_label = role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}")
         lines.append(f"{start} --> {end}")
-        lines.append(f"<v Speaker {seg.speaker_id}>{seg.content}")
+        lines.append(f"<v {speaker_label}>{seg.content}")
         lines.append("")
     
     return "\n".join(lines)
 
 
-def _export_srt(session: Session, segments: List[TranscriptSegment]) -> str:
+def _export_srt(session: Session, segments: List[TranscriptSegment], db: DBSession) -> str:
     """Export transcript as SRT."""
+    from ..models.transcript import SessionRole
+    
+    # Get role assignments
+    role_assignments = {}
+    roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
+    for role in roles:
+        role_assignments[role.speaker_id] = '教練' if role.role.value == 'coach' else '客戶'
+    
     lines = []
     
     for i, seg in enumerate(segments, 1):
         start = _format_timestamp_srt(seg.start_sec)
         end = _format_timestamp_srt(seg.end_sec)
+        speaker_label = role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}")
         lines.append(str(i))
         lines.append(f"{start} --> {end}")
-        lines.append(f"Speaker {seg.speaker_id}: {seg.content}")
+        lines.append(f"{speaker_label}: {seg.content}")
         lines.append("")
     
     return "\n".join(lines)
 
 
-def _export_txt(session: Session, segments: List[TranscriptSegment]) -> str:
+def _export_txt(session: Session, segments: List[TranscriptSegment], db: DBSession) -> str:
     """Export transcript as plain text."""
+    from ..models.transcript import SessionRole
+    
+    # Get role assignments
+    role_assignments = {}
+    roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
+    for role in roles:
+        role_assignments[role.speaker_id] = '教練' if role.role.value == 'coach' else '客戶'
+    
     lines = [f"Transcript: {session.title}", ""]
     
     current_speaker = None
@@ -650,7 +749,8 @@ def _export_txt(session: Session, segments: List[TranscriptSegment]) -> str:
         if seg.speaker_id != current_speaker:
             if current_speaker is not None:
                 lines.append("")
-            lines.append(f"Speaker {seg.speaker_id}:")
+            speaker_label = role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}")
+            lines.append(f"{speaker_label}:")
             current_speaker = seg.speaker_id
         
         lines.append(seg.content)

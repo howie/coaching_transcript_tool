@@ -47,6 +47,7 @@ interface TranscriptData {
   duration_sec: number;
   segments: TranscriptSegment[];
   created_at: string;
+  role_assignments?: { [speakerId: number]: 'coach' | 'client' };
 }
 
 interface SpeakingStats {
@@ -93,6 +94,8 @@ const SessionDetailPage = () => {
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
+  const [editingRoles, setEditingRoles] = useState(false);
+  const [tempRoleAssignments, setTempRoleAssignments] = useState<{ [speakerId: number]: 'coach' | 'client' }>({});
 
   // Use transcription status hook for progress tracking  
   // TECHNICAL DEBT: audio_timeseq_id is a confusing name - it actually stores transcription session.id
@@ -149,6 +152,20 @@ const SessionDetailPage = () => {
     if (transcript && transcript.segments && transcript.segments.length > 0) {
       const stats = calculateSpeakingStats(transcript.segments);
       setSpeakingStats(stats);
+      
+      // Initialize role assignments from transcript data
+      if (transcript.role_assignments) {
+        setTempRoleAssignments(transcript.role_assignments);
+      } else {
+        // Default assignments if none exist
+        const speakerIds = transcript.segments.map(s => s.speaker_id);
+        const uniqueSpeakers = Array.from(new Set(speakerIds));
+        const defaultAssignments: { [speakerId: number]: 'coach' | 'client' } = {};
+        uniqueSpeakers.forEach((speakerId, index) => {
+          defaultAssignments[speakerId] = index === 0 ? 'coach' : 'client';
+        });
+        setTempRoleAssignments(defaultAssignments);
+      }
     }
   }, [transcript]);
 
@@ -265,7 +282,12 @@ const SessionDetailPage = () => {
   };
 
   const getSpeakerLabel = (speakerId: number) => {
-    // In future, this can be mapped to actual roles (Coach/Client)
+    // Check if we have role assignments
+    const roleAssignments = transcript?.role_assignments || {};
+    if (roleAssignments[speakerId]) {
+      return roleAssignments[speakerId] === 'coach' ? '教練' : '客戶';
+    }
+    // Default mapping
     return speakerId === 1 ? '教練' : '客戶';
   };
 
@@ -279,7 +301,9 @@ const SessionDetailPage = () => {
     
     segments.forEach(segment => {
       const duration = segment.end_sec - segment.start_sec;
-      if (segment.speaker_id === 1) {
+      const speakerRole = tempRoleAssignments[segment.speaker_id] || (segment.speaker_id === 1 ? 'coach' : 'client');
+      
+      if (speakerRole === 'coach') {
         coachTime += duration;
       } else {
         clientTime += duration;
@@ -288,7 +312,15 @@ const SessionDetailPage = () => {
     
     const totalSpeaking = coachTime + clientTime;
     const totalDuration = transcript?.duration_sec || 0;
-    const silenceTime = totalDuration - totalSpeaking;
+    
+    // Important note: STT total duration is usually the maximum timestamp from segments,
+    // not the actual audio file duration. So silence time calculation may be inaccurate.
+    // Only calculate silence time if total duration is significantly larger than speaking time
+    let silenceTime = 0;
+    if (totalDuration > totalSpeaking && (totalDuration - totalSpeaking) > 10) {
+      // Only show silence time if there's at least 10 seconds difference
+      silenceTime = totalDuration - totalSpeaking;
+    }
     
     return {
       coach_speaking_time: coachTime,
@@ -296,7 +328,7 @@ const SessionDetailPage = () => {
       total_speaking_time: totalSpeaking,
       coach_percentage: totalSpeaking > 0 ? (coachTime / totalSpeaking) * 100 : 0,
       client_percentage: totalSpeaking > 0 ? (clientTime / totalSpeaking) * 100 : 0,
-      silence_time: Math.max(0, silenceTime)
+      silence_time: silenceTime
     };
   };
 
@@ -358,6 +390,40 @@ const SessionDetailPage = () => {
 您還有其他想了解的嗎？`;
       setChatMessages(prev => [...prev, { role: 'assistant', content: mockResponse }]);
     }, 1000);
+  };
+
+  const saveRoleAssignments = async () => {
+    if (!session?.audio_timeseq_id) return;
+    
+    try {
+      // Save role assignments via API
+      await apiClient.updateSpeakerRoles(session.audio_timeseq_id, tempRoleAssignments);
+      
+      // Update local transcript data
+      setTranscript(prev => prev ? {
+        ...prev,
+        role_assignments: tempRoleAssignments
+      } : null);
+      
+      setEditingRoles(false);
+      
+      // Recalculate stats with new role assignments
+      if (transcript) {
+        const stats = calculateSpeakingStats(transcript.segments);
+        setSpeakingStats(stats);
+      }
+    } catch (error) {
+      console.error('Failed to save role assignments:', error);
+      alert('儲存角色分配失敗，請稍後再試');
+    }
+  };
+
+  const cancelRoleEditing = () => {
+    // Reset to original assignments
+    if (transcript?.role_assignments) {
+      setTempRoleAssignments(transcript.role_assignments);
+    }
+    setEditingRoles(false);
   };
 
   const fetchCurrencies = async () => {
@@ -766,9 +832,17 @@ const SessionDetailPage = () => {
                           <span className="text-content-secondary">談話時間</span>
                           <span className="text-content-primary font-medium">{formatDuration(speakingStats.total_speaking_time)}</span>
                         </div>
+                        {/* Silence time calculation is not accurate from STT, showing warning */}
                         <div className="flex justify-between">
-                          <span className="text-content-secondary">靜默時間</span>
-                          <span className="text-content-primary font-medium">{formatDuration(speakingStats.silence_time)}</span>
+                          <span className="text-content-secondary">
+                            靜默時間
+                            <span className="text-xs text-yellow-600 ml-1" title="此數據為推算值，可能不夠準確">
+                              (推算)
+                            </span>
+                          </span>
+                          <span className="text-content-primary font-medium">
+                            {speakingStats.silence_time > 0 ? formatDuration(speakingStats.silence_time) : '無法計算'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-content-secondary">對話段數</span>
@@ -792,7 +866,7 @@ const SessionDetailPage = () => {
                   轉檔處理中
                 </h3>
                 <TranscriptionProgress
-                  progress={transcriptionStatus.progress}
+                  progress={Number(transcriptionStatus.progress) || 0}
                   status={transcriptionSession?.status === 'processing' ? 'processing' : 'pending'}
                   message={transcriptionStatus.message || (transcriptionSession?.status === 'pending' ? '等待開始處理...' : '處理中...')}
                   estimatedTime={transcriptionStatus.estimated_completion ? 
@@ -844,8 +918,36 @@ const SessionDetailPage = () => {
                     <h3 className="text-lg font-semibold text-content-primary">
                       對話紀錄
                     </h3>
-                    <div className="text-sm text-content-secondary">
-                      總時長: {formatDuration(transcript.duration_sec)} | {transcript.segments.length} 段對話
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm text-content-secondary">
+                        總時長: {formatDuration(transcript.duration_sec)} | {transcript.segments.length} 段對話
+                      </div>
+                      {!editingRoles ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => setEditingRoles(true)}
+                          className="flex items-center gap-2 text-sm px-3 py-1"
+                        >
+                          <PencilIcon className="h-3 w-3" />
+                          編輯角色
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={cancelRoleEditing}
+                            className="text-sm px-3 py-1"
+                          >
+                            取消
+                          </Button>
+                          <Button
+                            onClick={saveRoleAssignments}
+                            className="flex items-center gap-2 text-sm px-3 py-1"
+                          >
+                            儲存
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -875,13 +977,27 @@ const SessionDetailPage = () => {
                             {formatTime(segment.start_sec)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                              segment.speaker_id === 1 
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
-                                : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            }`}>
-                              {getSpeakerLabel(segment.speaker_id)}
-                            </span>
+                            {editingRoles ? (
+                              <select
+                                value={tempRoleAssignments[segment.speaker_id] || 'coach'}
+                                onChange={(e) => setTempRoleAssignments(prev => ({
+                                  ...prev,
+                                  [segment.speaker_id]: e.target.value as 'coach' | 'client'
+                                }))}
+                                className="text-xs px-2 py-1 border border-border rounded bg-surface"
+                              >
+                                <option value="coach">教練</option>
+                                <option value="client">客戶</option>
+                              </select>
+                            ) : (
+                              <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                (tempRoleAssignments[segment.speaker_id] || (segment.speaker_id === 1 ? 'coach' : 'client')) === 'coach'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                                  : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              }`}>
+                                {getSpeakerLabel(segment.speaker_id)}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-content-primary text-sm">
                             {segment.content}
@@ -1002,7 +1118,7 @@ const SessionDetailPage = () => {
                       type="text"
                       value={currentMessage}
                       onChange={(e) => setCurrentMessage(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
+                      onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
                       placeholder="輸入您的問題..."
                       className="flex-1 px-3 py-2 border border-border rounded-md bg-surface text-content-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />

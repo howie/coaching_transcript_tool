@@ -349,11 +349,12 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
             <TranscriptionProgress
               progress={(() => {
-                const progressValue = transcriptionStatus?.progress || uploadState.progress;
+                const progressValue = Number(transcriptionStatus?.progress) || Number(uploadState.progress) || 0;
                 console.log('TranscriptionProgress debug:', {
                   transcriptionStatus: transcriptionStatus,
                   transcriptionSession: transcriptionSession,
                   uploadState: uploadState,
+                  rawProgress: transcriptionStatus?.progress,
                   finalProgress: progressValue,
                   currentSessionId: currentSessionId
                 });

@@ -20,7 +20,17 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   className,
   children
 }) => {
-  const clampedProgress = Math.round(Math.max(0, Math.min(100, progress)))
+  // Debug logging
+  if (typeof window !== 'undefined' && progress !== undefined) {
+    console.log('ProgressBar received:', {
+      rawProgress: progress,
+      type: typeof progress,
+      numberValue: Number(progress),
+      isNaN: isNaN(Number(progress))
+    });
+  }
+  
+  const clampedProgress = Math.round(Math.max(0, Math.min(100, Number(progress) || 0)))
   
   const getBarColor = () => {
     switch (status) {
@@ -31,8 +41,10 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       case 'pending':
         return 'bg-gray-400'
       default:
-        if (clampedProgress >= 90) return 'bg-blue-500'
-        return 'bg-blue-400'
+        // Use more visible blue colors
+        if (clampedProgress >= 90) return 'bg-blue-600'
+        if (clampedProgress > 0) return 'bg-blue-500'
+        return 'bg-gray-300'
     }
   }
 
@@ -81,26 +93,16 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       )}>
         <div
           className={cn(
-            'rounded-full',
+            'rounded-full h-full',
             getBarColor(),
             {
               'animate-pulse': animated && status === 'processing'
             }
           )}
           style={{ 
-            width: `${clampedProgress}%`,
+            width: clampedProgress > 0 ? `${clampedProgress}%` : '0%',
+            minWidth: clampedProgress > 0 && clampedProgress < 5 ? '5%' : undefined,
             transition: 'width 0.3s ease-out'
-          }}
-          ref={(el) => {
-            if (el) {
-              console.log('ProgressBar render:', {
-                originalProgress: progress,
-                clampedProgress,
-                width: `${clampedProgress}%`,
-                actualWidth: el.style.width,
-                status
-              });
-            }
           }}
         />
       </div>
