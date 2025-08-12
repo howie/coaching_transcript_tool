@@ -2,6 +2,63 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-08-12 Critical Bug Fixes and Improvements Completed
+
+### AI Audio Transcription System Stabilization ✅ (Most Recent)
+- ✅ **Google STT v2 Batch Recognition Issues Resolved** (Commit: 4d7b09a)
+  - Fixed language code compatibility: Updated from `zh-TW` to `cmn-Hant-TW` format for Google STT v2 API
+  - Resolved M4A format processing issues by temporarily removing M4A support
+  - Enhanced progress bar precision with proper rounding: `Math.round(progress)` for consistent UI display
+  - Improved progress bar CSS transitions from 300ms to 500ms for smoother visual experience
+  - Fixed MP4 upload validation errors by adding MP4 to backend file format whitelist
+- ✅ **STT Cost Precision and Database Reliability** (Commit: a930412)
+  - Implemented Decimal precision for STT cost calculations to prevent floating-point errors
+  - Fixed database rollback issues during failed transcriptions ensuring data consistency
+  - Enhanced error recovery mechanisms with proper transaction management
+  - Improved session state consistency across processing failures
+- ✅ **Complete Frontend-Backend Integration** (Commit: a58d430)
+  - Eliminated frontend-backend gap: Replaced all mock/fake data with real API connections
+  - Implemented comprehensive API client with full upload workflow integration
+  - Added real-time progress tracking with `useTranscriptionStatus` hook
+  - Fixed "Upload new audio" button with proper state management (`forceUploadView`)
+  - Enhanced error handling throughout the entire transcription pipeline
+
+### User Experience and Interface Improvements ✅
+- ✅ **Progress Bar Visual Consistency**
+  - Fixed visual glitches during progress updates with improved CSS transitions
+  - Implemented consistent percentage rounding across all progress indicators
+  - Added smooth animations with `animate-in slide-in-from-bottom-2` effects
+  - Enhanced status color coding for better visual feedback
+- ✅ **Real-time Status Tracking Optimization**
+  - Reduced polling interval from 10 seconds to 5 seconds for better responsiveness
+  - Added proper cleanup for polling timers preventing memory leaks
+  - Implemented robust error handling for network disconnections
+  - Enhanced session persistence across page refreshes and browser sessions
+- ✅ **Audio Upload Workflow Enhancement**
+  - Fixed Maximum update depth exceeded error by resolving missing `client_id` in API responses
+  - Implemented complete upload state management preventing infinite re-renders
+  - Added comprehensive file format validation with clear error messaging
+  - Enhanced upload progress tracking with accurate percentage calculations
+
+### Backend Infrastructure Stabilization ✅
+- ✅ **Celery Worker Progress Updates**
+  - Added progress callbacks for real-time status reporting to frontend
+  - Improved error handling and retry mechanisms for failed processing
+  - Enhanced task monitoring with better logging and debugging capabilities
+  - Optimized worker performance for concurrent transcription processing
+- ✅ **ProcessingStatus Table Design Improvement**
+  - Changed from insert-only to update pattern for better performance
+  - Implemented proper indexing for faster status lookups
+  - Enhanced data consistency with atomic updates
+  - Added comprehensive error state tracking
+- ✅ **Google Cloud Integration Enhancement**
+  - Improved GCS upload URL generation with better error handling
+  - Enhanced IAM permissions for secure cloud operations
+  - Optimized file upload process with proper progress reporting
+  - Better integration with Google STT v2 API batch processing
+
+**Technical Impact:** Achieved complete system stability with end-to-end audio transcription workflow, real-time progress tracking, and professional-grade error handling. All critical user flows now work reliably from audio upload to transcript delivery.
+
 ## 2025-08-09 Progress Snapshot
 
 ### 生產環境 SSO 重定向問題修復完成

@@ -1,7 +1,8 @@
 {
-  "version": "2.4.0",
-  "displayVersion": "v2.4.0",
-  "description": "Coaching Transcript Tool",
-  "releaseDate": "2025-08-10",
-  "releaseNotes": "Add status tracking for transcription processing with real-time progress updates."
+  "version": "2.5.0",
+  "displayVersion": "v2.5.0",
+  "description": "Coachly transcription service with enhanced status tracking",
+  "releaseDate": "2025-08-12",
+  "releaseNotes": " - Added support for real-time transcription status updates.\n - Improved error handling and logging.\n - Optimized performance for large audio files.\n - Updated dependencies to latest versions.",
+  "author": "Coachly Team"
 }

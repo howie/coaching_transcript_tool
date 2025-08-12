@@ -96,7 +96,7 @@ describe('AudioAnalysisPage Basic Tests', () => {
     
     const fileInput = container.querySelector('input[type="file"]')
     expect(fileInput).toBeInTheDocument()
-    expect(fileInput).toHaveAttribute('accept', '.mp3,.wav,.m4a,.ogg,.mp4')
+    expect(fileInput).toHaveAttribute('accept', '.mp3,.wav,.flac,.ogg,.mp4')
   })
 
   test('has language selection options when available', () => {

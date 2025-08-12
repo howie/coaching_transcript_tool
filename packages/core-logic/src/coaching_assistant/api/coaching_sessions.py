@@ -34,6 +34,7 @@ class CoachingSessionUpdate(BaseModel):
     fee_currency: Optional[str] = Field(None, min_length=3, max_length=3)
     fee_amount: Optional[int] = Field(None, ge=0)
     notes: Optional[str] = None
+    audio_timeseq_id: Optional[UUID] = None  # TECHNICAL DEBT: Confusing name - actually stores session.id (transcription session ID)
 
 
 class ClientSummary(BaseModel):
@@ -46,14 +47,15 @@ class CoachingSessionResponse(BaseModel):
     id: UUID
     session_date: str
     client: ClientSummary
+    client_id: UUID  # Add missing client_id field  
     source: SessionSource
     duration_min: int
     fee_currency: str
     fee_amount: int
     fee_display: str
     duration_display: str
-    transcript_timeseq_id: Optional[UUID]
-    audio_timeseq_id: Optional[UUID]
+    transcript_timeseq_id: Optional[UUID]  # TECHNICAL DEBT: Purpose unclear, consider removing
+    audio_timeseq_id: Optional[UUID]  # TECHNICAL DEBT: Confusing name - actually stores session.id (transcription session ID)
     notes: Optional[str]
     created_at: str
     updated_at: str
@@ -136,6 +138,7 @@ async def list_coaching_sessions(
             "id": session.id,
             "session_date": session.session_date.isoformat(),
             "client": client_summary,
+            "client_id": session.client_id,
             "source": session.source,
             "duration_min": session.duration_min,
             "fee_currency": session.fee_currency,
@@ -189,6 +192,7 @@ async def get_coaching_session(
         "id": session.id,
         "session_date": session.session_date.isoformat(),
         "client": client_summary,
+        "client_id": session.client_id,
         "source": session.source,
         "duration_min": session.duration_min,
         "fee_currency": session.fee_currency,
@@ -253,6 +257,7 @@ async def create_coaching_session(
         "id": session.id,
         "session_date": session.session_date.isoformat(),
         "client": client_summary,
+        "client_id": session.client_id,
         "source": session.source,
         "duration_min": session.duration_min,
         "fee_currency": session.fee_currency,
@@ -298,6 +303,15 @@ async def update_coaching_session(
     if 'fee_currency' in update_data:
         update_data['fee_currency'] = update_data['fee_currency'].upper()
     
+    # Convert audio_timeseq_id string to UUID if present
+    if 'audio_timeseq_id' in update_data and update_data['audio_timeseq_id'] is not None:
+        from uuid import UUID
+        try:
+            if isinstance(update_data['audio_timeseq_id'], str):
+                update_data['audio_timeseq_id'] = UUID(update_data['audio_timeseq_id'])
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid audio_timeseq_id format: {str(e)}")
+    
     for field, value in update_data.items():
         setattr(session, field, value)
     
@@ -322,6 +336,7 @@ async def update_coaching_session(
         "id": session.id,
         "session_date": session.session_date.isoformat(),
         "client": client_summary,
+        "client_id": session.client_id,
         "source": session.source,
         "duration_min": session.duration_min,
         "fee_currency": session.fee_currency,

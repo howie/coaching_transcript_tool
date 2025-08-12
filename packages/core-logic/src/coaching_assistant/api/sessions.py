@@ -167,7 +167,7 @@ async def get_session(
 @router.post("/{session_id}/upload-url", response_model=UploadUrlResponse)
 async def get_upload_url(
     session_id: UUID,
-    filename: str = Query(..., pattern=r"^[^\/\\]+\.(mp3|wav|m4a|flac|ogg)$"),
+    filename: str = Query(..., pattern=r"^[^\/\\]+\.(mp3|wav|flac|ogg|mp4)$"),
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency)
 ):
@@ -200,7 +200,6 @@ async def get_upload_url(
     content_type_map = {
         'mp3': 'audio/mpeg',
         'wav': 'audio/wav',
-        'm4a': 'audio/mp4',
         'flac': 'audio/flac',
         'ogg': 'audio/ogg',
         'mp4': 'audio/mp4'
@@ -481,10 +480,10 @@ async def get_session_status(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # Get or create latest processing status
+    # Get the processing status (should be only one per session)
     latest_status = db.query(ProcessingStatus).filter(
         ProcessingStatus.session_id == session_id
-    ).order_by(desc(ProcessingStatus.created_at)).first()
+    ).first()
     
     # If no status exists, create a basic one based on session status
     if not latest_status:
@@ -494,7 +493,7 @@ async def get_session_status(
     if session.status == SessionStatus.PROCESSING:
         _update_processing_progress(session, latest_status, db)
     
-    return SessionStatusResponse(
+    response = SessionStatusResponse(
         session_id=session.id,
         status=session.status,
         progress=latest_status.progress_percentage,
@@ -507,6 +506,11 @@ async def get_session_status(
         created_at=latest_status.created_at,
         updated_at=latest_status.updated_at
     )
+    
+    # Debug logging
+    logger.info(f"🔍 STATUS API DEBUG - Session {session_id}: progress={latest_status.progress_percentage}%, status={session.status}, message='{latest_status.message}'")
+    
+    return response
 
 
 def _create_default_status(session: Session, db: DBSession) -> ProcessingStatus:

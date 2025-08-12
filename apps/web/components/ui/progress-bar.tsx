@@ -81,7 +81,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       )}>
         <div
           className={cn(
-            'transition-all duration-500 ease-out rounded-full',
+            'rounded-full',
             getBarColor(),
             {
               'animate-pulse': animated && status === 'processing'
@@ -89,7 +89,18 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           )}
           style={{ 
             width: `${clampedProgress}%`,
-            transition: 'width 0.5s ease-out'
+            transition: 'width 0.3s ease-out'
+          }}
+          ref={(el) => {
+            if (el) {
+              console.log('ProgressBar render:', {
+                originalProgress: progress,
+                clampedProgress,
+                width: `${clampedProgress}%`,
+                actualWidth: el.style.width,
+                status
+              });
+            }
           }}
         />
       </div>

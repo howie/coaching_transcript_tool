@@ -41,7 +41,7 @@ export default function AudioAnalysisPage() {
     enablePolling: currentSessionId !== null && uploadState.status === 'processing'
   })
 
-  const supportedFormats = ['mp3', 'wav', 'm4a', 'ogg', 'mp4']
+  const supportedFormats = ['mp3', 'wav', 'flac', 'ogg', 'mp4']
   const maxFileSize = 1 * 1024 * 1024 * 1024 // 1GB
   const maxDuration = 120 // 120 minutes
 
@@ -329,7 +329,7 @@ export default function AudioAnalysisPage() {
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
-                  accept=".mp3,.wav,.m4a,.ogg,.mp4"
+                  accept=".mp3,.wav,.flac,.ogg,.mp4"
                   onChange={handleFileInputChange}
                 />
               </div>

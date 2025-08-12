@@ -101,15 +101,29 @@ def transcribe_audio(
         # Update status to processing
         session.update_status(SessionStatus.PROCESSING)
         
-        # Create initial processing status
-        processing_status = ProcessingStatus(
-            session_id=session_uuid,
-            status="processing",
-            progress=0,
-            message="Initializing transcription...",
-            started_at=start_time
-        )
-        db.add(processing_status)
+        # Get or create processing status record (should be only one per session)
+        processing_status = db.query(ProcessingStatus).filter(
+            ProcessingStatus.session_id == session_uuid
+        ).first()
+        
+        if processing_status:
+            # Update existing record
+            processing_status.status = "processing"
+            processing_status.progress = 0
+            processing_status.message = "Initializing transcription..."
+            processing_status.started_at = start_time
+            processing_status.updated_at = start_time
+        else:
+            # Create new record if none exists
+            processing_status = ProcessingStatus(
+                session_id=session_uuid,
+                status="processing",
+                progress=0,
+                message="Initializing transcription...",
+                started_at=start_time
+            )
+            db.add(processing_status)
+        
         db.commit()
         
         try:
@@ -120,16 +134,35 @@ def transcribe_audio(
             processing_status.update_progress(10, "Connecting to speech service...")
             db.commit()
             
-            # Perform transcription
+            # Perform transcription with progress callback
             logger.info(f"Sending audio to STT provider: {gcs_uri}")
             processing_status.update_progress(25, "Processing audio with Google STT...")
             db.commit()
+            
+            def update_transcription_progress(progress_percentage, message, elapsed_minutes):
+                """Callback to update transcription progress in database."""
+                try:
+                    # Map progress from 25% (start) to 75% (just before saving)
+                    # This reserves 25% for initial setup and 25% for saving
+                    mapped_progress = 25 + (progress_percentage * 0.5)  # 25% + (0-100% * 50%)
+                    
+                    progress_message = f"Processing audio... {elapsed_minutes:.1f} min elapsed"
+                    if progress_percentage > 90:
+                        progress_message = "Almost done processing audio..."
+                    
+                    processing_status.update_progress(int(mapped_progress), progress_message)
+                    db.commit()
+                    
+                    logger.info(f"STT Progress: {mapped_progress:.1f}% - {progress_message}")
+                except Exception as e:
+                    logger.warning(f"Failed to update progress: {e}")
             
             result = stt_provider.transcribe(
                 audio_uri=gcs_uri,
                 language=language,
                 enable_diarization=enable_diarization,
-                original_filename=original_filename
+                original_filename=original_filename,
+                progress_callback=update_transcription_progress
             )
             
             logger.info(f"Transcription completed: {len(result.segments)} segments")

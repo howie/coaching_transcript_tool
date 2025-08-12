@@ -13,6 +13,20 @@
 - ✅ Progress calculation with time-based and actual progress
 - ✅ Status persistence and error handling
 
+### Critical Bug Fixes Completed (August 2025) ✅
+- ✅ **Progress Bar Visual Issues Fixed** (Commit: 4d7b09a)
+  - Fixed progress percentage display precision with proper rounding
+  - Improved CSS transitions for smoother visual updates
+  - Eliminated visual glitches during progress updates
+- ✅ **Real-time Polling Optimization** (Commit: a58d430)
+  - Reduced polling interval from 10s to 5s for better responsiveness
+  - Added proper cleanup for polling timers to prevent memory leaks
+  - Enhanced error handling for network disconnections
+- ✅ **Database Transaction Management** (Commit: a930412)
+  - Fixed ProcessingStatus table rollback issues on failures
+  - Improved error state consistency across database operations
+  - Enhanced cost calculation precision for STT processing
+
 ## Story
 **As a** coach  
 **I want to** track the progress of my transcription  
