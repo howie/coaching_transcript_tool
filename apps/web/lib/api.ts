@@ -1136,6 +1136,28 @@ class ApiClient {
       throw error
     }
   }
+
+  async updateSpeakerRoles(sessionId: string, roleAssignments: { [speakerId: number]: 'coach' | 'client' }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/speaker-roles`, {
+        method: 'PATCH',
+        headers: await this.getHeaders(),
+        body: JSON.stringify({
+          speaker_roles: roleAssignments
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update speaker roles failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Update speaker roles error:', error)
+      throw error
+    }
+  }
 }
 
 export const apiClient = new ApiClient()
