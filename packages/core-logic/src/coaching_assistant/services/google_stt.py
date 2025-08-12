@@ -373,28 +373,41 @@ class GoogleSTTProvider(STTProvider):
             logger.error(f"Failed to read batch results from GCS URI {output_uri}: {e}")
             raise STTProviderError(f"Failed to read batch results: {e}")
     
-    def _validate_diarization_support(self, language: str, model: str, enable_diarization: bool) -> None:
+    def _validate_diarization_support(self, language: str, model: str, enable_diarization: bool) -> bool:
         """
         Validate that the language-model combination supports diarization.
         
-        Based on Google STT v2 capability matrix for asia-southeast1.
+        Based on Google STT v2 capability matrix. Returns True if supported, False otherwise.
         """
         if not enable_diarization:
-            return
+            return False
             
-        # Known combinations that support diarization
+        # Known combinations that support diarization in Google STT v2
+        # Based on Google Cloud documentation - diarization is limited to specific combinations
         diarization_supported = {
-            ("cmn-hant-tw", "chirp_2"),
-            ("cmn-hans-cn", "chirp_2"),
-            ("en-us", "chirp_2"),
-            ("en-gb", "chirp_2"),
-            # Add more as needed
+            # US region combinations that support diarization
+            ("en-us", "chirp_2", "us-central1"),
+            ("en-us", "latest_long", "us-central1"),
+            ("en-us", "latest_short", "us-central1"),
+            # Global models (limited language support)
+            ("en-us", "chirp", "global"),
+            ("en-gb", "chirp", "global"),
         }
         
-        lang_model_key = (language.lower(), model.lower())
+        # Get current location from settings
+        location = settings.GOOGLE_STT_LOCATION
+        lang_model_location_key = (language.lower(), model.lower(), location)
         
-        if lang_model_key not in diarization_supported:
-            logger.warning(f"Diarization may not be supported for {language} with {model} model")
+        # Check if the combination is supported
+        is_supported = lang_model_location_key in diarization_supported
+        
+        if not is_supported:
+            logger.warning(f"Diarization not supported for {language} + {model} in {location}. "
+                         f"Supported combinations: {diarization_supported}")
+            return False
+        
+        logger.info(f"Diarization is supported for {language} + {model} in {location}")
+        return True
             
     def _detect_audio_format(self, audio_uri: str, filename: str = None) -> tuple[int, int, int]:
         """
@@ -535,160 +548,37 @@ class GoogleSTTProvider(STTProvider):
         self,
         audio_uri: str,
         language: str = "cmn-Hant-TW",
-        enable_diarization: bool = True,
-        max_speakers: int = 4,
-        min_speakers: int = 2,
+        enable_diarization: bool = None,
+        max_speakers: int = None,
+        min_speakers: int = None,
         original_filename: str = None,
         progress_callback=None
     ) -> TranscriptionResult:
         """Transcribe audio using Google Speech-to-Text v2."""
         try:
+            # Use settings defaults if parameters not provided
+            if enable_diarization is None:
+                enable_diarization = settings.ENABLE_SPEAKER_DIARIZATION
+            if max_speakers is None:
+                max_speakers = settings.MAX_SPEAKERS
+            if min_speakers is None:
+                min_speakers = settings.MIN_SPEAKERS
+            
             # Normalize language code to BCP-47 format
             normalized_language = self._normalize_language_code(language)
             logger.info(f"Starting Google STT transcription for {audio_uri} (language: {language} -> {normalized_language})")
+            logger.info(f"Diarization: {'enabled' if enable_diarization else 'disabled'}, Speakers: {min_speakers}-{max_speakers}")
             
-            # Configure recognition features
-            features = RecognitionFeatures(
-                enable_automatic_punctuation=True,
-                enable_word_time_offsets=True,
-                enable_word_confidence=True
-            )
-            
-            # NOTE: batchRecognize does not support speaker diarization (as of 2025-08)
-            # Even though the language-model-region combination supports it for recognize/streaming,
-            # batch processing requires diarization to be disabled
-            # 
-            # Configure speaker diarization if enabled (DISABLED for batch processing)
-            # TODO: Consider switching to streaming recognize for diarization support
+            # Choose API method based on diarization requirement
             if enable_diarization:
-                logger.warning(f"Speaker diarization requested but not supported in batchRecognize. Transcription will proceed without diarization.")
-                # features.diarization_config = SpeakerDiarizationConfig(
-                #     min_speaker_count=min_speakers,
-                #     max_speaker_count=max_speakers
-                # )
-            
-            # Determine the best location and model based on normalized language
-            location, model = self._get_optimal_location_and_model(normalized_language)
-            
-            # Skip diarization validation for batch processing as it's not supported
-            # self._validate_diarization_support(normalized_language, model, enable_diarization)
-            
-            # Log the configuration being used
-            logger.info(f"Using location: {location}, model: {model} for language: {normalized_language}")
-            if enable_diarization:
-                logger.info(f"Diarization requested but disabled for batchRecognize (not supported)")
-            else:
-                logger.info(f"Diarization disabled")
-            
-            # Create explicit decoding config based on actual audio format
-            explicit_decoding_config = self._create_explicit_decoding_config(audio_uri, original_filename)
-            
-            # Configure recognition with explicit decoding
-            config = RecognitionConfig(
-                explicit_decoding_config=explicit_decoding_config,  # Use explicit format detection
-                language_codes=[normalized_language] if normalized_language != "auto" else ["cmn-Hant-TW", "cmn-Hans-CN", "en-US"],
-                model=model,
-                features=features
-            )
-            
-            # Start long-running recognition using ephemeral recognizer
-            # Using '_' for clean ephemeral recognizer with no pre-configured features
-            recognizer_path = f"projects/{self.project_id}/locations/{location}/recognizers/_"
-            logger.info(f"Using ephemeral recognizer: {recognizer_path}")
-            
-            # batchRecognize requires output configuration - results saved to GCS
-            # NOTE: output_uri must be a FOLDER/PREFIX, not a file - API will create result files inside
-            import uuid
-            output_prefix = f"gs://{settings.TRANSCRIPT_STORAGE_BUCKET or settings.AUDIO_STORAGE_BUCKET}/batch-results/{uuid.uuid4()}/"
-            logger.info(f"Output will be written to folder: {output_prefix}")
-            
-            request = {
-                "recognizer": recognizer_path,
-                "config": config,
-                "recognition_output_config": {
-                    "gcs_output_config": {
-                        "uri": output_prefix  # Must be folder/prefix, not specific filename
-                    }
-                },
-                "files": [
-                    {
-                        "uri": audio_uri
-                    }
-                ]
-            }
-            
-            # Execute recognition (this is synchronous but can take time)
-            operation = self.client.batch_recognize(request=request)
-            
-            # Wait for operation to complete with progress tracking
-            logger.info("Waiting for transcription to complete...")
-            
-            try:
-                # Standard timeout for supported formats
-                timeout_minutes = 120
-                logger.info(f"Using {timeout_minutes} minute timeout for this file type")
-                
-                response = self._wait_for_operation_with_progress(
-                    operation, 
-                    timeout_minutes=timeout_minutes,
-                    progress_callback=progress_callback
+                return self._transcribe_with_diarization(
+                    audio_uri, normalized_language, max_speakers, min_speakers,
+                    original_filename, progress_callback
                 )
-                logger.info("Batch recognition operation completed successfully")
-            except (TimeoutError, Exception) as e:
-                error_type = type(e).__name__
-                logger.error(f"Batch recognition failed ({error_type}): {e}")
-                
-                # M4A format is no longer supported - this code removed
-                
-                # Check if operation failed with specific error
-                if hasattr(operation, 'exception') and operation.exception():
-                    logger.error(f"Operation exception details: {operation.exception()}")
-                    raise STTProviderError(f"Operation failed: {operation.exception()}")
-                else:
-                    raise STTProviderError(f"Operation error ({error_type}): {e}")
-            
-            # Process per-file results with detailed error collection
-            results_summary = self._process_batch_results(response, audio_uri)
-            
-            if results_summary["has_errors"]:
-                error_msg = f"STT batch operation had errors: {results_summary['error_details']}"
-                logger.error(error_msg)
-                raise STTProviderError(error_msg)
-            
-            # Use cloud_storage_result.uri as primary output location
-            actual_output_uri = results_summary["output_uri"]
-            logger.info(f"Using GCS result URI: {actual_output_uri}")
-            logger.info(f"Batch results summary: {results_summary['ok_count']} success, {results_summary['err_count']} errors")
-            
-            # Read results from the actual GCS output file
-            result = self._read_batch_results_from_gcs(actual_output_uri)
-            
-            # Process results
-            segments = self._process_recognition_results(result, enable_diarization)
-            
-            # Calculate duration from segments
-            total_duration = max((seg.end_sec for seg in segments), default=0.0)
-            
-            # Estimate cost
-            cost = self.estimate_cost(int(total_duration))
-            
-            logger.info(f"Transcription completed: {len(segments)} segments, {total_duration:.1f}s duration")
-            
-            return TranscriptionResult(
-                segments=segments,
-                total_duration_sec=total_duration,
-                language_code=normalized_language,
-                cost_usd=cost,
-                provider_metadata={
-                    "provider": "google_stt_v2",
-                    "model": model,
-                    "location": location,
-                    "diarization_requested": enable_diarization,
-                    "diarization_enabled": False,  # Always False for batchRecognize
-                    "method": "batchRecognize",
-                    "note": "Diarization not supported in batch mode" if enable_diarization else "Single speaker mode"
-                }
-            )
+            else:
+                return self._transcribe_batch_mode(
+                    audio_uri, normalized_language, original_filename, progress_callback
+                )
             
         except gcp_exceptions.ResourceExhausted as e:
             logger.error(f"Google STT quota exceeded: {e}")
@@ -700,7 +590,7 @@ class GoogleSTTProvider(STTProvider):
             
             # Handle specific recognizer configuration errors
             if "recognizer" in error_msg.lower() or "diarization" in error_msg.lower():
-                logger.error(f"Recognizer configuration error. Using location: {location}, model: {model}")
+                logger.error(f"Recognizer configuration error")
                 raise STTProviderError(f"STT configuration error: {error_msg}")
             else:
                 raise STTProviderInvalidAudioError(f"Invalid audio file: {error_msg}")
@@ -712,6 +602,240 @@ class GoogleSTTProvider(STTProvider):
         except Exception as e:
             logger.error(f"Google STT transcription failed: {e}")
             raise STTProviderError(f"Transcription failed: {e}")
+    
+    def _transcribe_with_diarization(
+        self,
+        audio_uri: str,
+        language: str,
+        max_speakers: int,
+        min_speakers: int,
+        original_filename: str = None,
+        progress_callback=None
+    ) -> TranscriptionResult:
+        """
+        Transcribe audio using recognize API with speaker diarization support.
+        This method uses the synchronous recognize API which supports diarization.
+        """
+        logger.info(f"Using recognize API with diarization for {audio_uri}")
+        
+        # Configure recognition features with diarization
+        features = RecognitionFeatures(
+            enable_automatic_punctuation=settings.ENABLE_PUNCTUATION,
+            enable_word_time_offsets=True,
+            enable_word_confidence=True,
+            diarization_config=SpeakerDiarizationConfig(
+                min_speaker_count=min_speakers,
+                max_speaker_count=max_speakers
+            )
+        )
+        
+        # Determine the best location and model based on language
+        location, model = self._get_optimal_location_and_model(language)
+        
+        # Validate diarization support - fallback to batch mode if not supported
+        if not self._validate_diarization_support(language, model, True):
+            logger.warning(f"Diarization not supported for {language}+{model} in {location}. Falling back to batch mode.")
+            return self._transcribe_batch_mode(audio_uri, language, original_filename, progress_callback)
+        
+        # Log the configuration being used
+        logger.info(f"Using location: {location}, model: {model} for language: {language}")
+        logger.info(f"Diarization: enabled with {min_speakers}-{max_speakers} speakers")
+        
+        # Create explicit decoding config based on actual audio format
+        explicit_decoding_config = self._create_explicit_decoding_config(audio_uri, original_filename)
+        
+        # Configure recognition with explicit decoding and diarization
+        config = RecognitionConfig(
+            explicit_decoding_config=explicit_decoding_config,
+            language_codes=[language] if language != "auto" else ["cmn-Hant-TW", "cmn-Hans-CN", "en-US"],
+            model=model,
+            features=features
+        )
+        
+        # Use ephemeral recognizer for synchronous recognition with diarization
+        recognizer_path = f"projects/{self.project_id}/locations/{location}/recognizers/_"
+        logger.info(f"Using ephemeral recognizer: {recognizer_path}")
+        
+        request = {
+            "recognizer": recognizer_path,
+            "config": config,
+            "uri": audio_uri
+        }
+        
+        # Execute synchronous recognition with progress updates
+        logger.info("Starting synchronous recognition with diarization...")
+        if progress_callback:
+            progress_callback(10, "Starting recognition with speaker diarization...", 0)
+        
+        response = self.client.recognize(request=request)
+        
+        if progress_callback:
+            progress_callback(90, "Processing diarization results...", 0)
+        
+        logger.info("Recognition completed, processing results with diarization")
+        
+        # Process results with diarization information
+        segments = self._process_recognition_results_with_diarization(response)
+        
+        # Calculate duration from segments
+        total_duration = max((seg.end_sec for seg in segments), default=0.0)
+        
+        # Estimate cost
+        cost = self.estimate_cost(int(total_duration))
+        
+        logger.info(f"Diarized transcription completed: {len(segments)} segments, {total_duration:.1f}s duration")
+        
+        if progress_callback:
+            progress_callback(100, "Transcription completed with speaker diarization", 0)
+        
+        return TranscriptionResult(
+            segments=segments,
+            total_duration_sec=total_duration,
+            language_code=language,
+            cost_usd=cost,
+            provider_metadata={
+                "provider": "google_stt_v2",
+                "model": model,
+                "location": location,
+                "diarization_requested": True,
+                "diarization_enabled": True,
+                "method": "recognize",
+                "min_speakers": min_speakers,
+                "max_speakers": max_speakers
+            }
+        )
+    
+    def _transcribe_batch_mode(
+        self,
+        audio_uri: str,
+        language: str,
+        original_filename: str = None,
+        progress_callback=None
+    ) -> TranscriptionResult:
+        """
+        Transcribe audio using batchRecognize API without diarization.
+        This is the original batch processing method.
+        """
+        logger.info(f"Using batchRecognize API without diarization for {audio_uri}")
+        
+        # Configure recognition features WITHOUT diarization
+        features = RecognitionFeatures(
+            enable_automatic_punctuation=settings.ENABLE_PUNCTUATION,
+            enable_word_time_offsets=True,
+            enable_word_confidence=True
+        )
+        
+        # Determine the best location and model based on language
+        location, model = self._get_optimal_location_and_model(language)
+        
+        # Log the configuration being used
+        logger.info(f"Using location: {location}, model: {model} for language: {language}")
+        logger.info(f"Diarization: disabled (using batch mode)")
+        
+        # Create explicit decoding config based on actual audio format
+        explicit_decoding_config = self._create_explicit_decoding_config(audio_uri, original_filename)
+        
+        # Configure recognition with explicit decoding
+        config = RecognitionConfig(
+            explicit_decoding_config=explicit_decoding_config,
+            language_codes=[language] if language != "auto" else ["cmn-Hant-TW", "cmn-Hans-CN", "en-US"],
+            model=model,
+            features=features
+        )
+        
+        # Start long-running recognition using ephemeral recognizer
+        recognizer_path = f"projects/{self.project_id}/locations/{location}/recognizers/_"
+        logger.info(f"Using ephemeral recognizer: {recognizer_path}")
+        
+        # batchRecognize requires output configuration - results saved to GCS
+        import uuid
+        output_prefix = f"gs://{settings.TRANSCRIPT_STORAGE_BUCKET or settings.AUDIO_STORAGE_BUCKET}/batch-results/{uuid.uuid4()}/"
+        logger.info(f"Output will be written to folder: {output_prefix}")
+        
+        request = {
+            "recognizer": recognizer_path,
+            "config": config,
+            "recognition_output_config": {
+                "gcs_output_config": {
+                    "uri": output_prefix
+                }
+            },
+            "files": [
+                {
+                    "uri": audio_uri
+                }
+            ]
+        }
+        
+        # Execute recognition (this is synchronous but can take time)
+        operation = self.client.batch_recognize(request=request)
+        
+        # Wait for operation to complete with progress tracking
+        logger.info("Waiting for transcription to complete...")
+        
+        try:
+            timeout_minutes = 120
+            logger.info(f"Using {timeout_minutes} minute timeout for this file type")
+            
+            response = self._wait_for_operation_with_progress(
+                operation, 
+                timeout_minutes=timeout_minutes,
+                progress_callback=progress_callback
+            )
+            logger.info("Batch recognition operation completed successfully")
+        except (TimeoutError, Exception) as e:
+            error_type = type(e).__name__
+            logger.error(f"Batch recognition failed ({error_type}): {e}")
+            
+            # Check if operation failed with specific error
+            if hasattr(operation, 'exception') and operation.exception():
+                logger.error(f"Operation exception details: {operation.exception()}")
+                raise STTProviderError(f"Operation failed: {operation.exception()}")
+            else:
+                raise STTProviderError(f"Operation error ({error_type}): {e}")
+        
+        # Process per-file results with detailed error collection
+        results_summary = self._process_batch_results(response, audio_uri)
+        
+        if results_summary["has_errors"]:
+            error_msg = f"STT batch operation had errors: {results_summary['error_details']}"
+            logger.error(error_msg)
+            raise STTProviderError(error_msg)
+        
+        # Use cloud_storage_result.uri as primary output location
+        actual_output_uri = results_summary["output_uri"]
+        logger.info(f"Using GCS result URI: {actual_output_uri}")
+        logger.info(f"Batch results summary: {results_summary['ok_count']} success, {results_summary['err_count']} errors")
+        
+        # Read results from the actual GCS output file
+        result = self._read_batch_results_from_gcs(actual_output_uri)
+        
+        # Process results
+        segments = self._process_recognition_results(result, False)
+        
+        # Calculate duration from segments
+        total_duration = max((seg.end_sec for seg in segments), default=0.0)
+        
+        # Estimate cost
+        cost = self.estimate_cost(int(total_duration))
+        
+        logger.info(f"Batch transcription completed: {len(segments)} segments, {total_duration:.1f}s duration")
+        
+        return TranscriptionResult(
+            segments=segments,
+            total_duration_sec=total_duration,
+            language_code=language,
+            cost_usd=cost,
+            provider_metadata={
+                "provider": "google_stt_v2",
+                "model": model,
+                "location": location,
+                "diarization_requested": False,
+                "diarization_enabled": False,
+                "method": "batchRecognize",
+                "note": "Single speaker mode"
+            }
+        )
     
     def _get_optimal_location_and_model(self, language: str) -> tuple[str, str]:
         """
@@ -727,14 +851,20 @@ class GoogleSTTProvider(STTProvider):
         default_model = settings.GOOGLE_STT_MODEL or "latest_long"
         
         # Built-in language optimizations for common languages
+        # 針對說話者分離優化的模型選擇
         built_in_configs = {
+            # 中文系列 - 使用 asia-southeast1 region (不支援 diarization，會自動降級到 batch mode)
             "cmn-hant-tw": {"location": default_location, "model": "chirp_2"},  # Traditional Chinese (Taiwan)
             "cmn-hans-cn": {"location": default_location, "model": "chirp_2"},  # Simplified Chinese (China)
             "zh-tw": {"location": default_location, "model": "chirp_2"},         # Legacy - Traditional Chinese
             "zh-cn": {"location": default_location, "model": "chirp_2"},         # Legacy - Simplified Chinese
             "zh": {"location": default_location, "model": "chirp_2"},            # Generic Chinese
-            "ja": {"location": default_location, "model": "chirp"},              # Japanese
-            "ko": {"location": default_location, "model": "chirp"},              # Korean
+            # 日韓語系 - 使用 asia-southeast1 region (不支援 diarization，會自動降級到 batch mode)
+            "ja": {"location": default_location, "model": "chirp_2"},            # Japanese
+            "ko": {"location": default_location, "model": "chirp_2"},            # Korean
+            # 英語系 - 如果要啟用 diarization，建議使用 us-central1 + chirp_2/latest_long
+            "en-us": {"location": default_location, "model": "chirp_2"},         # English - use chirp_2 for diarization support
+            "en-gb": {"location": default_location, "model": "chirp_2"},         # British English
         }
         
         # Try to load language-specific configurations from settings
@@ -765,6 +895,20 @@ class GoogleSTTProvider(STTProvider):
             model = default_model
         
         logger.info(f"Selected optimal config - Location: {location}, Model: {model}, Language: {language}")
+        
+        # Add diarization optimization suggestions
+        if settings.ENABLE_SPEAKER_DIARIZATION:
+            diarization_optimal_configs = {
+                "en-us": {"location": "us-central1", "model": "chirp_2"},
+                "en-gb": {"location": "us-central1", "model": "chirp_2"},
+            }
+            
+            if language.lower() in diarization_optimal_configs:
+                optimal = diarization_optimal_configs[language.lower()]
+                if location != optimal["location"] or model != optimal["model"]:
+                    logger.info(f"💡 For optimal diarization with {language}, consider using: "
+                              f"location={optimal['location']}, model={optimal['model']}")
+        
         return location, model
     
     def _process_recognition_results(
@@ -890,6 +1034,89 @@ class GoogleSTTProvider(STTProvider):
                             confidence=confidence
                         ))
         
+        return segments
+    
+    def _process_recognition_results_with_diarization(self, response: Any) -> List[TranscriptSegment]:
+        """Process Google STT recognize results with speaker diarization."""
+        segments = []
+        
+        if not response.results:
+            logger.warning("No results in recognition response")
+            return segments
+        
+        logger.info(f"Processing {len(response.results)} recognition results with diarization")
+        
+        for recognition_result in response.results:
+            alternatives = recognition_result.alternatives
+            
+            for alternative in alternatives:
+                # With diarization, the words will have speaker_tag information
+                if hasattr(alternative, 'words') and alternative.words:
+                    words = alternative.words
+                    
+                    # Group words by speaker
+                    speaker_groups = {}
+                    for word in words:
+                        speaker_tag = getattr(word, 'speaker_tag', 1)  # Default to speaker 1 if no tag
+                        
+                        if speaker_tag not in speaker_groups:
+                            speaker_groups[speaker_tag] = []
+                        speaker_groups[speaker_tag].append(word)
+                    
+                    logger.info(f"Found {len(speaker_groups)} speakers in this segment")
+                    
+                    # Create segments for each speaker group
+                    for speaker_tag, speaker_words in speaker_groups.items():
+                        if not speaker_words:
+                            continue
+                            
+                        # Group consecutive words from same speaker into segments
+                        current_segment_words = []
+                        
+                        for word in speaker_words:
+                            if not current_segment_words:
+                                current_segment_words.append(word)
+                            else:
+                                # Check if this word is consecutive (within 2 seconds of the last word)
+                                last_word = current_segment_words[-1]
+                                last_end = last_word.end_time.seconds + last_word.end_time.nanos / 1e9
+                                current_start = word.start_time.seconds + word.start_time.nanos / 1e9
+                                
+                                if current_start - last_end <= 2.0:
+                                    current_segment_words.append(word)
+                                else:
+                                    # Create segment from accumulated words
+                                    if current_segment_words:
+                                        segment = self._create_segment_from_words(current_segment_words, speaker_tag)
+                                        segments.append(segment)
+                                    
+                                    # Start new segment
+                                    current_segment_words = [word]
+                        
+                        # Process remaining words in the last segment
+                        if current_segment_words:
+                            segment = self._create_segment_from_words(current_segment_words, speaker_tag)
+                            segments.append(segment)
+                            
+                else:
+                    # Fallback for alternatives without word-level data
+                    logger.warning("No word-level timing data in diarization result, using fallback")
+                    confidence = getattr(alternative, 'confidence', 0.8)
+                    transcript = alternative.transcript
+                    
+                    # Create a single segment (no speaker separation)
+                    segments.append(TranscriptSegment(
+                        speaker_id=1,
+                        start_sec=0.0,
+                        end_sec=len(transcript.split()) / 2.5,  # Rough estimate
+                        content=transcript.strip(),
+                        confidence=confidence
+                    ))
+        
+        # Sort segments by start time
+        segments.sort(key=lambda s: s.start_sec)
+        
+        logger.info(f"Created {len(segments)} diarized segments")
         return segments
     
     def _create_segment_from_words(self, words: List[Any], speaker_id: int) -> TranscriptSegment:

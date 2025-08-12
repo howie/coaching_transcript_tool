@@ -184,7 +184,12 @@ export function DashboardSidebar() {
         {(!isCollapsed || isMobile) && (
           <div className="p-4 border-t border-dashboard-accent border-opacity-20">
             <div className="text-xs text-white text-center">
-              <div>Coachly v2.0</div>
+              <div className="flex items-center justify-center gap-2">
+                <span>Coachly v2.0</span>
+                <span className="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs font-medium">
+                  Beta
+                </span>
+              </div>
               <div className="mt-1">© 2025 Doxa Studio</div>
             </div>
           </div>

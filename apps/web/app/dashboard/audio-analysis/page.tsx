@@ -284,7 +284,7 @@ export default function AudioAnalysisPage() {
           <div className="flex items-center space-x-3">
             <h1 className="text-2xl font-bold text-gray-900">{t('audio.title')}</h1>
             <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-              {t('menu.experimental')}
+              Beta
             </span>
           </div>
           <p className="text-gray-600 mt-1">{t('audio.subtitle')}</p>

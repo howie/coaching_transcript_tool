@@ -79,6 +79,7 @@ Key endpoints:
 - `POST /sessions` - Create coaching session
 - `POST /sessions/{id}/upload-url` - Get signed upload URL
 - `GET /sessions/{id}/transcript` - Download transcript (VTT/SRT/JSON)
+- `PATCH /sessions/{id}/segment-roles` - Update individual segment speaker roles
 
 ## Important Notes
 
@@ -100,5 +101,50 @@ Key endpoints:
 - **Backend**: Deploy to Render via GitHub Actions
 - **Database**: Managed PostgreSQL on Render
 - **Monitoring**: Render Metrics + custom logging
+
+## Speaker Diarization & Transcription
+
+### Overview
+The system supports intelligent speaker diarization with automatic fallback mechanisms to ensure reliable transcription across different languages and configurations.
+
+### Configuration
+Key environment variables for speaker diarization:
+
+```env
+# Speaker Diarization Settings
+ENABLE_SPEAKER_DIARIZATION=true
+MAX_SPEAKERS=2
+MIN_SPEAKERS=2
+
+# STT Configuration  
+GOOGLE_STT_MODEL=chirp_2
+GOOGLE_STT_LOCATION=asia-southeast1
+```
+
+### API Methods
+The system intelligently chooses between two Google STT v2 APIs:
+
+1. **recognize API**: Used when diarization is supported (limited language/region combinations)
+2. **batchRecognize API**: Used as fallback when diarization is not supported
+
+### Language Support Matrix
+
+| Language | Region | Model | Diarization Support | API Used |
+|----------|--------|--------|-------------------|----------|
+| English (en-US) | us-central1 | chirp_2 | ✅ Supported | recognize |
+| English (en-US) | asia-southeast1 | chirp_2 | ❌ Auto-fallback | batchRecognize |
+| Chinese (cmn-Hant-TW) | asia-southeast1 | chirp_2 | ❌ Auto-fallback | batchRecognize |
+| Japanese (ja) | asia-southeast1 | chirp_2 | ❌ Auto-fallback | batchRecognize |
+
+### Manual Role Assignment
+When automatic diarization is not available, the frontend provides:
+- **Segment-level editing**: Each transcript segment can be individually assigned to "Coach" or "Client"
+- **Real-time updates**: Statistics update immediately after role assignment changes
+- **Export support**: All export formats (JSON/VTT/SRT/TXT) include role information
+
+### Best Practices
+- **For English sessions**: Use `GOOGLE_STT_LOCATION=us-central1` for optimal diarization
+- **For Chinese/Asian languages**: Current `asia-southeast1` setting provides excellent transcription with manual role assignment
+- **Mixed language support**: System automatically detects and uses the best configuration per language
 
 For detailed documentation, see `/docs/` directory.

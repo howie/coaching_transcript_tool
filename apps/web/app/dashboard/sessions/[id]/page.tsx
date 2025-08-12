@@ -48,6 +48,7 @@ interface TranscriptData {
   segments: TranscriptSegment[];
   created_at: string;
   role_assignments?: { [speakerId: number]: 'coach' | 'client' };
+  segment_roles?: { [segmentId: string]: 'coach' | 'client' };
 }
 
 interface SpeakingStats {
@@ -96,6 +97,7 @@ const SessionDetailPage = () => {
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
   const [editingRoles, setEditingRoles] = useState(false);
   const [tempRoleAssignments, setTempRoleAssignments] = useState<{ [speakerId: number]: 'coach' | 'client' }>({});
+  const [tempSegmentRoles, setTempSegmentRoles] = useState<{ [segmentId: string]: 'coach' | 'client' }>({});
 
   // Use transcription status hook for progress tracking  
   // TECHNICAL DEBT: audio_timeseq_id is a confusing name - it actually stores transcription session.id
@@ -153,7 +155,7 @@ const SessionDetailPage = () => {
       const stats = calculateSpeakingStats(transcript.segments);
       setSpeakingStats(stats);
       
-      // Initialize role assignments from transcript data
+      // Initialize role assignments from transcript data (keep for compatibility)
       if (transcript.role_assignments) {
         setTempRoleAssignments(transcript.role_assignments);
       } else {
@@ -166,6 +168,22 @@ const SessionDetailPage = () => {
         });
         setTempRoleAssignments(defaultAssignments);
       }
+      
+      // Initialize segment-level role assignments
+      const segmentRoles: { [segmentId: string]: 'coach' | 'client' } = {};
+      transcript.segments.forEach((segment) => {
+        const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+        // Use existing segment roles if available, otherwise use speaker role assignments, or default
+        if (transcript.segment_roles && transcript.segment_roles[segmentId]) {
+          segmentRoles[segmentId] = transcript.segment_roles[segmentId];
+        } else if (transcript.role_assignments && transcript.role_assignments[segment.speaker_id]) {
+          segmentRoles[segmentId] = transcript.role_assignments[segment.speaker_id];
+        } else {
+          // Default: first speaker is coach, others are client
+          segmentRoles[segmentId] = segment.speaker_id === 1 ? 'coach' : 'client';
+        }
+      });
+      setTempSegmentRoles(segmentRoles);
     }
   }, [transcript]);
 
@@ -291,6 +309,12 @@ const SessionDetailPage = () => {
     return speakerId === 1 ? '教練' : '客戶';
   };
 
+  const getSegmentSpeakerLabel = (segment: TranscriptSegment) => {
+    const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+    const segmentRole = tempSegmentRoles[segmentId] || tempRoleAssignments[segment.speaker_id] || (segment.speaker_id === 1 ? 'coach' : 'client');
+    return segmentRole === 'coach' ? '教練' : '客戶';
+  };
+
   const getSpeakerColor = (speakerId: number) => {
     return speakerId === 1 ? 'text-blue-600' : 'text-green-600';
   };
@@ -301,7 +325,8 @@ const SessionDetailPage = () => {
     
     segments.forEach(segment => {
       const duration = segment.end_sec - segment.start_sec;
-      const speakerRole = tempRoleAssignments[segment.speaker_id] || (segment.speaker_id === 1 ? 'coach' : 'client');
+      const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+      const speakerRole = tempSegmentRoles[segmentId] || tempRoleAssignments[segment.speaker_id] || (segment.speaker_id === 1 ? 'coach' : 'client');
       
       if (speakerRole === 'coach') {
         coachTime += duration;
@@ -396,13 +421,14 @@ const SessionDetailPage = () => {
     if (!session?.audio_timeseq_id) return;
     
     try {
-      // Save role assignments via API
-      await apiClient.updateSpeakerRoles(session.audio_timeseq_id, tempRoleAssignments);
+      // Save segment-level role assignments via API
+      await apiClient.updateSegmentRoles(session.audio_timeseq_id, tempSegmentRoles);
       
-      // Update local transcript data
+      // Update local transcript data to include segment roles
       setTranscript(prev => prev ? {
         ...prev,
-        role_assignments: tempRoleAssignments
+        role_assignments: tempRoleAssignments,  // Keep speaker-level for compatibility
+        segment_roles: tempSegmentRoles  // Add segment-level roles
       } : null);
       
       setEditingRoles(false);
@@ -423,6 +449,24 @@ const SessionDetailPage = () => {
     if (transcript?.role_assignments) {
       setTempRoleAssignments(transcript.role_assignments);
     }
+    
+    // Reset segment roles to original state
+    if (transcript && transcript.segments) {
+      const originalSegmentRoles: { [segmentId: string]: 'coach' | 'client' } = {};
+      transcript.segments.forEach((segment) => {
+        const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+        // Use saved segment roles if available, otherwise use speaker roles or default
+        if (transcript.segment_roles && transcript.segment_roles[segmentId]) {
+          originalSegmentRoles[segmentId] = transcript.segment_roles[segmentId];
+        } else if (transcript.role_assignments && transcript.role_assignments[segment.speaker_id]) {
+          originalSegmentRoles[segmentId] = transcript.role_assignments[segment.speaker_id];
+        } else {
+          originalSegmentRoles[segmentId] = segment.speaker_id === 1 ? 'coach' : 'client';
+        }
+      });
+      setTempSegmentRoles(originalSegmentRoles);
+    }
+    
     setEditingRoles(false);
   };
 
@@ -563,6 +607,9 @@ const SessionDetailPage = () => {
           >
             <DocumentTextIcon className="h-4 w-4" />
             逐字稿
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+              Beta
+            </span>
             {isTranscribing && (
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
                 處理中
@@ -584,6 +631,9 @@ const SessionDetailPage = () => {
           >
             <ChatBubbleLeftRightIcon className="h-4 w-4" />
             AI 分析
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+              Beta
+            </span>
             {hasTranscript && (
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
                 可用
@@ -872,7 +922,9 @@ const SessionDetailPage = () => {
                   estimatedTime={transcriptionStatus.estimated_completion ? 
                     formatTimeRemaining(transcriptionStatus.estimated_completion) : undefined}
                 />
-                {transcriptionStatus.duration_processed && transcriptionStatus.duration_total && (
+                {transcriptionStatus.duration_processed != null && 
+                 transcriptionStatus.duration_total != null && 
+                 transcriptionStatus.duration_total > 0 && (
                   <div className="mt-2 text-sm text-content-secondary">
                     已處理: {formatDuration(transcriptionStatus.duration_processed)} / {formatDuration(transcriptionStatus.duration_total)}
                   </div>
@@ -979,11 +1031,14 @@ const SessionDetailPage = () => {
                           <td className="px-4 py-3 whitespace-nowrap">
                             {editingRoles ? (
                               <select
-                                value={tempRoleAssignments[segment.speaker_id] || 'coach'}
-                                onChange={(e) => setTempRoleAssignments(prev => ({
-                                  ...prev,
-                                  [segment.speaker_id]: e.target.value as 'coach' | 'client'
-                                }))}
+                                value={tempSegmentRoles[segment.id || `${segment.speaker_id}-${segment.start_sec}`] || tempRoleAssignments[segment.speaker_id] || 'coach'}
+                                onChange={(e) => {
+                                  const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+                                  setTempSegmentRoles(prev => ({
+                                    ...prev,
+                                    [segmentId]: e.target.value as 'coach' | 'client'
+                                  }));
+                                }}
                                 className="text-xs px-2 py-1 border border-border rounded bg-surface"
                               >
                                 <option value="coach">教練</option>
@@ -991,11 +1046,11 @@ const SessionDetailPage = () => {
                               </select>
                             ) : (
                               <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                (tempRoleAssignments[segment.speaker_id] || (segment.speaker_id === 1 ? 'coach' : 'client')) === 'coach'
+                                (tempSegmentRoles[segment.id || `${segment.speaker_id}-${segment.start_sec}`] || tempRoleAssignments[segment.speaker_id] || (segment.speaker_id === 1 ? 'coach' : 'client')) === 'coach'
                                   ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
                                   : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                               }`}>
-                                {getSpeakerLabel(segment.speaker_id)}
+                                {getSegmentSpeakerLabel(segment)}
                               </span>
                             )}
                           </td>

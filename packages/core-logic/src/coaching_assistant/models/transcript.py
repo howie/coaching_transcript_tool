@@ -37,6 +37,7 @@ class TranscriptSegment(BaseModel):
     
     # Relationships
     session = relationship("Session", back_populates="segments")
+    role_assignment = relationship("SegmentRole", back_populates="segment", uselist=False)
     
     def __repr__(self):
         return f"<TranscriptSegment(speaker_id={self.speaker_id}, start={self.start_sec}s)>"
@@ -63,7 +64,7 @@ class TranscriptSegment(BaseModel):
 
 
 class SessionRole(BaseModel):
-    """Speaker role assignment for a session."""
+    """Speaker role assignment for a session (speaker-level)."""
     
     session_id = Column(
         UUID(as_uuid=True), 
@@ -92,5 +93,46 @@ class SessionRole(BaseModel):
         return cls(
             session_id=session_id,
             speaker_id=speaker_id,
+            role=role
+        )
+
+
+class SegmentRole(BaseModel):
+    """Individual segment role assignment (segment-level)."""
+    
+    session_id = Column(
+        UUID(as_uuid=True), 
+        ForeignKey("session.id", ondelete="CASCADE"), 
+        nullable=False,
+        index=True
+    )
+    
+    segment_id = Column(
+        UUID(as_uuid=True), 
+        ForeignKey("transcript_segment.id", ondelete="CASCADE"), 
+        nullable=False,
+        index=True
+    )
+    
+    role = Column(Enum(SpeakerRole), nullable=False)
+    
+    # Relationships
+    session = relationship("Session", back_populates="segment_roles")
+    segment = relationship("TranscriptSegment", back_populates="role_assignment")
+    
+    # Ensure unique segment_id per session
+    __table_args__ = (
+        UniqueConstraint('session_id', 'segment_id', name='unique_session_segment_role'),
+    )
+    
+    def __repr__(self):
+        return f"<SegmentRole(segment_id={self.segment_id}, role={self.role.value})>"
+    
+    @classmethod
+    def create_assignment(cls, session_id, segment_id, role: SpeakerRole):
+        """Create a new segment role assignment."""
+        return cls(
+            session_id=session_id,
+            segment_id=segment_id,
             role=role
         )

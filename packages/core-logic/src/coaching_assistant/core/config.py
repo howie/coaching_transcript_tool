@@ -91,8 +91,14 @@ class Settings(BaseSettings):
     # Example: {"zh-TW": {"location": "asia-southeast1", "model": "latest_long"}}
     STT_LANGUAGE_CONFIGS: str = ""
     
+    # Speaker Diarization 設定
+    ENABLE_SPEAKER_DIARIZATION: bool = True
     MAX_SPEAKERS: int = 4
     MIN_SPEAKERS: int = 2
+    # Use streaming/synchronous recognition API for better diarization support
+    USE_STREAMING_FOR_DIARIZATION: bool = False
+    
+    # 其他STT功能
     ENABLE_PUNCTUATION: bool = True
     
     # Worker 設定

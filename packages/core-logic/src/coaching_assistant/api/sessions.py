@@ -517,6 +517,9 @@ async def get_session_status(
 class SpeakerRoleUpdateRequest(BaseModel):
     speaker_roles: dict[int, str]
 
+class SegmentRoleUpdateRequest(BaseModel):
+    segment_roles: dict[str, str]  # segment_id -> role
+
 
 @router.patch("/{session_id}/speaker-roles")
 async def update_speaker_roles(
@@ -567,6 +570,79 @@ async def update_speaker_roles(
     return {
         "message": "Speaker roles updated successfully",
         "speaker_roles": request.speaker_roles
+    }
+
+
+@router.patch("/{session_id}/segment-roles")
+async def update_segment_roles(
+    session_id: UUID,
+    request: SegmentRoleUpdateRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dependency)
+):
+    """Update individual segment role assignments for a session."""
+    session = db.query(Session).filter(
+        Session.id == session_id,
+        Session.user_id == current_user.id
+    ).first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if session.status != SessionStatus.COMPLETED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot update segment roles. Session status: {session.status.value}"
+        )
+    
+    # Import here to avoid circular imports
+    from ..models.transcript import SegmentRole, SpeakerRole
+    from uuid import UUID as PyUUID
+    
+    # Clear existing segment role assignments
+    db.query(SegmentRole).filter(SegmentRole.session_id == session_id).delete()
+    
+    # Create new segment role assignments
+    for segment_id_str, role_str in request.segment_roles.items():
+        if role_str not in ['coach', 'client']:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid role '{role_str}'. Must be 'coach' or 'client'"
+            )
+        
+        try:
+            segment_id = PyUUID(segment_id_str)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid segment ID format: '{segment_id_str}'"
+            )
+        
+        # Verify segment exists and belongs to this session
+        segment = db.query(TranscriptSegment).filter(
+            TranscriptSegment.id == segment_id,
+            TranscriptSegment.session_id == session_id
+        ).first()
+        
+        if not segment:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Segment not found: '{segment_id_str}'"
+            )
+        
+        role = SpeakerRole.COACH if role_str == 'coach' else SpeakerRole.CLIENT
+        segment_role = SegmentRole(
+            session_id=session_id,
+            segment_id=segment_id,
+            role=role
+        )
+        db.add(segment_role)
+    
+    db.commit()
+    
+    return {
+        "message": "Segment roles updated successfully",
+        "segment_roles": request.segment_roles
     }
 
 
@@ -656,13 +732,19 @@ def _update_processing_progress(session: Session, status: ProcessingStatus, db: 
 
 def _export_json(session: Session, segments: List[TranscriptSegment], db: DBSession) -> str:
     """Export transcript as JSON."""
-    # Get role assignments for this session
-    from ..models.transcript import SessionRole
+    # Get role assignments for this session (speaker-level)
+    from ..models.transcript import SessionRole, SegmentRole
     
     role_assignments = {}
     roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
     for role in roles:
         role_assignments[role.speaker_id] = role.role.value
+    
+    # Get segment-level role assignments
+    segment_roles = {}
+    segment_role_assignments = db.query(SegmentRole).filter(SegmentRole.session_id == session.id).all()
+    for seg_role in segment_role_assignments:
+        segment_roles[str(seg_role.segment_id)] = seg_role.role.value
     
     data = {
         "session_id": str(session.id),
@@ -670,14 +752,17 @@ def _export_json(session: Session, segments: List[TranscriptSegment], db: DBSess
         "duration_sec": session.duration_sec,
         "language": session.language,
         "created_at": session.created_at.isoformat(),
-        "role_assignments": role_assignments,
+        "role_assignments": role_assignments,  # Speaker-level roles (for compatibility)
+        "segment_roles": segment_roles,  # Segment-level roles (new)
         "segments": [
             {
+                "id": str(seg.id),
                 "speaker_id": seg.speaker_id,
                 "start_sec": seg.start_sec,
                 "end_sec": seg.end_sec,
                 "content": seg.content,
-                "confidence": seg.confidence
+                "confidence": seg.confidence,
+                "role": segment_roles.get(str(seg.id), role_assignments.get(seg.speaker_id, 'unknown'))
             }
             for seg in segments
         ]
@@ -687,20 +772,27 @@ def _export_json(session: Session, segments: List[TranscriptSegment], db: DBSess
 
 def _export_vtt(session: Session, segments: List[TranscriptSegment], db: DBSession) -> str:
     """Export transcript as WebVTT."""
-    from ..models.transcript import SessionRole
+    from ..models.transcript import SessionRole, SegmentRole
     
-    # Get role assignments
+    # Get role assignments (both speaker and segment level)
     role_assignments = {}
     roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
     for role in roles:
         role_assignments[role.speaker_id] = '教練' if role.role.value == 'coach' else '客戶'
+    
+    # Get segment-level role assignments
+    segment_roles = {}
+    segment_role_assignments = db.query(SegmentRole).filter(SegmentRole.session_id == session.id).all()
+    for seg_role in segment_role_assignments:
+        segment_roles[str(seg_role.segment_id)] = '教練' if seg_role.role.value == 'coach' else '客戶'
     
     lines = ["WEBVTT", f"NOTE {session.title}", ""]
     
     for seg in segments:
         start = _format_timestamp_vtt(seg.start_sec)
         end = _format_timestamp_vtt(seg.end_sec)
-        speaker_label = role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}")
+        # Use segment-level role if available, otherwise use speaker-level role
+        speaker_label = segment_roles.get(str(seg.id), role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}"))
         lines.append(f"{start} --> {end}")
         lines.append(f"<v {speaker_label}>{seg.content}")
         lines.append("")
@@ -710,20 +802,27 @@ def _export_vtt(session: Session, segments: List[TranscriptSegment], db: DBSessi
 
 def _export_srt(session: Session, segments: List[TranscriptSegment], db: DBSession) -> str:
     """Export transcript as SRT."""
-    from ..models.transcript import SessionRole
+    from ..models.transcript import SessionRole, SegmentRole
     
-    # Get role assignments
+    # Get role assignments (both speaker and segment level)
     role_assignments = {}
     roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
     for role in roles:
         role_assignments[role.speaker_id] = '教練' if role.role.value == 'coach' else '客戶'
+    
+    # Get segment-level role assignments
+    segment_roles = {}
+    segment_role_assignments = db.query(SegmentRole).filter(SegmentRole.session_id == session.id).all()
+    for seg_role in segment_role_assignments:
+        segment_roles[str(seg_role.segment_id)] = '教練' if seg_role.role.value == 'coach' else '客戶'
     
     lines = []
     
     for i, seg in enumerate(segments, 1):
         start = _format_timestamp_srt(seg.start_sec)
         end = _format_timestamp_srt(seg.end_sec)
-        speaker_label = role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}")
+        # Use segment-level role if available, otherwise use speaker-level role
+        speaker_label = segment_roles.get(str(seg.id), role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}"))
         lines.append(str(i))
         lines.append(f"{start} --> {end}")
         lines.append(f"{speaker_label}: {seg.content}")
@@ -734,24 +833,32 @@ def _export_srt(session: Session, segments: List[TranscriptSegment], db: DBSessi
 
 def _export_txt(session: Session, segments: List[TranscriptSegment], db: DBSession) -> str:
     """Export transcript as plain text."""
-    from ..models.transcript import SessionRole
+    from ..models.transcript import SessionRole, SegmentRole
     
-    # Get role assignments
+    # Get role assignments (both speaker and segment level)
     role_assignments = {}
     roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
     for role in roles:
         role_assignments[role.speaker_id] = '教練' if role.role.value == 'coach' else '客戶'
     
+    # Get segment-level role assignments
+    segment_roles = {}
+    segment_role_assignments = db.query(SegmentRole).filter(SegmentRole.session_id == session.id).all()
+    for seg_role in segment_role_assignments:
+        segment_roles[str(seg_role.segment_id)] = '教練' if seg_role.role.value == 'coach' else '客戶'
+    
     lines = [f"Transcript: {session.title}", ""]
     
-    current_speaker = None
+    current_speaker_label = None
     for seg in segments:
-        if seg.speaker_id != current_speaker:
-            if current_speaker is not None:
+        # Use segment-level role if available, otherwise use speaker-level role
+        speaker_label = segment_roles.get(str(seg.id), role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}"))
+        
+        if speaker_label != current_speaker_label:
+            if current_speaker_label is not None:
                 lines.append("")
-            speaker_label = role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}")
             lines.append(f"{speaker_label}:")
-            current_speaker = seg.speaker_id
+            current_speaker_label = speaker_label
         
         lines.append(seg.content)
     

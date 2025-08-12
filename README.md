@@ -1,16 +1,39 @@
-# Coaching Transcript Tool
+# Coaching Assistant Platform
 
-A command-line tool to process and format coaching transcript files (VTT) into structured Markdown or Excel documents.
+A comprehensive SaaS solution for ICF coaches to transcribe, analyze, and manage coaching sessions with advanced speaker diarization capabilities.
 
-## ✨ Features
+## ✨ Key Features
 
-- **Format Conversion**: Convert VTT files to either Markdown (`.md`) or Excel (`.xlsx`).
-- **Speaker Anonymization**: Replace the names of the coach and client with 'Coach' and 'Client' for privacy.
-- **Chinese Language Support**: Convert transcript text from Simplified Chinese to Traditional Chinese.
+### 🎯 Advanced Speech-to-Text
+- **Intelligent Speaker Diarization**: Automatic speaker separation with intelligent fallback mechanisms
+- **Multi-language Support**: Optimized for Chinese (Traditional/Simplified), English, Japanese, and Korean
+- **High Accuracy Transcription**: Powered by Google Speech-to-Text v2 with model optimization per language
+
+### 👥 Manual Role Assignment
+- **Segment-level Editing**: Individual assignment of each transcript segment to "Coach" or "Client"
+- **Real-time Statistics**: Live updates of speaking time distribution
+- **Flexible Export**: VTT, SRT, JSON, and TXT formats with role information
+
+### 🔧 Smart Configuration
+- **Auto-fallback System**: Seamlessly switches between diarization-enabled and batch processing
+- **Regional Optimization**: Intelligent model and region selection based on language
+- **Error Resilience**: Graceful degradation ensures transcription continues even if diarization fails
+
+## 🏗️ Architecture
+
+- **Frontend**: Next.js 14 with TypeScript and Tailwind CSS
+- **Backend**: FastAPI with Python 3.11+
+- **Database**: PostgreSQL with SQLAlchemy ORM  
+- **Queue System**: Celery + Redis for async transcription
+- **Cloud Services**: Google Cloud STT v2, Google Cloud Storage
+- **Deployment**: Cloudflare Workers (Frontend), Render.com (Backend)
 
 ## Prerequisites
 
-- Python 3.8 or higher
+- Python 3.11 or higher
+- Node.js 18 or higher
+- PostgreSQL 14+
+- Redis 6+
 
 ## 🚀 Installation & Setup
 
@@ -34,7 +57,68 @@ A command-line tool to process and format coaching transcript files (VTT) into s
     ```bash
     pip install -e .[dev]
     ```
-    This will install the tool in editable mode along with development dependencies.
+
+4. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+   Key configuration for speaker diarization:
+   ```env
+   # Speaker Diarization Settings
+   ENABLE_SPEAKER_DIARIZATION=true
+   MAX_SPEAKERS=2
+   MIN_SPEAKERS=2
+   
+   # STT Configuration
+   GOOGLE_STT_MODEL=chirp_2
+   GOOGLE_STT_LOCATION=asia-southeast1  # or us-central1 for English diarization
+   GOOGLE_PROJECT_ID=your-project-id
+   GOOGLE_APPLICATION_CREDENTIALS_JSON=your-service-account-json
+   ```
+
+## 🎯 Speaker Diarization Configuration
+
+### For English Sessions (Optimal Diarization)
+```env
+GOOGLE_STT_LOCATION=us-central1
+ENABLE_SPEAKER_DIARIZATION=true
+```
+
+### For Chinese/Asian Languages (Auto-fallback to Manual)
+```env  
+GOOGLE_STT_LOCATION=asia-southeast1
+ENABLE_SPEAKER_DIARIZATION=true  # Will auto-fallback to batch mode
+```
+
+### Language Support Matrix
+
+| Language | Region | Diarization | Method |
+|----------|--------|-------------|--------|
+| English | us-central1 | ✅ Auto | recognize API |
+| English | asia-southeast1 | ❌ Manual | batchRecognize + manual |
+| Chinese | asia-southeast1 | ❌ Manual | batchRecognize + manual |
+| Japanese | asia-southeast1 | ❌ Manual | batchRecognize + manual |
+
+## 👥 Manual Role Assignment
+
+When automatic diarization is not available, the system provides powerful manual editing capabilities:
+
+### Frontend Features
+1. **Individual Segment Editing**: Click "編輯角色" (Edit Roles) to modify speaker assignments
+2. **Per-segment Selection**: Each transcript segment can be independently assigned to "教練" (Coach) or "客戶" (Client)
+3. **Real-time Updates**: Statistics update immediately after changes
+4. **Persistent Storage**: All assignments are saved to the database
+
+### API Endpoints
+- `PATCH /api/v1/sessions/{id}/segment-roles` - Update individual segment speaker roles
+- `GET /api/v1/sessions/{id}/transcript` - Export with role information
+
+### Database Schema
+The system uses a dual-level role assignment:
+- **Speaker-level**: `SessionRole` table for backward compatibility
+- **Segment-level**: `SegmentRole` table for granular control (new)
 
 ## 📁 Project Structure
 

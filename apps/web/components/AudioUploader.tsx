@@ -366,7 +366,9 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
               estimatedTime={transcriptionStatus?.estimated_completion ? 
                 formatTimeRemaining(transcriptionStatus.estimated_completion) : uploadState.estimatedTime}
             />
-            {transcriptionStatus?.duration_processed && transcriptionStatus?.duration_total && (
+            {transcriptionStatus?.duration_processed != null && 
+             transcriptionStatus?.duration_total != null && 
+             transcriptionStatus.duration_total > 0 && (
               <div className="mt-2 text-sm text-yellow-800 dark:text-yellow-200">
                 已處理: {formatDuration(transcriptionStatus.duration_processed)} / {formatDuration(transcriptionStatus.duration_total)}
               </div>
