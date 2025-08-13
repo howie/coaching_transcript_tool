@@ -981,16 +981,21 @@ class GoogleSTTProvider(STTProvider):
                             end_sec = end_time.seconds + getattr(end_time, 'nanos', 0) / 1e9
                             logger.debug(f"Using object timing: {start_sec:.2f}s - {end_sec:.2f}s")
                         elif isinstance(first_word, dict):
-                            start_time = first_word.get('startTime', '0s')
-                            end_time = last_word.get('endTime', '5s')
-                            # Parse duration strings like "1.23s"
+                            # Google STT v2 batch API uses startOffset/endOffset, try these first
+                            start_time = first_word.get('startOffset') or first_word.get('startTime', '0s')
+                            end_time = last_word.get('endOffset') or last_word.get('endTime', '5s')
+                            
+                            # Parse duration strings like "1.23s" or "1.230s"
                             start_sec = float(start_time.rstrip('s')) if start_time.endswith('s') else 0.0
                             end_sec = float(end_time.rstrip('s')) if end_time.endswith('s') else 5.0
-                            logger.debug(f"Using dict timing: {start_sec:.2f}s - {end_sec:.2f}s (from {start_time} - {end_time})")
+                            
+                            # Determine which format was used for logging
+                            timing_format = "startOffset/endOffset" if first_word.get('startOffset') else "startTime/endTime"
+                            logger.debug(f"Using dict timing ({timing_format}): {start_sec:.2f}s - {end_sec:.2f}s (from {start_time} - {end_time})")
                         else:
                             start_sec = 0.0
                             end_sec = 5.0
-                            logger.warning(f"Unknown word format, using default timing")
+                            logger.warning("Unknown word format, using default timing")
 
                         # Calculate average confidence from words
                         word_confidences = []
@@ -1033,6 +1038,9 @@ class GoogleSTTProvider(STTProvider):
                             content=transcript.strip(),
                             confidence=confidence
                         ))
+        
+        # Sort segments by start time for consistent chronological order
+        segments.sort(key=lambda s: s.start_seconds)
         
         return segments
     
