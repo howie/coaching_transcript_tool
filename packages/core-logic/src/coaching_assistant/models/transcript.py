@@ -28,8 +28,8 @@ class TranscriptSegment(BaseModel):
     speaker_id = Column(Integer, nullable=False)  # 1, 2, 3...
     
     # Timing
-    start_sec = Column(Float, nullable=False)
-    end_sec = Column(Float, nullable=False)
+    start_seconds = Column(Float, nullable=False)
+    end_seconds = Column(Float, nullable=False)
     
     # Content
     content = Column(Text, nullable=False)
@@ -40,12 +40,12 @@ class TranscriptSegment(BaseModel):
     role_assignment = relationship("SegmentRole", back_populates="segment", uselist=False)
     
     def __repr__(self):
-        return f"<TranscriptSegment(speaker_id={self.speaker_id}, start={self.start_sec}s)>"
+        return f"<TranscriptSegment(speaker_id={self.speaker_id}, start={self.start_seconds}s)>"
     
     @property
     def duration_sec(self) -> float:
         """Get segment duration in seconds."""
-        return self.end_sec - self.start_sec
+        return self.end_seconds - self.start_seconds
     
     @property
     def formatted_timespan(self) -> str:
@@ -55,7 +55,7 @@ class TranscriptSegment(BaseModel):
             secs = int(seconds % 60)
             return f"{minutes:02d}:{secs:02d}"
         
-        return f"{format_time(self.start_sec)} - {format_time(self.end_sec)}"
+        return f"{format_time(self.start_seconds)} - {format_time(self.end_seconds)}"
     
     def get_role_label(self) -> str:
         """Get role label for this segment."""

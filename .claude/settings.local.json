@@ -13,7 +13,9 @@
       "Bash(rm:*)",
       "Bash(python:*)",
       "Bash(terraform state rm:*)",
-      "Bash(gsutil ls:*)"
+      "Bash(gsutil ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }

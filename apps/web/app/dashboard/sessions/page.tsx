@@ -27,8 +27,7 @@ interface CoachingSession {
   fee_amount: number;
   fee_display: string;
   duration_display: string;
-  transcript_timeseq_id?: string;
-  audio_timeseq_id?: string;
+  transcription_session_id?: string;
   notes?: string;
   created_at: string;
   updated_at: string;

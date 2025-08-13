@@ -616,7 +616,7 @@ class ApiClient {
     fee_currency?: string
     fee_amount?: number
     notes?: string
-    audio_timeseq_id?: string  // TECHNICAL DEBT: Confusing name - actually stores session.id (transcription session ID)
+    transcription_session_id?: string
   }) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {

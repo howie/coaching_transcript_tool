@@ -21,7 +21,7 @@ class TestCoachingSessionSource:
 
         # Create a client
         client = Client(
-            coach_id=coach.id,
+            user_id=coach.id,
             name="Test Client"
         )
         db_session.add(client)
@@ -32,7 +32,7 @@ class TestCoachingSessionSource:
         
         for source in sources:
             session = CoachingSession(
-                coach_id=coach.id,
+                user_id=coach.id,
                 client_id=client.id,
                 session_date=date.today(),
                 source=source,
@@ -62,7 +62,7 @@ class TestCoachingSessionSource:
 
         # Create a client
         client = Client(
-            coach_id=coach.id,
+            user_id=coach.id,
             name="Test Client 2"
         )
         db_session.add(client)
@@ -70,7 +70,7 @@ class TestCoachingSessionSource:
 
         # Try to create a coaching session without source - should fail
         session = CoachingSession(
-            coach_id=coach.id,
+            user_id=coach.id,
             client_id=client.id,
             session_date=date.today(),
             # source=... # Missing required field
@@ -96,7 +96,7 @@ class TestCoachingSessionSource:
 
         # Create a client
         client = Client(
-            coach_id=coach.id,
+            user_id=coach.id,
             name="Test Client 3"
         )
         db_session.add(client)
@@ -104,7 +104,7 @@ class TestCoachingSessionSource:
 
         # Test that we can't assign invalid enum values
         session = CoachingSession(
-            coach_id=coach.id,
+            user_id=coach.id,
             client_id=client.id,
             session_date=date.today(),
             source=SessionSource.CLIENT,  # Valid value
@@ -145,7 +145,7 @@ class TestCoachingSessionSource:
 
         # Create a client
         client = Client(
-            coach_id=coach.id,
+            user_id=coach.id,
             name="Test Client 4"
         )
         db_session.add(client)
@@ -153,7 +153,7 @@ class TestCoachingSessionSource:
 
         # Create a coaching session
         session = CoachingSession(
-            coach_id=coach.id,
+            user_id=coach.id,
             client_id=client.id,
             session_date=date.today(),
             source=SessionSource.FRIEND,
@@ -184,7 +184,7 @@ class TestCoachingSessionSource:
 
         # Create a client
         client = Client(
-            coach_id=coach.id,
+            user_id=coach.id,
             name="Test Client 5"
         )
         db_session.add(client)
@@ -192,7 +192,7 @@ class TestCoachingSessionSource:
 
         # Create a coaching session
         session = CoachingSession(
-            coach_id=coach.id,
+            user_id=coach.id,
             client_id=client.id,
             session_date=date.today(),
             source=SessionSource.CLASSMATE,
@@ -204,7 +204,7 @@ class TestCoachingSessionSource:
         db_session.commit()
 
         # Test relationships work correctly
-        assert session.coach == coach
+        assert session.user == coach
         assert session.client == client
         assert session in coach.coaching_sessions
         assert session in client.coaching_sessions
@@ -222,7 +222,7 @@ class TestCoachingSessionSource:
 
         # Create a client
         client = Client(
-            coach_id=coach.id,
+            user_id=coach.id,
             name="Test Client 6"
         )
         db_session.add(client)
@@ -239,7 +239,7 @@ class TestCoachingSessionSource:
 
         for source, session_date in sources_and_dates:
             session = CoachingSession(
-                coach_id=coach.id,
+                user_id=coach.id,
                 client_id=client.id,
                 session_date=session_date,
                 source=source,

@@ -678,7 +678,7 @@ class GoogleSTTProvider(STTProvider):
         segments = self._process_recognition_results_with_diarization(response)
         
         # Calculate duration from segments
-        total_duration = max((seg.end_sec for seg in segments), default=0.0)
+        total_duration = max((seg.end_seconds for seg in segments), default=0.0)
         
         # Estimate cost
         cost = self.estimate_cost(int(total_duration))
@@ -814,7 +814,7 @@ class GoogleSTTProvider(STTProvider):
         segments = self._process_recognition_results(result, False)
         
         # Calculate duration from segments
-        total_duration = max((seg.end_sec for seg in segments), default=0.0)
+        total_duration = max((seg.end_seconds for seg in segments), default=0.0)
         
         # Estimate cost
         cost = self.estimate_cost(int(total_duration))
@@ -1003,8 +1003,8 @@ class GoogleSTTProvider(STTProvider):
 
                         segments.append(TranscriptSegment(
                             speaker_id=1,  # Single speaker since no diarization
-                            start_sec=start_sec,
-                            end_sec=end_sec,
+                            start_seconds=start_sec,
+                            end_seconds=end_sec,
                             content=transcript.strip(),
                             confidence=avg_confidence
                         ))
@@ -1018,7 +1018,7 @@ class GoogleSTTProvider(STTProvider):
                         # Use accumulated time from previous segments
                         if segments:
                             last_segment = segments[-1]
-                            start_sec = last_segment.end_sec + 0.5  # Add 0.5 second gap between segments
+                            start_sec = last_segment.end_seconds + 0.5  # Add 0.5 second gap between segments
                         else:
                             start_sec = 0.0
                         
@@ -1028,8 +1028,8 @@ class GoogleSTTProvider(STTProvider):
                         
                         segments.append(TranscriptSegment(
                             speaker_id=1,
-                            start_sec=start_sec,
-                            end_sec=end_sec,
+                            start_seconds=start_sec,
+                            end_seconds=end_sec,
                             content=transcript.strip(),
                             confidence=confidence
                         ))
@@ -1107,14 +1107,14 @@ class GoogleSTTProvider(STTProvider):
                     # Create a single segment (no speaker separation)
                     segments.append(TranscriptSegment(
                         speaker_id=1,
-                        start_sec=0.0,
-                        end_sec=len(transcript.split()) / 2.5,  # Rough estimate
+                        start_seconds=0.0,
+                        end_seconds=len(transcript.split()) / 2.5,  # Rough estimate
                         content=transcript.strip(),
                         confidence=confidence
                     ))
         
         # Sort segments by start time
-        segments.sort(key=lambda s: s.start_sec)
+        segments.sort(key=lambda s: s.start_seconds)
         
         logger.info(f"Created {len(segments)} diarized segments")
         return segments
@@ -1140,8 +1140,8 @@ class GoogleSTTProvider(STTProvider):
 
         return TranscriptSegment(
             speaker_id=speaker_id,
-            start_sec=start_sec,
-            end_sec=end_sec,
+            start_seconds=start_sec,
+            end_seconds=end_sec,
             content=content.strip(),
             confidence=avg_confidence
         )

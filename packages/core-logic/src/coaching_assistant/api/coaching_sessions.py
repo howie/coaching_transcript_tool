@@ -41,7 +41,7 @@ class CoachingSessionUpdate(BaseModel):
     fee_currency: Optional[str] = Field(None, min_length=3, max_length=3)
     fee_amount: Optional[int] = Field(None, ge=0)
     notes: Optional[str] = None
-    audio_timeseq_id: Optional[UUID] = None  # TECHNICAL DEBT: Confusing name - actually stores session.id (transcription session ID)
+    transcription_session_id: Optional[UUID] = None  # References session.id for linked transcription
 
 
 class ClientSummary(BaseModel):
@@ -61,8 +61,7 @@ class CoachingSessionResponse(BaseModel):
     fee_amount: int
     fee_display: str
     duration_display: str
-    transcript_timeseq_id: Optional[UUID]  # TECHNICAL DEBT: Purpose unclear, consider removing
-    audio_timeseq_id: Optional[UUID]  # TECHNICAL DEBT: Confusing name - actually stores session.id (transcription session ID)
+    transcription_session_id: Optional[UUID]  # References session.id for linked transcription
     notes: Optional[str]
     created_at: str
     updated_at: str
@@ -97,7 +96,7 @@ async def list_coaching_sessions(
     current_user: User = Depends(get_current_user_dependency)
 ):
     """List coaching sessions for the current user."""
-    query_filter = and_(CoachingSession.coach_id == current_user.id)
+    query_filter = and_(CoachingSession.user_id == current_user.id)
     
     # Apply filters
     if from_date:
@@ -152,8 +151,7 @@ async def list_coaching_sessions(
             "fee_amount": session.fee_amount,
             "fee_display": session.fee_display,
             "duration_display": session.duration_display,
-            "transcript_timeseq_id": session.transcript_timeseq_id,
-            "audio_timeseq_id": session.audio_timeseq_id,
+            "transcription_session_id": session.transcription_session_id,
             "notes": session.notes,
             "created_at": session.created_at.isoformat(),
             "updated_at": session.updated_at.isoformat(),
@@ -182,7 +180,7 @@ async def get_coaching_session(
         db.query(CoachingSession)
         .join(Client, CoachingSession.client_id == Client.id)
         .filter(
-            and_(CoachingSession.id == session_id, CoachingSession.coach_id == current_user.id)
+            and_(CoachingSession.id == session_id, CoachingSession.user_id == current_user.id)
         ).first()
     )
     
@@ -206,8 +204,7 @@ async def get_coaching_session(
         "fee_amount": session.fee_amount,
         "fee_display": session.fee_display,
         "duration_display": session.duration_display,
-        "transcript_timeseq_id": session.transcript_timeseq_id,
-        "audio_timeseq_id": session.audio_timeseq_id,
+        "transcription_session_id": session.transcription_session_id,
         "notes": session.notes,
         "created_at": session.created_at.isoformat(),
         "updated_at": session.updated_at.isoformat(),
@@ -225,14 +222,14 @@ async def create_coaching_session(
     """Create a new coaching session."""
     # Verify client belongs to current user
     client = db.query(Client).filter(
-        and_(Client.id == session_data.client_id, Client.coach_id == current_user.id)
+        and_(Client.id == session_data.client_id, Client.user_id == current_user.id)
     ).first()
     
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
     session = CoachingSession(
-        coach_id=current_user.id,
+        user_id=current_user.id,
         session_date=session_data.session_date,
         client_id=session_data.client_id,
         source=session_data.source,
@@ -271,8 +268,7 @@ async def create_coaching_session(
         "fee_amount": session.fee_amount,
         "fee_display": session.fee_display,
         "duration_display": session.duration_display,
-        "transcript_timeseq_id": session.transcript_timeseq_id,
-        "audio_timeseq_id": session.audio_timeseq_id,
+        "transcription_session_id": session.transcription_session_id,
         "notes": session.notes,
         "created_at": session.created_at.isoformat(),
         "updated_at": session.updated_at.isoformat(),
@@ -290,7 +286,7 @@ async def update_coaching_session(
 ):
     """Update a coaching session."""
     session = db.query(CoachingSession).filter(
-        and_(CoachingSession.id == session_id, CoachingSession.coach_id == current_user.id)
+        and_(CoachingSession.id == session_id, CoachingSession.user_id == current_user.id)
     ).first()
     
     if not session:
@@ -299,7 +295,7 @@ async def update_coaching_session(
     # Verify client belongs to current user if client_id is being updated
     if session_data.client_id and session_data.client_id != session.client_id:
         client = db.query(Client).filter(
-            and_(Client.id == session_data.client_id, Client.coach_id == current_user.id)
+            and_(Client.id == session_data.client_id, Client.user_id == current_user.id)
         ).first()
         
         if not client:
@@ -310,14 +306,14 @@ async def update_coaching_session(
     if 'fee_currency' in update_data:
         update_data['fee_currency'] = update_data['fee_currency'].upper()
     
-    # Convert audio_timeseq_id string to UUID if present
-    if 'audio_timeseq_id' in update_data and update_data['audio_timeseq_id'] is not None:
+    # Convert transcription_session_id string to UUID if present
+    if 'transcription_session_id' in update_data and update_data['transcription_session_id'] is not None:
         from uuid import UUID
         try:
-            if isinstance(update_data['audio_timeseq_id'], str):
-                update_data['audio_timeseq_id'] = UUID(update_data['audio_timeseq_id'])
+            if isinstance(update_data['transcription_session_id'], str):
+                update_data['transcription_session_id'] = UUID(update_data['transcription_session_id'])
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=f"Invalid audio_timeseq_id format: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Invalid transcription_session_id format: {str(e)}")
     
     for field, value in update_data.items():
         setattr(session, field, value)
@@ -350,8 +346,7 @@ async def update_coaching_session(
         "fee_amount": session.fee_amount,
         "fee_display": session.fee_display,
         "duration_display": session.duration_display,
-        "transcript_timeseq_id": session.transcript_timeseq_id,
-        "audio_timeseq_id": session.audio_timeseq_id,
+        "transcription_session_id": session.transcription_session_id,
         "notes": session.notes,
         "created_at": session.created_at.isoformat(),
         "updated_at": session.updated_at.isoformat(),
@@ -368,7 +363,7 @@ async def delete_coaching_session(
 ):
     """Delete a coaching session (hard delete)."""
     session = db.query(CoachingSession).filter(
-        and_(CoachingSession.id == session_id, CoachingSession.coach_id == current_user.id)
+        and_(CoachingSession.id == session_id, CoachingSession.user_id == current_user.id)
     ).first()
     
     if not session:
@@ -436,15 +431,15 @@ async def upload_session_transcript(
         logger.warning(f"❌ Coaching session {session_id} does not exist in database")
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found in database")
     
-    # Check if session belongs to user (note: coach_id actually stores user.id)
+    # Check if session belongs to user
     session = db.query(CoachingSession).filter(
         CoachingSession.id == session_id,
-        CoachingSession.coach_id == current_user.id
+        CoachingSession.user_id == current_user.id
     ).first()
     
     if not session:
         logger.warning(f"❌ Coaching session {session_id} exists but does not belong to user {current_user.id}")
-        logger.info(f"📊 Session owner: {session_exists.coach_id}, requesting user: {current_user.id}")
+        logger.info(f"📊 Session owner: {session_exists.user_id}, requesting user: {current_user.id}")
         raise HTTPException(status_code=404, detail="Session not found or access denied")
     
     # Check file type
@@ -476,7 +471,7 @@ async def upload_session_transcript(
         # Calculate total duration
         total_duration = 0
         for segment_data in segments:
-            total_duration = max(total_duration, segment_data['end_sec'])
+            total_duration = max(total_duration, segment_data['end_seconds'])
         
         # Create a transcription session for this manual upload
         transcription_session_id = uuid4()
@@ -486,7 +481,7 @@ async def upload_session_transcript(
             title=f"Manual Upload - {session.session_date}",
             status=SessionStatus.COMPLETED,
             language="auto",  # Will be determined from content
-            duration_sec=int(total_duration),
+            duration_seconds=int(total_duration),
             audio_filename=file.filename.replace('.vtt', '.manual').replace('.srt', '.manual')
         )
         db.add(transcription_session)
@@ -497,16 +492,15 @@ async def upload_session_transcript(
                 id=uuid4(),
                 session_id=transcription_session_id,  # Link to transcription session
                 speaker_id=segment_data.get('speaker_id', 1),  # Default to speaker 1
-                start_sec=segment_data['start_sec'],
-                end_sec=segment_data['end_sec'],
+                start_seconds=segment_data['start_seconds'],
+                end_seconds=segment_data['end_seconds'],
                 content=segment_data['content'],
                 confidence=1.0  # Manual upload, assume high confidence
             )
             db.add(segment)
         
         # Update coaching session to reference the transcription session
-        session.audio_timeseq_id = str(transcription_session_id)
-        session.duration_sec = int(total_duration)
+        session.transcription_session_id = str(transcription_session_id)
         
         db.commit()
         
@@ -515,9 +509,10 @@ async def upload_session_transcript(
         return {
             "message": "Transcript uploaded successfully",
             "session_id": str(session_id),
-            "transcription_session_id": transcription_session_id,
+            "transcription_session_id": str(transcription_session_id),
             "segments_count": len(segments),
-            "duration_sec": total_duration
+            "duration_seconds": total_duration,
+            "status": "completed"
         }
         
     except UnicodeDecodeError:
@@ -544,23 +539,41 @@ def _parse_vtt_content(content: str, speaker_role_mapping: dict = None) -> List[
         
         # Look for timestamp line
         if '-->' in line:
-            # Parse timestamp
-            timestamp_match = re.match(r'(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})', line)
+            # Parse timestamp - support multiple formats
+            timestamp_patterns = [
+                r'(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})',  # HH:MM:SS.mmm
+                r'(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})',     # HH:MM:SS,mmm (SRT format)
+                r'(\d{1,2}:\d{2}:\d{2}\.\d{3}) --> (\d{1,2}:\d{2}:\d{2}\.\d{3})', # H:MM:SS.mmm
+                r'(\d{1,2}:\d{2}:\d{2}) --> (\d{1,2}:\d{2}:\d{2})',             # H:MM:SS (no milliseconds)
+            ]
+            
+            timestamp_match = None
+            for pattern in timestamp_patterns:
+                timestamp_match = re.match(pattern, line)
+                if timestamp_match:
+                    break
+            
             if timestamp_match:
-                start_time = _parse_timestamp(timestamp_match.group(1))
-                end_time = _parse_timestamp(timestamp_match.group(2))
+                try:
+                    start_time = _parse_timestamp(timestamp_match.group(1).replace(',', '.'))
+                    end_time = _parse_timestamp(timestamp_match.group(2).replace(',', '.'))
+                except (ValueError, IndexError) as e:
+                    logger.warning(f"Failed to parse timestamp: {line}, error: {e}")
+                    i += 1
+                    continue
                 
                 # Get the content (next line)
                 i += 1
                 if i < len(lines):
                     content_line = lines[i].strip()
                     
-                    # Extract speaker and content from VTT format like "<v jolly shih>content</v>" or "<v Speaker>content</v>"
+                    # Extract speaker and content from different formats
                     speaker_id = 1
                     content_text = content_line
                     speaker_key = None
+                    speaker_name = None
                     
-                    # Match the frontend logic for extracting speaker names
+                    # Format 1: VTT format like "<v jolly shih>content</v>" or "<v Speaker>content</v>"
                     speaker_match = re.match(r'<v\s+([^>]+)>\s*(.*?)(?:</v>)?$', content_line)
                     if speaker_match:
                         speaker_name = speaker_match.group(1).strip()
@@ -568,23 +581,42 @@ def _parse_vtt_content(content: str, speaker_role_mapping: dict = None) -> List[
                         # Create speaker key like the frontend: speaker_jolly_shih, speaker_howie_yu
                         speaker_key = f"speaker_{speaker_name.lower().replace(' ', '_')}"
                     
-                    # Apply role mapping if provided, otherwise use default assignment
+                    # Format 2: Simple prefix format like "Coach: content" or "Client: content"
+                    elif ':' in content_line:
+                        prefix_match = re.match(r'^([^:]+):\s*(.+)$', content_line)
+                        if prefix_match:
+                            speaker_name = prefix_match.group(1).strip()
+                            content_text = prefix_match.group(2).strip()
+                            # Create speaker key from the prefix
+                            speaker_key = f"speaker_{speaker_name.lower().replace(' ', '_')}"
+                    
+                    # Apply role mapping if provided
                     final_speaker_id = speaker_id
                     if speaker_role_mapping and speaker_key:
                         # Use the speaker key to look up the role
                         role = speaker_role_mapping.get(speaker_key, 'coach')
                         final_speaker_id = 1 if role == 'coach' else 2
-                    elif speaker_match:
+                        logger.info(f"Applied role mapping: {speaker_key} -> {role} (speaker_id: {final_speaker_id})")
+                    elif speaker_name:
                         # Fallback to name-based assignment when no role mapping is provided
-                        speaker_name = speaker_match.group(1).strip()
-                        final_speaker_id = 2 if '客戶' in speaker_name or 'Client' in speaker_name else 1
+                        if any(keyword in speaker_name.lower() for keyword in ['client', '客戶', '學員']):
+                            final_speaker_id = 2
+                        elif any(keyword in speaker_name.lower() for keyword in ['coach', '教練', '老師']):
+                            final_speaker_id = 1
+                        else:
+                            # Default assignment based on order
+                            final_speaker_id = 1  # Default to coach if unclear
+                        logger.info(f"Name-based assignment: {speaker_name} -> speaker_id: {final_speaker_id}")
                     
                     segments.append({
-                        'start_sec': start_time,
-                        'end_sec': end_time,
+                        'start_seconds': start_time,
+                        'end_seconds': end_time,
                         'content': content_text,
                         'speaker_id': final_speaker_id
                     })
+                    logger.debug(f"Parsed segment: {start_time:.2f}-{end_time:.2f}s, speaker_id: {final_speaker_id}, content: {content_text[:50]}...")
+            else:
+                logger.warning(f"Could not parse timestamp line: {line}")
         
         i += 1
     
@@ -606,65 +638,105 @@ def _parse_srt_content(content: str, speaker_role_mapping: dict = None) -> List[
         # Skip sequence number (line 0)
         # Parse timestamp (line 1)
         timestamp_line = lines[1].strip()
-        timestamp_match = re.match(r'(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})', timestamp_line)
+        
+        # Support multiple timestamp formats for SRT
+        timestamp_patterns = [
+            r'(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})',     # HH:MM:SS,mmm (standard SRT)
+            r'(\d{1,2}:\d{2}:\d{2},\d{3}) --> (\d{1,2}:\d{2}:\d{2},\d{3})', # H:MM:SS,mmm
+            r'(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})',   # HH:MM:SS.mmm (VTT format in SRT)
+            r'(\d{1,2}:\d{2}:\d{2}) --> (\d{1,2}:\d{2}:\d{2})',             # H:MM:SS (no milliseconds)
+        ]
+        
+        timestamp_match = None
+        for pattern in timestamp_patterns:
+            timestamp_match = re.match(pattern, timestamp_line)
+            if timestamp_match:
+                break
         
         if timestamp_match:
-            start_time = _parse_timestamp(timestamp_match.group(1).replace(',', '.'))
-            end_time = _parse_timestamp(timestamp_match.group(2).replace(',', '.'))
-            
+            try:
+                start_time = _parse_timestamp(timestamp_match.group(1).replace(',', '.'))
+                end_time = _parse_timestamp(timestamp_match.group(2).replace(',', '.'))
+            except (ValueError, IndexError) as e:
+                logger.warning(f"Failed to parse SRT timestamp: {timestamp_line}, error: {e}")
+                continue
+                
             # Content (lines 2+)
             content_lines = lines[2:]
-            content_text = ' '.join(content_lines)
+            content_text = ' '.join(content_lines).strip()
             
             # Extract speaker info if present
             speaker_id = 1
+            speaker_name = None
+            speaker_key = None
             
-            # Look for speaker prefix like "教練: " or "Coach: " or "說話者 2:"
-            speaker_match = re.match(r'(.*?):\s*(.*)', content_text)
+            # Look for speaker prefix like "Coach: ", "Client: ", "教練: ", "客戶: "
+            speaker_match = re.match(r'^([^:]+):\s*(.+)$', content_text)
             if speaker_match:
-                speaker_name = speaker_match.group(1)
-                content_text = speaker_match.group(2)
-                
-                # Try to extract speaker ID from name
-                speaker_num_match = re.search(r'(\d+)', speaker_name)
-                if speaker_num_match:
-                    speaker_id = int(speaker_num_match.group(1))
-                else:
-                    # Fallback to name-based assignment
-                    speaker_id = 2 if '客戶' in speaker_name or 'Client' in speaker_name else 1
+                speaker_name = speaker_match.group(1).strip()
+                content_text = speaker_match.group(2).strip()
+                # Create speaker key from the prefix
+                speaker_key = f"speaker_{speaker_name.lower().replace(' ', '_')}"
             
-            # Apply role mapping if provided, otherwise use default assignment
+            # Apply role mapping if provided
             final_speaker_id = speaker_id
-            if speaker_role_mapping:
-                role = speaker_role_mapping.get(str(speaker_id), 'coach')
+            if speaker_role_mapping and speaker_key:
+                # Use the speaker key to look up the role
+                role = speaker_role_mapping.get(speaker_key, 'coach')
                 final_speaker_id = 1 if role == 'coach' else 2
+                logger.info(f"Applied SRT role mapping: {speaker_key} -> {role} (speaker_id: {final_speaker_id})")
+            elif speaker_name:
+                # Fallback to name-based assignment when no role mapping is provided
+                if any(keyword in speaker_name.lower() for keyword in ['client', '客戶', '學員']):
+                    final_speaker_id = 2
+                elif any(keyword in speaker_name.lower() for keyword in ['coach', '教練', '老師']):
+                    final_speaker_id = 1
+                else:
+                    # Try to extract speaker ID from name (like "說話者 1", "Speaker 2")
+                    speaker_num_match = re.search(r'(\d+)', speaker_name)
+                    if speaker_num_match:
+                        extracted_id = int(speaker_num_match.group(1))
+                        final_speaker_id = extracted_id if extracted_id in [1, 2] else 1
+                    else:
+                        final_speaker_id = 1  # Default to coach if unclear
+                logger.info(f"SRT name-based assignment: {speaker_name} -> speaker_id: {final_speaker_id}")
             
             segments.append({
-                'start_sec': start_time,
-                'end_sec': end_time,
+                'start_seconds': start_time,
+                'end_seconds': end_time,
                 'content': content_text,
                 'speaker_id': final_speaker_id
             })
+            logger.debug(f"Parsed SRT segment: {start_time:.2f}-{end_time:.2f}s, speaker_id: {final_speaker_id}, content: {content_text[:50]}...")
+        else:
+            logger.warning(f"Could not parse SRT timestamp line: {timestamp_line}")
     
     return segments
 
 
 def _parse_timestamp(timestamp_str: str) -> float:
     """Convert timestamp string to seconds."""
-    # Handle format: HH:MM:SS.mmm
+    # Handle multiple formats: HH:MM:SS.mmm, H:MM:SS.mmm, HH:MM:SS, etc.
     time_parts = timestamp_str.split(':')
     if len(time_parts) != 3:
         raise ValueError(f"Invalid timestamp format: {timestamp_str}")
     
-    hours = int(time_parts[0])
-    minutes = int(time_parts[1])
-    seconds_str = time_parts[2]
-    
-    # Handle seconds with milliseconds
-    if '.' in seconds_str:
-        seconds, milliseconds = seconds_str.split('.')
-        total_seconds = hours * 3600 + minutes * 60 + int(seconds) + int(milliseconds) / 1000
-    else:
-        total_seconds = hours * 3600 + minutes * 60 + int(seconds_str)
-    
-    return total_seconds
+    try:
+        hours = int(time_parts[0])
+        minutes = int(time_parts[1])
+        seconds_str = time_parts[2]
+        
+        # Handle seconds with milliseconds
+        if '.' in seconds_str:
+            seconds_part, milliseconds_part = seconds_str.split('.')
+            seconds = int(seconds_part)
+            # Pad or truncate milliseconds to 3 digits
+            milliseconds_part = milliseconds_part.ljust(3, '0')[:3]
+            milliseconds = int(milliseconds_part)
+            total_seconds = hours * 3600 + minutes * 60 + seconds + milliseconds / 1000
+        else:
+            total_seconds = hours * 3600 + minutes * 60 + int(seconds_str)
+        
+        return total_seconds
+    except (ValueError, IndexError) as e:
+        raise ValueError(f"Failed to parse timestamp '{timestamp_str}': {e}")

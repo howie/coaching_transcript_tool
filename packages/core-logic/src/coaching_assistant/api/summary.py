@@ -39,7 +39,7 @@ async def get_dashboard_summary(
     # Total minutes from all coaching sessions
     total_minutes_result = db.query(
         func.coalesce(func.sum(CoachingSession.duration_min), 0)
-    ).filter(CoachingSession.coach_id == current_user.id).scalar()
+    ).filter(CoachingSession.user_id == current_user.id).scalar()
     
     total_minutes = int(total_minutes_result or 0)
     
@@ -48,7 +48,7 @@ async def get_dashboard_summary(
         func.coalesce(func.sum(CoachingSession.duration_min), 0)
     ).filter(
         and_(
-            CoachingSession.coach_id == current_user.id,
+            CoachingSession.user_id == current_user.id,
             extract('year', CoachingSession.session_date) == year,
             extract('month', CoachingSession.session_date) == month_num
         )
@@ -71,7 +71,7 @@ async def get_dashboard_summary(
         func.coalesce(func.sum(CoachingSession.fee_amount), 0).label('total_amount')
     ).filter(
         and_(
-            CoachingSession.coach_id == current_user.id,
+            CoachingSession.user_id == current_user.id,
             extract('year', CoachingSession.session_date) == year,
             extract('month', CoachingSession.session_date) == month_num
         )
@@ -83,7 +83,7 @@ async def get_dashboard_summary(
     # Unique clients total (including anonymized ones)
     unique_clients_total = db.query(
         func.count(func.distinct(CoachingSession.client_id))
-    ).filter(CoachingSession.coach_id == current_user.id).scalar()
+    ).filter(CoachingSession.user_id == current_user.id).scalar()
     
     unique_clients_total = int(unique_clients_total or 0)
     
