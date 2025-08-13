@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusIcon, PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -64,7 +64,6 @@ const SessionsPage = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
-  const [editingSession, setEditingSession] = useState<CoachingSession | null>(null);
   const [formData, setFormData] = useState<SessionFormData>({
     session_date: new Date().toISOString().split('T')[0],
     client_id: '',
@@ -96,21 +95,19 @@ const SessionsPage = () => {
   useEffect(() => {
     console.log('🔄 useEffect triggered:', { 
       showModal, 
-      client_id: formData.client_id, 
-      editingSession: !!editingSession 
+      client_id: formData.client_id
     });
     
-    if (showModal && formData.client_id && !editingSession) {
+    if (showModal && formData.client_id) {
       console.log('✅ Conditions met, fetching last session data for:', formData.client_id);
       fetchLastSessionData(formData.client_id);
     } else {
       console.log('❌ Conditions not met:', {
         showModal,
-        hasClientId: !!formData.client_id,
-        notEditing: !editingSession
+        hasClientId: !!formData.client_id
       });
     }
-  }, [formData.client_id, showModal, editingSession]);
+  }, [formData.client_id, showModal]);
 
   const fetchInitialData = async () => {
     try {
@@ -175,32 +172,14 @@ const SessionsPage = () => {
         notes: formData.notes
       };
 
-      if (editingSession) {
-        await apiClient.updateSession(editingSession.id, payload);
-      } else {
-        await apiClient.createSession(payload);
-      }
+      await apiClient.createSession(payload);
 
       setShowModal(false);
-      setEditingSession(null);
       resetForm();
       fetchSessions();
     } catch (error) {
       console.error('Failed to save session:', error);
     }
-  };
-
-  const handleEdit = (session: CoachingSession) => {
-    setEditingSession(session);
-    setFormData({
-      session_date: session.session_date,
-      client_id: session.client.id,
-      duration_min: session.duration_min.toString(),
-      fee_currency: session.fee_currency,
-      fee_amount: session.fee_amount.toString(),
-      notes: session.notes || ''
-    });
-    setShowModal(true);
   };
 
   const handleDelete = async (session: CoachingSession) => {
@@ -226,7 +205,6 @@ const SessionsPage = () => {
   };
 
   const openCreateModal = async () => {
-    setEditingSession(null);
     resetForm();
     setShowModal(true);
     
@@ -390,14 +368,6 @@ const SessionsPage = () => {
                       className="text-blue-600 hover:text-blue-900"
                       title="查看詳情"
                     >
-                      <EyeIcon className="h-4 w-4" />
-                    </button>
-                    
-                    <button
-                      onClick={() => handleEdit(session)}
-                      className="text-indigo-600 hover:text-indigo-900"
-                      title="編輯"
-                    >
                       <PencilIcon className="h-4 w-4" />
                     </button>
                     
@@ -443,11 +413,11 @@ const SessionsPage = () => {
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Create Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
         <div className="bg-white dark:bg-gray-800 px-6 py-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
           <h3 className="text-lg font-medium text-foreground mb-4">
-            {editingSession ? t('sessions.editSession') : t('sessions.newSession')}
+            {t('sessions.newSession')}
           </h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -562,7 +532,7 @@ const SessionsPage = () => {
                 {t('common.cancel')}
               </Button>
               <Button type="submit">
-                {editingSession ? t('sessions.update') : t('sessions.create')}
+                {t('sessions.create')}
               </Button>
             </div>
           </form>
