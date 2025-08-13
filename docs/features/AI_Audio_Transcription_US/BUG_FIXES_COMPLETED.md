@@ -3,7 +3,7 @@
 ## Document Overview
 This document comprehensively tracks all bug fixes and improvements made to the coaching transcript tool, particularly focusing on the AI Audio Transcription feature and related components.
 
-**Last Updated:** 2025-08-12  
+**Last Updated:** 2025-08-13  
 **Status:** All Critical Bugs Resolved ✅
 
 ---
@@ -328,6 +328,54 @@ const useTranscriptionStatus = (sessionId: string | null) => {
 - **Improved documentation**: Clear architectural decisions and debugging guides
 - **Standardized patterns**: Consistent error handling and state management
 - **Developer tools**: Better debugging scripts and monitoring capabilities
+
+---
+
+## Recent Critical Fixes (August 13, 2025)
+
+### 21. Database Schema Consistency Fixes ✅
+**Issue:** Celery worker task execution failures due to database column name inconsistency  
+**Root Cause:** transcription_tasks.py using incorrect column name `duration_sec` instead of `duration_seconds`  
+**Solution:** Updated database field references for proper schema alignment
+```python
+# Fixed database column reference
+- session.duration_sec = audio_duration_seconds
++ session.duration_seconds = audio_duration_seconds
+```
+**Impact:** Resolved Celery worker failures, ensured reliable background task execution
+
+### 22. Frontend-Backend Field Name Alignment ✅
+**Issue:** Client management list showing incorrect status due to field name mismatch  
+**Root Cause:** API using `status` field while frontend TypeScript interfaces expected `client_status`  
+**Solution:** Updated TypeScript interfaces and API client to use consistent `status` field
+```typescript
+// Updated interface consistency
+interface Client {
+- client_status: string;
++ status: string;
+}
+```
+**Impact:** Fixed client status display issues, improved data consistency across frontend-backend
+
+### 23. Session Page Error Handling Improvements ✅
+**Issue:** Unnecessary transcript fetch attempts during processing state causing errors  
+**Root Cause:** Frontend trying to fetch transcripts before they were available  
+**Solution:** Added proper state checking and TranscriptNotAvailableError handling
+```typescript
+// Enhanced error handling
+if (sessionStatus === 'processing') {
+  // Skip transcript fetch during processing
+  return;
+}
+
+// Added specific error handling
+catch (error) {
+  if (error instanceof TranscriptNotAvailableError) {
+    // Handle gracefully without showing error to user
+  }
+}
+```
+**Impact:** Improved user experience during transcription processing, reduced unnecessary API calls
 
 ---
 

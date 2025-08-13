@@ -20,7 +20,7 @@ interface Client {
   source?: string;
   client_type?: string;
   issue_types?: string;
-  client_status: string;
+  status: string;
   is_anonymized: boolean;
   created_at: string;
   updated_at: string;
@@ -50,7 +50,7 @@ interface ClientFormData {
   source: string;
   client_type: string;
   issue_types: string;
-  client_status: string;
+  status: string;
 }
 
 interface OptionItem {
@@ -83,7 +83,7 @@ const ClientDetailPage = () => {
     source: '',
     client_type: '',
     issue_types: '',
-    client_status: ''
+    status: ''
   });
 
   const fetchOptions = useCallback(async () => {
@@ -181,7 +181,7 @@ const ClientDetailPage = () => {
         source: clientData.source || '',
         client_type: clientData.client_type || '',
         issue_types: clientData.issue_types || '',
-        client_status: clientData.client_status || 'first_session'
+        status: clientData.status || 'first_session'
       });
     } catch (error) {
       console.error('Failed to fetch client:', error);
@@ -318,7 +318,7 @@ const ClientDetailPage = () => {
                     source: client.source || '',
                     client_type: client.client_type || '',
                     issue_types: client.issue_types || '',
-                    client_status: client.client_status || 'first_session'
+                    status: client.status || 'first_session'
                   });
                 }}
                 className="flex items-center gap-2"
@@ -428,8 +428,8 @@ const ClientDetailPage = () => {
                   {t('clients.clientStatus')} *
                 </label>
                 <Select
-                  value={formData.client_status}
-                  onChange={(e) => setFormData({ ...formData, client_status: e.target.value })}
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   required
                 >
                   <option value="">{t('clients.selectStatus')}</option>
@@ -482,8 +482,8 @@ const ClientDetailPage = () => {
                   <label className="block text-sm font-medium text-content-secondary mb-1">
                     {t('clients.clientStatus')}
                   </label>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${getStatusColor(client.client_status)}`}>
-                    {getStatusLabel(client.client_status)}
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${getStatusColor(client.status)}`}>
+                    {getStatusLabel(client.status)}
                   </span>
                 </div>
               </div>
