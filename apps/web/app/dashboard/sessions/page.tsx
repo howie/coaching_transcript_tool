@@ -66,13 +66,14 @@ const SessionsPage = () => {
   const [showClientModal, setShowClientModal] = useState(false);
   const [editingSession, setEditingSession] = useState<CoachingSession | null>(null);
   const [formData, setFormData] = useState<SessionFormData>({
-    session_date: '',
+    session_date: new Date().toISOString().split('T')[0],
     client_id: '',
-    duration_min: '',
+    duration_min: '60',
     fee_currency: 'TWD',
-    fee_amount: '',
+    fee_amount: '0',
     notes: ''
   });
+  const [loadingLastSession, setLoadingLastSession] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filters, setFilters] = useState({
@@ -90,6 +91,26 @@ const SessionsPage = () => {
   useEffect(() => {
     fetchSessions();
   }, [currentPage, filters]);
+
+  // Load last session data when client is selected (only when modal is open)
+  useEffect(() => {
+    console.log('🔄 useEffect triggered:', { 
+      showModal, 
+      client_id: formData.client_id, 
+      editingSession: !!editingSession 
+    });
+    
+    if (showModal && formData.client_id && !editingSession) {
+      console.log('✅ Conditions met, fetching last session data for:', formData.client_id);
+      fetchLastSessionData(formData.client_id);
+    } else {
+      console.log('❌ Conditions not met:', {
+        showModal,
+        hasClientId: !!formData.client_id,
+        notEditing: !editingSession
+      });
+    }
+  }, [formData.client_id, showModal, editingSession]);
 
   const fetchInitialData = async () => {
     try {
@@ -195,11 +216,11 @@ const SessionsPage = () => {
 
   const resetForm = () => {
     setFormData({
-      session_date: '',
+      session_date: new Date().toISOString().split('T')[0],
       client_id: '',
-      duration_min: '',
+      duration_min: '60',
       fee_currency: 'TWD',
-      fee_amount: '',
+      fee_amount: '0',
       notes: ''
     });
   };
@@ -216,6 +237,32 @@ const SessionsPage = () => {
     } catch (error) {
       console.error('Failed to refresh clients:', error);
       // Keep existing clients if refresh fails
+    }
+  };
+
+  const fetchLastSessionData = async (clientId: string) => {
+    if (!clientId) return;
+    
+    setLoadingLastSession(true);
+    try {
+      const lastSession = await apiClient.getClientLastSession(clientId);
+      
+      if (lastSession) {
+        console.log('✅ Loading last session data for client:', clientId, lastSession);
+        setFormData(prev => ({
+          ...prev,
+          duration_min: lastSession.duration_min.toString(),
+          fee_currency: lastSession.fee_currency,
+          fee_amount: lastSession.fee_amount.toString()
+        }));
+      } else {
+        console.log('ℹ️ No previous session found for client:', clientId);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch last session data:', error);
+      // Keep current values if fetch fails
+    } finally {
+      setLoadingLastSession(false);
     }
   };
 
@@ -420,11 +467,17 @@ const SessionsPage = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {t('sessions.client')} *
+                  {loadingLastSession && (
+                    <span className="ml-2 text-sm text-content-secondary">
+                      (載入上次會談資料中...)
+                    </span>
+                  )}
                 </label>
                 <Select
                   required
                   value={formData.client_id}
                   onChange={(e) => {
+                    console.log('👤 Client selection changed:', e.target.value);
                     if (e.target.value === 'new') {
                       setShowClientModal(true);
                     } else {

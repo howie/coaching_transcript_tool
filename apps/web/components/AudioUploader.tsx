@@ -247,22 +247,19 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         progress: 100
       }))
 
-      // Step 5: Start transcription processing
-      const transcriptionResult = await apiClient.startTranscription(session.id)
-      
+      // Step 5: Immediately update state to processing before API calls
+      // This provides instant feedback to user
       setUploadState(prev => ({ 
         ...prev, 
         status: 'processing',
         progress: 0,
-        estimatedTime: '約 15-30 分鐘',
-        taskId: transcriptionResult.task_id
+        estimatedTime: '準備開始轉檔...'
       }))
 
       // Step 6: Update coaching session with the transcription session ID
       if (sessionId) {
         try {
           console.log('Updating coaching session:', sessionId, 'with transcription_session_id:', session.id)
-          // Update the coaching session with the transcription_session_id
           const updateResult = await apiClient.updateSession(sessionId, {
             transcription_session_id: session.id
           })
@@ -271,20 +268,25 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
           // Reset force upload view after successful upload
           setForceUploadView(false)
           
-          // Only call onUploadComplete after successful update
+          // Call onUploadComplete immediately after linking session
           if (onUploadComplete) {
             onUploadComplete(session.id)
           }
         } catch (error) {
           console.error('Failed to link transcription session to coaching session:', error)
-          // Don't call onUploadComplete if update fails, but still continue with transcription
-          throw new Error('Failed to link transcription to coaching session: ' + (error as Error).message)
+          // Continue with transcription even if linking fails
         }
-      } else if (onUploadComplete) {
-        // If no sessionId (shouldn't happen), still call callback
-        setForceUploadView(false)
-        onUploadComplete(session.id)
       }
+
+      // Step 7: Start transcription processing
+      const transcriptionResult = await apiClient.startTranscription(session.id)
+      
+      // Update with actual task ID and estimated time
+      setUploadState(prev => ({ 
+        ...prev, 
+        estimatedTime: '約 15-30 分鐘',
+        taskId: transcriptionResult.task_id
+      }))
 
     } catch (error: any) {
       console.error('Upload error:', error)

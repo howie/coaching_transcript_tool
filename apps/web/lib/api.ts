@@ -673,6 +673,23 @@ class ApiClient {
     }
   }
 
+  async getClientLastSession(clientId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/clients/${clientId}/last-session`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get client last session failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get client last session error:', error)
+      throw error
+    }
+  }
+
   // Coach profile methods
   async getCoachProfile() {
     try {
@@ -1185,7 +1202,7 @@ class ApiClient {
     }
   }
 
-  async uploadSessionTranscript(sessionId: string, file: File, speakerRoleMapping?: {[speakerId: string]: 'coach' | 'client'}) {
+  async uploadSessionTranscript(sessionId: string, file: File, speakerRoleMapping?: {[speakerId: string]: 'coach' | 'client'}, convertToTraditional?: boolean) {
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -1193,6 +1210,11 @@ class ApiClient {
       // Add speaker role mapping if provided
       if (speakerRoleMapping) {
         formData.append('speaker_roles', JSON.stringify(speakerRoleMapping))
+      }
+      
+      // Add convert to traditional Chinese option
+      if (convertToTraditional) {
+        formData.append('convert_to_traditional', 'true')
       }
       
       // Get base headers without Content-Type for FormData

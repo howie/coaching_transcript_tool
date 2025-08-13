@@ -16,6 +16,7 @@ from ..models import CoachingSession, Client, User, SessionSource
 from ..models.session import Session, SessionStatus
 from ..models.transcript import TranscriptSegment
 from ..api.auth import get_current_user_dependency
+from ..utils.chinese_converter import convert_to_traditional
 
 logger = logging.getLogger(__name__)
 
@@ -375,6 +376,36 @@ async def delete_coaching_session(
     return {"message": "Coaching session deleted successfully"}
 
 
+@router.get("/clients/{client_id}/last-session")
+async def get_client_last_session(
+    client_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_dependency)
+):
+    """Get the last coaching session for a specific client."""
+    # Get the most recent session for this client
+    last_session = (
+        db.query(CoachingSession)
+        .filter(
+            and_(
+                CoachingSession.user_id == current_user.id,
+                CoachingSession.client_id == client_id
+            )
+        )
+        .order_by(desc(CoachingSession.session_date))
+        .first()
+    )
+    
+    if not last_session:
+        return None
+    
+    return {
+        "duration_min": last_session.duration_min,
+        "fee_currency": last_session.fee_currency,
+        "fee_amount": last_session.fee_amount
+    }
+
+
 @router.get("/options/currencies")
 async def get_currencies():
     """Get available currency options."""
@@ -408,12 +439,13 @@ async def upload_session_transcript(
     session_id: UUID,
     file: UploadFile = FastAPIFile(...),
     speaker_roles: Optional[str] = Form(None),
+    convert_to_traditional: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency)
 ):
     """Upload a VTT or SRT transcript file directly to a coaching session."""
     
-    logger.info(f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, filename={file.filename}")
+    logger.info(f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, filename={file.filename}, convert_to_traditional={convert_to_traditional}")
     
     # Parse speaker role mapping if provided
     speaker_role_mapping = {}
@@ -467,6 +499,12 @@ async def upload_session_transcript(
         
         if not segments:
             raise HTTPException(status_code=400, detail="No valid transcript segments found in file")
+        
+        # Apply Chinese conversion if requested
+        if convert_to_traditional == 'true':
+            logger.info("🔄 Converting transcript content from Simplified to Traditional Chinese")
+            for segment in segments:
+                segment['content'] = convert_to_traditional(segment['content'])
         
         # Calculate total duration
         total_duration = 0

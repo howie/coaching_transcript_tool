@@ -24,28 +24,51 @@ const NewSessionContent = () => {
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [currencies, setCurrencies] = useState<any[]>([]);
-  const [formData, setFormData] = useState({
-    session_date: new Date().toISOString().split('T')[0],
-    client_id: preSelectedClientId || '',
-    duration_min: 60,
-    fee_currency: 'TWD',
-    fee_amount: 0,
-    notes: ''
+  const [formData, setFormData] = useState(() => {
+    const initialData = {
+      session_date: new Date().toISOString().split('T')[0],
+      client_id: preSelectedClientId || '',
+      duration_min: 60,
+      fee_currency: 'TWD',
+      fee_amount: 0,
+      notes: ''
+    };
+    console.log('🎯 Initial form data:', initialData);
+    return initialData;
   });
+  const [loadingLastSession, setLoadingLastSession] = useState(false);
 
   useEffect(() => {
     fetchClients();
     fetchCurrencies();
   }, []);
 
+  // Load last session data when client is selected
+  useEffect(() => {
+    console.log('🔄 Client ID changed:', formData.client_id);
+    if (formData.client_id) {
+      fetchLastSessionData(formData.client_id);
+    } else {
+      console.log('🔄 Resetting to default values');
+      // Reset to default values when no client is selected
+      setFormData(prev => ({
+        ...prev,
+        duration_min: 60,
+        fee_currency: 'TWD',
+        fee_amount: 0
+      }));
+    }
+  }, [formData.client_id]);
+
   const fetchClients = async () => {
     try {
       const response = await apiClient.getClients(1, 100);
       setClients(response.items);
       
-      // If pre-selected client, set it
+      // If pre-selected client, set it and load its last session data
       if (preSelectedClientId && response.items.some((c: Client) => c.id === preSelectedClientId)) {
         setFormData(prev => ({ ...prev, client_id: preSelectedClientId }));
+        // Note: fetchLastSessionData will be called by the useEffect watching client_id
       }
     } catch (error) {
       console.error('Failed to fetch clients:', error);
@@ -75,6 +98,33 @@ const NewSessionContent = () => {
         { value: 'USD', label: 'USD - 美元' },
         { value: 'CNY', label: 'CNY - 人民幣' }
       ]);
+    }
+  };
+
+  const fetchLastSessionData = async (clientId: string) => {
+    console.log('🔍 Fetching last session data for client:', clientId);
+    setLoadingLastSession(true);
+    try {
+      const lastSession = await apiClient.getClientLastSession(clientId);
+      console.log('📊 Last session response:', lastSession);
+      
+      if (lastSession) {
+        console.log('✅ Updating form with last session data:', lastSession);
+        // Update form with last session's duration and fee
+        setFormData(prev => ({
+          ...prev,
+          duration_min: lastSession.duration_min,
+          fee_currency: lastSession.fee_currency,
+          fee_amount: lastSession.fee_amount
+        }));
+      } else {
+        console.log('ℹ️ No previous session found for this client');
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch last session data:', error);
+      // Keep default values if fetch fails
+    } finally {
+      setLoadingLastSession(false);
     }
   };
 
@@ -134,6 +184,11 @@ const NewSessionContent = () => {
             <div>
               <label className="block text-sm font-medium text-content-primary mb-2">
                 {t('sessions.client')} *
+                {loadingLastSession && (
+                  <span className="ml-2 text-sm text-content-secondary">
+                    (載入上次會談資料中...)
+                  </span>
+                )}
               </label>
               <Select
                 required
