@@ -102,6 +102,7 @@ const SessionDetailPage = () => {
   const [isUploadingTranscript, setIsUploadingTranscript] = useState(false);
   const [speakerRoleMapping, setSpeakerRoleMapping] = useState<{[speakerId: string]: 'coach' | 'client'}>({});
   const [previewSegments, setPreviewSegments] = useState<Array<{speaker_id: string, speaker_name: string, content: string, count: number}>>([]);
+  const [convertToTraditional, setConvertToTraditional] = useState(false);
 
   // Use transcription status hook for progress tracking
   const transcriptionSessionId = session?.transcription_session_id;
@@ -623,7 +624,12 @@ const SessionDetailPage = () => {
     setIsUploadingTranscript(true);
     try {
       // Create a new API call for direct transcript upload to session
-      const response = await apiClient.uploadSessionTranscript(session.id, transcriptFile, speakerRoleMapping);
+      const response = await apiClient.uploadSessionTranscript(
+        session.id, 
+        transcriptFile, 
+        speakerRoleMapping,
+        convertToTraditional
+      );
       
       console.log('Upload response:', response);
       
@@ -835,14 +841,9 @@ const SessionDetailPage = () => {
           >
             <ChatBubbleLeftRightIcon className="h-4 w-4" />
             AI 分析
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
-              Beta
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+              即將推出
             </span>
-            {hasTranscript && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                可用
-              </span>
-            )}
           </button>
         </div>
 
@@ -1146,6 +1147,25 @@ const SessionDetailPage = () => {
                             移除
                           </button>
                         </div>
+                      </div>
+
+                      {/* Convert to Traditional Chinese Option */}
+                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={convertToTraditional}
+                            onChange={(e) => setConvertToTraditional(e.target.checked)}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                            disabled={isUploadingTranscript}
+                          />
+                          <div className="flex-1">
+                            <span className="font-medium text-content-primary">轉換為繁體中文</span>
+                            <p className="text-sm text-content-secondary">
+                              自動將簡體中文內容轉換為繁體中文
+                            </p>
+                          </div>
+                        </label>
                       </div>
 
                       {/* Speaker Role Assignment */}
