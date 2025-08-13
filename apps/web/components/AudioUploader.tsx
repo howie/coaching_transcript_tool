@@ -261,10 +261,10 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       // Step 6: Update coaching session with the transcription session ID
       if (sessionId) {
         try {
-          console.log('Updating coaching session:', sessionId, 'with audio_timeseq_id:', session.id)
-          // Update the coaching session with the audio_timeseq_id
+          console.log('Updating coaching session:', sessionId, 'with transcription_session_id:', session.id)
+          // Update the coaching session with the transcription_session_id
           const updateResult = await apiClient.updateSession(sessionId, {
-            audio_timeseq_id: session.id
+            transcription_session_id: session.id
           })
           console.log('Update coaching session result:', updateResult)
           

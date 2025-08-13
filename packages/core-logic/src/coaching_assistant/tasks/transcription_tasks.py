@@ -228,7 +228,7 @@ def transcribe_audio(
                 "session_id": session_id,
                 "status": "completed",
                 "segments_count": len(result.segments),
-                "duration_sec": result.total_duration_sec,
+                "duration_seconds": result.total_duration_sec,
                 "processing_time_sec": processing_duration,
                 "cost_usd": float(result.cost_usd) if result.cost_usd else 0.0,
                 "language_code": result.language_code
@@ -292,8 +292,8 @@ def _save_transcript_segments(
         db_segment = TranscriptSegmentModel(
             session_id=session_id,
             speaker_id=segment.speaker_id,
-            start_sec=segment.start_sec,
-            end_sec=segment.end_sec,
+            start_seconds=segment.start_seconds,
+            end_seconds=segment.end_seconds,
             content=segment.content,
             confidence=segment.confidence
         )
@@ -309,9 +309,9 @@ def _save_transcript_segments(
 def _calculate_actual_duration(db: Session, session_id: UUID) -> int:
     """Calculate actual duration from transcript segments."""
     # Get the maximum end_sec from all segments
-    max_end_sec = db.query(TranscriptSegmentModel.end_sec).filter(
+    max_end_sec = db.query(TranscriptSegmentModel.end_seconds).filter(
         TranscriptSegmentModel.session_id == session_id
-    ).order_by(TranscriptSegmentModel.end_sec.desc()).first()
+    ).order_by(TranscriptSegmentModel.end_seconds.desc()).first()
     
     if max_end_sec and max_end_sec[0]:
         return int(max_end_sec[0])

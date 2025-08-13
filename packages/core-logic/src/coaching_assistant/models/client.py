@@ -10,7 +10,7 @@ class Client(BaseModel):
     """Client model for coaching sessions."""
     
     # Basic info
-    coach_id = Column(
+    user_id = Column(
         UUID(as_uuid=True), 
         ForeignKey("user.id", ondelete="CASCADE"), 
         nullable=False,
@@ -25,14 +25,14 @@ class Client(BaseModel):
     source = Column(String(50), nullable=True)  # referral, organic, friend, social_media
     client_type = Column(String(50), nullable=True)  # paid, pro_bono, free_practice, other
     issue_types = Column(Text, nullable=True)  # Comma-separated list of issue types
-    client_status = Column(String(50), nullable=False, default='first_session')  # completed, in_progress, paused, first_session
+    status = Column(String(50), nullable=False, default='first_session')  # completed, in_progress, paused, first_session
     
     # GDPR / Anonymization
     is_anonymized = Column(Boolean, nullable=False, default=False)
     anonymized_at = Column(DateTime(timezone=True), nullable=True)
     
     # Relationships
-    coach = relationship("User", back_populates="clients")
+    user = relationship("User", back_populates="clients")
     coaching_sessions = relationship(
         "CoachingSession", 
         back_populates="client", 
@@ -41,7 +41,7 @@ class Client(BaseModel):
     )
     
     def __repr__(self):
-        return f"<Client(name={self.name}, coach_id={self.coach_id})>"
+        return f"<Client(name={self.name}, user_id={self.user_id})>"
     
     @property
     def session_count(self) -> int:

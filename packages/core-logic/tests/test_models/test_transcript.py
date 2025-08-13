@@ -14,8 +14,8 @@ class TestTranscriptSegmentModel:
         segment = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=1,
-            start_sec=0.0,
-            end_sec=10.5,
+            start_seconds=0.0,
+            end_seconds=10.5,
             content="Hello, this is a test segment."
         )
         
@@ -25,8 +25,8 @@ class TestTranscriptSegmentModel:
         assert segment.id is not None
         assert segment.session_id == sample_session.id
         assert segment.speaker_id == 1
-        assert segment.start_sec == 0.0
-        assert segment.end_sec == 10.5
+        assert segment.start_seconds == 0.0
+        assert segment.end_seconds == 10.5
         assert segment.content == "Hello, this is a test segment."
         assert segment.created_at is not None
         assert segment.updated_at is not None
@@ -36,8 +36,8 @@ class TestTranscriptSegmentModel:
         segment = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=2,
-            start_sec=10.5,
-            end_sec=25.8,
+            start_seconds=10.5,
+            end_seconds=25.8,
             content="This segment has confidence score.",
             confidence=0.95
         )
@@ -52,8 +52,8 @@ class TestTranscriptSegmentModel:
         segment = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=1,
-            start_sec=5.0,
-            end_sec=15.0,
+            start_seconds=5.0,
+            end_seconds=15.0,
             content="Test content"
         )
         
@@ -68,8 +68,8 @@ class TestTranscriptSegmentModel:
         segment = TranscriptSegment(
             session_id=invalid_session_id,
             speaker_id=1,
-            start_sec=0.0,
-            end_sec=10.0,
+            start_seconds=0.0,
+            end_seconds=10.0,
             content="Invalid segment"
         )
         
@@ -82,37 +82,37 @@ class TestTranscriptSegmentModel:
 class TestTranscriptSegmentProperties:
     """Test TranscriptSegment property methods."""
     
-    @pytest.mark.parametrize("start_sec,end_sec,expected_duration", [
+    @pytest.mark.parametrize("start_seconds,end_seconds,expected_duration", [
         (0.0, 10.0, 10.0),
         (5.5, 15.8, 10.3),
         (100.0, 123.45, 23.45),
         (0.0, 0.5, 0.5),
     ])
-    def test_duration_sec_property(self, db_session, sample_session, start_sec, end_sec, expected_duration):
+    def test_duration_sec_property(self, db_session, sample_session, start_seconds, end_seconds, expected_duration):
         """Test duration_sec property calculation."""
         segment = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=1,
-            start_sec=start_sec,
-            end_sec=end_sec,
+            start_seconds=start_seconds,
+            end_seconds=end_seconds,
             content="Test content"
         )
         
         assert abs(segment.duration_sec - expected_duration) < 0.01  # Allow small floating point errors
     
-    @pytest.mark.parametrize("start_sec,end_sec,expected_timespan", [
+    @pytest.mark.parametrize("start_seconds,end_seconds,expected_timespan", [
         (0.0, 10.0, "00:00 - 00:10"),
         (65.0, 125.0, "01:05 - 02:05"),
         (3661.0, 3721.0, "61:01 - 62:01"),  # Over 60 minutes
         (5.5, 15.8, "00:05 - 00:15"),  # Fractional seconds rounded down
     ])
-    def test_formatted_timespan_property(self, db_session, sample_session, start_sec, end_sec, expected_timespan):
+    def test_formatted_timespan_property(self, db_session, sample_session, start_seconds, end_seconds, expected_timespan):
         """Test formatted_timespan property."""
         segment = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=1,
-            start_sec=start_sec,
-            end_sec=end_sec,
+            start_seconds=start_seconds,
+            end_seconds=end_seconds,
             content="Test content"
         )
         
@@ -123,8 +123,8 @@ class TestTranscriptSegmentProperties:
         segment = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=3,
-            start_sec=0.0,
-            end_sec=10.0,
+            start_seconds=0.0,
+            end_seconds=10.0,
             content="Test content"
         )
         
@@ -139,8 +139,8 @@ class TestTranscriptSegmentRelationships:
         segment = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=1,
-            start_sec=0.0,
-            end_sec=10.0,
+            start_seconds=0.0,
+            end_seconds=10.0,
             content="Test relationship"
         )
         
@@ -338,24 +338,24 @@ class TestIntegratedTranscriptFunctionality:
             TranscriptSegment(
                 session_id=sample_session.id,
                 speaker_id=1,
-                start_sec=0.0,
-                end_sec=10.0,
+                start_seconds=0.0,
+                end_seconds=10.0,
                 content="Hello, I'm the coach.",
                 confidence=0.95
             ),
             TranscriptSegment(
                 session_id=sample_session.id,
                 speaker_id=2,
-                start_sec=10.0,
-                end_sec=20.0,
+                start_seconds=10.0,
+                end_seconds=20.0,
                 content="Hi, I'm the client.",
                 confidence=0.92
             ),
             TranscriptSegment(
                 session_id=sample_session.id,
                 speaker_id=1,
-                start_sec=20.0,
-                end_sec=30.0,
+                start_seconds=20.0,
+                end_seconds=30.0,
                 content="How are you feeling today?",
                 confidence=0.88
             )
@@ -386,10 +386,10 @@ class TestIntegratedTranscriptFunctionality:
         assert sample_session.get_speaker_role(1) == "coach"
         assert sample_session.get_speaker_role(2) == "client"
         
-        # Test segment ordering (should be ordered by start_sec)
+        # Test segment ordering (should be ordered by start_seconds)
         session_segments = sample_session.segments.all()
         for i in range(len(session_segments) - 1):
-            assert session_segments[i].start_sec <= session_segments[i + 1].start_sec
+            assert session_segments[i].start_seconds <= session_segments[i + 1].start_seconds
         
         # Test total duration calculation
         total_duration = sum(seg.duration_sec for seg in session_segments)

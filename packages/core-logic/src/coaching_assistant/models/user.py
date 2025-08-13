@@ -44,13 +44,13 @@ class User(BaseModel):
     )
     clients = relationship(
         "Client", 
-        back_populates="coach", 
+        back_populates="user", 
         cascade="all, delete-orphan",
         lazy="dynamic"
     )
     coaching_sessions = relationship(
         "CoachingSession", 
-        back_populates="coach", 
+        back_populates="user", 
         cascade="all, delete-orphan",
         lazy="dynamic"
     )

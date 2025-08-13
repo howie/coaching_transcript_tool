@@ -31,7 +31,7 @@ class Session(BaseModel):
     
     # Audio file info
     audio_filename = Column(String(255))
-    duration_sec = Column(Integer)  # Actual duration from STT
+    duration_seconds = Column(Integer)  # Actual duration from STT
     language = Column(String(20), default="auto")  # Language code (cmn-Hant-TW, cmn-Hans-CN, en-US, auto)
     
     # Processing status
@@ -54,7 +54,7 @@ class Session(BaseModel):
         back_populates="session", 
         cascade="all, delete-orphan",
         lazy="dynamic",
-        order_by="TranscriptSegment.start_sec"
+        order_by="TranscriptSegment.start_seconds"
     )
     roles = relationship(
         "SessionRole", 
@@ -79,7 +79,7 @@ class Session(BaseModel):
     @property 
     def duration_minutes(self) -> float:
         """Get duration in minutes."""
-        return (self.duration_sec or 0) / 60.0
+        return (self.duration_seconds or 0) / 60.0
     
     @property
     def is_processing_complete(self) -> bool:
@@ -104,10 +104,10 @@ class Session(BaseModel):
         if error_message:
             self.error_message = error_message
     
-    def mark_completed(self, duration_sec: int, cost_usd: str = None):
+    def mark_completed(self, duration_seconds: int, cost_usd: str = None):
         """Mark session as completed with duration and cost."""
         self.status = SessionStatus.COMPLETED
-        self.duration_sec = duration_sec
+        self.duration_seconds = duration_seconds
         if cost_usd:
             self.stt_cost_usd = cost_usd
     

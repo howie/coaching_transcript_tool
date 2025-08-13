@@ -35,7 +35,7 @@ class TestSessionModel:
             title="Premium Session",
             user_id=sample_user.id,
             audio_filename="premium_audio.mp3",
-            duration_sec=3600,
+            duration_seconds=3600,
             language="zh-TW",
             status=SessionStatus.COMPLETED,
             gcs_audio_path="gs://bucket/audio.mp3",
@@ -47,7 +47,7 @@ class TestSessionModel:
         db_session.commit()
         
         assert session.audio_filename == "premium_audio.mp3"
-        assert session.duration_sec == 3600
+        assert session.duration_seconds == 3600
         assert session.language == "zh-TW"
         assert session.status == SessionStatus.COMPLETED
         assert session.gcs_audio_path == "gs://bucket/audio.mp3"
@@ -95,19 +95,19 @@ class TestSessionStatus:
 class TestSessionProperties:
     """Test Session property methods."""
     
-    @pytest.mark.parametrize("duration_sec,expected_minutes", [
+    @pytest.mark.parametrize("duration_seconds,expected_minutes", [
         (0, 0.0),
         (60, 1.0),
         (90, 1.5),
         (3600, 60.0),
         (None, 0.0),  # Handle None case
     ])
-    def test_duration_minutes_property(self, db_session, sample_user, duration_sec, expected_minutes):
+    def test_duration_minutes_property(self, db_session, sample_user, duration_seconds, expected_minutes):
         """Test duration_minutes property calculation."""
         session = Session(
             title="Test Session",
             user_id=sample_user.id,
-            duration_sec=duration_sec
+            duration_seconds=duration_seconds
         )
         
         assert session.duration_minutes == expected_minutes
@@ -141,15 +141,15 @@ class TestSessionProperties:
         segment1 = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=1,
-            start_sec=0.0,
-            end_sec=10.0,
+            start_seconds=0.0,
+            end_seconds=10.0,
             content="Hello"
         )
         segment2 = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=2,
-            start_sec=10.0,
-            end_sec=20.0,
+            start_seconds=10.0,
+            end_seconds=20.0,
             content="World"
         )
         
@@ -179,18 +179,18 @@ class TestSessionMethods:
     
     def test_mark_completed_without_cost(self, sample_session):
         """Test mark_completed method without cost."""
-        sample_session.mark_completed(duration_sec=1800)
+        sample_session.mark_completed(duration_seconds=1800)
         
         assert sample_session.status == SessionStatus.COMPLETED
-        assert sample_session.duration_sec == 1800
+        assert sample_session.duration_seconds == 1800
         assert sample_session.stt_cost_usd is None
     
     def test_mark_completed_with_cost(self, sample_session):
         """Test mark_completed method with cost."""
-        sample_session.mark_completed(duration_sec=1800, cost_usd="0.03")
+        sample_session.mark_completed(duration_seconds=1800, cost_usd="0.03")
         
         assert sample_session.status == SessionStatus.COMPLETED
-        assert sample_session.duration_sec == 1800
+        assert sample_session.duration_seconds == 1800
         assert sample_session.stt_cost_usd == "0.03"
     
     def test_mark_failed(self, sample_session):
@@ -250,15 +250,15 @@ class TestSessionRelationships:
         segment1 = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=1,
-            start_sec=0.0,
-            end_sec=10.0,
+            start_seconds=0.0,
+            end_seconds=10.0,
             content="First segment"
         )
         segment2 = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=2,
-            start_sec=10.0,
-            end_sec=20.0,
+            start_seconds=10.0,
+            end_seconds=20.0,
             content="Second segment"
         )
         
@@ -268,7 +268,7 @@ class TestSessionRelationships:
         # Test relationship and ordering
         segments = sample_session.segments.all()
         assert len(segments) == 2
-        assert segments[0].start_sec <= segments[1].start_sec  # Ordered by start_sec
+        assert segments[0].start_seconds <= segments[1].start_seconds  # Ordered by start_seconds
     
     def test_session_roles_relationship(self, db_session, sample_session):
         """Test session-roles relationship."""
@@ -304,8 +304,8 @@ class TestSessionRelationships:
         segment = TranscriptSegment(
             session_id=sample_session.id,
             speaker_id=1,
-            start_sec=0.0,
-            end_sec=10.0,
+            start_seconds=0.0,
+            end_seconds=10.0,
             content="Test segment"
         )
         role = SessionRole(

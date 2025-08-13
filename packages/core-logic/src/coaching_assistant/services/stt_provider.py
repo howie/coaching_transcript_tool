@@ -13,14 +13,14 @@ logger = logging.getLogger(__name__)
 class TranscriptSegment:
     """A single transcript segment from STT processing."""
     speaker_id: int
-    start_sec: float
-    end_sec: float
+    start_seconds: float
+    end_seconds: float
     content: str
     confidence: float
     
     @property
     def duration_sec(self) -> float:
-        return self.end_sec - self.start_sec
+        return self.end_seconds - self.start_seconds
 
 
 @dataclass

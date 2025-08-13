@@ -23,7 +23,7 @@ class ClientCreate(BaseModel):
     source: Optional[str] = None
     client_type: Optional[str] = None
     issue_types: Optional[str] = None
-    client_status: Optional[str] = Field(default='first_session')
+    status: Optional[str] = Field(default='first_session')
 
 
 class ClientUpdate(BaseModel):
@@ -34,7 +34,7 @@ class ClientUpdate(BaseModel):
     source: Optional[str] = None
     client_type: Optional[str] = None
     issue_types: Optional[str] = None
-    client_status: Optional[str] = None
+    status: Optional[str] = None
 
 
 class ClientResponse(BaseModel):
@@ -46,7 +46,7 @@ class ClientResponse(BaseModel):
     source: Optional[str]
     client_type: Optional[str]
     issue_types: Optional[str]
-    client_status: str
+    status: str
     is_anonymized: bool
     anonymized_at: Optional[str]
     session_count: int
@@ -76,7 +76,7 @@ async def list_clients(
     current_user: User = Depends(get_current_user_dependency)
 ):
     """List clients for the current user."""
-    query_filter = and_(Client.coach_id == current_user.id)
+    query_filter = and_(Client.user_id == current_user.id)
     
     if query:
         search_filter = or_(
@@ -120,7 +120,7 @@ async def list_clients(
             "source": client.source,
             "client_type": client.client_type,
             "issue_types": client.issue_types,
-            "client_status": client.client_status,
+            "status": client.status,
             "is_anonymized": client.is_anonymized,
             "anonymized_at": client.anonymized_at.isoformat() if client.anonymized_at else None,
             "session_count": session_count,
@@ -153,7 +153,7 @@ async def get_client_statistics(
         print(f"Statistics request from user: {current_user.id}")
         
         # Get all clients for the coach
-        clients = db.query(Client).filter(Client.coach_id == current_user.id).all()
+        clients = db.query(Client).filter(Client.user_id == current_user.id).all()
         print(f"Found {len(clients)} clients")
         
         # Initialize empty distributions
@@ -247,7 +247,7 @@ async def get_client(
 ):
     """Get a specific client."""
     client = db.query(Client).filter(
-        and_(Client.id == client_id, Client.coach_id == current_user.id)
+        and_(Client.id == client_id, Client.user_id == current_user.id)
     ).first()
     
     if not client:
@@ -272,7 +272,7 @@ async def get_client(
         "source": client.source,
         "client_type": client.client_type,
         "issue_types": client.issue_types,
-        "client_status": client.client_status,
+        "status": client.status,
         "is_anonymized": client.is_anonymized,
         "anonymized_at": client.anonymized_at.isoformat() if client.anonymized_at else None,
         "session_count": session_count,
@@ -296,7 +296,7 @@ async def create_client(
     if client_data.email:
         existing = db.query(Client).filter(
             and_(
-                Client.coach_id == current_user.id,
+                Client.user_id == current_user.id,
                 func.lower(Client.email) == client_data.email.lower(),
                 Client.email.isnot(None)
             )
@@ -309,7 +309,7 @@ async def create_client(
             )
     
     client = Client(
-        coach_id=current_user.id,
+        user_id=current_user.id,
         name=client_data.name,
         email=client_data.email,
         phone=client_data.phone,
@@ -317,7 +317,7 @@ async def create_client(
         source=client_data.source,
         client_type=client_data.client_type,
         issue_types=client_data.issue_types,
-        client_status=client_data.client_status or 'first_session'
+        status=client_data.status or 'first_session'
     )
     
     db.add(client)
@@ -333,7 +333,7 @@ async def create_client(
         "source": client.source,
         "client_type": client.client_type,
         "issue_types": client.issue_types,
-        "client_status": client.client_status,
+        "status": client.status,
         "is_anonymized": client.is_anonymized,
         "anonymized_at": client.anonymized_at.isoformat() if client.anonymized_at else None,
         "session_count": 0,
@@ -355,7 +355,7 @@ async def update_client(
 ):
     """Update a client."""
     client = db.query(Client).filter(
-        and_(Client.id == client_id, Client.coach_id == current_user.id)
+        and_(Client.id == client_id, Client.user_id == current_user.id)
     ).first()
     
     if not client:
@@ -371,7 +371,7 @@ async def update_client(
     if client_data.email and client_data.email != client.email:
         existing = db.query(Client).filter(
             and_(
-                Client.coach_id == current_user.id,
+                Client.user_id == current_user.id,
                 func.lower(Client.email) == client_data.email.lower(),
                 Client.email.isnot(None),
                 Client.id != client_id
@@ -411,7 +411,7 @@ async def update_client(
         "source": client.source,
         "client_type": client.client_type,
         "issue_types": client.issue_types,
-        "client_status": client.client_status,
+        "status": client.status,
         "is_anonymized": client.is_anonymized,
         "anonymized_at": client.anonymized_at.isoformat() if client.anonymized_at else None,
         "session_count": session_count,
@@ -432,7 +432,7 @@ async def delete_client(
 ):
     """Delete a client (hard delete, only if no sessions)."""
     client = db.query(Client).filter(
-        and_(Client.id == client_id, Client.coach_id == current_user.id)
+        and_(Client.id == client_id, Client.user_id == current_user.id)
     ).first()
     
     if not client:
@@ -463,7 +463,7 @@ async def anonymize_client(
 ):
     """Anonymize a client for GDPR compliance."""
     client = db.query(Client).filter(
-        and_(Client.id == client_id, Client.coach_id == current_user.id)
+        and_(Client.id == client_id, Client.user_id == current_user.id)
     ).first()
     
     if not client:
@@ -477,7 +477,7 @@ async def anonymize_client(
     
     # Get next anonymous number for this coach
     anonymous_count = db.query(Client).filter(
-        and_(Client.coach_id == current_user.id, Client.is_anonymized == True)
+        and_(Client.user_id == current_user.id, Client.is_anonymized == True)
     ).count()
     
     next_number = anonymous_count + 1

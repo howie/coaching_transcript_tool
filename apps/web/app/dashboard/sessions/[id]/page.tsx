@@ -24,8 +24,7 @@ interface Session {
   fee_amount: number;
   fee_display: string;
   duration_display: string;
-  transcript_timeseq_id?: string;
-  audio_timeseq_id?: string;
+  transcription_session_id?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -104,9 +103,8 @@ const SessionDetailPage = () => {
   const [speakerRoleMapping, setSpeakerRoleMapping] = useState<{[speakerId: string]: 'coach' | 'client'}>({});
   const [previewSegments, setPreviewSegments] = useState<Array<{speaker_id: string, speaker_name: string, content: string, count: number}>>([]);
 
-  // Use transcription status hook for progress tracking  
-  // TECHNICAL DEBT: audio_timeseq_id is a confusing name - it actually stores transcription session.id
-  const audioSessionId = session?.audio_timeseq_id;
+  // Use transcription status hook for progress tracking
+  const transcriptionSessionId = session?.transcription_session_id;
   
   // Debug client information
   console.log('Client debug info:', {
@@ -126,9 +124,9 @@ const SessionDetailPage = () => {
     stopPolling,
     isPolling,
     refetch
-  } = useTranscriptionStatus(audioSessionId || null, {
-    // Always enable polling if audioSessionId exists, restrict polling by active tab only
-    enablePolling: Boolean(audioSessionId && (activeTab === 'overview' || activeTab === 'transcript'))
+  } = useTranscriptionStatus(transcriptionSessionId || null, {
+    // Always enable polling if transcriptionSessionId exists, restrict polling by active tab only
+    enablePolling: Boolean(transcriptionSessionId && (activeTab === 'overview' || activeTab === 'transcript'))
   });
 
   // Determine if this session was created from direct transcript upload (not audio)
@@ -142,20 +140,13 @@ const SessionDetailPage = () => {
     }
   }, [sessionId]);
 
-  // When session loads and has audio_timeseq_id, trigger transcription status check
   useEffect(() => {
-    if (session?.audio_timeseq_id && refetch) {
-      refetch();
+    // Auto-fetch transcript when transcription is completed and we don't have it yet
+    if (transcriptionSession?.status === 'completed' && transcriptionSessionId && !transcript) {
+      console.log('Transcription completed, fetching transcript...');
+      fetchTranscript(transcriptionSessionId);
     }
-  }, [session?.audio_timeseq_id]);
-
-
-  useEffect(() => {
-    // Fetch transcript only when transcription is completed
-    if (transcriptionSession?.status === 'completed' && session?.audio_timeseq_id && !transcript) {
-      fetchTranscript(session.audio_timeseq_id);
-    }
-  }, [transcriptionSession?.status, session?.audio_timeseq_id]);
+  }, [transcriptionSession?.status, transcriptionSessionId, transcript]);
 
   useEffect(() => {
     // Calculate speaking stats when transcript is available
@@ -198,6 +189,13 @@ const SessionDetailPage = () => {
   const fetchSession = async () => {
     try {
       const data = await apiClient.getSession(sessionId);
+      console.log('✅ fetchSession - API response:', {
+        sessionId: data.id,
+        transcription_session_id: data.transcription_session_id,
+        client_id: data.client_id,
+        hasTranscriptionId: Boolean(data.transcription_session_id)
+      });
+      
       setSession(data);
       setFormData({
         session_date: data.session_date,
@@ -207,6 +205,29 @@ const SessionDetailPage = () => {
         fee_amount: data.fee_amount,
         notes: data.notes || ''
       });
+      
+      // Check for transcription session
+      if (data.transcription_session_id) {
+        console.log('🔍 Found existing transcription session:', data.transcription_session_id);
+        
+        // Always try to fetch existing transcript first
+        try {
+          await fetchTranscript(data.transcription_session_id);
+          console.log('✅ Successfully loaded existing transcript');
+        } catch (transcriptError) {
+          console.log('⚠️ No existing transcript found, will check transcription status:', transcriptError);
+          
+          // If no transcript available, trigger transcription status check to see current state
+          if (refetch) {
+            setTimeout(() => {
+              console.log('🔄 Triggering transcription status refetch...');
+              refetch();
+            }, 100); // Small delay to avoid race condition
+          }
+        }
+      } else {
+        console.log('❌ No transcription session found - transcription_session_id is null/undefined');
+      }
     } catch (error: any) {
       console.error('Failed to fetch session:', error);
       
@@ -273,10 +294,10 @@ const SessionDetailPage = () => {
   };
 
   const handleExportTranscript = async () => {
-    if (!session?.audio_timeseq_id) return;
+    if (!transcriptionSessionId) return;
     
     try {
-      const response = await apiClient.exportTranscript(session.audio_timeseq_id, exportFormat);
+      const response = await apiClient.exportTranscript(transcriptionSessionId, exportFormat);
       
       let blob: Blob;
       if (response instanceof Blob) {
@@ -306,6 +327,10 @@ const SessionDetailPage = () => {
   };
 
   const formatTime = (seconds: number) => {
+    // Handle invalid or undefined values
+    if (typeof seconds !== 'number' || isNaN(seconds) || seconds < 0) {
+      return '00:00';
+    }
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -430,11 +455,11 @@ const SessionDetailPage = () => {
   };
 
   const saveRoleAssignments = async () => {
-    if (!session?.audio_timeseq_id) return;
+    if (!transcriptionSessionId) return;
     
     try {
       // Save segment-level role assignments via API
-      await apiClient.updateSegmentRoles(session.audio_timeseq_id, tempSegmentRoles);
+      await apiClient.updateSegmentRoles(transcriptionSessionId, tempSegmentRoles);
       
       // Update local transcript data to include segment roles
       setTranscript(prev => prev ? {
@@ -609,22 +634,52 @@ const SessionDetailPage = () => {
     setIsUploadingTranscript(true);
     try {
       // Create a new API call for direct transcript upload to session
-      await apiClient.uploadSessionTranscript(session.id, transcriptFile, speakerRoleMapping);
+      const response = await apiClient.uploadSessionTranscript(session.id, transcriptFile, speakerRoleMapping);
+      
+      console.log('Upload response:', response);
+      
+      // Update the session with transcription session ID immediately
+      if (response.transcription_session_id) {
+        setSession(prev => prev ? {
+          ...prev,
+          transcription_session_id: response.transcription_session_id
+        } : null);
+      }
       
       // Refresh session and transcript data
       await fetchSession();
-      if (session.audio_timeseq_id) {
-        await fetchTranscript(session.audio_timeseq_id);
+      
+      // If we have a transcription session ID, fetch the transcript
+      const newTranscriptionSessionId = response.transcription_session_id || session.transcription_session_id;
+      if (newTranscriptionSessionId) {
+        // Force refetch transcription status and transcript
+        if (refetch) {
+          await refetch();
+        }
+        await fetchTranscript(newTranscriptionSessionId);
       }
       
       // Reset upload state
       setTranscriptFile(null);
       setPreviewSegments([]);
       setSpeakerRoleMapping({});
-      alert('逐字稿上傳成功！');
+      
+      // Show success feedback
+      alert('逐字稿上傳成功！已建立 ' + response.segments_count + ' 個對話片段');
+      
+      // Switch to transcript tab to show the uploaded content
+      setActiveTab('transcript');
+      
+      // Set upload mode back to audio for future uploads
+      setUploadMode('audio');
+      
     } catch (error) {
       console.error('Failed to upload transcript:', error);
-      alert('逐字稿上傳失敗，請重試');
+      let errorMessage = '逐字稿上傳失敗，請重試';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      alert(errorMessage);
     } finally {
       setIsUploadingTranscript(false);
     }
@@ -986,7 +1041,7 @@ const SessionDetailPage = () => {
               </h3>
               
               {/* Upload Mode Selection */}
-              {!session?.audio_timeseq_id && !hasTranscript && (
+              {!transcriptionSessionId && !hasTranscript && !transcriptionSession && (
                 <div className="mb-6">
                   <p className="text-sm text-content-secondary mb-3">請選擇上傳方式：</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1028,18 +1083,18 @@ const SessionDetailPage = () => {
               )}
 
               {/* Audio Upload Mode */}
-              {uploadMode === 'audio' && (
+              {uploadMode === 'audio' && !transcriptionSessionId && !hasTranscript && (
                 <AudioUploader
                   sessionId={sessionId}
-                  existingAudioSessionId={session?.audio_timeseq_id || undefined}
+                  existingAudioSessionId={transcriptionSessionId || undefined}
                   isSessionLoading={fetching}
                   transcriptionStatus={transcriptionStatus}
                   transcriptionSession={transcriptionSession}
-                  onUploadComplete={(audioSessionId) => {
-                    // Update session with new audio session ID
+                  onUploadComplete={(newTranscriptionSessionId) => {
+                    // Update session with new transcription session ID
                     setSession(prev => prev ? {
                       ...prev,
-                      audio_timeseq_id: audioSessionId
+                      transcription_session_id: newTranscriptionSessionId
                     } : null);
                     // Trigger transcript fetch if needed
                     fetchSession();
@@ -1048,7 +1103,7 @@ const SessionDetailPage = () => {
               )}
 
               {/* Transcript Upload Mode */}
-              {uploadMode === 'transcript' && (
+              {uploadMode === 'transcript' && !transcriptionSessionId && !hasTranscript && (
                 <div className="space-y-4">
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4">
                     <div className="flex">
@@ -1165,6 +1220,31 @@ const SessionDetailPage = () => {
                       </Button>
                     </div>
                   )}
+                </div>
+              )}
+              
+              {/* Transcription Status Display */}
+              {transcriptionSessionId && (
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-3">
+                    <DocumentTextIcon className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <h4 className="font-medium text-blue-800 dark:text-blue-200">轉檔記錄</h4>
+                      <p className="text-sm text-blue-600 dark:text-blue-300">
+                        {hasTranscript ? 
+                          '逐字稿已完成，可於逐字稿分頁查看內容' : 
+                          transcriptionSession?.status === 'completed' ? 
+                            '轉檔已完成，正在載入逐字稿...' :
+                            `轉檔狀態：${transcriptionSession?.status || '檢查中...'}`
+                        }
+                      </p>
+                      {transcriptionSession?.id && (
+                        <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                          轉檔 ID: {transcriptionSession.id}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
               

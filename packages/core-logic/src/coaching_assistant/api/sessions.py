@@ -43,7 +43,7 @@ class SessionResponse(BaseModel):
     status: SessionStatus
     language: str
     audio_filename: Optional[str]
-    duration_sec: Optional[int]
+    duration_seconds: Optional[int]
     duration_minutes: Optional[float]
     segments_count: int
     error_message: Optional[str]
@@ -62,7 +62,7 @@ class SessionResponse(BaseModel):
             status=session.status,
             language=session.language,
             audio_filename=session.audio_filename,
-            duration_sec=session.duration_sec,
+            duration_seconds=session.duration_seconds,
             duration_minutes=session.duration_minutes,
             segments_count=session.segments_count,
             error_message=session.error_message,
@@ -433,7 +433,7 @@ async def export_transcript(
     # Get transcript segments
     segments = db.query(TranscriptSegment).filter(
         TranscriptSegment.session_id == session_id
-    ).order_by(TranscriptSegment.start_sec).all()
+    ).order_by(TranscriptSegment.start_seconds).all()
     
     if not segments:
         raise HTTPException(status_code=404, detail="No transcript segments found")
@@ -674,7 +674,7 @@ def _create_default_status(session: Session, db: DBSession) -> ProcessingStatus:
         status=status_str,
         progress=progress,
         message=message,
-        duration_total=session.duration_sec,
+        duration_total=session.duration_seconds,
         started_at=session.created_at if session.status == SessionStatus.PROCESSING else None
     )
     
@@ -698,9 +698,9 @@ def _update_processing_progress(session: Session, status: ProcessingStatus, db: 
     
     # Only estimate progress if we don't have actual progress from Celery task
     # The Celery task sets actual progress, so we should NOT override it here
-    if session.duration_sec and (status.progress is None or status.progress == 0):
+    if session.duration_seconds and (status.progress is None or status.progress == 0):
         # Only set time-based estimate if progress hasn't been set by the actual task
-        expected_processing_time = session.duration_sec * 4  # 4x real-time
+        expected_processing_time = session.duration_seconds * 4  # 4x real-time
         time_based_progress = min(95, (elapsed_seconds / expected_processing_time) * 100)
         status.progress = int(time_based_progress)
         
@@ -728,8 +728,8 @@ def _update_processing_progress(session: Session, status: ProcessingStatus, db: 
     
     # Update estimated completion based on current progress
     current_progress = status.progress or 0
-    if session.duration_sec and current_progress < 95:
-        expected_processing_time = session.duration_sec * 4  # 4x real-time
+    if session.duration_seconds and current_progress < 95:
+        expected_processing_time = session.duration_seconds * 4  # 4x real-time
         remaining_percentage = (100 - current_progress) / 100.0
         remaining_time = expected_processing_time * remaining_percentage
         status.estimated_completion = datetime.utcnow() + datetime.timedelta(seconds=remaining_time)
@@ -759,7 +759,7 @@ def _export_json(session: Session, segments: List[TranscriptSegment], db: DBSess
     data = {
         "session_id": str(session.id),
         "title": session.title,
-        "duration_sec": session.duration_sec,
+        "duration_seconds": session.duration_seconds,
         "language": session.language,
         "created_at": session.created_at.isoformat(),
         "role_assignments": role_assignments,  # Speaker-level roles (for compatibility)
@@ -768,8 +768,8 @@ def _export_json(session: Session, segments: List[TranscriptSegment], db: DBSess
             {
                 "id": str(seg.id),
                 "speaker_id": seg.speaker_id,
-                "start_sec": seg.start_sec,
-                "end_sec": seg.end_sec,
+                "start_sec": seg.start_seconds,  # Frontend expects start_sec
+                "end_sec": seg.end_seconds,      # Frontend expects end_sec
                 "content": seg.content,
                 "confidence": seg.confidence,
                 "role": segment_roles.get(str(seg.id), role_assignments.get(seg.speaker_id, 'unknown'))
@@ -799,8 +799,8 @@ def _export_vtt(session: Session, segments: List[TranscriptSegment], db: DBSessi
     lines = ["WEBVTT", f"NOTE {session.title}", ""]
     
     for seg in segments:
-        start = _format_timestamp_vtt(seg.start_sec)
-        end = _format_timestamp_vtt(seg.end_sec)
+        start = _format_timestamp_vtt(seg.start_seconds)
+        end = _format_timestamp_vtt(seg.end_seconds)
         # Use segment-level role if available, otherwise use speaker-level role
         speaker_label = segment_roles.get(str(seg.id), role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}"))
         lines.append(f"{start} --> {end}")
@@ -829,8 +829,8 @@ def _export_srt(session: Session, segments: List[TranscriptSegment], db: DBSessi
     lines = []
     
     for i, seg in enumerate(segments, 1):
-        start = _format_timestamp_srt(seg.start_sec)
-        end = _format_timestamp_srt(seg.end_sec)
+        start = _format_timestamp_srt(seg.start_seconds)
+        end = _format_timestamp_srt(seg.end_seconds)
         # Use segment-level role if available, otherwise use speaker-level role
         speaker_label = segment_roles.get(str(seg.id), role_assignments.get(seg.speaker_id, f"Speaker {seg.speaker_id}"))
         lines.append(str(i))
@@ -911,7 +911,7 @@ def _export_xlsx(session: Session, segments: List[TranscriptSegment], db: DBSess
             speaker_label = '教練' if seg.speaker_id == 1 else '客戶'
         
         # Format timestamp - only show start time
-        start_time = _format_timestamp_vtt(seg.start_sec)
+        start_time = _format_timestamp_vtt(seg.start_seconds)
         
         data.append({
             'time': start_time,
@@ -1003,17 +1003,18 @@ async def upload_session_transcript(
                 id=uuid4(),
                 session_id=session_id,
                 speaker_id=segment_data.get('speaker_id', 1),  # Default to speaker 1
-                start_sec=segment_data['start_sec'],
-                end_sec=segment_data['end_sec'],
+                start_seconds=segment_data['start_seconds'],
+                end_seconds=segment_data['end_seconds'],
                 content=segment_data['content'],
                 confidence=1.0  # Manual upload, assume high confidence
             )
-            total_duration = max(total_duration, segment_data['end_sec'])
+            total_duration = max(total_duration, segment_data['end_seconds'])
             db.add(segment)
         
         # Update session with transcript info
-        session.audio_timeseq_id = transcription_session_id
-        session.duration_sec = total_duration
+        # Note: session here is a Session (transcription session), not CoachingSession
+        # No need to set transcription_session_id as this session IS the transcription session
+        session.duration_seconds = total_duration
         session.status = SessionStatus.COMPLETED
         
         db.commit()
@@ -1023,7 +1024,7 @@ async def upload_session_transcript(
             "session_id": str(session_id),
             "transcription_session_id": transcription_session_id,
             "segments_count": len(segments),
-            "duration_sec": total_duration
+            "duration_seconds": total_duration
         }
         
     except UnicodeDecodeError:
@@ -1073,8 +1074,8 @@ def _parse_vtt_content(content: str) -> List[dict]:
                         speaker_id = 2 if '客戶' in speaker_name or 'Client' in speaker_name else 1
                     
                     segments.append({
-                        'start_sec': start_time,
-                        'end_sec': end_time,
+                        'start_seconds': start_time,
+                        'end_seconds': end_time,
                         'content': content_text,
                         'speaker_id': speaker_id
                     })
@@ -1120,8 +1121,8 @@ def _parse_srt_content(content: str) -> List[dict]:
                 speaker_id = 2 if '客戶' in speaker_name or 'Client' in speaker_name else 1
             
             segments.append({
-                'start_sec': start_time,
-                'end_sec': end_time,
+                'start_seconds': start_time,
+                'end_seconds': end_time,
                 'content': content_text,
                 'speaker_id': speaker_id
             })
