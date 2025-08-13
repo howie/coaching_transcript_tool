@@ -210,21 +210,10 @@ const SessionDetailPage = () => {
       if (data.transcription_session_id) {
         console.log('🔍 Found existing transcription session:', data.transcription_session_id);
         
-        // Always try to fetch existing transcript first
-        try {
-          await fetchTranscript(data.transcription_session_id);
-          console.log('✅ Successfully loaded existing transcript');
-        } catch (transcriptError) {
-          console.log('⚠️ No existing transcript found, will check transcription status:', transcriptError);
-          
-          // If no transcript available, trigger transcription status check to see current state
-          if (refetch) {
-            setTimeout(() => {
-              console.log('🔄 Triggering transcription status refetch...');
-              refetch();
-            }, 100); // Small delay to avoid race condition
-          }
-        }
+        // Don't automatically fetch transcript here - let the useEffect in line 145 handle it
+        // when transcription status shows completed. This avoids unnecessary API calls for
+        // sessions that are still processing.
+        console.log('ℹ️ Transcription session found, status will be checked via polling');
       } else {
         console.log('❌ No transcription session found - transcription_session_id is null/undefined');
       }

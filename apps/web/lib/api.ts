@@ -364,7 +364,7 @@ class ApiClient {
     source?: string
     client_type?: string
     issue_types?: string
-    client_status?: string
+    status?: string
   }) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/clients`, {
@@ -393,7 +393,7 @@ class ApiClient {
     source?: string
     client_type?: string
     issue_types?: string
-    client_status?: string
+    status?: string
   }) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}`, {
@@ -1105,6 +1105,12 @@ class ApiClient {
         // Handle specific error cases
         if (response.status === 404 && errorData.detail === 'No transcript segments found') {
           // This is a normal case when transcription hasn't completed or failed
+          throw new TranscriptNotAvailableError(errorData.detail)
+        }
+        
+        // Handle case when session is still processing (HTTP 400)
+        if (response.status === 400 && errorData.detail?.includes('Transcript not available. Session status:')) {
+          // This is normal when transcription is still in progress
           throw new TranscriptNotAvailableError(errorData.detail)
         }
         

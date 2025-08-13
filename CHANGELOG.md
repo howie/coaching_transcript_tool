@@ -5,6 +5,25 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2025-08-13
+
+### 🐛 Critical Fixes
+- **Database Schema Consistency**: Fixed Celery worker task execution failures by correcting `duration_sec` to `duration_seconds` column name in transcription_tasks.py
+- **Frontend-Backend Field Alignment**: Resolved client management list status display issues by updating TypeScript interfaces from `client_status` to `status`
+- **Session Page Error Handling**: Improved error handling by removing unnecessary transcript fetch attempts during processing state and adding specific TranscriptNotAvailableError handling
+- **System Reliability**: Enhanced Celery task execution reliability and frontend-backend data consistency
+
+### 🔧 Enhanced
+- **Error Recovery**: Better error boundary handling for session pages
+- **Performance**: Reduced unnecessary API calls during transcription processing states
+- **Data Consistency**: Improved field name alignment across frontend and backend systems
+
+### 📚 Documentation Updates
+- Updated memory bank with recent bug fixes and system improvements
+- Enhanced AI Audio Transcription documentation with latest fixes
+
+---
+
 ## [2.7.0] - 2025-08-12
 
 ### ✨ Added

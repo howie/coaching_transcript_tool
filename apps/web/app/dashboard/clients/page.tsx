@@ -19,7 +19,7 @@ interface Client {
   source?: string;
   client_type?: string;
   issue_types?: string;
-  client_status: string;
+  status: string;
   is_anonymized: boolean;
   anonymized_at?: string;
   session_count: number;
@@ -290,8 +290,8 @@ const ClientsPage = () => {
                       {t('clients.anonymized')}
                     </span>
                   ) : (
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(client.client_status)}`}>
-                      {getStatusLabel(client.client_status)}
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(client.status)}`}>
+                      {getStatusLabel(client.status)}
                     </span>
                   )}
                 </td>
