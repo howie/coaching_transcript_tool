@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import desc
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import json
 import logging
@@ -904,9 +904,9 @@ def _update_processing_progress(session: Session, status: ProcessingStatus, db: 
         expected_processing_time = session.duration_seconds * 4  # 4x real-time
         remaining_percentage = (100 - current_progress) / 100.0
         remaining_time = expected_processing_time * remaining_percentage
-        status.estimated_completion = datetime.utcnow() + datetime.timedelta(seconds=remaining_time)
+        status.estimated_completion = datetime.utcnow() + timedelta(seconds=remaining_time)
     elif current_progress >= 95:
-        status.estimated_completion = datetime.utcnow() + datetime.timedelta(minutes=1)
+        status.estimated_completion = datetime.utcnow() + timedelta(minutes=1)
     
     # Commit the updates
     db.commit()

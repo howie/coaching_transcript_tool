@@ -80,22 +80,24 @@ class AssemblyAIProvider(STTProvider):
         """Convert AssemblyAI speaker ID to integer.
         
         AssemblyAI returns speaker IDs as strings ("A", "B", "C", etc.) 
-        but our database expects integers (0, 1, 2, etc.).
+        but our database expects integers starting from 1 (1, 2, 3, etc.).
+        This matches our frontend/backend convention where 1=coach, 2=client.
         """
         if isinstance(speaker_id, int):
-            return speaker_id
+            # If already an integer, ensure it's at least 1
+            return max(1, speaker_id + 1) if speaker_id == 0 else speaker_id
         
         if isinstance(speaker_id, str):
-            # Convert "A" -> 0, "B" -> 1, "C" -> 2, etc.
+            # Convert "A" -> 1, "B" -> 2, "C" -> 3, etc.
             try:
-                return ord(speaker_id.upper()) - ord('A')
+                return ord(speaker_id.upper()) - ord('A') + 1
             except (ValueError, TypeError):
-                logger.warning(f"Failed to convert speaker ID '{speaker_id}' to integer, defaulting to 0")
-                return 0
+                logger.warning(f"Failed to convert speaker ID '{speaker_id}' to integer, defaulting to 1")
+                return 1
         
         # Fallback for any other type
-        logger.warning(f"Unexpected speaker ID type: {type(speaker_id)}, value: {speaker_id}, defaulting to 0")
-        return 0
+        logger.warning(f"Unexpected speaker ID type: {type(speaker_id)}, value: {speaker_id}, defaulting to 1")
+        return 1
     
     def _process_chinese_text(self, text: str, needs_conversion: bool) -> str:
         """Post-process Chinese transcription from AssemblyAI."""

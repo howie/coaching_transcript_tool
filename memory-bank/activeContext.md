@@ -147,6 +147,46 @@
     - **解決方案**: 移除處理狀態下的轉錄請求，新增 TranscriptNotAvailableError 專門處理
     - **狀態**: ✅ **已完成** - 會話頁面錯誤處理已改善
 
+### Phase 8: 角色分配系統統一與修復完成 (已完成) ✅
+
+1.  **字幕上傳角色映射修復**
+    - **問題分析**: 用戶在字幕上傳時選擇的角色映射被前端重新獲取轉錄本時覆蓋，所有人都變成客戶
+    - **根本原因**: 前後端 speaker key 生成不一致，前端移除所有非字母數字字符，後端只替換空格
+    - **解決方案**: 統一前後端使用相同的 speaker key 正規化規則 `re.sub(r'[^\w_]', '', name.lower().replace(' ', '_'))`
+    - **狀態**: ✅ **已完成** - 字幕上傳角色映射現在正確保留用戶選擇
+
+2.  **前後端角色系統統一**
+    - **問題分析**: 前端使用數字 ID (COACH: 0, CLIENT: 1) 但後端使用不同約定 (1=coach, 2=client)
+    - **解決方案**: 將前後端統一使用字符串枚舉 'coach'/'client' 替代容易混淆的數字 ID
+    - **技術實現**: 
+      - 前端：移除 `SPEAKER_IDS` 常數，使用 `SPEAKER_ROLES = {COACH: 'coach', CLIENT: 'client'}`
+      - 後端：VTT/SRT 解析器同時生成 `speaker_id` (向後兼容) 和 `speaker_role` (新標準)
+    - **狀態**: ✅ **已完成** - 角色系統現在使用清晰的字符串枚舉
+
+3.  **Celery 轉錄任務角色分配修復**
+    - **問題分析**: AssemblyAI 轉換 speaker ID 為 0,1 但前端期待 1,2，且角色分配只存在 metadata 中
+    - **解決方案**: 
+      - 修正 `_convert_speaker_id()`: "A"->1, "B"->2 (而非 "A"->0, "B"->1)
+      - 添加 `_save_speaker_role_assignments()` 將角色分配從 provider_metadata 保存到 SessionRole 表
+    - **狀態**: ✅ **已完成** - 語音轉錄的角色分配現在正確儲存並可被前端獲取
+
+4.  **資料庫角色記錄創建**
+    - **問題分析**: 字幕上傳和語音轉錄的角色分配都沒有創建 SessionRole 記錄
+    - **解決方案**: 
+      - 字幕上傳：創建 SessionRole 記錄保存用戶選擇的角色
+      - 語音轉錄：從 SimpleRoleAssigner 的結果創建 SessionRole 記錄
+    - **狀態**: ✅ **已完成** - 所有角色分配現在都正確保存到資料庫
+
+5.  **後端 API 錯誤修復**
+    - **問題分析**: `update_coaching_session` 函數中缺少 `transcription_session_summary` 變數定義
+    - **解決方案**: 添加 `get_transcription_session_summary()` 調用獲取轉錄會話摘要
+    - **狀態**: ✅ **已完成** - 修復了 500 錯誤和變數未定義問題
+
+6.  **時間相關 import 錯誤修復**
+    - **問題分析**: `sessions.py` 中使用 `datetime.timedelta` 但未正確導入 `timedelta`
+    - **解決方案**: 修正 import 語句 `from datetime import datetime, timedelta`
+    - **狀態**: ✅ **已完成** - 修復了 AttributeError 和會話狀態更新錯誤
+
 ### 下一階段: UI/UX 調整與雙認證系統實作 (待續)
 
 1.  **簡化首頁 (`apps/web/app/page.tsx`)**
@@ -166,4 +206,4 @@
     - **狀態**: 📝 **待開始**
 
 ---
-**上次更新時間:** 2025-08-13 14:00
+**上次更新時間:** 2025-08-14 16:30
