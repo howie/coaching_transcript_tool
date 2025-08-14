@@ -364,22 +364,376 @@ def check_worker_health():
     return result.get(timeout=10)
 ```
 
-## Scaling Considerations
+## Scaling Strategies & Best Practices
 
-### Horizontal Scaling
-- Scale workers based on queue length
-- Use Redis monitoring for queue metrics
-- Set up auto-scaling based on CPU/memory usage
+### 🎯 Concurrency Configuration Guidelines
 
-### Vertical Scaling
-- Monitor task execution time
-- Adjust worker concurrency based on I/O vs CPU workload
-- Audio transcription is I/O bound, so higher concurrency works well
+#### **Task Characteristics Analysis**
+Audio transcription tasks are:
+- **Duration**: 3-5 minutes processing time per task
+- **Nature**: I/O intensive (STT API calls) + moderate CPU usage
+- **Memory**: ~200-500MB per concurrent task
 
-### Cost Optimization
-- Use spot instances for workers when available
-- Scale down workers during low-usage periods
-- Consider serverless options for intermittent workloads
+#### **Scaling Strategy Decision Matrix**
+
+| Deployment Scale | Strategy | Worker Instances | Concurrency per Instance | Total Throughput |
+|------------------|----------|------------------|--------------------------|------------------|
+| **Small** (< 50 users) | Vertical Scaling | 1 instance | `--concurrency=4` | 4 concurrent tasks |
+| **Medium** (50-200 users) | Mixed Scaling | 2-3 instances | `--concurrency=3` | 6-9 concurrent tasks |
+| **Large** (200+ users) | Horizontal Scaling | 4+ instances | `--concurrency=2-3` | 8-12+ concurrent tasks |
+| **Enterprise** (1000+ users) | Multi-Region Horizontal | 10+ instances | `--concurrency=2-3` | 20-30+ concurrent tasks |
+
+### 🚀 Production Configuration Examples
+
+#### **AWS ECS/Fargate Configuration**
+```yaml
+# Small Scale Deployment
+service_small:
+  cpu: 1024  # 1 vCPU
+  memory: 2048  # 2 GB
+  desired_count: 1
+  environment:
+    - CELERY_CONCURRENCY=4
+  
+# Medium Scale Deployment  
+service_medium:
+  cpu: 1024  # 1 vCPU
+  memory: 2048  # 2 GB
+  desired_count: 3
+  environment:
+    - CELERY_CONCURRENCY=3
+  autoscaling:
+    min_capacity: 2
+    max_capacity: 5
+    target_cpu: 70
+
+# Large Scale Deployment
+service_large:
+  cpu: 2048  # 2 vCPU
+  memory: 4096  # 4 GB
+  desired_count: 4
+  environment:
+    - CELERY_CONCURRENCY=2
+  autoscaling:
+    min_capacity: 4
+    max_capacity: 12
+    target_cpu: 60
+```
+
+#### **Google Cloud Run Configuration**
+```yaml
+# Medium Scale
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: celery-worker
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "2"
+        autoscaling.knative.dev/maxScale: "8"
+        autoscaling.knative.dev/target: "3"  # concurrent requests per instance
+    spec:
+      containers:
+      - image: gcr.io/project/celery-worker
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        env:
+        - name: CELERY_CONCURRENCY
+          value: "3"
+        - name: WORKER_MAX_TASKS_PER_CHILD
+          value: "20"
+```
+
+#### **Kubernetes Deployment**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+spec:
+  replicas: 3  # Horizontal scaling
+  template:
+    spec:
+      containers:
+      - name: celery-worker
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        args: 
+        - "celery"
+        - "-A"
+        - "coaching_assistant.core.celery_app"
+        - "worker"
+        - "--concurrency=3"
+        - "--max-tasks-per-child=15"
+        - "--pool=threads"
+```
+
+### 📊 Auto-Scaling Configuration
+
+#### **Queue-Based Auto-Scaling (Recommended)**
+```python
+# Monitor Redis queue length for scaling decisions
+def get_queue_metrics():
+    """Get queue length for auto-scaling decisions"""
+    from redis import Redis
+    import os
+    
+    redis_client = Redis.from_url(os.getenv('REDIS_URL'))
+    
+    return {
+        'queue_length': redis_client.llen('celery'),
+        'active_tasks': len(redis_client.smembers('celery_active_tasks')),
+        'failed_tasks': redis_client.llen('celery_failed')
+    }
+
+# Auto-scaling thresholds
+SCALING_THRESHOLDS = {
+    'scale_up_queue_length': 10,    # Scale up if > 10 tasks waiting
+    'scale_down_queue_length': 2,   # Scale down if < 2 tasks waiting
+    'max_wait_time_minutes': 5,     # Scale up if tasks wait > 5 minutes
+}
+```
+
+#### **AWS CloudWatch Auto-Scaling**
+```yaml
+# Custom metric for queue length
+MetricFilter:
+  Type: AWS::Logs::MetricFilter
+  Properties:
+    LogGroupName: /ecs/celery-worker
+    FilterPattern: '[timestamp, level="INFO", message="Queue length:", queue_length]'
+    MetricTransformations:
+      - MetricNamespace: CeleryQueue
+        MetricName: QueueLength
+        MetricValue: $queue_length
+
+# Auto-scaling policy
+ScalingPolicy:
+  Type: AWS::ApplicationAutoScaling::ScalingPolicy
+  Properties:
+    PolicyType: TargetTrackingScaling
+    TargetTrackingScalingPolicyConfiguration:
+      TargetValue: 5.0  # Target queue length
+      CustomMetricSpecification:
+        MetricName: QueueLength
+        Namespace: CeleryQueue
+        Statistic: Average
+```
+
+#### **Google Cloud Monitoring Auto-Scaling**
+```yaml
+# HPA based on custom metrics
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: celery-worker-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: celery-worker
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: External
+    external:
+      metric:
+        name: redis_queue_length
+      target:
+        type: AverageValue
+        averageValue: "5"  # Scale when queue length > 5
+```
+
+### 💰 Cost Optimization Strategies
+
+#### **Spot Instance Configuration**
+```bash
+# AWS ECS with Spot instances
+aws ecs create-service \
+    --service-name celery-worker-spot \
+    --capacity-provider-strategy \
+        capacityProvider=FARGATE_SPOT,weight=70 \
+        capacityProvider=FARGATE,weight=30
+```
+
+#### **Scheduled Scaling**
+```yaml
+# Scale up during business hours
+BusinessHoursScale:
+  Type: AWS::ApplicationAutoScaling::ScheduledAction
+  Properties:
+    Schedule: cron(0 8 ? * MON-FRI *)  # 8 AM weekdays
+    ScalableDimension: ecs:service:DesiredCount
+    MinCapacity: 4
+    MaxCapacity: 12
+
+# Scale down during off-hours  
+OffHoursScale:
+  Type: AWS::ApplicationAutoScaling::ScheduledAction
+  Properties:
+    Schedule: cron(0 18 ? * MON-FRI *)  # 6 PM weekdays
+    ScalableDimension: ecs:service:DesiredCount
+    MinCapacity: 1
+    MaxCapacity: 3
+```
+
+### 📈 Monitoring & Alerting
+
+#### **Key Metrics to Monitor**
+
+```python
+# Essential Celery metrics
+CRITICAL_METRICS = {
+    # Queue health
+    'redis_queue_length': {'threshold': 20, 'alert': 'high_queue'},
+    'task_wait_time_avg': {'threshold': 300, 'alert': 'slow_processing'},  # 5 minutes
+    
+    # Worker health  
+    'worker_cpu_usage': {'threshold': 80, 'alert': 'high_cpu'},
+    'worker_memory_usage': {'threshold': 85, 'alert': 'high_memory'},
+    'active_worker_count': {'min': 1, 'alert': 'no_workers'},
+    
+    # Task outcomes
+    'task_failure_rate': {'threshold': 0.05, 'alert': 'high_failures'},  # 5%
+    'task_processing_time_p95': {'threshold': 600, 'alert': 'slow_tasks'},  # 10 minutes
+    
+    # Business metrics
+    'concurrent_users': {'threshold': 100, 'alert': 'traffic_spike'},
+    'transcriptions_per_hour': {'min': 10, 'alert': 'low_throughput'},
+}
+```
+
+#### **Alerting Rules**
+```yaml
+# Prometheus/AlertManager rules
+groups:
+- name: celery_alerts
+  rules:
+  - alert: HighQueueLength
+    expr: redis_queue_length > 20
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Celery queue length is high"
+      description: "Queue has {{ $value }} tasks waiting"
+
+  - alert: NoActiveWorkers
+    expr: celery_active_workers == 0
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "No active Celery workers"
+      
+  - alert: HighTaskFailureRate
+    expr: rate(celery_task_failures[5m]) / rate(celery_task_total[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: warning
+```
+
+### 🎯 Performance Tuning Guidelines
+
+#### **Concurrency vs Performance Trade-offs**
+
+| Concurrency Level | Pros | Cons | Best For |
+|-------------------|------|------|----------|
+| **Low (1-2)** | Stable memory usage, easier debugging | Lower throughput | Development, debugging |
+| **Medium (3-4)** | Balanced performance/stability | Moderate resource usage | Most production workloads |
+| **High (5-8)** | Maximum throughput | Higher memory usage, potential I/O contention | High-load scenarios |
+| **Very High (8+)** | Extreme throughput | Memory issues, diminishing returns | Specialized high-throughput needs |
+
+#### **Worker Configuration Best Practices**
+
+```python
+# Production celery_app.py configuration
+celery_app.conf.update(
+    # Prevent memory leaks
+    worker_max_tasks_per_child=50,
+    
+    # Pool configuration for I/O intensive tasks
+    worker_pool='threads',  # Better for I/O bound tasks
+    worker_pool_restarts=True,
+    
+    # Prefetch optimization
+    worker_prefetch_multiplier=1,  # Important for long-running tasks
+    
+    # Task routing for different priorities
+    task_routes={
+        'transcribe_audio': {'queue': 'high_priority'},
+        'batch_operations': {'queue': 'low_priority'},
+    },
+    
+    # Results optimization
+    result_expires=3600,  # 1 hour
+    result_backend_transport_options={
+        'master_name': 'celery',
+        'visibility_timeout': 43200,  # 12 hours
+    },
+    
+    # Error handling
+    task_reject_on_worker_lost=True,
+    task_acks_late=True,
+)
+```
+
+### 🏗️ Multi-Region Deployment
+
+For global scale applications:
+
+```yaml
+# Multi-region architecture
+regions:
+  us-east-1:
+    workers: 3
+    concurrency: 3
+    redis_cluster: primary
+    
+  eu-west-1: 
+    workers: 2
+    concurrency: 3
+    redis_cluster: replica
+    
+  asia-southeast-1:
+    workers: 2
+    concurrency: 3
+    redis_cluster: replica
+
+# Global load balancing
+task_routing:
+  - route: audio_transcription
+    regions: [us-east-1, eu-west-1, asia-southeast-1]
+    strategy: lowest_latency
+```
+
+### 🎯 Quick Reference
+
+#### **Scaling Decision Flowchart**
+```
+Queue Length > 10 → Scale Up Workers
+Queue Length < 2 → Scale Down Workers
+Task Wait Time > 5min → Increase Concurrency
+CPU Usage > 80% → Scale Horizontally
+Memory Usage > 85% → Reduce Concurrency or Scale Horizontally
+Failure Rate > 5% → Reduce Concurrency & Investigate
+```
+
+#### **Recommended Starting Points**
+- **Development**: 1 worker, concurrency=2
+- **Staging**: 1 worker, concurrency=4  
+- **Production (Small)**: 1 worker, concurrency=4
+- **Production (Medium)**: 3 workers, concurrency=3
+- **Production (Large)**: 5+ workers, concurrency=2-3
 
 ---
 

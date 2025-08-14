@@ -122,10 +122,16 @@ celery -A coaching_assistant.core.celery_app worker \
   --concurrency=2 \
   --pool=threads
 
-# For more verbose logging
+# For debugging (single task at a time)
 celery -A coaching_assistant.core.celery_app worker \
   --loglevel=debug \
   --concurrency=1 \
+  --pool=threads
+
+# For performance testing (multiple concurrent tasks)
+celery -A coaching_assistant.core.celery_app worker \
+  --loglevel=info \
+  --concurrency=4 \
   --pool=threads
 ```
 
@@ -325,27 +331,210 @@ print('STT initialized successfully')
 
 ### Performance Tuning
 
-For development, use these Celery settings:
+### 🎯 Development Concurrency Guidelines
+
+Choose concurrency based on your development needs:
+
+#### **Development Scenarios**
+
+| Scenario | Concurrency | Purpose | Command |
+|----------|-------------|---------|---------|
+| **Debugging** | `--concurrency=1` | Single task debugging, step-through | `make run-celery-debug` |
+| **Development** | `--concurrency=2` | Normal development, parallel testing | `make run-celery` |
+| **Performance Testing** | `--concurrency=4` | Load testing, production simulation | Custom command |
+| **Integration Testing** | `--concurrency=3` | Multi-task integration tests | Custom command |
+
+#### **Recommended Development Commands**
 
 ```bash
-# Low concurrency for debugging
-celery worker --concurrency=1 --loglevel=debug
+# 🐛 Debugging mode (sequential processing)
+celery -A coaching_assistant.core.celery_app worker \
+  --loglevel=debug \
+  --concurrency=1 \
+  --pool=threads
 
-# Higher concurrency for testing
-celery worker --concurrency=4 --loglevel=info
+# 🔧 Development mode (balanced)  
+celery -A coaching_assistant.core.celery_app worker \
+  --loglevel=info \
+  --concurrency=2 \
+  --pool=threads
 
-# Enable task events for monitoring
-celery worker --loglevel=info -E
+# 🚀 Performance testing mode
+celery -A coaching_assistant.core.celery_app worker \
+  --loglevel=info \
+  --concurrency=4 \
+  --pool=threads
+
+# 📊 Monitoring enabled
+celery -A coaching_assistant.core.celery_app worker \
+  --loglevel=info \
+  --concurrency=2 \
+  -E  # Enable task events for Flower monitoring
 ```
 
-## Production Considerations
+#### **Makefile Commands Updated**
 
-In production:
-- Use Redis Cluster or managed Redis service
-- Run multiple Celery workers across different machines
-- Use proper process managers (systemd, supervisor)
-- Enable task result persistence
-- Set up monitoring with Flower or Celery monitoring tools
+The project Makefile now supports these configurations:
+
+```bash
+# Default development (concurrency=2)
+make run-celery
+
+# Debug mode (concurrency=2, verbose logging) 
+make run-celery-debug
+
+# Performance testing (custom)
+CELERY_CONCURRENCY=4 make run-celery
+```
+
+## 🚀 Development to Production Transition
+
+### **Environment Progression**
+
+| Environment | Workers | Concurrency | Total Capacity | Use Case |
+|-------------|---------|-------------|----------------|----------|
+| **Local Dev** | 1 | 2 | 2 tasks | Feature development |
+| **Integration** | 1 | 3 | 3 tasks | Integration testing |
+| **Staging** | 1-2 | 4 | 4-8 tasks | Production simulation |
+| **Production** | 2+ | 2-4 | 4-12+ tasks | Live workload |
+
+### **Performance Testing in Development**
+
+Before deploying to production, test scalability locally:
+
+```bash
+# Step 1: Test single worker performance
+celery -A coaching_assistant.core.celery_app worker \
+  --concurrency=1 --loglevel=info
+
+# Step 2: Test parallel processing
+celery -A coaching_assistant.core.celery_app worker \
+  --concurrency=4 --loglevel=info
+
+# Step 3: Test multiple workers (run in separate terminals)
+# Terminal 1:
+celery -A coaching_assistant.core.celery_app worker \
+  --concurrency=2 --loglevel=info --hostname=worker1@%h
+
+# Terminal 2:
+celery -A coaching_assistant.core.celery_app worker \
+  --concurrency=2 --loglevel=info --hostname=worker2@%h
+```
+
+### **Load Testing Framework**
+
+Create a load test script:
+
+```python
+# scripts/load_test_celery.py
+import time
+import concurrent.futures
+from coaching_assistant.tasks.transcription_tasks import transcribe_audio
+
+def simulate_concurrent_uploads(num_tasks=10):
+    """Simulate multiple concurrent transcription requests"""
+    print(f"🚀 Starting load test with {num_tasks} concurrent tasks...")
+    
+    # Mock session data
+    test_sessions = [
+        {
+            'session_id': f'test-session-{i}',
+            'gcs_uri': 'gs://test-bucket/sample-audio.wav',
+            'language': 'en-US',
+            'original_filename': f'test-{i}.wav'
+        }
+        for i in range(num_tasks)
+    ]
+    
+    start_time = time.time()
+    
+    # Submit all tasks concurrently
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = [
+            executor.submit(
+                transcribe_audio.delay,
+                session['session_id'],
+                session['gcs_uri'],
+                session['language'],
+                original_filename=session['original_filename']
+            )
+            for session in test_sessions
+        ]
+        
+        # Wait for all tasks to complete
+        results = []
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                task = future.result()
+                results.append(task.get(timeout=300))  # 5 minute timeout
+            except Exception as e:
+                print(f"❌ Task failed: {e}")
+                results.append(None)
+    
+    end_time = time.time()
+    
+    # Report results
+    successful_tasks = len([r for r in results if r is not None])
+    total_time = end_time - start_time
+    
+    print(f"📊 Load Test Results:")
+    print(f"   Total tasks: {num_tasks}")
+    print(f"   Successful: {successful_tasks}")
+    print(f"   Failed: {num_tasks - successful_tasks}")
+    print(f"   Total time: {total_time:.2f} seconds")
+    print(f"   Average time per task: {total_time/num_tasks:.2f} seconds")
+    print(f"   Tasks per minute: {(num_tasks/total_time)*60:.1f}")
+
+if __name__ == "__main__":
+    simulate_concurrent_uploads(5)  # Start with 5 concurrent tasks
+```
+
+### **Monitoring Setup for Development**
+
+Install and run Flower for task monitoring:
+
+```bash
+# Install Flower
+pip install flower
+
+# Start Flower monitoring
+celery -A coaching_assistant.core.celery_app flower \
+  --port=5555 \
+  --broker=redis://:redis_pass_dev@localhost:6379/0
+
+# Access web interface at: http://localhost:5555
+```
+
+### **Production Scaling Considerations**
+
+When transitioning to production, consider:
+
+#### **Resource Planning**
+```python
+# Calculate resource requirements
+TASK_DURATION_MINUTES = 3.5  # Average transcription time
+PEAK_CONCURRENT_USERS = 100
+SAFETY_MARGIN = 1.5
+
+required_capacity = (PEAK_CONCURRENT_USERS * SAFETY_MARGIN)
+recommended_workers = max(2, required_capacity // 4)  # 4 tasks per worker
+recommended_concurrency = min(4, required_capacity // recommended_workers)
+
+print(f"Recommended configuration:")
+print(f"  Workers: {recommended_workers}")
+print(f"  Concurrency: {recommended_concurrency}")
+print(f"  Total capacity: {recommended_workers * recommended_concurrency} tasks")
+```
+
+#### **Deployment Migration Path**
+1. **Development**: `1 worker × 2 concurrency = 2 capacity`
+2. **Staging**: `1 worker × 4 concurrency = 4 capacity`
+3. **Production (Phase 1)**: `2 workers × 3 concurrency = 6 capacity`
+4. **Production (Scale Up)**: `3 workers × 3 concurrency = 9 capacity`
+5. **Enterprise**: `5+ workers × 2-3 concurrency = 10-15+ capacity`
+
+For detailed production deployment strategies, see:
+📚 **[Production Celery Deployment Guide](./production-celery-deployment.md)**
 
 ---
 
@@ -355,56 +544,103 @@ For more details, see:
 - [Google STT API Documentation](https://cloud.google.com/speech-to-text/docs)
 
 
-###
+## 🔧 Updated Makefile Commands & Production Deployment
 
-🔧 Makefile 新增功能
+### **Makefile Commands**
 
-  新增 Celery 指令:
-  - make run-celery - 啟動 Celery worker (一般模式)
-  - make run-celery-debug - 啟動 Celery worker (除錯模式)
+The project now includes optimized Celery commands:
 
-  新增 Docker 建置指令:
-  - make docker-worker - 建置一般用途 Worker Docker image
-  - make docker-worker-cloudrun - 建置 GCP Cloud Run 專用 Worker image
+```bash
+# Development Commands
+make run-celery         # Start Celery worker (concurrency=2, INFO level)
+make run-celery-debug   # Start Celery worker (concurrency=2, DEBUG level)  
+make run-api           # Start FastAPI server
 
-  📦 生產環境部署策略
+# Docker Build Commands  
+make docker-worker           # Build general Worker Docker image
+make docker-worker-cloudrun  # Build GCP Cloud Run specific Worker image
 
-  Render.com
+# Environment-specific overrides
+CELERY_CONCURRENCY=4 make run-celery  # Override concurrency
+```
 
-  方法 1: 分離服務 (推薦)
-  - API Service: Web Service
-  - Worker Service: Background Worker
-  - 使用 apps/worker/Dockerfile
+### **📦 Production Deployment Strategies**
 
-  方法 2: 合併服務
-  - 單一服務同時執行 API + Worker
-  - 適合小規模應用
+#### **Render.com Deployment Options**
 
-  GCP Cloud Run
+**Method 1: Separate Services (Recommended)**
+- **API Service**: Web Service type
+- **Worker Service**: Background Worker type
+- **Architecture**: `API ←→ Managed Redis ←→ Worker`
+- **Dockerfile**: `apps/worker/Dockerfile`
+- **Scaling**: Independent auto-scaling
 
-  需要 HTTP 端點用於健康檢查
-  - 使用 apps/worker/Dockerfile.cloudrun
-  - 包含 health_server.py 提供健康檢查端點
-  - 支援 Cloud Run 的要求
+**Method 2: Combined Service**
+- **Single Service**: API + Worker in one container
+- **Use Case**: Small to medium scale applications
+- **Resource**: Standard+ instance recommended
 
-  🏗️ 建議架構
+#### **GCP Cloud Run Deployment**
 
-  生產環境推薦分離部署:
-  Web Service (API) ←→ Managed Redis ←→ Worker Service (Celery)
+**Requirements**: HTTP endpoint for health checks
+- **Dockerfile**: `apps/worker/Dockerfile.cloudrun`
+- **Health Server**: `apps/worker/health_server.py`
+- **Auto-scaling**: Built-in based on HTTP requests
+- **Concurrency**: Per-instance concurrent request limits
 
-  優點:
-  - 獨立擴展
-  - 故障隔離
-  - 資源最佳化
-  - 部署靈活性
+### **🏗️ Recommended Production Architecture**
 
-  快速啟動:
-  # 開發環境
-  make run-celery        # 啟動 Celery worker
-  make run-api          # 啟動 API server
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Web Service   │    │ Managed Redis    │    │ Worker Service  │
+│   (Auto-scale   │◄──►│ (HA + Backup)    │◄──►│ (Auto-scale     │
+│    1-10 pods)   │    │                  │    │  2-8 workers)   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
 
-  # Docker 建置
-  make docker-worker    # Render.com 用
-  make docker-worker-cloudrun  # GCP Cloud Run 用
+**Benefits:**
+- 🚀 **Independent Scaling**: Scale API and workers separately
+- 🛡️ **Fault Isolation**: Worker failures don't affect API service
+- 💰 **Resource Optimization**: Different CPU/memory profiles
+- 🔄 **Deployment Flexibility**: Deploy components independently
 
-  所有部署細節和配置範例都已記錄在 docs/deployment/production-celery-deployment.md 中！
+### **🚀 Quick Start Guide**
+
+```bash
+# Local Development Setup
+make dev-setup          # Install dependencies
+docker-compose up -d redis  # Start Redis
+
+# Terminal 1: Start API
+make run-api
+
+# Terminal 2: Start Celery Worker  
+make run-celery-debug   # For debugging
+# OR
+make run-celery         # For development
+
+# Test the setup
+python3 apps/web/test_transcription_flow.py
+```
+
+### **📈 Scaling Path: Development → Production**
+
+| Stage | Setup | Command | Capacity |
+|-------|--------|---------|----------|
+| **Local Dev** | Single worker | `make run-celery-debug` | 2 concurrent |
+| **Integration** | Load testing | `CELERY_CONCURRENCY=4 make run-celery` | 4 concurrent |
+| **Staging** | Production simulation | Deploy 1 worker, concurrency=4 | 4 concurrent |
+| **Production** | Multi-worker setup | Deploy 3 workers, concurrency=3 | 9 concurrent |
+| **Scale Up** | High availability | Deploy 5+ workers, concurrency=2-3 | 10-15+ concurrent |
+
+---
+
+### **📚 Additional Resources**
+
+For comprehensive production deployment details including:
+- Multi-cloud configurations (AWS, GCP, Azure)
+- Auto-scaling policies and monitoring
+- Cost optimization strategies
+- Security best practices
+
+See: **[Production Celery Deployment Guide](./production-celery-deployment.md)**
