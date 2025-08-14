@@ -121,7 +121,7 @@ CREATE TABLE usage_logs (
     transcription_type VARCHAR(20) NOT NULL, -- 'original', 'retry_failed', 'retry_success'
     is_billable BOOLEAN DEFAULT true NOT NULL,
     billing_reason VARCHAR(100),
-    parent_usage_log_id UUID REFERENCES usage_logs(id),
+    parent_log_id UUID REFERENCES usage_logs(id),
     
     -- Plan Information (snapshot)
     user_plan VARCHAR(20) NOT NULL,
@@ -238,7 +238,7 @@ CREATE TABLE subscription_history (
     change_metadata JSONB DEFAULT '{}',
     
     -- Admin info (if changed by admin)
-    changed_by_user_id UUID REFERENCES "user"(id),
+    changed_by_id UUID REFERENCES "user"(id),
     admin_notes TEXT
 );
 
@@ -502,7 +502,7 @@ class UsageTrackingService:
             transcription_type=transcription_type,
             is_billable=is_billable,
             billing_reason=billing_reason,
-            parent_usage_log_id=parent_log.id if parent_log else None,
+            parent_log_id=parent_log.id if parent_log else None,
             
             user_plan=user.plan.value,
             plan_limits=PlanLimits.get_limits(user.plan),
