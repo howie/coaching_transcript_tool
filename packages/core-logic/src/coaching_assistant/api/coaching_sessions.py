@@ -14,7 +14,7 @@ import json
 from ..core.database import get_db
 from ..models import CoachingSession, Client, User, SessionSource
 from ..models.session import Session, SessionStatus
-from ..models.transcript import TranscriptSegment
+from ..models.transcript import TranscriptSegment, SpeakerRole, SessionRole
 from ..api.auth import get_current_user_dependency
 from ..utils.chinese_converter import convert_to_traditional
 
@@ -386,6 +386,9 @@ async def update_coaching_session(
         is_anonymized=session.client.is_anonymized
     )
     
+    # Get transcription session info if available
+    transcription_session_summary = get_transcription_session_summary(db, session.transcription_session_id)
+    
     session_dict = {
         "id": session.id,
         "session_date": session.session_date.isoformat(),
@@ -576,6 +579,7 @@ async def upload_session_transcript(
         db.add(transcription_session)
         
         # Save segments to database (linked to transcription session)
+        speaker_roles_created = set()  # Track which speaker roles we've created
         for i, segment_data in enumerate(segments):
             segment = TranscriptSegment(
                 id=uuid4(),
@@ -587,6 +591,20 @@ async def upload_session_transcript(
                 confidence=1.0  # Manual upload, assume high confidence
             )
             db.add(segment)
+            
+            # Create speaker role assignment if not already created
+            speaker_id = segment_data.get('speaker_id', 1)
+            speaker_role_str = segment_data.get('speaker_role', 'coach')
+            if speaker_id not in speaker_roles_created:
+                speaker_role = SpeakerRole.COACH if speaker_role_str == 'coach' else SpeakerRole.CLIENT
+                session_role = SessionRole(
+                    session_id=transcription_session_id,
+                    speaker_id=speaker_id,
+                    role=speaker_role
+                )
+                db.add(session_role)
+                speaker_roles_created.add(speaker_id)
+                logger.info(f"Created speaker role assignment: speaker_id={speaker_id} -> {speaker_role_str}")
         
         # Update coaching session to reference the transcription session
         session.transcription_session_id = str(transcription_session_id)
@@ -667,8 +685,10 @@ def _parse_vtt_content(content: str, speaker_role_mapping: dict = None) -> List[
                     if speaker_match:
                         speaker_name = speaker_match.group(1).strip()
                         content_text = speaker_match.group(2)
-                        # Create speaker key like the frontend: speaker_jolly_shih, speaker_howie_yu
-                        speaker_key = f"speaker_{speaker_name.lower().replace(' ', '_')}"
+                        # Create speaker key matching frontend format: remove non-alphanumeric chars
+                        # Frontend: speakerKey = `speaker_${speakerName.toLowerCase().replace(/\s+/g, '_').replace(/[^\w_]/g, '')}`;
+                        normalized_name = re.sub(r'[^\w_]', '', speaker_name.lower().replace(' ', '_'))
+                        speaker_key = f"speaker_{normalized_name}"
                     
                     # Format 2: Simple prefix format like "Coach: content" or "Client: content"
                     elif ':' in content_line:
@@ -676,32 +696,38 @@ def _parse_vtt_content(content: str, speaker_role_mapping: dict = None) -> List[
                         if prefix_match:
                             speaker_name = prefix_match.group(1).strip()
                             content_text = prefix_match.group(2).strip()
-                            # Create speaker key from the prefix
-                            speaker_key = f"speaker_{speaker_name.lower().replace(' ', '_')}"
+                            # Create speaker key matching frontend format: remove non-alphanumeric chars
+                            normalized_name = re.sub(r'[^\w_]', '', speaker_name.lower().replace(' ', '_'))
+                            speaker_key = f"speaker_{normalized_name}"
                     
                     # Apply role mapping if provided
                     final_speaker_id = speaker_id
+                    final_speaker_role = 'coach'  # default
                     if speaker_role_mapping and speaker_key:
                         # Use the speaker key to look up the role
-                        role = speaker_role_mapping.get(speaker_key, 'coach')
-                        final_speaker_id = 1 if role == 'coach' else 2
-                        logger.info(f"Applied role mapping: {speaker_key} -> {role} (speaker_id: {final_speaker_id})")
+                        final_speaker_role = speaker_role_mapping.get(speaker_key, 'coach')
+                        final_speaker_id = 1 if final_speaker_role == 'coach' else 2
+                        logger.info(f"Applied role mapping: {speaker_key} -> {final_speaker_role} (speaker_id: {final_speaker_id})")
                     elif speaker_name:
                         # Fallback to name-based assignment when no role mapping is provided
                         if any(keyword in speaker_name.lower() for keyword in ['client', '客戶', '學員']):
                             final_speaker_id = 2
+                            final_speaker_role = 'client'
                         elif any(keyword in speaker_name.lower() for keyword in ['coach', '教練', '老師']):
                             final_speaker_id = 1
+                            final_speaker_role = 'coach'
                         else:
                             # Default assignment based on order
                             final_speaker_id = 1  # Default to coach if unclear
-                        logger.info(f"Name-based assignment: {speaker_name} -> speaker_id: {final_speaker_id}")
+                            final_speaker_role = 'coach'
+                        logger.info(f"Name-based assignment: {speaker_name} -> {final_speaker_role} (speaker_id: {final_speaker_id})")
                     
                     segments.append({
                         'start_seconds': start_time,
                         'end_seconds': end_time,
                         'content': content_text,
-                        'speaker_id': final_speaker_id
+                        'speaker_id': final_speaker_id,
+                        'speaker_role': final_speaker_role
                     })
                     logger.debug(f"Parsed segment: {start_time:.2f}-{end_time:.2f}s, speaker_id: {final_speaker_id}, content: {content_text[:50]}...")
             else:
@@ -764,37 +790,44 @@ def _parse_srt_content(content: str, speaker_role_mapping: dict = None) -> List[
             if speaker_match:
                 speaker_name = speaker_match.group(1).strip()
                 content_text = speaker_match.group(2).strip()
-                # Create speaker key from the prefix
-                speaker_key = f"speaker_{speaker_name.lower().replace(' ', '_')}"
+                # Create speaker key matching frontend format: remove non-alphanumeric chars
+                normalized_name = re.sub(r'[^\w_]', '', speaker_name.lower().replace(' ', '_'))
+                speaker_key = f"speaker_{normalized_name}"
             
             # Apply role mapping if provided
             final_speaker_id = speaker_id
+            final_speaker_role = 'coach'  # default
             if speaker_role_mapping and speaker_key:
                 # Use the speaker key to look up the role
-                role = speaker_role_mapping.get(speaker_key, 'coach')
-                final_speaker_id = 1 if role == 'coach' else 2
-                logger.info(f"Applied SRT role mapping: {speaker_key} -> {role} (speaker_id: {final_speaker_id})")
+                final_speaker_role = speaker_role_mapping.get(speaker_key, 'coach')
+                final_speaker_id = 1 if final_speaker_role == 'coach' else 2
+                logger.info(f"Applied SRT role mapping: {speaker_key} -> {final_speaker_role} (speaker_id: {final_speaker_id})")
             elif speaker_name:
                 # Fallback to name-based assignment when no role mapping is provided
                 if any(keyword in speaker_name.lower() for keyword in ['client', '客戶', '學員']):
                     final_speaker_id = 2
+                    final_speaker_role = 'client'
                 elif any(keyword in speaker_name.lower() for keyword in ['coach', '教練', '老師']):
                     final_speaker_id = 1
+                    final_speaker_role = 'coach'
                 else:
                     # Try to extract speaker ID from name (like "說話者 1", "Speaker 2")
                     speaker_num_match = re.search(r'(\d+)', speaker_name)
                     if speaker_num_match:
                         extracted_id = int(speaker_num_match.group(1))
                         final_speaker_id = extracted_id if extracted_id in [1, 2] else 1
+                        final_speaker_role = 'coach' if final_speaker_id == 1 else 'client'
                     else:
                         final_speaker_id = 1  # Default to coach if unclear
-                logger.info(f"SRT name-based assignment: {speaker_name} -> speaker_id: {final_speaker_id}")
+                        final_speaker_role = 'coach'
+                logger.info(f"SRT name-based assignment: {speaker_name} -> {final_speaker_role} (speaker_id: {final_speaker_id})")
             
             segments.append({
                 'start_seconds': start_time,
                 'end_seconds': end_time,
                 'content': content_text,
-                'speaker_id': final_speaker_id
+                'speaker_id': final_speaker_id,
+                'speaker_role': final_speaker_role
             })
             logger.debug(f"Parsed SRT segment: {start_time:.2f}-{end_time:.2f}s, speaker_id: {final_speaker_id}, content: {content_text[:50]}...")
         else:
