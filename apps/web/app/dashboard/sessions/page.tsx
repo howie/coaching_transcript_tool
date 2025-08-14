@@ -28,6 +28,12 @@ interface CoachingSession {
   fee_display: string;
   duration_display: string;
   transcription_session_id?: string;
+  transcription_session?: {
+    id: string;
+    status: 'uploading' | 'pending' | 'processing' | 'completed' | 'failed';
+    title: string;
+    segments_count: number;
+  };
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -42,6 +48,57 @@ interface SessionFormData {
   notes: string;
 }
 
+
+const getTranscriptionStatusBadge = (session: CoachingSession) => {
+  if (!session.transcription_session_id && !session.transcription_session) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+        無逐字稿
+      </span>
+    );
+  }
+
+  const status = session.transcription_session?.status || 'unknown';
+  
+  switch (status) {
+    case 'uploading':
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+          上傳中
+        </span>
+      );
+    case 'pending':
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+          等待處理
+        </span>
+      );
+    case 'processing':
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+          處理中
+        </span>
+      );
+    case 'completed':
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+          處理完畢
+        </span>
+      );
+    case 'failed':
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+          處理失敗
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+          未知狀態
+        </span>
+      );
+  }
+};
 
 const SessionsPage = () => {
   const { t } = useI18n();
@@ -265,7 +322,7 @@ const SessionsPage = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-white">{t('sessions.title')}</h1>
+        <h1 className="text-3xl font-bold text-foreground">{t('sessions.title')}</h1>
         <Button onClick={openCreateModal} className="flex items-center gap-2">
           <PlusIcon className="h-5 w-5" />
           {t('sessions.addSession')}
@@ -340,6 +397,9 @@ const SessionsPage = () => {
                 {t('sessions.fee')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                逐字稿狀態
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 {t('sessions.actions')}
               </th>
             </tr>
@@ -360,6 +420,9 @@ const SessionsPage = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                   {session.fee_display}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {getTranscriptionStatusBadge(session)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center gap-2">

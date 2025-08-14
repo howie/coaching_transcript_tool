@@ -157,8 +157,8 @@ const SessionDetailPage = () => {
     isPolling,
     refetch
   } = useTranscriptionStatus(transcriptionSessionId || null, {
-    // Always enable polling if transcriptionSessionId exists, restrict polling by active tab only
-    enablePolling: Boolean(transcriptionSessionId && (activeTab === 'overview' || activeTab === 'transcript'))
+    // Always enable polling if transcriptionSessionId exists, don't restrict by tab to maintain state consistency
+    enablePolling: Boolean(transcriptionSessionId)
   });
 
   // Determine if this session was created from direct transcript upload (not audio)
@@ -171,6 +171,13 @@ const SessionDetailPage = () => {
       fetchCurrencies();
     }
   }, [sessionId]);
+
+  // Refresh transcription status when switching back to overview or transcript tabs
+  useEffect(() => {
+    if (transcriptionSessionId && (activeTab === 'overview' || activeTab === 'transcript')) {
+      refetch();
+    }
+  }, [activeTab, transcriptionSessionId, refetch]);
 
   useEffect(() => {
     // Auto-fetch transcript when transcription is completed and we don't have it yet
@@ -1084,7 +1091,7 @@ const SessionDetailPage = () => {
               </h3>
               
               {/* Upload Mode Selection */}
-              {!transcriptionSessionId && !hasTranscript && !transcriptionSession && (
+              {!session?.transcription_session_id && !hasTranscript && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
                 <div className="mb-6">
                   <p className="text-sm text-content-secondary mb-3">請選擇上傳方式：</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1126,7 +1133,7 @@ const SessionDetailPage = () => {
               )}
 
               {/* Audio Upload Mode */}
-              {uploadMode === 'audio' && !transcriptionSessionId && !hasTranscript && (
+              {uploadMode === 'audio' && !session?.transcription_session_id && !hasTranscript && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
                 <AudioUploader
                   sessionId={sessionId}
                   existingAudioSessionId={transcriptionSessionId || undefined}
@@ -1146,7 +1153,7 @@ const SessionDetailPage = () => {
               )}
 
               {/* Transcript Upload Mode */}
-              {uploadMode === 'transcript' && !transcriptionSessionId && !hasTranscript && (
+              {uploadMode === 'transcript' && !session?.transcription_session_id && !hasTranscript && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
                 <div className="space-y-4">
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4">
                     <div className="flex">

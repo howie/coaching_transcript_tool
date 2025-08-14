@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# Move function after class definitions
+
+
 # Pydantic models for request/response
 class CoachingSessionCreate(BaseModel):
     session_date: date
@@ -51,6 +54,29 @@ class ClientSummary(BaseModel):
     is_anonymized: bool
 
 
+class TranscriptionSessionSummary(BaseModel):
+    id: UUID
+    status: str
+    title: str
+    segments_count: int
+
+
+def get_transcription_session_summary(db: Session, transcription_session_id: UUID) -> Optional[TranscriptionSessionSummary]:
+    """Helper function to get transcription session summary."""
+    if not transcription_session_id:
+        return None
+    
+    transcription_session = db.query(Session).filter(Session.id == transcription_session_id).first()
+    if transcription_session:
+        return TranscriptionSessionSummary(
+            id=transcription_session.id,
+            status=transcription_session.status.value,
+            title=transcription_session.title,
+            segments_count=transcription_session.segments_count
+        )
+    return None
+
+
 class CoachingSessionResponse(BaseModel):
     id: UUID
     session_date: str
@@ -63,6 +89,7 @@ class CoachingSessionResponse(BaseModel):
     fee_display: str
     duration_display: str
     transcription_session_id: Optional[UUID]  # References session.id for linked transcription
+    transcription_session: Optional[TranscriptionSessionSummary]
     notes: Optional[str]
     created_at: str
     updated_at: str
@@ -113,6 +140,7 @@ async def list_coaching_sessions(
     query = (
         db.query(CoachingSession)
         .join(Client, CoachingSession.client_id == Client.id)
+        .outerjoin(Session, CoachingSession.transcription_session_id == Session.id)
         .filter(query_filter)
     )
     
@@ -141,6 +169,9 @@ async def list_coaching_sessions(
             is_anonymized=session.client.is_anonymized
         )
         
+        # Get transcription session info if available
+        transcription_session_summary = get_transcription_session_summary(db, session.transcription_session_id)
+        
         session_dict = {
             "id": session.id,
             "session_date": session.session_date.isoformat(),
@@ -153,6 +184,7 @@ async def list_coaching_sessions(
             "fee_display": session.fee_display,
             "duration_display": session.duration_display,
             "transcription_session_id": session.transcription_session_id,
+            "transcription_session": transcription_session_summary,
             "notes": session.notes,
             "created_at": session.created_at.isoformat(),
             "updated_at": session.updated_at.isoformat(),
@@ -194,6 +226,19 @@ async def get_coaching_session(
         is_anonymized=session.client.is_anonymized
     )
     
+    # Get transcription session info if available
+    transcription_session_summary = None
+    if session.transcription_session_id:
+        # Query for the transcription session
+        transcription_session = db.query(Session).filter(Session.id == session.transcription_session_id).first()
+        if transcription_session:
+            transcription_session_summary = TranscriptionSessionSummary(
+                id=transcription_session.id,
+                status=transcription_session.status.value,
+                title=transcription_session.title,
+                segments_count=transcription_session.segments_count
+            )
+    
     session_dict = {
         "id": session.id,
         "session_date": session.session_date.isoformat(),
@@ -206,6 +251,7 @@ async def get_coaching_session(
         "fee_display": session.fee_display,
         "duration_display": session.duration_display,
         "transcription_session_id": session.transcription_session_id,
+        "transcription_session": transcription_session_summary,
         "notes": session.notes,
         "created_at": session.created_at.isoformat(),
         "updated_at": session.updated_at.isoformat(),
@@ -258,6 +304,9 @@ async def create_coaching_session(
         is_anonymized=session.client.is_anonymized
     )
     
+    # Get transcription session info if available
+    transcription_session_summary = get_transcription_session_summary(db, session.transcription_session_id)
+    
     session_dict = {
         "id": session.id,
         "session_date": session.session_date.isoformat(),
@@ -270,6 +319,7 @@ async def create_coaching_session(
         "fee_display": session.fee_display,
         "duration_display": session.duration_display,
         "transcription_session_id": session.transcription_session_id,
+        "transcription_session": transcription_session_summary,
         "notes": session.notes,
         "created_at": session.created_at.isoformat(),
         "updated_at": session.updated_at.isoformat(),
@@ -348,6 +398,7 @@ async def update_coaching_session(
         "fee_display": session.fee_display,
         "duration_display": session.duration_display,
         "transcription_session_id": session.transcription_session_id,
+        "transcription_session": transcription_session_summary,
         "notes": session.notes,
         "created_at": session.created_at.isoformat(),
         "updated_at": session.updated_at.isoformat(),
