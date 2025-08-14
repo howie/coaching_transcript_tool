@@ -196,24 +196,61 @@ def transcribe_audio(
                     db.rollback()
                     logger.warning(f"Failed to update progress: {e}")
             
-            # Call transcribe method - both providers now support progress callback
-            if hasattr(stt_provider, 'provider_name') and stt_provider.provider_name == 'google':
-                # Google STT supports progress callback with original_filename
-                result = stt_provider.transcribe(
-                    audio_uri=gcs_uri,
-                    language=language,
-                    enable_diarization=enable_diarization,
-                    original_filename=original_filename,
-                    progress_callback=update_transcription_progress
-                )
-            else:
-                # AssemblyAI and other providers support progress callback
-                result = stt_provider.transcribe(
-                    audio_uri=gcs_uri,
-                    language=language,
-                    enable_diarization=enable_diarization,
-                    progress_callback=update_transcription_progress
-                )
+            # Call transcribe method with fallback support
+            result = None
+            try:
+                # Call transcribe method - both providers now support progress callback
+                if hasattr(stt_provider, 'provider_name') and stt_provider.provider_name == 'google':
+                    # Google STT supports progress callback with original_filename
+                    result = stt_provider.transcribe(
+                        audio_uri=gcs_uri,
+                        language=language,
+                        enable_diarization=enable_diarization,
+                        original_filename=original_filename,
+                        progress_callback=update_transcription_progress
+                    )
+                else:
+                    # AssemblyAI and other providers support progress callback
+                    result = stt_provider.transcribe(
+                        audio_uri=gcs_uri,
+                        language=language,
+                        enable_diarization=enable_diarization,
+                        progress_callback=update_transcription_progress
+                    )
+            except STTProviderError as exc:
+                # Try fallback provider if the current provider fails with server error
+                if provider_name != "google" and "Server error" in str(exc):
+                    logger.warning(f"STT provider '{provider_name}' failed with server error: {exc}")
+                    logger.info(f"Attempting fallback to Google STT for session {session_id}")
+                    
+                    # Reset progress to show we're retrying
+                    processing_status.update_progress(15, "Primary provider failed, trying Google STT...")
+                    db.commit()
+                    
+                    # Create Google STT provider as fallback
+                    fallback_provider = STTProviderFactory.create("google")
+                    provider_name = fallback_provider.provider_name
+                    
+                    # Update session to reflect fallback provider
+                    session.stt_provider = provider_name
+                    processing_status.update_progress(20, f"Connected to {provider_name} (fallback)...")
+                    db.commit()
+                    
+                    logger.info(f"Using fallback STT provider: {provider_name}")
+                    
+                    # Retry transcription with Google STT
+                    result = fallback_provider.transcribe(
+                        audio_uri=gcs_uri,
+                        language=language,
+                        enable_diarization=enable_diarization,
+                        original_filename=original_filename,
+                        progress_callback=update_transcription_progress
+                    )
+                    
+                    logger.info(f"Fallback transcription completed: {len(result.segments)} segments")
+                else:
+                    # Re-raise if it's Google STT that failed or not a server error
+                    raise
             
             logger.info(f"Transcription completed: {len(result.segments)} segments")
             
