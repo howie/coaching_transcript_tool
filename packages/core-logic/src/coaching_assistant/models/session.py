@@ -2,7 +2,7 @@
 
 import enum
 from sqlalchemy import Column, String, Integer, ForeignKey, Enum, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -46,6 +46,10 @@ class Session(BaseModel):
     # Processing metadata
     error_message = Column(Text)  # Error details if failed
     stt_cost_usd = Column(String(10))  # Cost tracking for analytics
+    
+    # STT Provider tracking
+    stt_provider = Column(String(50), default="google", nullable=False)  # 'google' or 'assemblyai'
+    provider_metadata = Column(JSONB, default={}, nullable=False)  # Provider-specific metadata
     
     # Relationships
     user = relationship("User", back_populates="sessions")

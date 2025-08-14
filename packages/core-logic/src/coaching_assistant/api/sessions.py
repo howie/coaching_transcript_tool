@@ -23,6 +23,7 @@ from ..utils.gcs_uploader import GCSUploader
 from ..tasks.transcription_tasks import transcribe_audio
 from ..core.config import settings
 from ..exporters.excel import generate_excel
+from ..services.stt_factory import STTProviderFactory
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -35,6 +36,11 @@ class SessionCreate(BaseModel):
         pattern="^(cmn-Hant-TW|cmn-Hans-CN|zh-TW|zh-CN|en-US|en-GB|ja-JP|ko-KR|auto)$",
         max_length=20
     )
+    stt_provider: str = Field(
+        default="auto",
+        pattern="^(auto|google|assemblyai)$",
+        description="STT provider to use ('auto' uses settings default, 'google', or 'assemblyai')"
+    )
 
 
 class SessionResponse(BaseModel):
@@ -42,12 +48,14 @@ class SessionResponse(BaseModel):
     title: str
     status: SessionStatus
     language: str
+    stt_provider: Optional[str] = None
     audio_filename: Optional[str]
     duration_seconds: Optional[int]
     duration_minutes: Optional[float]
     segments_count: int
     error_message: Optional[str]
     stt_cost_usd: Optional[str]
+    provider_metadata: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
 
@@ -61,12 +69,14 @@ class SessionResponse(BaseModel):
             title=session.title,
             status=session.status,
             language=session.language,
+            stt_provider=session.stt_provider,
             audio_filename=session.audio_filename,
             duration_seconds=session.duration_seconds,
             duration_minutes=session.duration_minutes,
             segments_count=session.segments_count,
             error_message=session.error_message,
             stt_cost_usd=session.stt_cost_usd,
+            provider_metadata=getattr(session, 'provider_metadata', None),
             created_at=session.created_at,
             updated_at=session.updated_at
         )
@@ -98,14 +108,27 @@ class SessionStatusResponse(BaseModel):
     message: Optional[str]
     duration_processed: Optional[int]
     duration_total: Optional[int]
-    started_at: Optional[datetime]
-    estimated_completion: Optional[datetime]
-    processing_speed: Optional[float]
+    started_at: Optional[datetime] = None
+    estimated_completion: Optional[datetime] = None
+    processing_speed: Optional[float] = None
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class ProviderInfo(BaseModel):
+    name: str
+    display_name: str
+    supported_languages: List[str]
+    features: List[str]
+    cost_per_minute: Optional[str] = None
+
+
+class ProvidersResponse(BaseModel):
+    available_providers: List[ProviderInfo]
+    default_provider: str
 
 
 @router.post("", response_model=SessionResponse)
@@ -115,10 +138,16 @@ async def create_session(
     current_user: User = Depends(get_current_user_dependency)
 ):
     """Create a new transcription session."""
+    # Determine STT provider - use settings default if 'auto'
+    provider = session_data.stt_provider
+    if provider == "auto":
+        provider = getattr(settings, 'STT_PROVIDER', 'google')
+    
     session = Session(
         title=session_data.title,
         user_id=current_user.id,
         language=session_data.language,
+        stt_provider=provider,
         status=SessionStatus.UPLOADING
     )
     
@@ -127,6 +156,40 @@ async def create_session(
     db.refresh(session)
     
     return SessionResponse.from_session(session)
+
+
+@router.get("/providers", response_model=ProvidersResponse)
+async def get_available_providers():
+    """Get available STT providers and their information."""
+    providers_info = []
+    
+    # Google STT provider info
+    google_info = ProviderInfo(
+        name="google",
+        display_name="Google Speech-to-Text",
+        supported_languages=["cmn-Hant-TW", "cmn-Hans-CN", "en-US", "en-GB", "ja-JP", "ko-KR"],
+        features=["Speaker Diarization", "High Accuracy", "Multiple Languages"],
+        cost_per_minute="~$0.024"
+    )
+    providers_info.append(google_info)
+    
+    # AssemblyAI provider info
+    assemblyai_info = ProviderInfo(
+        name="assemblyai",
+        display_name="AssemblyAI",
+        supported_languages=["en", "zh", "ja"],
+        features=["Auto Speaker Diarization", "Coaching Analysis", "Fast Processing"],
+        cost_per_minute="~$0.015-0.024"
+    )
+    providers_info.append(assemblyai_info)
+    
+    # Get default provider from settings
+    default_provider = getattr(settings, 'STT_PROVIDER', 'google')
+    
+    return ProvidersResponse(
+        available_providers=providers_info,
+        default_provider=default_provider
+    )
 
 
 @router.get("", response_model=List[SessionResponse])
@@ -169,7 +232,7 @@ async def get_session(
 @router.post("/{session_id}/upload-url", response_model=UploadUrlResponse)
 async def get_upload_url(
     session_id: UUID,
-    filename: str = Query(..., pattern=r"^[^\/\\]+\.(mp3|wav|flac|ogg|mp4)$"),
+    filename: str = Query(..., pattern=r"^[^\/\\]+\.(mp3|wav|flac|ogg|mp4|m4a)$"),
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency)
 ):
@@ -185,12 +248,23 @@ async def get_upload_url(
         logger.warning(f"❌ Upload URL request failed - Session {session_id} not found for user {current_user.id}")
         raise HTTPException(status_code=404, detail="Session not found")
     
-    if session.status != SessionStatus.UPLOADING:
-        logger.warning(f"❌ Upload URL request failed - Session {session_id} status is {session.status.value}, expected UPLOADING")
+    if session.status not in [SessionStatus.UPLOADING, SessionStatus.FAILED]:
+        logger.warning(f"❌ Upload URL request failed - Session {session_id} status is {session.status.value}, expected UPLOADING or FAILED")
         raise HTTPException(
             status_code=400, 
-            detail=f"Cannot upload to session with status {session.status.value}"
+            detail=f"Cannot upload to session with status {session.status.value}. Upload is only allowed for sessions in UPLOADING or FAILED status."
         )
+    
+    # If session is FAILED, reset it to UPLOADING state
+    if session.status == SessionStatus.FAILED:
+        logger.info(f"🔄 Resetting FAILED session {session_id} to UPLOADING state")
+        session.status = SessionStatus.UPLOADING
+        session.error_message = None
+        # Clear existing file data to allow fresh upload
+        session.audio_filename = None
+        session.gcs_audio_path = None
+        session.transcription_job_id = None
+        db.commit()
     
     # Generate GCS path
     file_extension = filename.split('.')[-1].lower()
@@ -204,7 +278,8 @@ async def get_upload_url(
         'wav': 'audio/wav',
         'flac': 'audio/flac',
         'ogg': 'audio/ogg',
-        'mp4': 'audio/mp4'
+        'mp4': 'audio/mp4',
+        'm4a': 'audio/mp4'  # M4A uses same MIME type as MP4
     }
     content_type = content_type_map.get(file_extension, 'audio/mpeg')
     
@@ -405,6 +480,103 @@ async def start_transcription(
         "task_id": task.id,
         "estimated_completion_minutes": 120,  # Estimate 2 hours max
         "file_size": file_size
+    }
+
+
+@router.post("/{session_id}/retry-transcription")
+async def retry_transcription(
+    session_id: UUID,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dependency)
+):
+    """Retry transcription for failed sessions."""
+    session = db.query(Session).filter(
+        Session.id == session_id,
+        Session.user_id == current_user.id
+    ).first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Only allow retry for FAILED sessions
+    if session.status != SessionStatus.FAILED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot retry transcription for session with status {session.status.value}. Only failed sessions can be retried."
+        )
+    
+    if not session.gcs_audio_path:
+        raise HTTPException(status_code=400, detail="No audio file found. Please re-upload the file.")
+    
+    # Verify file still exists before retrying
+    try:
+        uploader = GCSUploader(
+            bucket_name=settings.AUDIO_STORAGE_BUCKET,
+            credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON
+        )
+        
+        blob_name = session.gcs_audio_path.replace(f"gs://{settings.AUDIO_STORAGE_BUCKET}/", "")
+        file_exists, file_size = uploader.check_file_exists(blob_name)
+        
+        if not file_exists:
+            # Reset session to allow re-upload
+            session.status = SessionStatus.UPLOADING
+            session.audio_filename = None
+            session.gcs_audio_path = None
+            session.error_message = "Audio file not found. Please re-upload the file."
+            db.commit()
+            
+            raise HTTPException(
+                status_code=400, 
+                detail="Audio file no longer exists. Session reset to allow re-upload."
+            )
+        
+        logger.info(f"Retrying transcription for session {session_id}, file size: {file_size} bytes")
+        
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
+    except Exception as e:
+        logger.error(f"Error verifying file before retry: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to verify audio file: {str(e)}"
+        )
+    
+    # Reset session status and clear error
+    session.status = SessionStatus.PROCESSING
+    session.error_message = None
+    
+    # Clear any existing transcription job ID
+    session.transcription_job_id = None
+    
+    # Clear existing transcript segments if any
+    from ..models.transcript import TranscriptSegment
+    db.query(TranscriptSegment).filter(TranscriptSegment.session_id == session_id).delete()
+    
+    # Clear existing processing status
+    from ..models.processing_status import ProcessingStatus
+    db.query(ProcessingStatus).filter(ProcessingStatus.session_id == session_id).delete()
+    
+    db.commit()
+    
+    # Queue transcription task with retry attempt tracking
+    task = transcribe_audio.delay(
+        session_id=str(session_id),
+        gcs_uri=session.gcs_audio_path,
+        language=session.language,
+        original_filename=session.audio_filename
+    )
+    
+    # Store new task ID
+    session.transcription_job_id = task.id
+    db.commit()
+    
+    return {
+        "message": "Transcription retry started",
+        "task_id": task.id,
+        "estimated_completion_minutes": 120,
+        "file_size": file_size,
+        "retry": True
     }
 
 

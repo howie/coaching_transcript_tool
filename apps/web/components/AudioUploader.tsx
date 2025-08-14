@@ -68,7 +68,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
   const transcriptionStatus = parentTranscriptionStatus || localTranscriptionStatus
   const transcriptionSession = parentTranscriptionSession || localTranscriptionSession
 
-  const supportedFormats = ['mp3', 'wav', 'flac', 'ogg', 'mp4']
+  const supportedFormats = ['mp3', 'wav', 'flac', 'ogg', 'mp4', 'm4a']
   const maxFileSize = 1 * 1024 * 1024 * 1024 // 1GB
 
   // Update currentSessionId when existingAudioSessionId changes
@@ -170,7 +170,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       setUploadState({
         status: 'failed',
         progress: 0,
-        error: '不支援的檔案格式。請上傳 MP3、WAV、FLAC、OGG 或 MP4 檔案。'
+        error: '不支援的檔案格式。請上傳 MP3、WAV、FLAC、OGG、MP4 或 M4A 檔案。'
       })
       return
     }
@@ -420,7 +420,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".mp3,.wav,.flac,.ogg,.mp4"
+          accept=".mp3,.wav,.flac,.ogg,.mp4,.m4a"
           onChange={handleFileInputChange}
           className="hidden"
         />
@@ -467,7 +467,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
                 拖拽檔案到這裡或點擊選擇檔案
               </p>
               <p className="text-xs text-content-secondary">
-                支援 MP3、WAV、FLAC、OGG、MP4 格式，最大 1GB
+                支援 MP3、WAV、FLAC、OGG、MP4、M4A 格式，最大 1GB
               </p>
             </div>
             <Button onClick={() => fileInputRef.current?.click()} className="mx-auto">

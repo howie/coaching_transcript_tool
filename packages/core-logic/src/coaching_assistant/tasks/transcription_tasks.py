@@ -127,16 +127,46 @@ def transcribe_audio(
         db.commit()
         
         try:
-            # Create STT provider
-            stt_provider = STTProviderFactory.create("google")
+            # Use provider preference from session, fallback to global settings
+            preferred_provider = session.stt_provider if session.stt_provider else None
+            
+            # Create STT provider with fallback support
+            if preferred_provider and preferred_provider != "auto":
+                # Try to use the specific provider requested
+                try:
+                    stt_provider = STTProviderFactory.create(preferred_provider)
+                    provider_name = stt_provider.provider_name
+                    logger.info(f"Using requested STT provider: {provider_name}")
+                except Exception as e:
+                    logger.warning(f"Failed to create requested provider '{preferred_provider}': {e}. Using fallback.")
+                    stt_provider = STTProviderFactory.create_with_fallback()
+                    provider_name = stt_provider.provider_name
+            else:
+                # Use default with fallback
+                stt_provider = STTProviderFactory.create_with_fallback()
+                provider_name = stt_provider.provider_name
+            
+            # Update provider info in session if it has changed
+            if session.stt_provider != provider_name:
+                session.stt_provider = provider_name
             
             # Update progress: STT provider initialized
-            processing_status.update_progress(10, "Connecting to speech service...")
+            processing_status.update_progress(10, f"Connecting to {provider_name} speech service...")
             db.commit()
+            
+            logger.info(f"Using STT provider: {provider_name}")
+        
+        except Exception as provider_error:
+            logger.error(f"Failed to initialize any STT provider: {provider_error}")
+            processing_status.update_progress(0, f"Failed to initialize STT provider: {provider_error}")
+            db.commit()
+            raise STTProviderError(f"No STT provider available: {provider_error}")
+        
+        try:
             
             # Perform transcription with progress callback
             logger.info(f"Sending audio to STT provider: {gcs_uri}")
-            processing_status.update_progress(25, "Processing audio with Google STT...")
+            processing_status.update_progress(25, f"Processing audio with {provider_name}...")
             db.commit()
             
             def update_transcription_progress(progress_percentage, message, elapsed_minutes):
@@ -166,13 +196,24 @@ def transcribe_audio(
                     db.rollback()
                     logger.warning(f"Failed to update progress: {e}")
             
-            result = stt_provider.transcribe(
-                audio_uri=gcs_uri,
-                language=language,
-                enable_diarization=enable_diarization,
-                original_filename=original_filename,
-                progress_callback=update_transcription_progress
-            )
+            # Call transcribe method - both providers now support progress callback
+            if hasattr(stt_provider, 'provider_name') and stt_provider.provider_name == 'google':
+                # Google STT supports progress callback with original_filename
+                result = stt_provider.transcribe(
+                    audio_uri=gcs_uri,
+                    language=language,
+                    enable_diarization=enable_diarization,
+                    original_filename=original_filename,
+                    progress_callback=update_transcription_progress
+                )
+            else:
+                # AssemblyAI and other providers support progress callback
+                result = stt_provider.transcribe(
+                    audio_uri=gcs_uri,
+                    language=language,
+                    enable_diarization=enable_diarization,
+                    progress_callback=update_transcription_progress
+                )
             
             logger.info(f"Transcription completed: {len(result.segments)} segments")
             
@@ -207,6 +248,11 @@ def transcribe_audio(
                 duration_seconds=actual_duration_sec,
                 cost_usd=formatted_cost
             )
+            
+            # Store provider metadata
+            if result.provider_metadata:
+                session.provider_metadata = result.provider_metadata
+                logger.info(f"Stored provider metadata for session {session_id}")
             
             # Log processing metadata
             session.transcription_job_id = self.request.id

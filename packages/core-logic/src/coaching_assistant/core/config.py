@@ -82,10 +82,16 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = ""
     
     # STT (Speech-to-Text) 設定
-    STT_PROVIDER: str = "google"
+    STT_PROVIDER: str = "google"  # "google" or "assemblyai"
     SPEECH_API_VERSION: str = "v2"  # Google Speech-to-Text API version
     GOOGLE_STT_MODEL: str = "chirp_2"  # Default model (chirp supports more languages)
     GOOGLE_STT_LOCATION: str = "asia-southeast1"  # Default location for STT
+    
+    # AssemblyAI 設定
+    ASSEMBLYAI_API_KEY: str = ""
+    ASSEMBLYAI_MODEL: str = "best"  # "best" or "nano"
+    ASSEMBLYAI_SPEAKERS_EXPECTED: int = 2  # Number of speakers expected for diarization
+    ASSEMBLYAI_WEBHOOK_URL: str = ""  # Optional webhook URL for notifications
     
     # Language-specific STT configurations (JSON format)
     # Example: {"zh-TW": {"location": "asia-southeast1", "model": "latest_long"}}
