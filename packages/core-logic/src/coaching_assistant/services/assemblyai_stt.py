@@ -325,6 +325,8 @@ class AssemblyAIProvider(STTProvider):
                 current_start = None
                 current_speaker = None
                 
+                sentence_length_limit = 50  # Max words per segment
+                
                 for word in result['words']:
                     if current_start is None:
                         current_start = word['start']
@@ -332,8 +334,13 @@ class AssemblyAIProvider(STTProvider):
                     
                     current_sentence.append(word['text'])
                     
-                    # Check if this word ends a sentence
-                    if word['text'].endswith(('.', '!', '?', '。', '！', '？')):
+                    # Check if this word ends a sentence (include more Chinese punctuation) OR segment is getting too long
+                    should_break = (
+                        word['text'].endswith(('.', '!', '?', '。', '！', '？', '；', '：', '，')) or
+                        len(current_sentence) >= sentence_length_limit
+                    )
+                    
+                    if should_break:
                         # Create segment
                         text = ' '.join(current_sentence)
                         if result.get('language_code') == 'zh' or 'zh' in (result.get('language_code') or ''):
