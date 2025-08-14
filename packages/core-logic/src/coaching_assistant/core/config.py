@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = ""
     
     # STT (Speech-to-Text) 設定
-    STT_PROVIDER: str = "google"  # "google" or "assemblyai"
+    STT_PROVIDER: str = "assemblyai"  # "google" or "assemblyai"
     SPEECH_API_VERSION: str = "v2"  # Google Speech-to-Text API version
     GOOGLE_STT_MODEL: str = "chirp_2"  # Default model (chirp supports more languages)
     GOOGLE_STT_LOCATION: str = "asia-southeast1"  # Default location for STT

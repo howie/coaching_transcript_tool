@@ -14,7 +14,7 @@ class STTProviderFactory:
     """Factory for creating STT provider instances."""
     
     @staticmethod
-    def create(provider_type: Optional[Literal["google", "assemblyai", "whisper"]] = None) -> STTProvider:
+    def create(provider_type: Optional[Literal["google", "google_stt_v2", "assemblyai", "whisper"]] = None) -> STTProvider:
         """
         Create STT provider instance.
         
@@ -35,7 +35,7 @@ class STTProviderFactory:
         logger.info(f"Creating STT provider: {provider_type}")
         
         try:
-            if provider_type == "google":
+            if provider_type == "google" or provider_type == "google_stt_v2":
                 return GoogleSTTProvider()
             elif provider_type == "assemblyai":
                 return AssemblyAIProvider()
