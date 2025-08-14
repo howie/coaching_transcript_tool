@@ -14,7 +14,7 @@ from sqlalchemy.exc import DataError, IntegrityError
 from ..core.celery_app import celery_app
 from ..core.database import get_db_session
 from ..models.session import Session as SessionModel, SessionStatus
-from ..models.transcript import TranscriptSegment as TranscriptSegmentModel
+from ..models.transcript import TranscriptSegment as TranscriptSegmentModel, SessionRole, SpeakerRole
 from ..models.processing_status import ProcessingStatus
 from ..services import STTProviderFactory, STTProviderError, STTProviderUnavailableError
 from ..core.config import settings
@@ -261,6 +261,9 @@ def transcribe_audio(
             # Save transcript segments to database
             _save_transcript_segments(db, session_uuid, result.segments)
             
+            # Save speaker role assignments if available
+            _save_speaker_role_assignments(db, session_uuid, result.provider_metadata)
+            
             # Calculate processing duration
             processing_duration = (datetime.utcnow() - start_time).total_seconds()
             
@@ -401,3 +404,51 @@ def _calculate_actual_duration(db: Session, session_id: UUID) -> int:
     
     # Fallback to 0 if no segments found
     return 0
+
+
+def _save_speaker_role_assignments(
+    db: Session, 
+    session_id: UUID, 
+    provider_metadata: dict
+) -> None:
+    """Save speaker role assignments to database if available from provider metadata."""
+    if not provider_metadata:
+        return
+    
+    role_assignments = provider_metadata.get('speaker_role_assignments', {})
+    if not role_assignments:
+        logger.debug(f"No speaker role assignments found in provider metadata for session {session_id}")
+        return
+    
+    logger.info(f"Saving speaker role assignments for session {session_id}: {role_assignments}")
+    
+    # Clear any existing role assignments for this session
+    db.query(SessionRole).filter(SessionRole.session_id == session_id).delete()
+    
+    # Create new role assignments
+    for speaker_id, role_str in role_assignments.items():
+        try:
+            # Convert speaker_id to int if it's a string
+            speaker_id_int = int(speaker_id) if isinstance(speaker_id, str) else speaker_id
+            
+            # Convert role string to SpeakerRole enum
+            speaker_role = SpeakerRole.COACH if role_str == 'coach' else SpeakerRole.CLIENT
+            
+            session_role = SessionRole(
+                session_id=session_id,
+                speaker_id=speaker_id_int,
+                role=speaker_role
+            )
+            db.add(session_role)
+            logger.info(f"Created speaker role assignment: speaker_id={speaker_id_int} -> {role_str}")
+            
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Failed to create speaker role assignment for speaker_id={speaker_id}, role={role_str}: {e}")
+    
+    try:
+        db.flush()  # Ensure role assignments are saved
+        logger.info(f"Successfully saved {len(role_assignments)} speaker role assignments")
+    except Exception as e:
+        logger.error(f"Failed to save speaker role assignments: {e}")
+        db.rollback()
+        raise

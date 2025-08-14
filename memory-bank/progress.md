@@ -48,6 +48,42 @@
   - 確保系統在各種狀態下都能穩定運行
 **技術成果：** 解決了關鍵的系統穩定性問題，提升了 Celery 任務執行可靠性、前端後端數據一致性，以及用戶會話管理的錯誤恢復能力。
 
+### ✅ 角色分配系統統一與修復完成 (August 14, 2025)
+- **字幕上傳角色映射系統修復**
+  - **核心問題解決**：用戶在字幕上傳時選擇的角色映射被前端重新獲取轉錄本時覆蓋，導致所有說話者都變成客戶
+  - **根本原因識別**：前後端 speaker key 生成演算法不一致
+    - 前端：`speakerName.toLowerCase().replace(/\s+/g, '_').replace(/[^\w_]/g, '')`
+    - 後端：`speaker_name.lower().replace(' ', '_')` (僅替換空格)
+  - **統一解決方案**：後端 VTT/SRT 解析器採用與前端相同的正規化規則
+    - 統一使用 `re.sub(r'[^\w_]', '', speaker_name.lower().replace(' ', '_'))`
+    - 確保前後端生成相同的 speaker key 用於角色映射
+- **前後端角色系統現代化**
+  - **問題分析**：前端使用數字 ID (COACH: 0, CLIENT: 1) 但後端期待不同約定 (1=coach, 2=client)
+  - **統一策略**：全面遷移至字符串枚舉系統，消除數字 ID 混淆
+    - 前端：移除 `SPEAKER_IDS` 常數，採用 `SPEAKER_ROLES = {COACH: 'coach', CLIENT: 'client'}`
+    - 後端：VTT/SRT 解析器同時生成 `speaker_id` (向後兼容) 和 `speaker_role` (新標準)
+    - 前端：更新所有角色檢測函數優先使用 segment.role 字段
+- **Celery 轉錄任務角色分配架構重構**
+  - **AssemblyAI Provider 修復**：
+    - 修正 `_convert_speaker_id()` 映射："A"->1, "B"->2 (取代原先的 "A"->0, "B"->1)
+    - 匹配前端/後端統一約定：speaker_id 從 1 開始，1=coach, 2=client
+  - **角色分配持久化機制**：
+    - 新增 `_save_speaker_role_assignments()` 函數
+    - 從 provider_metadata 中的 SimpleRoleAssigner 結果創建 SessionRole 資料庫記錄
+    - 確保前端 API 能正確獲取自動分配的角色信息
+- **資料庫角色記錄統一創建**
+  - **字幕上傳流程**：在解析 VTT/SRT 時創建 SessionRole 記錄保存用戶選擇
+  - **語音轉錄流程**：在 Celery 任務完成時創建 SessionRole 記錄保存自動分配結果
+  - **API 一致性**：確保所有角色分配途徑都在資料庫中留下記錄供前端查詢
+- **系統錯誤修復與穩定性提升**
+  - **後端 API 變數未定義錯誤修復**：
+    - 修復 `update_coaching_session` 函數中缺少 `transcription_session_summary` 變數
+    - 添加 `get_transcription_session_summary()` 調用確保完整的 API 響應
+  - **時間處理錯誤修復**：
+    - 修正 `sessions.py` 中 import 錯誤：`from datetime import datetime, timedelta`
+    - 解決 `datetime.timedelta` AttributeError，修復會話狀態更新功能
+**技術成果：** 徹底解決了角色分配系統的混亂狀況，建立統一的字符串枚舉標準，確保字幕上傳和語音轉錄的角色映射都能正確工作，大幅提升用戶體驗的一致性和可靠性。
+
 ### ✅ Dashboard 用戶體驗優化完成
 - **個性化歡迎介面**
   - 實現個性化歡迎信息 "Hi {name}, Welcome to Coachly"
