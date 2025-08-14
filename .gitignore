@@ -230,4 +230,4 @@ override.tf.json
 terraform.rc
 
 #tmp
-poc-assemblyAI/
+logs/
