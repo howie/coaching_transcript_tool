@@ -59,6 +59,37 @@ interface SpeakingStats {
   silence_time: number;
 }
 
+// Speaker role constants to avoid magic numbers
+enum SpeakerRole {
+  COACH = 'coach',
+  CLIENT = 'client'
+}
+
+// Speaker ID constants - these should match the backend convention
+const SPEAKER_IDS = {
+  COACH: 0,  // Speaker 0 is typically assigned as coach by AssemblyAI
+  CLIENT: 1  // Speaker 1 is typically assigned as client by AssemblyAI
+} as const;
+
+// Helper functions for safe role assignment
+const getSpeakerRoleFromId = (speakerId: number, roleAssignments?: { [key: number]: 'coach' | 'client' }): SpeakerRole => {
+  // First check explicit role assignments from API
+  if (roleAssignments && roleAssignments[speakerId]) {
+    return roleAssignments[speakerId] === 'coach' ? SpeakerRole.COACH : SpeakerRole.CLIENT;
+  }
+  
+  // Fallback to our convention: Speaker 0 = coach, others = client
+  return speakerId === SPEAKER_IDS.COACH ? SpeakerRole.COACH : SpeakerRole.CLIENT;
+};
+
+const getRoleDisplayName = (role: SpeakerRole): string => {
+  return role === SpeakerRole.COACH ? '教練' : '客戶';
+};
+
+const getSpeakerColor = (role: SpeakerRole): string => {
+  return role === SpeakerRole.COACH ? 'text-blue-600' : 'text-green-600';
+};
+
 interface Client {
   id: string;
   name: string;
@@ -179,8 +210,8 @@ const SessionDetailPage = () => {
         } else if (transcript.role_assignments && transcript.role_assignments[segment.speaker_id]) {
           segmentRoles[segmentId] = transcript.role_assignments[segment.speaker_id];
         } else {
-          // Default: first speaker is coach, others are client
-          segmentRoles[segmentId] = segment.speaker_id === 1 ? 'coach' : 'client';
+          // Use safe fallback with proper convention
+          segmentRoles[segmentId] = getSpeakerRoleFromId(segment.speaker_id, transcript.role_assignments);
         }
       });
       setTempSegmentRoles(segmentRoles);
@@ -327,23 +358,32 @@ const SessionDetailPage = () => {
   };
 
   const getSpeakerLabel = (speakerId: number) => {
-    // Check if we have role assignments
-    const roleAssignments = transcript?.role_assignments || {};
-    if (roleAssignments[speakerId]) {
-      return roleAssignments[speakerId] === 'coach' ? '教練' : '客戶';
-    }
-    // Default mapping
-    return speakerId === 1 ? '教練' : '客戶';
+    const role = getSpeakerRoleFromId(speakerId, transcript?.role_assignments);
+    return getRoleDisplayName(role);
   };
 
   const getSegmentSpeakerLabel = (segment: TranscriptSegment) => {
     const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
-    const segmentRole = tempSegmentRoles[segmentId] || tempRoleAssignments[segment.speaker_id] || (segment.speaker_id === 1 ? 'coach' : 'client');
-    return segmentRole === 'coach' ? '教練' : '客戶';
+    
+    // Priority: segment-level role > speaker-level role > default convention
+    let roleString: string;
+    if (tempSegmentRoles[segmentId]) {
+      roleString = tempSegmentRoles[segmentId];
+    } else if (tempRoleAssignments[segment.speaker_id]) {
+      roleString = tempRoleAssignments[segment.speaker_id];
+    } else {
+      // Use safe fallback
+      const defaultRole = getSpeakerRoleFromId(segment.speaker_id, transcript?.role_assignments);
+      roleString = defaultRole;
+    }
+    
+    const role = roleString === 'coach' ? SpeakerRole.COACH : SpeakerRole.CLIENT;
+    return getRoleDisplayName(role);
   };
 
-  const getSpeakerColor = (speakerId: number) => {
-    return speakerId === 1 ? 'text-blue-600' : 'text-green-600';
+  const getSpeakerColorFromId = (speakerId: number) => {
+    const role = getSpeakerRoleFromId(speakerId, transcript?.role_assignments);
+    return getSpeakerColor(role);
   };
 
   const calculateSpeakingStats = (segments: TranscriptSegment[]): SpeakingStats => {
@@ -353,9 +393,20 @@ const SessionDetailPage = () => {
     segments.forEach(segment => {
       const duration = segment.end_sec - segment.start_sec;
       const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
-      const speakerRole = tempSegmentRoles[segmentId] || tempRoleAssignments[segment.speaker_id] || (segment.speaker_id === 1 ? 'coach' : 'client');
       
-      if (speakerRole === 'coach') {
+      // Determine role using safe priority logic
+      let roleString: string;
+      if (tempSegmentRoles[segmentId]) {
+        roleString = tempSegmentRoles[segmentId];
+      } else if (tempRoleAssignments[segment.speaker_id]) {
+        roleString = tempRoleAssignments[segment.speaker_id];
+      } else {
+        // Use safe fallback
+        const defaultRole = getSpeakerRoleFromId(segment.speaker_id, transcript?.role_assignments);
+        roleString = defaultRole;
+      }
+      
+      if (roleString === 'coach' || roleString === SpeakerRole.COACH) {
         coachTime += duration;
       } else {
         clientTime += duration;
@@ -488,7 +539,7 @@ const SessionDetailPage = () => {
         } else if (transcript.role_assignments && transcript.role_assignments[segment.speaker_id]) {
           originalSegmentRoles[segmentId] = transcript.role_assignments[segment.speaker_id];
         } else {
-          originalSegmentRoles[segmentId] = segment.speaker_id === 1 ? 'coach' : 'client';
+          originalSegmentRoles[segmentId] = getSpeakerRoleFromId(segment.speaker_id, transcript?.role_assignments);
         }
       });
       setTempSegmentRoles(originalSegmentRoles);
@@ -596,18 +647,20 @@ const SessionDetailPage = () => {
       
       setPreviewSegments(segments);
       
-      // Initialize default role mapping - first speaker is coach, others are clients
+      // Initialize default role mapping using consistent logic
       const defaultMapping: {[speakerId: string]: 'coach' | 'client'} = {};
       segments.forEach((segment, index) => {
-        // Try to guess based on name, otherwise first speaker is coach
+        // Try to guess based on name first
         const name = segment.speaker_name.toLowerCase();
         if (name.includes('coach') || name.includes('教練') || name.includes('老師')) {
           defaultMapping[segment.speaker_id] = 'coach';
         } else if (name.includes('client') || name.includes('客戶') || name.includes('學員')) {
           defaultMapping[segment.speaker_id] = 'client';
         } else {
-          // Default: first speaker is coach, others are client
-          defaultMapping[segment.speaker_id] = index === 0 ? 'coach' : 'client';
+          // Use consistent convention: numeric speaker_id 0 = coach, others = client
+          // Note: This assumes speaker_id is a number; if it's a string, parse it
+          const speakerIdNum = typeof segment.speaker_id === 'number' ? segment.speaker_id : parseInt(segment.speaker_id);
+          defaultMapping[segment.speaker_id] = speakerIdNum === SPEAKER_IDS.COACH ? 'coach' : 'client';
         }
       });
       setSpeakerRoleMapping(defaultMapping);
@@ -1455,7 +1508,7 @@ const SessionDetailPage = () => {
                           <td className="px-4 py-3 whitespace-nowrap">
                             {editingRoles ? (
                               <select
-                                value={tempSegmentRoles[segment.id || `${segment.speaker_id}-${segment.start_sec}`] || tempRoleAssignments[segment.speaker_id] || 'coach'}
+                                value={tempSegmentRoles[segment.id || `${segment.speaker_id}-${segment.start_sec}`] || tempRoleAssignments[segment.speaker_id] || getSpeakerRoleFromId(segment.speaker_id, transcript?.role_assignments)}
                                 onChange={(e) => {
                                   const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
                                   setTempSegmentRoles(prev => ({
@@ -1470,9 +1523,20 @@ const SessionDetailPage = () => {
                               </select>
                             ) : (
                               <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                (tempSegmentRoles[segment.id || `${segment.speaker_id}-${segment.start_sec}`] || tempRoleAssignments[segment.speaker_id] || (segment.speaker_id === 1 ? 'coach' : 'client')) === 'coach'
-                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
-                                  : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                (() => {
+                                  const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+                                  let roleString: string;
+                                  if (tempSegmentRoles[segmentId]) {
+                                    roleString = tempSegmentRoles[segmentId];
+                                  } else if (tempRoleAssignments[segment.speaker_id]) {
+                                    roleString = tempRoleAssignments[segment.speaker_id];
+                                  } else {
+                                    roleString = getSpeakerRoleFromId(segment.speaker_id, transcript?.role_assignments);
+                                  }
+                                  return (roleString === 'coach' || roleString === SpeakerRole.COACH)
+                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                                    : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+                                })()
                               }`}>
                                 {getSegmentSpeakerLabel(segment)}
                               </span>

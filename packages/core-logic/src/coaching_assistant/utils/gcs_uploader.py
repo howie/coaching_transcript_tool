@@ -185,6 +185,51 @@ class GCSUploader:
             logger.error(f"❌ Failed to generate signed URL: {e}")
             raise
     
+    def generate_signed_read_url(
+        self,
+        blob_name: str,
+        expiration_minutes: int = 60
+    ) -> str:
+        """
+        Generate a signed URL for reading/downloading files from GCS.
+        
+        Args:
+            blob_name: Name of the blob in GCS
+            expiration_minutes: URL expiration time in minutes
+            
+        Returns:
+            Signed URL for reading the file
+        """
+        if not self.client:
+            logger.error("❌ GCS client not initialized - cannot generate signed read URL")
+            raise ValueError("GCS client not initialized")
+        
+        logger.info(f"🔗 Generating signed READ URL...")
+        logger.info(f"🪣 Bucket: {self.bucket_name}")
+        logger.info(f"📄 Blob: {blob_name}")
+        logger.info(f"⏱️  Expiration: {expiration_minutes} minutes")
+        
+        try:
+            bucket = self.client.bucket(self.bucket_name)
+            blob = bucket.blob(blob_name)
+            
+            expiration = datetime.utcnow() + timedelta(minutes=expiration_minutes)
+            
+            url = blob.generate_signed_url(
+                version="v4",
+                expiration=expiration,
+                method="GET"
+            )
+            
+            logger.info(f"✅ Signed READ URL generated successfully")
+            logger.info(f"🔗 URL (partial): {url[:50]}...{url[-10:]}")
+            
+            return url
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to generate signed read URL: {e}")
+            raise
+    
     def upload_file(
         self,
         file_content: bytes,

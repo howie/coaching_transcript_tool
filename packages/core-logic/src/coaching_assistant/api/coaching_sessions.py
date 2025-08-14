@@ -439,13 +439,13 @@ async def upload_session_transcript(
     session_id: UUID,
     file: UploadFile = FastAPIFile(...),
     speaker_roles: Optional[str] = Form(None),
-    convert_to_traditional: Optional[str] = Form(None),
+    convert_to_traditional_chinese: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency)
 ):
     """Upload a VTT or SRT transcript file directly to a coaching session."""
     
-    logger.info(f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, filename={file.filename}, convert_to_traditional={convert_to_traditional}")
+    logger.info(f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, filename={file.filename}, convert_to_traditional_chinese={convert_to_traditional_chinese}")
     
     # Parse speaker role mapping if provided
     speaker_role_mapping = {}
@@ -501,7 +501,7 @@ async def upload_session_transcript(
             raise HTTPException(status_code=400, detail="No valid transcript segments found in file")
         
         # Apply Chinese conversion if requested
-        if convert_to_traditional == 'true':
+        if convert_to_traditional_chinese == 'true':
             logger.info("🔄 Converting transcript content from Simplified to Traditional Chinese")
             for segment in segments:
                 segment['content'] = convert_to_traditional(segment['content'])
