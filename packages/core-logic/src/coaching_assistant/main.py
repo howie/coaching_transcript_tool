@@ -10,7 +10,7 @@ import logging
 import os
 
 from .api import health, format_routes, user, auth, clients, coaching_sessions, summary, coach_profile, sessions
-from .middleware.logging import setup_logging
+from .middleware.logging import setup_api_logging
 from .middleware.error_handler import error_handler
 from .core.config import settings
 from .core.env_validator import validate_environment
@@ -20,8 +20,11 @@ from .version import VERSION, DISPLAY_VERSION, DESCRIPTION
 print("🚀 Starting Coaching Transcript Tool Backend API...")
 validate_environment()
 
-# 設定日誌
-setup_logging()
+# 設定日誌（會同時輸出到控制台和文件）
+import pathlib
+project_root = pathlib.Path(__file__).parent.parent.parent.parent.parent
+api_log_file = project_root / "logs" / "api.log"
+setup_api_logging(log_file=str(api_log_file))
 logger = logging.getLogger(__name__)
 
 app = FastAPI(

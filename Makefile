@@ -48,39 +48,55 @@ install: build
 
 # Start API server
 run-api: install
+	@mkdir -p logs
+	@echo "Starting API server..."
+	@echo "📝 Logs will be saved to logs/api.log (via Python logging)"
+	@echo "🎨 Terminal output has colors, file output is clean"
 	cd apps/api-server && $(PYTHON) main.py
 
 # Start Celery worker
 run-celery: install
+	@mkdir -p logs
 	@echo "Starting Celery worker..."
-	celery -A coaching_assistant.core.celery_app worker --loglevel=info --concurrency=2 --pool=threads
+	@echo "📝 Logs will be saved to logs/celery.log (via unified Python logging)"
+	@echo "🎨 Terminal output has Celery-style colors, file output is clean"
+	CELERY_LOG_LEVEL=INFO celery -A coaching_assistant.core.celery_app worker --loglevel=info --concurrency=2 --pool=threads
 
 # Start Celery worker with debug logging
 run-celery-debug: install
+	@mkdir -p logs
 	@echo "Starting Celery worker with debug logging..."
-	celery -A coaching_assistant.core.celery_app worker --loglevel=debug --concurrency=1 --pool=threads
+	@echo "📝 Logs will be saved to logs/celery-debug.log (via unified Python logging)"
+	@echo "🎨 Terminal output has Celery-style colors, file output is clean"
+	CELERY_LOG_LEVEL=DEBUG celery -A coaching_assistant.core.celery_app worker --loglevel=debug --concurrency=2 --pool=threads
 
 # Frontend Development
 dev-frontend:
+	@mkdir -p logs
 	@echo "Starting frontend development server..."
+	@echo "Logs will be saved to logs/frontend-dev.log (with colors preserved)"
 	@if [ ! -d "apps/web/.next" ]; then \
 		echo "  → .next directory not found, running initial build..."; \
-		cd apps/web && npm run build; \
+		cd apps/web && FORCE_COLOR=1 npm run build 2>&1 | tee ../../logs/frontend-build.log; \
 	fi
-	@cd apps/web && npm run dev
+	@cd apps/web && FORCE_COLOR=1 npm run dev 2>&1 | tee ../../logs/frontend-dev.log
 
 # File-based targets for efficient building
 apps/web/.next/BUILD_ID: apps/web/app/* apps/web/components/* apps/web/lib/* apps/web/next.config.js apps/web/package.json
+	@mkdir -p logs
 	@echo "Building Next.js frontend..."
-	cd apps/web && npm run build
+	@echo "Build logs will be saved to logs/frontend-build.log (with colors preserved)"
+	cd apps/web && FORCE_COLOR=1 npm run build 2>&1 | tee ../../logs/frontend-build.log
 
 apps/web/.open-next/worker.js: apps/web/.next/BUILD_ID
+	@mkdir -p logs
 	@echo "Building frontend for Cloudflare Workers..."
+	@echo "Cloudflare Workers build logs will be saved to logs/frontend-cf-build.log"
 	@if [ -f apps/web/.env.local ]; then \
 		echo "  → Temporarily moving .env.local for production build"; \
 		mv apps/web/.env.local apps/web/.env.local.tmp; \
 	fi
-	cd apps/web && NODE_ENV=production npm run build:cf
+	cd apps/web && NODE_ENV=production FORCE_COLOR=1 npm run build:cf 2>&1 | tee ../../logs/frontend-cf-build.log
 	@if [ -f apps/web/.env.local.tmp ]; then \
 		echo "  → Restoring .env.local"; \
 		mv apps/web/.env.local.tmp apps/web/.env.local; \
@@ -116,8 +132,10 @@ deploy-frontend-only: build-frontend-cf
 	@echo "✅ Deployment complete!"
 
 preview-frontend: build-frontend-cf
+	@mkdir -p logs
 	@echo "Starting Cloudflare Workers preview..."
-	cd apps/web && npx wrangler dev
+	@echo "Logs will be saved to logs/frontend-preview.log"
+	cd apps/web && FORCE_COLOR=1 npx wrangler dev 2>&1 | tee ../../logs/frontend-preview.log
 
 # Unified Development Experience
 dev-all:
@@ -166,7 +184,10 @@ docker-run: docker-run-cli
 
 # Run tests
 test: dev-setup
-	pytest packages/core-logic/tests/
+	@mkdir -p logs
+	@echo "Running tests..."
+	@echo "Test logs will be saved to logs/test.log (with colors preserved)"
+	pytest packages/core-logic/tests/ -v --color=yes 2>&1 | tee logs/test.log
 
 # Install development dependencies
 dev-setup:
@@ -177,7 +198,10 @@ dev-setup:
 
 # Run linting
 lint: dev-setup
-	$(PYTHON) -m flake8 packages/core-logic/src/ packages/core-logic/tests/
+	@mkdir -p logs
+	@echo "Running linting..."
+	@echo "Lint logs will be saved to logs/lint.log"
+	$(PYTHON) -m flake8 packages/core-logic/src/ packages/core-logic/tests/ 2>&1 | tee logs/lint.log
 
 # Create a distribution package
 dist: clean
@@ -198,20 +222,20 @@ help:
 	@echo "  clean-frontend : Remove only frontend build artifacts"
 	@echo "  build          : Build the package"
 	@echo "  install        : Install the package locally in development mode"
-	@echo "  run-api        : Start the API server"
-	@echo "  run-celery     : Start Celery worker"
-	@echo "  run-celery-debug : Start Celery worker with debug logging"
+	@echo "  run-api        : Start the API server (logs via Python logging to logs/api.log)"
+	@echo "  run-celery     : Start Celery worker (logs via Python logging to logs/celery.log)"
+	@echo "  run-celery-debug : Start Celery worker with debug logging (logs to logs/celery-debug.log)"
 	@echo "  dev-setup      : Install development dependencies"
-	@echo "  test           : Run tests"
-	@echo "  lint           : Run linting"
+	@echo "  test           : Run tests (logs to logs/test.log)"
+	@echo "  lint           : Run linting (logs to logs/lint.log)"
 	@echo ""
 	@echo "Frontend (Node.js):"
-	@echo "  dev-frontend     : Start frontend development server"
-	@echo "  build-frontend   : Build Next.js frontend only"
-	@echo "  build-frontend-cf: Build frontend for Cloudflare Workers (includes Next.js build)"
+	@echo "  dev-frontend     : Start frontend development server (logs to logs/frontend-dev.log)"
+	@echo "  build-frontend   : Build Next.js frontend only (logs to logs/frontend-build.log)"
+	@echo "  build-frontend-cf: Build frontend for Cloudflare Workers (logs to logs/frontend-cf-build.log)"
 	@echo "  install-frontend : Install frontend dependencies"
 	@echo "  deploy-frontend  : Deploy frontend to Cloudflare Workers"
-	@echo "  preview-frontend : Start Cloudflare Workers preview"
+	@echo "  preview-frontend : Start Cloudflare Workers preview (logs to logs/frontend-preview.log)"
 	@echo ""
 	@echo "Full-stack:"
 	@echo "  dev-all        : Show instructions for full-stack development"
@@ -230,5 +254,12 @@ help:
 	@echo "Distribution:"
 	@echo "  dist           : Create distribution package"
 	@echo "  dist-install   : Install from distribution package"
+	@echo ""
+	@echo "Logging:"
+	@echo "  Python services use proper logging framework with dual output:"
+	@echo "  - Terminal: Colorized output for development"
+	@echo "  - Files: Clean structured logs in logs/ directory with rotation"
+	@echo "  - Frontend services still use tee for npm/node tools"
+	@echo "  Logs are automatically ignored by git (.gitignore includes logs/)"
 	@echo ""
 	@echo "  help           : Show this help message"
