@@ -1226,12 +1226,21 @@ class ApiClient {
 
   async uploadSessionTranscript(sessionId: string, file: File, speakerRoleMapping?: {[speakerId: string]: 'coach' | 'client'}, convertToTraditional?: boolean) {
     try {
+      console.log('[API] uploadSessionTranscript called with:', {
+        sessionId,
+        fileName: file.name,
+        speakerRoleMapping,
+        convertToTraditional
+      });
+      
       const formData = new FormData()
       formData.append('file', file)
       
       // Add speaker role mapping if provided
       if (speakerRoleMapping) {
-        formData.append('speaker_roles', JSON.stringify(speakerRoleMapping))
+        const rolesJson = JSON.stringify(speakerRoleMapping);
+        console.log('[API] Sending speaker_roles:', rolesJson);
+        formData.append('speaker_roles', rolesJson)
       }
       
       // Add convert to traditional Chinese option
