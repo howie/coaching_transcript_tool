@@ -957,6 +957,7 @@ class ApiClient {
         let errorMessage = 'Get upload URL failed'
         try {
           const errorData = await response.json()
+          console.error('Upload URL error details:', errorData)
           errorMessage = errorData.detail || errorData.message || errorMessage
         } catch (e) {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`
@@ -1009,7 +1010,8 @@ class ApiClient {
             'wav': 'audio/wav',
             'flac': 'audio/flac',
             'ogg': 'audio/ogg',
-            'mp4': 'audio/mp4'
+            'mp4': 'audio/mp4',
+            'm4a': 'audio/mp4'
           }
           return contentTypeMap[extension || ''] || file.type || 'audio/mpeg'
         }
