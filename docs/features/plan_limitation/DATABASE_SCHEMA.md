@@ -144,7 +144,7 @@ CREATE TABLE usage_logs (
         CHECK (transcription_type IN ('original', 'retry_failed', 'retry_success')),
     is_billable BOOLEAN DEFAULT true NOT NULL,
     billing_reason VARCHAR(100),
-    parent_usage_log_id UUID REFERENCES usage_logs(id),
+    parent_log_id UUID REFERENCES usage_logs(id),
     
     -- Plan Information Snapshot (for historical accuracy)
     user_plan VARCHAR(20) NOT NULL 
@@ -184,7 +184,7 @@ CREATE INDEX idx_usage_logs_month_user ON usage_logs(date_trunc('month', created
 CREATE INDEX idx_usage_logs_month_plan ON usage_logs(date_trunc('month', created_at), user_plan);
 
 -- Parent-child relationship index
-CREATE INDEX idx_usage_logs_parent ON usage_logs(parent_usage_log_id) WHERE parent_usage_log_id IS NOT NULL;
+CREATE INDEX idx_usage_logs_parent ON usage_logs(parent_log_id) WHERE parent_log_id IS NOT NULL;
 
 -- Composite indexes for analytics
 CREATE INDEX idx_usage_logs_analytics ON usage_logs(user_plan, transcription_type, is_billable, created_at);
@@ -248,7 +248,7 @@ CREATE TABLE plan_configurations (
     -- System Fields
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_by_user_id UUID REFERENCES "user"(id),
+    created_by_id UUID REFERENCES "user"(id),
     
     -- Validation: Ensure export_formats is valid JSON array
     CHECK (jsonb_typeof(export_formats) = 'array')
@@ -331,7 +331,7 @@ CREATE TABLE subscription_history (
     payment_metadata JSONB DEFAULT '{}',
     
     -- Admin Information (if changed by admin)
-    changed_by_user_id UUID REFERENCES "user"(id),
+    changed_by_id UUID REFERENCES "user"(id),
     admin_notes TEXT,
     
     -- Marketing Attribution
@@ -626,7 +626,7 @@ CREATE TABLE usage_logs (
         CHECK (transcription_type IN ('original', 'retry_failed', 'retry_success')),
     is_billable BOOLEAN DEFAULT true NOT NULL,
     billing_reason VARCHAR(100),
-    parent_usage_log_id UUID REFERENCES usage_logs(id),
+    parent_log_id UUID REFERENCES usage_logs(id),
     
     -- Plan information snapshot
     user_plan VARCHAR(20) NOT NULL CHECK (user_plan IN ('free', 'pro', 'business')),
@@ -660,7 +660,7 @@ CREATE INDEX idx_usage_logs_transcription_type ON usage_logs(transcription_type)
 CREATE INDEX idx_usage_logs_is_billable ON usage_logs(is_billable);
 CREATE INDEX idx_usage_logs_stt_provider ON usage_logs(stt_provider);
 CREATE INDEX idx_usage_logs_month_user ON usage_logs(date_trunc('month', created_at), user_id);
-CREATE INDEX idx_usage_logs_parent ON usage_logs(parent_usage_log_id) WHERE parent_usage_log_id IS NOT NULL;
+CREATE INDEX idx_usage_logs_parent ON usage_logs(parent_log_id) WHERE parent_log_id IS NOT NULL;
 
 -- Backfill usage logs from existing sessions
 DO $$
