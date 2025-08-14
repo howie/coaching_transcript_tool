@@ -23,6 +23,23 @@ class ApiClient {
   private baseUrl: string
   private fetcher: typeof fetch
 
+  private handleUnauthorized() {
+    // Clear the stored token
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token')
+      // Redirect to login page
+      window.location.href = '/login'
+    }
+  }
+
+  private async handleResponse(response: Response) {
+    if (response.status === 401) {
+      this.handleUnauthorized()
+      throw new Error('Unauthorized - please login again')
+    }
+    return response
+  }
+
   constructor() {
     // In a Cloudflare Worker environment, a service binding `API_SERVICE` will be available.
     // We use a robust check to see if it's a valid binding with a fetch method.
@@ -624,6 +641,9 @@ class ApiClient {
         headers: await this.getHeaders(),
         body: JSON.stringify(sessionData),
       })
+
+      // Handle 401 errors
+      await this.handleResponse(response)
 
       if (!response.ok) {
         const errorData = await response.json()
