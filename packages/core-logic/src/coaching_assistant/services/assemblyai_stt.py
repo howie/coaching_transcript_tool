@@ -387,15 +387,39 @@ class AssemblyAIProvider(STTProvider):
         role_assignments = {}
         confidence_metrics = {}
         
-        if enable_diarization and segments and len(set(s.speaker_id for s in segments)) >= 2:
-            try:
-                role_assignments, confidence_metrics = assign_roles_simple(segments)
-                logger.info(f"Simple role assignment: {role_assignments}")
-                logger.info(f"Assignment confidence: {confidence_metrics.get('confidence', 0):.2%}")
-                if confidence_metrics.get('method'):
-                    logger.info(f"Assignment method: {confidence_metrics['method']}")
-            except Exception as e:
-                logger.warning(f"Failed to assign speaker roles automatically: {e}")
+        if enable_diarization and segments:
+            unique_speakers = set(s.speaker_id for s in segments)
+            speakers_detected = len(unique_speakers)
+            
+            # Check if detected speakers match expectations
+            if speakers_detected < self.speakers_expected:
+                logger.warning(
+                    f"Speaker diarization mismatch: expected {self.speakers_expected} speakers, "
+                    f"but only detected {speakers_detected} speaker(s): {sorted(unique_speakers)}. "
+                    f"Audio quality or speaker separation may be insufficient."
+                )
+            elif speakers_detected > self.speakers_expected:
+                logger.info(
+                    f"Speaker diarization detected more speakers than expected: "
+                    f"expected {self.speakers_expected}, detected {speakers_detected}: {sorted(unique_speakers)}"
+                )
+            
+            # Attempt role assignment regardless of speaker count
+            if speakers_detected >= 2:
+                try:
+                    role_assignments, confidence_metrics = assign_roles_simple(segments)
+                    logger.info(f"Simple role assignment: {role_assignments}")
+                    logger.info(f"Assignment confidence: {confidence_metrics.get('confidence', 0):.2%}")
+                    if confidence_metrics.get('method'):
+                        logger.info(f"Assignment method: {confidence_metrics['method']}")
+                except Exception as e:
+                    logger.warning(f"Failed to assign speaker roles automatically: {e}")
+            else:
+                # Single speaker detected - log this situation
+                logger.warning(
+                    f"Cannot assign coach/client roles: only {speakers_detected} speaker detected. "
+                    f"Expected 2 speakers for coaching session. Manual role assignment may be required."
+                )
         
         # Calculate total duration (convert from milliseconds to seconds)
         total_duration = result.get('audio_duration', 0)
@@ -405,6 +429,9 @@ class AssemblyAIProvider(STTProvider):
             total_duration = max(s.end_seconds for s in segments)
         
         # Prepare provider metadata
+        unique_speakers = set(s.speaker_id for s in segments) if segments else set()
+        speakers_detected = len(unique_speakers)
+        
         provider_metadata = {
             "provider": "assemblyai",
             "model": self.model,
@@ -414,6 +441,10 @@ class AssemblyAIProvider(STTProvider):
             "transcript_id": result.get('id'),
             "confidence": result.get('confidence', 0),
             "audio_duration": result.get('audio_duration', 0),
+            "speakers_expected": self.speakers_expected,
+            "speakers_detected": speakers_detected,
+            "speakers_detected_ids": sorted(unique_speakers),
+            "speaker_diarization_mismatch": speakers_detected != self.speakers_expected,
             "speaker_role_assignments": role_assignments,
             "role_assignment_confidence": confidence_metrics,
             "automatic_role_assignment": len(role_assignments) > 0

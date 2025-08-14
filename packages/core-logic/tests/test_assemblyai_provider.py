@@ -76,21 +76,21 @@ class TestAssemblyAIProvider:
             provider = AssemblyAIProvider()
             
             # Test string to integer conversion
-            assert provider._convert_speaker_id("A") == 0
-            assert provider._convert_speaker_id("B") == 1
-            assert provider._convert_speaker_id("C") == 2
-            assert provider._convert_speaker_id("a") == 0  # lowercase should work
-            assert provider._convert_speaker_id("b") == 1
+            assert provider._convert_speaker_id("A") == 1
+            assert provider._convert_speaker_id("B") == 2
+            assert provider._convert_speaker_id("C") == 3
+            assert provider._convert_speaker_id("a") == 1  # lowercase should work
+            assert provider._convert_speaker_id("b") == 2
             
-            # Test integer passthrough
-            assert provider._convert_speaker_id(0) == 0
-            assert provider._convert_speaker_id(1) == 1
-            assert provider._convert_speaker_id(2) == 2
+            # Test integer passthrough (0 gets converted to 1, others stay the same)
+            assert provider._convert_speaker_id(0) == 1  # 0 -> 1 conversion
+            assert provider._convert_speaker_id(1) == 1  # stays 1
+            assert provider._convert_speaker_id(2) == 2  # stays 2
             
-            # Test invalid inputs
-            assert provider._convert_speaker_id("invalid") == 0
-            assert provider._convert_speaker_id(None) == 0
-            assert provider._convert_speaker_id([]) == 0
+            # Test invalid inputs (fallback to 1)
+            assert provider._convert_speaker_id("invalid") == 1
+            assert provider._convert_speaker_id(None) == 1
+            assert provider._convert_speaker_id([]) == 1
 
 
 class TestChineseTextProcessing:
@@ -282,6 +282,7 @@ class TestResultParsing:
         """Test parsing result with utterances (speaker diarization)."""
         with patch('coaching_assistant.services.assemblyai_stt.settings') as mock_settings:
             mock_settings.ASSEMBLYAI_API_KEY = "test-key"
+            mock_settings.ASSEMBLYAI_SPEAKERS_EXPECTED = 2
             provider = AssemblyAIProvider()
             
             result = {
@@ -307,13 +308,13 @@ class TestResultParsing:
                 ]
             }
             
-            with patch('coaching_assistant.services.assemblyai_stt.analyze_and_assign_roles') as mock_analyze:
-                mock_analyze.return_value = ({0: 'coach', 1: 'client'}, {'confidence': 0.8})
+            with patch('coaching_assistant.services.assemblyai_stt.assign_roles_simple') as mock_assign:
+                mock_assign.return_value = ({1: 'coach', 2: 'client'}, {'confidence': 0.8})
                 
                 parsed = provider._parse_transcript_result(result, "en-US", True)
                 
                 assert len(parsed.segments) == 2
-                assert parsed.segments[0].speaker_id == 0
+                assert parsed.segments[0].speaker_id == 1
                 assert parsed.segments[0].start_seconds == 1.0
                 assert parsed.segments[0].end_seconds == 3.0
                 assert parsed.segments[0].content == "Hello, how are you today?"
@@ -322,7 +323,7 @@ class TestResultParsing:
                 assert parsed.total_duration_sec == 30.0
                 assert parsed.language_code == "en"
                 assert parsed.provider_metadata["provider"] == "assemblyai"
-                assert parsed.provider_metadata["speaker_role_assignments"] == {0: 'coach', 1: 'client'}
+                assert parsed.provider_metadata["speaker_role_assignments"] == {1: 'coach', 2: 'client'}
     
     def test_parse_chinese_result_with_conversion(self):
         """Test parsing Chinese result with Traditional conversion."""
@@ -420,15 +421,16 @@ class TestCostEstimation:
 class TestFullTranscriptionWorkflow:
     """Test complete transcription workflow."""
     
-    @patch('coaching_assistant.services.assemblyai_stt.analyze_and_assign_roles')
+    @patch('coaching_assistant.services.assemblyai_stt.assign_roles_simple')
     @patch('coaching_assistant.services.assemblyai_stt.requests.get')
     @patch('coaching_assistant.services.assemblyai_stt.requests.post')
     @patch('coaching_assistant.services.assemblyai_stt.time.sleep')
-    def test_complete_transcription_workflow(self, mock_sleep, mock_post, mock_get, mock_analyze):
+    def test_complete_transcription_workflow(self, mock_sleep, mock_post, mock_get, mock_assign):
         """Test complete transcription from start to finish."""
         with patch('coaching_assistant.services.assemblyai_stt.settings') as mock_settings:
             mock_settings.ASSEMBLYAI_API_KEY = "test-key"
             mock_settings.ASSEMBLYAI_MODEL = "best"
+            mock_settings.ASSEMBLYAI_SPEAKERS_EXPECTED = 2
             provider = AssemblyAIProvider()
             
             # Mock submission response
@@ -468,8 +470,8 @@ class TestFullTranscriptionWorkflow:
                 resp.raise_for_status = Mock()
             mock_get.side_effect = poll_responses
             
-            # Mock role analysis
-            mock_analyze.return_value = ({0: 'coach', 1: 'client'}, {'confidence': 0.85})
+            # Mock role assignment
+            mock_assign.return_value = ({1: 'coach', 2: 'client'}, {'confidence': 0.85})
             
             # Execute transcription
             result = provider.transcribe(
@@ -485,13 +487,13 @@ class TestFullTranscriptionWorkflow:
             assert result.total_duration_sec == 15.0
             assert result.language_code == "en"
             assert result.provider_metadata["provider"] == "assemblyai"
-            assert result.provider_metadata["speaker_role_assignments"] == {0: 'coach', 1: 'client'}
+            assert result.provider_metadata["speaker_role_assignments"] == {1: 'coach', 2: 'client'}
             assert result.provider_metadata["automatic_role_assignment"] is True
             
             # Verify API calls
             mock_post.assert_called_once()
             mock_get.call_count == 2
-            mock_analyze.assert_called_once()
+            mock_assign.assert_called_once()
 
 
 class TestErrorHandling:
