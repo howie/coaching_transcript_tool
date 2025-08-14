@@ -104,7 +104,7 @@ class UsageLog(BaseModel):
     
     # Billing classification
     transcription_type = Column(Enum(TranscriptionType), nullable=False)
-    parent_usage_log_id = Column(UUID(as_uuid=True), ForeignKey("usage_logs.id"), nullable=True)
+    parent_log_id = Column(UUID(as_uuid=True), ForeignKey("usage_logs.id"), nullable=True)
     
     # Billing metadata
     is_billable = Column(Boolean, nullable=False, default=True)
@@ -323,7 +323,7 @@ class SmartBillingService:
             stt_provider=session.stt_provider,
             
             transcription_type=transcription_type,
-            parent_usage_log_id=parent_log.id if parent_log else None,
+            parent_log_id=parent_log.id if parent_log else None,
             
             is_billable=is_billable,
             billing_reason=billing_reason,
@@ -672,7 +672,7 @@ def test_usage_log_billing_classification():
     assert retrans_log.is_billable == True
     assert retrans_log.cost_usd == 0.05
     assert retrans_log.billing_reason == "retranscription_service"
-    assert retrans_log.parent_usage_log_id == retry_log.id  # Links to parent
+    assert retrans_log.parent_log_id == retry_log.id  # Links to parent
 ```
 
 ### Integration Tests
