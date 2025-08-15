@@ -14,21 +14,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the core-logic package first
-COPY packages/core-logic/ ./packages/core-logic/
+# Copy the source code and configuration files
+COPY src/ ./src/
+COPY pyproject.toml requirements.txt ./
 
 # Copy API server requirements and install them
 COPY apps/api-server/requirements.txt ./apps/api-server/
 RUN pip install --prefix=/install -r ./apps/api-server/requirements.txt
 
 # Install the core logic package
-RUN pip install --prefix=/install ./packages/core-logic/
+RUN pip install --prefix=/install ./
 
 # Runtime stage
 FROM python:3.10-slim
 
 # Set environment variables
-ENV PYTHONPATH=/app/packages/core-logic/src \
+ENV PYTHONPATH=/app/src \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000
@@ -43,8 +44,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
-# Copy the entire core-logic package for Alembic access
-COPY packages/core-logic/ ./packages/core-logic/
+# Copy source code and alembic files
+COPY src/ ./src/
+COPY alembic/ ./alembic/
+COPY alembic.ini pyproject.toml ./
 
 # Copy the API server code and startup script
 COPY apps/api-server/main.py ./

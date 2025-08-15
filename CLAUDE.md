@@ -15,7 +15,7 @@ Transform audio recordings of coaching sessions into high-quality transcripts wi
 - **Deployment**: Cloudflare Workers (Frontend) + Render.com (Backend)
 - **Database**: PostgreSQL + SQLAlchemy ORM
 - **Task Queue**: Celery + Redis
-- **STT Provider**: Google Speech-to-Text v2
+- **STT Providers**: Google Speech-to-Text v2, AssemblyAI
 
 ## Quick Start
 
@@ -46,64 +46,372 @@ cd apps/web && npm test  # Frontend tests
 - `make build-frontend` - Production build
 - `make deploy-frontend` - Deploy to Cloudflare
 
-### Docker
-- `make docker` - Build all images
-- `docker-compose up -d` - Run services
-
 ## Project Structure
+
+**Standard Python Project Layout** (following PEP 518 and community best practices):
 
 ```
 coaching_transcript_tool/
-├── apps/              
-│   ├── api-server/    # FastAPI backend service
-│   ├── cli/           # Command-line tool
-│   └── web/           # Next.js frontend
-├── packages/          
-│   └── core-logic/    # Shared Python business logic
-└── docs/              # Project documentation
+├── apps/                     # Multi-app monorepo structure
+│   ├── api-server/           # FastAPI backend entry point
+│   ├── cli/                  # Command-line tools and utilities
+│   ├── web/                  # Next.js frontend application
+│   │   ├── app/              # Next.js 14 App Router pages
+│   │   ├── components/       # Reusable React components
+│   │   ├── contexts/         # React contexts (auth, i18n, theme)
+│   │   ├── hooks/            # Custom React hooks
+│   │   └── lib/              # Frontend utilities and API client
+│   └── worker/               # Background worker services
+├── src/                      # Python source code (PEP 518 src layout)
+│   └── coaching_assistant/   # Main Python package
+│       ├── __init__.py       # Package initialization
+│       ├── __main__.py       # CLI entry point (python -m coaching_assistant)
+│       ├── py.typed          # Type marker file for mypy
+│       ├── version.py        # Version information
+│       ├── exceptions.py     # Custom exceptions
+│       ├── constants.py      # Application constants
+│       ├── config/           # Configuration management
+│       │   ├── __init__.py
+│       │   ├── settings.py   # Main configuration class
+│       │   ├── environment.py # Environment variable handling
+│       │   └── logging_config.py # Logging configuration
+│       ├── core/             # Core business logic
+│       │   ├── services/     # Business logic layer
+│       │   ├── models/       # SQLAlchemy database models
+│       │   └── repositories/ # Data access abstraction layer
+│       ├── api/              # FastAPI route handlers
+│       ├── tasks/            # Celery background tasks
+│       └── utils/            # Common utilities and helpers
+├── tests/                    # Test suite (separate from src)
+│   ├── conftest.py           # pytest configuration
+│   ├── fixtures/             # Test data and mocks
+│   ├── unit/                 # Fast, isolated unit tests
+│   ├── integration/          # Service integration tests
+│   ├── e2e/                  # End-to-end workflow tests
+│   └── performance/          # Performance benchmarks
+├── alembic/                  # Database migrations (SQLAlchemy)
+├── logs/                     # Application log files
+├── examples/                 # Usage examples and tutorials
+├── docs/                     # Documentation
+│   ├── features/             # Feature documentation (in development)
+│   ├── features_done/        # Completed feature documentation
+│   └── deployment/          # Deployment guides and configs
+├── scripts/                  # Development and maintenance scripts
+├── terraform/               # Infrastructure as code (GCP)
+├── memory-bank/             # Project context for AI assistants
+├── poc-assemblyAI/          # AssemblyAI integration prototypes
+├── pyproject.toml           # Modern Python project configuration (PEP 518)
+├── requirements.txt         # Production dependencies
+├── requirements-dev.txt     # Development dependencies
+├── .env.example             # Environment variables template
+├── .pre-commit-config.yaml  # Code quality automation
+├── mypy.ini                 # Type checking configuration
+├── pytest.ini              # Test runner configuration
+└── Makefile                 # Development commands
 ```
 
-## Architecture Decisions
+### Key Structure Benefits
 
-The project follows a **monorepo architecture** with clear separation of concerns:
+1. **PEP 518 Compliance**: Uses modern `pyproject.toml` and `src/` layout
+2. **Package Isolation**: Prevents import issues during development
+3. **Clear Separation**: Tests, docs, and source code are properly separated
+4. **Type Safety**: Includes `py.typed` marker and mypy configuration
+5. **Development Workflow**: Pre-commit hooks and quality tools configured
 
-1. **Frontend-Backend Separation**: Complete decoupling for independent scaling and deployment
-2. **Microservices Ready**: Each app can be deployed independently
-3. **Code Reuse**: Shared business logic in packages/core-logic
-4. **Serverless First**: Optimized for edge deployment on Cloudflare Workers
+### Module Organization
 
-## API Endpoints
+The `coaching_assistant` package follows layered architecture:
 
-Key endpoints:
-- `POST /auth/google` - Google SSO authentication
-- `POST /sessions` - Create transcription session (supports `stt_provider` selection)
-- `GET /sessions` - List user sessions
-- `GET /sessions/{id}` - Get session details
-- `GET /sessions/providers` - Get available STT providers (NEW)
-- `POST /sessions/{id}/upload-url` - Get signed upload URL (supports FAILED sessions for re-upload)
-- `POST /sessions/{id}/start-transcription` - Start transcription processing
-- `POST /sessions/{id}/retry-transcription` - Retry failed transcription sessions (NEW)
-- `GET /sessions/{id}/transcript` - Download transcript (VTT/SRT/JSON/XLSX)
-- `GET /sessions/{id}/status` - Get transcription progress
-- `PATCH /sessions/{id}/speaker-roles` - Update speaker role assignments
-- `PATCH /sessions/{id}/segment-roles` - Update individual segment speaker roles
+- **config/**: Centralized configuration with environment handling
+- **core/services/**: Business logic and domain services
+- **core/models/**: Database models and domain entities
+- **core/repositories/**: Data access abstraction layer
+- **api/**: HTTP request handlers and routing
+- **tasks/**: Asynchronous background processing
+- **utils/**: Shared utilities and helper functions
 
-## Important Notes
+**Note**: This structure is planned for implementation. See `docs/refactor-new-claude-structure.md` for detailed migration plan.
 
-- Use virtual environments for Python development (avoid `--break-system-packages`)
-- **Environment variables required**: `DATABASE_URL`, `REDIS_URL`, `GOOGLE_APPLICATION_CREDENTIALS_JSON`
-- **AssemblyAI integration**: Set `ASSEMBLYAI_API_KEY` to enable AssemblyAI provider
-- Audio files auto-delete after 24 hours (GDPR compliance)
-- Makefile provides unified interface for all operations
-- **Database migration applied**: STT provider tracking in `session` table
-- **Multi-provider support**: Seamless switching between Google STT and AssemblyAI
+## Development Methodology: Test-Driven Development (TDD)
+
+### ROLE AND EXPERTISE
+You are a senior software engineer who follows Kent Beck's Test-Driven Development (TDD) and Tidy First principles. Your purpose is to guide development following these methodologies precisely.
+
+### CORE DEVELOPMENT PRINCIPLES
+- Always follow the TDD cycle: **Red → Green → Refactor**
+- Write the simplest failing test first
+- Implement the minimum code needed to make tests pass
+- Refactor only after tests are passing
+- Follow Beck's "Tidy First" approach by separating structural changes from behavioral changes
+- Maintain high code quality throughout development
+
+### TDD METHODOLOGY GUIDANCE
+1. Start by writing a failing test that defines a small increment of functionality
+2. Use meaningful test names that describe behavior (e.g., "shouldSumTwoPositiveNumbers")
+3. Make test failures clear and informative
+4. Write just enough code to make the test pass - no more
+5. Once tests pass, consider if refactoring is needed
+6. Repeat the cycle for new functionality
+
+**When fixing a defect:**
+1. First write an API-level failing test
+2. Then write the smallest possible test that replicates the problem
+3. Get both tests to pass
+
+### TIDY FIRST APPROACH
+Separate all changes into two distinct types:
+
+**STRUCTURAL CHANGES**: Rearranging code without changing behavior (renaming, extracting methods, moving code)
+**BEHAVIORAL CHANGES**: Adding or modifying actual functionality
+
+- Never mix structural and behavioral changes in the same commit
+- Always make structural changes first when both are needed
+- Validate structural changes do not alter behavior by running tests before and after
+
+### COMMIT DISCIPLINE
+Only commit when:
+- ALL tests are passing
+- ALL compiler/linter warnings have been resolved
+- The change represents a single logical unit of work
+- Commit messages clearly state whether the commit contains structural or behavioral changes
+- Use small, frequent commits rather than large, infrequent ones
+
+### CODE QUALITY STANDARDS
+- Eliminate duplication ruthlessly
+- Express intent clearly through naming and structure
+- Make dependencies explicit
+- Keep methods small and focused on a single responsibility
+- Minimize state and side effects
+- Use the simplest solution that could possibly work
+
+### REFACTORING GUIDELINES
+- Refactor only when tests are passing (in the "Green" phase)
+- Use established refactoring patterns with their proper names
+- Make one refactoring change at a time
+- Run tests after each refactoring step
+- Prioritize refactorings that remove duplication or improve clarity
+
+### EXAMPLE WORKFLOW
+When approaching a new feature:
+
+1. Write a simple failing test for a small part of the feature
+2. Implement the bare minimum to make it pass
+3. Run tests to confirm they pass (Green)
+4. Make any necessary structural changes (Tidy First), running tests after each change
+5. Commit structural changes separately
+6. Add another test for the next small increment of functionality
+7. Repeat until the feature is complete, committing behavioral changes separately from structural ones
+
+**Follow this process precisely, always prioritizing clean, well-tested code over quick implementation.**
+
+Always write one test at a time, make it run, then improve structure. Always run all the tests (except long-running tests) each time.
+
+## Python Code Style & Standards
+
+### Core Requirements
+- **Python Compatibility**: Python 3.11+ (primary), test on 3.12 when possible
+- **Framework**: FastAPI for backend APIs (established choice)
+- **HTTP Libraries**: Use `httpx` for async operations, `requests` for simple sync calls
+- **CLI Arguments**: Use `argparse` or `click` with standard format (`--option value` or `--option=value`)
+
+### Naming Conventions
+- **Use highly semantic and descriptive names** for classes, functions, and parameters
+- Prefer longer, clear names over abbreviated ones
+- Examples: `TranscriptionProcessingService` vs `TPS`, `analyze_speaker_segments()` vs `analyze()`
+
+### Configuration Management
+- **Centralized configuration** - avoid scattered settings across individual classes
+- Use environment variables for deployment-specific settings
+- Create configuration classes with validation
+- Example pattern:
+  ```python
+  from pydantic import BaseSettings
+  
+  class Settings(BaseSettings):
+      database_url: str
+      redis_url: str
+      stt_provider: str = "google"
+      
+      class Config:
+          env_file = ".env"
+  ```
+
+### Method Chaining Pattern
+- **All setter methods must return `self`** to support method chaining
+- Use for configuration builders and fluent interfaces
+- Example:
+  ```python
+  class TranscriptionBuilder:
+      def set_language(self, lang: str) -> 'TranscriptionBuilder':
+          self.language = lang
+          return self
+      
+      def set_provider(self, provider: str) -> 'TranscriptionBuilder':
+          self.provider = provider
+          return self
+  ```
+
+### Logging Standards
+Use comprehensive logging with structured output and clear indicators:
+
+```python
+import logging
+import sys
+from datetime import datetime
+
+def setup_logging(debug_mode=False):
+    log_level = logging.DEBUG if debug_mode else logging.INFO
+    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    
+    logging.basicConfig(
+        level=log_level,
+        format=log_format,
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(f'logs/{datetime.now().strftime("%Y%m%d")}.log')
+        ]
+    )
+    return logging.getLogger(__name__)
+
+# Usage with clear indicators
+logger = setup_logging()
+logger.info("🚀 Application startup initiated")
+logger.info("📋 Loading configuration...")
+logger.warning("⚠️  Potential issue detected")
+logger.error("❌ Operation failed: detailed error")
+logger.info("✅ Operation completed successfully")
+logger.info("🏁 Application finished")
+```
+
+**All important execution steps must include logging:**
+- 📋 Configuration loading and validation
+- 🔗 External service connections (STT providers, database)
+- 📊 Data processing progress (transcription status)
+- ⏱️ Performance statistics
+- 🔍 Debug information (when debug mode enabled)
+- ⚠️ Warning messages
+- ❌ Error handling with context
+- ✅ Success confirmations
+- 📈 Execution result statistics
+
+### Documentation Requirements
+- **Every module must include usage examples** in docstrings or README
+- **All public functions require docstrings** with examples
+- **Create README.md files** for major components explaining "how to use"
+- **Include type hints** for all function parameters and return values
+
+### Code Quality Tools
+Use these tools for consistent code quality:
+
+```bash
+# Code formatting
+black .                    # Auto-format code
+isort .                    # Sort imports
+
+# Code analysis  
+flake8 .                   # Syntax and style checking
+mypy .                     # Type checking
+pytest --cov=src --cov-report=html  # Testing with coverage
+
+# Pre-commit hooks
+pre-commit install         # Set up automated checks
+```
+
+**Quality Targets:**
+- **Test coverage**: 85% minimum for core-logic package
+- **Type coverage**: 90% minimum with mypy
+- **No flake8 warnings** in production code
+- **All imports sorted** with isort
 
 ## Testing Philosophy
 
-- Write tests for critical business logic
+- Follow TDD methodology strictly (Red → Green → Refactor)
 - Use pytest for backend, Jest for frontend
-- Mock external services in tests
-- Maintain >70% coverage for core-logic package
+- Mock external services in tests (STT providers, databases)
+- **Maintain 85% coverage minimum** for core-logic package (upgraded from 70%)
+- Write tests that describe behavior, not implementation
+- Use meaningful test names that explain the expected behavior
+
+### Test Organization
+```
+tests/
+├── unit/                  # Fast, isolated tests
+├── integration/           # Service integration tests  
+├── e2e/                   # End-to-end workflow tests
+├── fixtures/              # Test data and mocks
+└── performance/           # Performance benchmarks
+```
+
+### Test Requirements
+- **All test files must be comprehensive** and test edge cases
+- **Mock external dependencies** (Google STT, AssemblyAI, Redis, PostgreSQL)
+- **Use fixtures** for common test data setup
+- **Include performance tests** for critical paths
+- **Test error conditions** and recovery scenarios
+
+## Environment Configuration
+
+### Required Environment Variables
+```env
+# Database
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
+
+# Authentication  
+GOOGLE_APPLICATION_CREDENTIALS_JSON={"type": "service_account"...}
+
+# STT Providers
+STT_PROVIDER=google  # "google" (default) | "assemblyai"
+GOOGLE_STT_MODEL=chirp_2
+GOOGLE_STT_LOCATION=asia-southeast1
+ASSEMBLYAI_API_KEY=your_api_key_here  # Required for AssemblyAI
+```
+
+## STT Provider Architecture
+
+### Supported Providers
+1. **Google Speech-to-Text** (Default) - chirp_2 model
+2. **AssemblyAI** - Enhanced Chinese language support
+
+### Provider Selection
+- **Per-session**: `POST /sessions` with `stt_provider: "google"|"assemblyai"|"auto"`
+- **Environment default**: `STT_PROVIDER` environment variable
+- **Automatic fallback**: AssemblyAI → Google STT on failures
+
+### Language Support
+- **English**: Optimal diarization with `us-central1` region
+- **Chinese**: Traditional Chinese output, manual role assignment available
+- **Japanese**: Manual role assignment, excellent transcription quality
+
+## Key API Endpoints
+
+```
+Authentication:
+POST /auth/google - Google SSO authentication
+
+Sessions:
+POST /sessions - Create transcription session
+GET /sessions - List user sessions  
+GET /sessions/{id} - Get session details
+POST /sessions/{id}/upload-url - Get signed upload URL
+POST /sessions/{id}/start-transcription - Start processing
+GET /sessions/{id}/transcript - Download transcript
+PATCH /sessions/{id}/speaker-roles - Update speaker assignments
+
+Coaching Management:
+GET /api/v1/clients - List clients
+POST /api/v1/clients - Create client
+GET /api/v1/coaching-sessions - List coaching sessions
+POST /api/v1/coaching-sessions - Create session
+```
+
+## Important Notes
+
+- Use virtual environments for Python development
+- Audio files auto-delete after 24 hours (GDPR compliance)
+- All database migrations use consistent foreign key naming: `{referenced_table}_id`
+- Follow the monorepo architecture with clear separation of concerns
+- Prioritize security: never commit secrets, use environment variables
 
 ## Deployment
 
@@ -112,166 +420,4 @@ Key endpoints:
 - **Database**: Managed PostgreSQL on Render
 - **Monitoring**: Render Metrics + custom logging
 
-## STT Provider Architecture & Transcription
-
-### Overview
-The system supports **multiple STT providers** with intelligent fallback mechanisms and automatic speaker diarization across different languages and configurations.
-
-### ✅ Supported STT Providers (August 2025)
-1. **Google Speech-to-Text** (Default)
-2. **AssemblyAI** - New provider with enhanced features
-
-### Provider Selection
-Users can choose STT provider per session:
-- **API**: `POST /sessions` with `stt_provider: "google"|"assemblyai"|"auto"`
-- **Environment**: `STT_PROVIDER=google` or `STT_PROVIDER=assemblyai`
-- **Fallback**: Automatic failover from AssemblyAI to Google STT on errors
-
-### Configuration
-Key environment variables for transcription:
-
-```env
-# STT Provider Selection
-STT_PROVIDER=google  # "google" (default) | "assemblyai"
-
-# Google STT Configuration
-GOOGLE_STT_MODEL=chirp_2
-GOOGLE_STT_LOCATION=asia-southeast1
-
-# AssemblyAI Configuration (NEW)
-ASSEMBLYAI_API_KEY=your_api_key_here
-ASSEMBLYAI_MODEL=best  # "best" or "nano"
-ASSEMBLYAI_SPEAKERS_EXPECTED=2
-
-# Speaker Diarization Settings
-ENABLE_SPEAKER_DIARIZATION=true
-MAX_SPEAKERS=2
-MIN_SPEAKERS=2
-```
-
-### Google STT API Methods
-The system intelligently chooses between two Google STT v2 APIs:
-
-1. **recognize API**: Used when diarization is supported (limited language/region combinations)
-2. **batchRecognize API**: Used as fallback when diarization is not supported
-
-### AssemblyAI Features
-- **Automatic Speaker Diarization**: Built-in support without configuration
-- **Chinese Language Processing**: Traditional Chinese conversion with space removal
-- **Speaker Role Assignment**: Automatic coach/client role detection using heuristics
-- **Real-time Progress**: Async transcription with polling and progress callbacks
-
-### Language Support Matrix
-
-| Language | Region | Model | Diarization Support | API Used |
-|----------|--------|--------|-------------------|----------|
-| English (en-US) | us-central1 | chirp_2 | ✅ Supported | recognize |
-| English (en-US) | asia-southeast1 | chirp_2 | ❌ Auto-fallback | batchRecognize |
-| Chinese (cmn-Hant-TW) | asia-southeast1 | chirp_2 | ❌ Auto-fallback | batchRecognize |
-| Japanese (ja) | asia-southeast1 | chirp_2 | ❌ Auto-fallback | batchRecognize |
-
-### Manual Role Assignment
-When automatic diarization is not available, the frontend provides:
-- **Segment-level editing**: Each transcript segment can be individually assigned to "Coach" or "Client"
-- **Real-time updates**: Statistics update immediately after role assignment changes
-- **Export support**: All export formats (JSON/VTT/SRT/TXT) include role information
-
-### Best Practices
-- **For English sessions**: Use `GOOGLE_STT_LOCATION=us-central1` for optimal diarization
-- **For Chinese/Asian languages**: Current `asia-southeast1` setting provides excellent transcription with manual role assignment
-- **Mixed language support**: System automatically detects and uses the best configuration per language
-
-For detailed documentation, see `/docs/` directory.
-
-## AssemblyAI Provider Integration (August 2025)
-
-### ✅ Implementation Status: COMPLETED
-The AssemblyAI provider is fully integrated and production-ready with comprehensive features:
-
-### Core Features
-- **Multi-Provider Support**: Users can choose between Google STT and AssemblyAI per session
-- **Automatic Fallback**: System falls back from AssemblyAI to Google STT on failures
-- **Chinese Language Processing**: Traditional Chinese conversion with proper spacing
-- **Speaker Intelligence**: Automatic coach/client role assignment using analysis heuristics
-- **Real-time Progress**: Async transcription with detailed progress callbacks
-
-### Technical Implementation
-- **Provider Interface**: `AssemblyAIProvider` class in `services/assemblyai_stt.py`
-- **Factory Pattern**: `STTProviderFactory` with fallback support in `services/stt_factory.py`
-- **Speaker Analysis**: `SpeakerAnalyzer` utility in `utils/speaker_analysis.py`
-- **Database Migration**: Added `stt_provider` and `provider_metadata` fields to session table
-- **API Enhancement**: New `/providers` endpoint and provider selection in session creation
-
-### Usage Examples
-```python
-# Create session with specific provider
-POST /sessions
-{
-  "title": "Coaching Session",
-  "language": "cmn-Hant-TW",
-  "stt_provider": "assemblyai"  # "google", "assemblyai", or "auto"
-}
-
-# Get available providers
-GET /sessions/providers
-# Returns: {"available_providers": [...], "default_provider": "google"}
-```
-
-### Chinese Language Processing
-- **Input**: Simplified Chinese from AssemblyAI API
-- **Processing**: Remove spaces + Convert to Traditional Chinese using OpenCC
-- **Output**: Properly formatted Traditional Chinese matching Google STT format
-
-### Provider Selection Logic
-1. **Per-Session**: API clients can specify `stt_provider` in session creation
-2. **Environment Default**: `STT_PROVIDER` environment variable sets system default
-3. **Auto Fallback**: If primary provider fails, automatically tries fallback provider
-4. **Provider Tracking**: All sessions track which provider was actually used
-
-### Files Modified/Created
-- **NEW**: `packages/core-logic/src/coaching_assistant/services/assemblyai_stt.py`
-- **NEW**: `packages/core-logic/src/coaching_assistant/utils/speaker_analysis.py`
-- **NEW**: `packages/core-logic/alembic/versions/49515d3a1515_add_stt_provider_tracking_fields.py`
-- **MODIFIED**: `packages/core-logic/src/coaching_assistant/services/stt_factory.py`
-- **MODIFIED**: `packages/core-logic/src/coaching_assistant/models/session.py`
-- **MODIFIED**: `packages/core-logic/src/coaching_assistant/core/config.py`
-- **MODIFIED**: `packages/core-logic/src/coaching_assistant/tasks/transcription_tasks.py`
-- **MODIFIED**: `packages/core-logic/src/coaching_assistant/api/sessions.py`
-
-### Testing & Verification
-- ✅ Unit tests for AssemblyAI provider
-- ✅ Integration tests for provider factory and fallback
-- ✅ Database migration applied and tested
-- ✅ API endpoints verified with authentication
-- ✅ CORS configuration confirmed for frontend integration
-- ✅ Provider switching and fallback mechanism validated
-
-### Configuration Reference
-```env
-# Provider Selection
-STT_PROVIDER=assemblyai  # or "google" (default)
-
-# AssemblyAI Settings
-ASSEMBLYAI_API_KEY=your_api_key_here
-ASSEMBLYAI_MODEL=best  # or "nano" for faster/cheaper
-ASSEMBLYAI_SPEAKERS_EXPECTED=2
-```
-
-### Error Handling & Recovery (NEW - August 2025)
-- **Failed Session Recovery**: Added `/retry-transcription` endpoint for failed sessions
-- **Automatic Re-upload Support**: Failed sessions can request new upload URLs
-- **Clean State Reset**: Retry clears previous transcript segments and processing status
-- **File Verification**: Checks audio file existence before retry attempt
-- **Graceful Degradation**: If audio file missing, resets session to allow re-upload
-
-### Session Status Management
-- **FAILED → PROCESSING**: Retry transcription with existing audio file
-- **FAILED → UPLOADING**: If audio file missing, reset to allow new upload
-- **Comprehensive Cleanup**: Clears transcript segments, processing status, and error messages
-
-### Next Steps & Production Readiness
-- 🚀 **Ready for Production**: Full implementation with comprehensive error handling
-- ✅ **Error Recovery**: Complete retry mechanism for failed transcriptions
-- 📊 **Monitor Usage**: Track provider performance and costs in production
-- 🔄 **Provider Analytics**: Consider adding provider comparison metrics
-- 🎯 **Future Enhancement**: Support for multiple speakers (group coaching)
+For detailed technical documentation, see `/docs/` directory.
