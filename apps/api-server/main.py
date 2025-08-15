@@ -2,7 +2,7 @@
 """
 Container deployment entry point for Coaching Assistant.
 
-Uses shared core logic from packages/core-logic.
+Uses shared core logic from src/coaching_assistant.
 Container-specific configuration for Docker deployment.
 """
 import os
@@ -10,7 +10,7 @@ import uvicorn
 
 # 先執行環境變數檢查
 print("🐳 Starting Coaching Assistant in Container mode")
-print("📦 Using shared core logic from packages/core-logic")
+print("📦 Using shared core logic from src/coaching_assistant")
 
 # Import app after environment validation
 from coaching_assistant.main import app
