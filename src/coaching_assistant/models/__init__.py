@@ -11,12 +11,12 @@ from .coach_profile import (
     CoachingLanguage,
     CommunicationTool,
     CoachExperience,
-    CoachingPlanType
+    CoachingPlanType,
 )
 
 __all__ = [
     "Base",
-    "TimestampMixin", 
+    "TimestampMixin",
     "User",
     "UserPlan",
     "Session",

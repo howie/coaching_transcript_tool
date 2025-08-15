@@ -2,7 +2,14 @@
 
 import enum
 from sqlalchemy import (
-    Column, String, Integer, ForeignKey, Text, Date, CheckConstraint, Enum
+    Column,
+    String,
+    Integer,
+    ForeignKey,
+    Text,
+    Date,
+    CheckConstraint,
+    Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -11,6 +18,7 @@ from .base import BaseModel
 
 class SessionSource(enum.Enum):
     """Source of coaching session."""
+
     CLIENT = "CLIENT"
     FRIEND = "FRIEND"
     CLASSMATE = "CLASSMATE"
@@ -25,14 +33,14 @@ class CoachingSession(BaseModel):
         UUID(as_uuid=True),
         ForeignKey("user.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     session_date = Column(Date, nullable=False)
     client_id = Column(
         UUID(as_uuid=True),
         ForeignKey("client.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     source = Column(Enum(SessionSource), nullable=False)
 
@@ -42,15 +50,17 @@ class CoachingSession(BaseModel):
     fee_amount = Column(Integer, nullable=False, default=0)
 
     # File associations (optional)
-    transcription_session_id = Column(UUID(as_uuid=True), nullable=True)  # References session.id for linked transcription
+    transcription_session_id = Column(
+        UUID(as_uuid=True), nullable=True
+    )  # References session.id for linked transcription
 
     # Notes
     notes = Column(Text, nullable=True)
 
     # Constraints
     __table_args__ = (
-        CheckConstraint('duration_min > 0', name='duration_positive'),
-        CheckConstraint('fee_amount >= 0', name='fee_non_negative'),
+        CheckConstraint("duration_min > 0", name="duration_positive"),
+        CheckConstraint("fee_amount >= 0", name="fee_non_negative"),
     )
 
     # Relationships

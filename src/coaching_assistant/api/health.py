@@ -1,12 +1,14 @@
 """
 Health check routes for the Coaching Transcript Tool Backend API.
 """
+
 from fastapi import APIRouter
 from typing import Dict, Any
 import time
 import os
 
 router = APIRouter()
+
 
 @router.get("/")
 async def health_check() -> Dict[str, Any]:
@@ -17,8 +19,9 @@ async def health_check() -> Dict[str, Any]:
         "status": "healthy",
         "timestamp": time.time(),
         "service": "coaching-transcript-tool-api",
-        "version": "2.0.0"
+        "version": "2.0.0",
     }
+
 
 @router.get("/detailed")
 async def detailed_health_check() -> Dict[str, Any]:
@@ -35,8 +38,8 @@ async def detailed_health_check() -> Dict[str, Any]:
                 "platform": os.name,
                 "python_version": os.sys.version.split()[0],
                 "environment": os.getenv("ENVIRONMENT", "development"),
-                "process_id": os.getpid()
-            }
+                "process_id": os.getpid(),
+            },
         }
     except Exception as e:
         return {
@@ -44,5 +47,5 @@ async def detailed_health_check() -> Dict[str, Any]:
             "timestamp": time.time(),
             "service": "coaching-transcript-tool-api",
             "version": "2.0.0",
-            "error": str(e)
+            "error": str(e),
         }
