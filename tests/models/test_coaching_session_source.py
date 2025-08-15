@@ -11,25 +11,23 @@ class TestCoachingSessionSource:
     def test_create_coaching_session_with_source(self, db_session):
         """Test creating a coaching session with all SessionSource values."""
         # Create a coach user
-        coach = User(
-            email="coach@example.com",
-            name="Test Coach",
-            google_id="coach123"
-        )
+        coach = User(email="coach@example.com", name="Test Coach", google_id="coach123")
         db_session.add(coach)
         db_session.flush()
 
         # Create a client
-        client = Client(
-            user_id=coach.id,
-            name="Test Client"
-        )
+        client = Client(user_id=coach.id, name="Test Client")
         db_session.add(client)
         db_session.flush()
 
         # Test each SessionSource enum value
-        sources = [SessionSource.CLIENT, SessionSource.FRIEND, SessionSource.CLASSMATE, SessionSource.SUBORDINATE]
-        
+        sources = [
+            SessionSource.CLIENT,
+            SessionSource.FRIEND,
+            SessionSource.CLASSMATE,
+            SessionSource.SUBORDINATE,
+        ]
+
         for source in sources:
             session = CoachingSession(
                 user_id=coach.id,
@@ -38,14 +36,19 @@ class TestCoachingSessionSource:
                 source=source,
                 duration_min=60,
                 fee_currency="USD",
-                fee_amount=100
+                fee_amount=100,
             )
             db_session.add(session)
             db_session.flush()
-            
+
             # Verify the source was set correctly
             assert session.source == source
-            assert session.source.value in ["CLIENT", "FRIEND", "CLASSMATE", "SUBORDINATE"]
+            assert session.source.value in [
+                "CLIENT",
+                "FRIEND",
+                "CLASSMATE",
+                "SUBORDINATE",
+            ]
 
         db_session.commit()
 
@@ -53,18 +56,13 @@ class TestCoachingSessionSource:
         """Test that source field is required."""
         # Create a coach user
         coach = User(
-            email="coach2@example.com",
-            name="Test Coach 2",
-            google_id="coach456"
+            email="coach2@example.com", name="Test Coach 2", google_id="coach456"
         )
         db_session.add(coach)
         db_session.flush()
 
         # Create a client
-        client = Client(
-            user_id=coach.id,
-            name="Test Client 2"
-        )
+        client = Client(user_id=coach.id, name="Test Client 2")
         db_session.add(client)
         db_session.flush()
 
@@ -76,10 +74,10 @@ class TestCoachingSessionSource:
             # source=... # Missing required field
             duration_min=60,
             fee_currency="USD",
-            fee_amount=100
+            fee_amount=100,
         )
         db_session.add(session)
-        
+
         with pytest.raises(Exception):  # Should raise an integrity constraint error
             db_session.commit()
 
@@ -87,18 +85,13 @@ class TestCoachingSessionSource:
         """Test that only valid SessionSource enum values are accepted."""
         # Create a coach user
         coach = User(
-            email="coach3@example.com",
-            name="Test Coach 3",
-            google_id="coach789"
+            email="coach3@example.com", name="Test Coach 3", google_id="coach789"
         )
         db_session.add(coach)
         db_session.flush()
 
         # Create a client
-        client = Client(
-            user_id=coach.id,
-            name="Test Client 3"
-        )
+        client = Client(user_id=coach.id, name="Test Client 3")
         db_session.add(client)
         db_session.flush()
 
@@ -110,13 +103,13 @@ class TestCoachingSessionSource:
             source=SessionSource.CLIENT,  # Valid value
             duration_min=60,
             fee_currency="USD",
-            fee_amount=100
+            fee_amount=100,
         )
-        
+
         # This should work fine
         db_session.add(session)
         db_session.commit()
-        
+
         # Verify the session was created successfully
         assert session.source == SessionSource.CLIENT
 
@@ -126,7 +119,7 @@ class TestCoachingSessionSource:
         assert SessionSource.FRIEND.value == "FRIEND"
         assert SessionSource.CLASSMATE.value == "CLASSMATE"
         assert SessionSource.SUBORDINATE.value == "SUBORDINATE"
-        
+
         # Test that all expected enum values exist
         expected_values = {"CLIENT", "FRIEND", "CLASSMATE", "SUBORDINATE"}
         actual_values = {source.value for source in SessionSource}
@@ -136,18 +129,13 @@ class TestCoachingSessionSource:
         """Test that CoachingSession __repr__ works correctly with source field."""
         # Create a coach user
         coach = User(
-            email="coach4@example.com",
-            name="Test Coach 4",
-            google_id="coach999"
+            email="coach4@example.com", name="Test Coach 4", google_id="coach999"
         )
         db_session.add(coach)
         db_session.flush()
 
         # Create a client
-        client = Client(
-            user_id=coach.id,
-            name="Test Client 4"
-        )
+        client = Client(user_id=coach.id, name="Test Client 4")
         db_session.add(client)
         db_session.flush()
 
@@ -159,7 +147,7 @@ class TestCoachingSessionSource:
             source=SessionSource.FRIEND,
             duration_min=90,
             fee_currency="EUR",
-            fee_amount=150
+            fee_amount=150,
         )
         db_session.add(session)
         db_session.commit()
@@ -175,18 +163,13 @@ class TestCoachingSessionSource:
         """Test that relationships still work correctly with source field added."""
         # Create a coach user
         coach = User(
-            email="coach5@example.com",
-            name="Test Coach 5",
-            google_id="coach555"
+            email="coach5@example.com", name="Test Coach 5", google_id="coach555"
         )
         db_session.add(coach)
         db_session.flush()
 
         # Create a client
-        client = Client(
-            user_id=coach.id,
-            name="Test Client 5"
-        )
+        client = Client(user_id=coach.id, name="Test Client 5")
         db_session.add(client)
         db_session.flush()
 
@@ -198,7 +181,7 @@ class TestCoachingSessionSource:
             source=SessionSource.CLASSMATE,
             duration_min=45,
             fee_currency="GBP",
-            fee_amount=75
+            fee_amount=75,
         )
         db_session.add(session)
         db_session.commit()
@@ -213,18 +196,13 @@ class TestCoachingSessionSource:
         """Test creating multiple sessions with different sources for same client."""
         # Create a coach user
         coach = User(
-            email="coach6@example.com",
-            name="Test Coach 6",
-            google_id="coach666"
+            email="coach6@example.com", name="Test Coach 6", google_id="coach666"
         )
         db_session.add(coach)
         db_session.flush()
 
         # Create a client
-        client = Client(
-            user_id=coach.id,
-            name="Test Client 6"
-        )
+        client = Client(user_id=coach.id, name="Test Client 6")
         db_session.add(client)
         db_session.flush()
 
@@ -234,7 +212,7 @@ class TestCoachingSessionSource:
             (SessionSource.CLIENT, date(2024, 1, 15)),
             (SessionSource.FRIEND, date(2024, 2, 15)),
             (SessionSource.CLASSMATE, date(2024, 3, 15)),
-            (SessionSource.SUBORDINATE, date(2024, 4, 15))
+            (SessionSource.SUBORDINATE, date(2024, 4, 15)),
         ]
 
         for source, session_date in sources_and_dates:
@@ -245,7 +223,7 @@ class TestCoachingSessionSource:
                 source=source,
                 duration_min=60,
                 fee_currency="USD",
-                fee_amount=100
+                fee_amount=100,
             )
             sessions.append(session)
             db_session.add(session)
@@ -253,7 +231,9 @@ class TestCoachingSessionSource:
         db_session.commit()
 
         # Verify all sessions were created with correct sources
-        for session, (expected_source, expected_date) in zip(sessions, sources_and_dates):
+        for session, (expected_source, expected_date) in zip(
+            sessions, sources_and_dates
+        ):
             assert session.source == expected_source
             assert session.session_date == expected_date
 
