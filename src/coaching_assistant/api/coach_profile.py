@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/coach-profile", tags=["coach-profile"])
 # Pydantic models for request/response
 class CommunicationToolsModel(BaseModel):
     """Communication tools configuration."""
+
     line: bool = False
     zoom: bool = False
     google_meet: bool = False
@@ -28,6 +29,7 @@ class CommunicationToolsModel(BaseModel):
 
 class CoachProfileCreate(BaseModel):
     """Create coach profile request."""
+
     display_name: str = Field(..., min_length=1, max_length=255)
     profile_photo_url: Optional[str] = None
     public_email: Optional[str] = None
@@ -37,7 +39,9 @@ class CoachProfileCreate(BaseModel):
     city: Optional[str] = None
     timezone: Optional[str] = None
     coaching_languages: List[str] = Field(default_factory=list)
-    communication_tools: CommunicationToolsModel = Field(default_factory=CommunicationToolsModel)
+    communication_tools: CommunicationToolsModel = Field(
+        default_factory=CommunicationToolsModel
+    )
     line_id: Optional[str] = None
     coach_experience: Optional[str] = None
     training_institution: Optional[str] = None
@@ -51,6 +55,7 @@ class CoachProfileCreate(BaseModel):
 
 class CoachProfileUpdate(BaseModel):
     """Update coach profile request."""
+
     display_name: Optional[str] = Field(None, min_length=1, max_length=255)
     profile_photo_url: Optional[str] = None
     public_email: Optional[str] = None
@@ -74,6 +79,7 @@ class CoachProfileUpdate(BaseModel):
 
 class CoachProfileResponse(BaseModel):
     """Coach profile response."""
+
     id: UUID4
     user_id: UUID4
     display_name: str
@@ -104,6 +110,7 @@ class CoachProfileResponse(BaseModel):
 
 class CoachingPlanCreate(BaseModel):
     """Create coaching plan request."""
+
     plan_type: str = Field(..., min_length=1, max_length=50)
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
@@ -119,6 +126,7 @@ class CoachingPlanCreate(BaseModel):
 
 class CoachingPlanUpdate(BaseModel):
     """Update coaching plan request."""
+
     plan_type: Optional[str] = Field(None, min_length=1, max_length=50)
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
@@ -134,6 +142,7 @@ class CoachingPlanUpdate(BaseModel):
 
 class CoachingPlanResponse(BaseModel):
     """Coaching plan response."""
+
     id: UUID4
     coach_profile_id: UUID4
     plan_type: str
@@ -181,7 +190,7 @@ def _profile_to_response(profile: CoachProfile) -> CoachProfileResponse:
         specialties=profile.get_specialties(),
         is_public=profile.is_public,
         created_at=profile.created_at,
-        updated_at=profile.updated_at
+        updated_at=profile.updated_at,
     )
 
 
@@ -204,7 +213,7 @@ def _plan_to_response(plan: CoachingPlan) -> CoachingPlanResponse:
         price_per_session=plan.price_per_session,
         total_duration_minutes=plan.total_duration_minutes,
         created_at=plan.created_at,
-        updated_at=plan.updated_at
+        updated_at=plan.updated_at,
     )
 
 
@@ -212,33 +221,39 @@ def _plan_to_response(plan: CoachingPlan) -> CoachingPlanResponse:
 @router.get("/", response_model=Optional[CoachProfileResponse])
 def get_coach_profile(
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Get current user's coach profile."""
-    profile = db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
-    
+    profile = (
+        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+    )
+
     if not profile:
         return None
-    
+
     return _profile_to_response(profile)
 
 
-@router.post("/", response_model=CoachProfileResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=CoachProfileResponse, status_code=status.HTTP_201_CREATED
+)
 def create_coach_profile(
     profile_data: CoachProfileCreate,
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Create a coach profile for the current user."""
     # Check if profile already exists
-    existing_profile = db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
-    
+    existing_profile = (
+        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+    )
+
     if existing_profile:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Coach profile already exists for this user"
+            detail="Coach profile already exists for this user",
         )
-    
+
     # Create new profile
     profile = CoachProfile(
         user_id=current_user.id,
@@ -256,19 +271,19 @@ def create_coach_profile(
         linkedin_url=profile_data.linkedin_url,
         personal_website=profile_data.personal_website,
         bio=profile_data.bio,
-        is_public=profile_data.is_public
+        is_public=profile_data.is_public,
     )
-    
+
     # Set JSON fields
     profile.set_coaching_languages(profile_data.coaching_languages)
     profile.set_communication_tools(profile_data.communication_tools.model_dump())
     profile.set_certifications(profile_data.certifications)
     profile.set_specialties(profile_data.specialties)
-    
+
     db.add(profile)
     db.commit()
     db.refresh(profile)
-    
+
     return _profile_to_response(profile)
 
 
@@ -276,58 +291,60 @@ def create_coach_profile(
 def update_coach_profile(
     profile_data: CoachProfileUpdate,
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Update the current user's coach profile."""
-    profile = db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
-    
+    profile = (
+        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+    )
+
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Coach profile not found"
         )
-    
+
     # Update fields
     update_data = profile_data.model_dump(exclude_unset=True)
-    
+
     # Handle JSON fields separately
-    if 'coaching_languages' in update_data:
-        profile.set_coaching_languages(update_data.pop('coaching_languages'))
-    if 'communication_tools' in update_data:
-        tools = update_data.pop('communication_tools')
-        if hasattr(tools, 'model_dump'):
+    if "coaching_languages" in update_data:
+        profile.set_coaching_languages(update_data.pop("coaching_languages"))
+    if "communication_tools" in update_data:
+        tools = update_data.pop("communication_tools")
+        if hasattr(tools, "model_dump"):
             profile.set_communication_tools(tools.model_dump())
         else:
             profile.set_communication_tools(tools)
-    if 'certifications' in update_data:
-        profile.set_certifications(update_data.pop('certifications'))
-    if 'specialties' in update_data:
-        profile.set_specialties(update_data.pop('specialties'))
-    
+    if "certifications" in update_data:
+        profile.set_certifications(update_data.pop("certifications"))
+    if "specialties" in update_data:
+        profile.set_specialties(update_data.pop("specialties"))
+
     # Update remaining fields
     for field, value in update_data.items():
         setattr(profile, field, value)
-    
+
     db.commit()
     db.refresh(profile)
-    
+
     return _profile_to_response(profile)
 
 
 @router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
 def delete_coach_profile(
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Delete the current user's coach profile."""
-    profile = db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
-    
+    profile = (
+        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+    )
+
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Coach profile not found"
         )
-    
+
     db.delete(profile)
     db.commit()
 
@@ -336,40 +353,47 @@ def delete_coach_profile(
 @router.get("/plans", response_model=List[CoachingPlanResponse])
 def get_coaching_plans(
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Get all coaching plans for the current user's profile."""
     # Get coach profile
-    profile = db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
-    
+    profile = (
+        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+    )
+
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Coach profile not found"
         )
-    
+
     # Get plans
-    plans = db.query(CoachingPlan).filter(CoachingPlan.coach_profile_id == profile.id).all()
-    
+    plans = (
+        db.query(CoachingPlan).filter(CoachingPlan.coach_profile_id == profile.id).all()
+    )
+
     return [_plan_to_response(plan) for plan in plans]
 
 
-@router.post("/plans", response_model=CoachingPlanResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/plans", response_model=CoachingPlanResponse, status_code=status.HTTP_201_CREATED
+)
 def create_coaching_plan(
     plan_data: CoachingPlanCreate,
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Create a new coaching plan."""
     # Get coach profile
-    profile = db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
-    
+    profile = (
+        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+    )
+
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found. Please create a coach profile first."
+            detail="Coach profile not found. Please create a coach profile first.",
         )
-    
+
     # Create plan
     plan = CoachingPlan(
         coach_profile_id=profile.id,
@@ -383,13 +407,13 @@ def create_coaching_plan(
         is_active=plan_data.is_active,
         max_participants=plan_data.max_participants,
         booking_notice_hours=plan_data.booking_notice_hours,
-        cancellation_notice_hours=plan_data.cancellation_notice_hours
+        cancellation_notice_hours=plan_data.cancellation_notice_hours,
     )
-    
+
     db.add(plan)
     db.commit()
     db.refresh(plan)
-    
+
     return _plan_to_response(plan)
 
 
@@ -398,38 +422,39 @@ def update_coaching_plan(
     plan_id: UUID4,
     plan_data: CoachingPlanUpdate,
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Update a coaching plan."""
     # Get coach profile
-    profile = db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
-    
+    profile = (
+        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+    )
+
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Coach profile not found"
         )
-    
+
     # Get plan
-    plan = db.query(CoachingPlan).filter(
-        CoachingPlan.id == plan_id,
-        CoachingPlan.coach_profile_id == profile.id
-    ).first()
-    
+    plan = (
+        db.query(CoachingPlan)
+        .filter(CoachingPlan.id == plan_id, CoachingPlan.coach_profile_id == profile.id)
+        .first()
+    )
+
     if not plan:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coaching plan not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Coaching plan not found"
         )
-    
+
     # Update fields
     update_data = plan_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(plan, field, value)
-    
+
     db.commit()
     db.refresh(plan)
-    
+
     return _plan_to_response(plan)
 
 
@@ -437,29 +462,30 @@ def update_coaching_plan(
 def delete_coaching_plan(
     plan_id: UUID4,
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Delete a coaching plan."""
     # Get coach profile
-    profile = db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
-    
+    profile = (
+        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+    )
+
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Coach profile not found"
         )
-    
+
     # Get plan
-    plan = db.query(CoachingPlan).filter(
-        CoachingPlan.id == plan_id,
-        CoachingPlan.coach_profile_id == profile.id
-    ).first()
-    
+    plan = (
+        db.query(CoachingPlan)
+        .filter(CoachingPlan.id == plan_id, CoachingPlan.coach_profile_id == profile.id)
+        .first()
+    )
+
     if not plan:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coaching plan not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Coaching plan not found"
         )
-    
+
     db.delete(plan)
     db.commit()

@@ -1,16 +1,19 @@
 """
 Debugging and diagnostic routes for development environments.
 """
+
 from fastapi import APIRouter, HTTPException
 from ..core.config import settings
 
 router = APIRouter()
+
 
 def mask_secret(secret: str, unmasked_chars: int = 4) -> str:
     """Masks a secret string, showing only the last few characters."""
     if not secret or len(secret) <= unmasked_chars:
         return "******"
     return f"{'*' * (len(secret) - unmasked_chars)}{secret[-unmasked_chars:]}"
+
 
 @router.get("/settings")
 async def get_debug_settings():

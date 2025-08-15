@@ -1,6 +1,7 @@
 """
 Database connection and session management.
 """
+
 from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -14,11 +15,8 @@ engine = create_engine(
 )
 
 # Create a configured "Session" class
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 def get_db():
     """

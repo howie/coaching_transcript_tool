@@ -3,13 +3,24 @@ Main entry point for the Coaching Transcript Tool Backend API v2.0.
 
 重構後的 FastAPI 應用，移除了 Flask 依賴，純 FastAPI 架構。
 """
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 import logging
 import os
 
-from .api import health, format_routes, user, auth, clients, coaching_sessions, summary, coach_profile, sessions
+from .api import (
+    health,
+    format_routes,
+    user,
+    auth,
+    clients,
+    coaching_sessions,
+    summary,
+    coach_profile,
+    sessions,
+)
 from .middleware.logging import setup_api_logging
 from .middleware.error_handler import error_handler
 from .core.config import settings
@@ -22,6 +33,7 @@ validate_environment()
 
 # 設定日誌（會同時輸出到控制台和文件）
 import pathlib
+
 project_root = pathlib.Path(__file__).parent.parent.parent.parent.parent
 api_log_file = project_root / "logs" / "api.log"
 setup_api_logging(log_file=str(api_log_file))
@@ -54,22 +66,34 @@ app.include_router(format_routes.router, prefix="/api/v1", tags=["format"])
 app.include_router(user.router, prefix="/api/v1/user", tags=["user"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(clients.router, prefix="/api/v1/clients", tags=["clients"])
-app.include_router(coaching_sessions.router, prefix="/api/v1/coaching-sessions", tags=["coaching-sessions"])
-app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["transcription-sessions"])
+app.include_router(
+    coaching_sessions.router,
+    prefix="/api/v1/coaching-sessions",
+    tags=["coaching-sessions"],
+)
+app.include_router(
+    sessions.router, prefix="/api/v1/sessions", tags=["transcription-sessions"]
+)
 app.include_router(summary.router, prefix="/api/v1/dashboard", tags=["summary"])
 app.include_router(coach_profile.router, tags=["coach-profile"])
 
 # 僅在開發環境中載入偵錯路由
 if settings.ENVIRONMENT == "development":
     from .api import debug
+
     app.include_router(debug.router, prefix="/api/debug", tags=["debug"])
+
 
 @app.get("/")
 async def root():
     """
     API 根端點
     """
-    return {"message": f"Coaching Transcript Tool API {DISPLAY_VERSION}", "status": "running"}
+    return {
+        "message": f"Coaching Transcript Tool API {DISPLAY_VERSION}",
+        "status": "running",
+    }
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -77,16 +101,19 @@ async def startup_event():
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down Coaching Transcript Tool Backend API")
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "coaching_assistant.main:app",
         host="0.0.0.0",
         port=int(os.getenv("PORT", 8000)),
         reload=settings.DEBUG,
-        log_level="info"
+        log_level="info",
     )
