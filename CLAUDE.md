@@ -32,6 +32,34 @@ make test          # Backend tests
 cd apps/web && npm test  # Frontend tests
 ```
 
+## Work Modes & Subagents
+
+Delegate specialized tasks to appropriate subagents:
+
+### Code Quality & Testing
+- **After writing/modifying code** → `code-reviewer`
+- **When tests fail or errors occur** → `debugger`  
+- **Need to add test coverage** → `test-writer`
+- **Analyzing production errors** → `error-analyzer`
+
+### Architecture & Design
+- **New API endpoints** → `api-designer`
+- **Database schema changes** → `database-migrator`
+- **Background job implementation** → `celery-task-designer`
+- **Performance issues** → `performance-optimizer`
+
+### DevOps & Maintenance
+- **Before deployment** → `security-auditor`
+- **Container setup** → `docker-builder`
+- **Package updates** → `dependency-updater`
+- **Multi-language support** → `i18n-translator`
+
+### General
+- **Complex multi-step tasks** → `general-purpose`
+- **Post-commit tasks** → `post-commit-updater`
+
+See `@docs/claude/subagents.md` for detailed capabilities and usage patterns.
+
 ## Key Development Commands
 
 ### Backend (Python/FastAPI)
@@ -405,6 +433,19 @@ GET /api/v1/coaching-sessions - List coaching sessions
 POST /api/v1/coaching-sessions - Create session
 ```
 
+## Documentation Pointers
+
+For detailed information, reference these docs:
+
+- **Subagents Guide**: `@docs/claude/subagents.md` - Detailed subagent capabilities & usage
+- **Engineering Standards**: `@docs/claude/engineering-standards.md` - TDD, code style, quality
+- **Testing**: `@docs/claude/testing.md` - Test organization, coverage requirements
+- **Configuration**: `@docs/claude/configuration.md` - Environment variables, providers
+- **STT Architecture**: `@docs/claude/architecture/stt.md` - Provider details, fallback
+- **Deployment**: `@docs/claude/deployment/*.md` - Platform-specific guides
+- **API Reference**: See `/docs/api/` or OpenAPI at `/docs`
+- **Changelog**: `@docs/claude/CHANGELOG.md` - Complete version history and releases
+
 ## Important Notes
 
 - Use virtual environments for Python development
@@ -412,6 +453,7 @@ POST /api/v1/coaching-sessions - Create session
 - All database migrations use consistent foreign key naming: `{referenced_table}_id`
 - Follow the monorepo architecture with clear separation of concerns
 - Prioritize security: never commit secrets, use environment variables
+- **Update changelog** - When making major changes, update `docs/claude/CHANGELOG.md`
 
 ## Deployment
 
