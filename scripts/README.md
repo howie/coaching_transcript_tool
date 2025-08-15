@@ -5,10 +5,10 @@
 根據 `.clinerules/progress-changelog-rules.md` 規則自動同步已完成項目的腳本。
 
 ### 功能
-- 自動解析 `memory-bank/progress.md` 中的 ✅ 已完成項目
+- 自動解析 `docs/project-status.md` 中的 ✅ 已完成項目
 - 生成格式化的 changelog 快照記錄
 - 將已完成項目移至 `docs/changelog.md`
-- 清理 `progress.md` 保持精簡
+- 清理 `project-status.md` 保持精簡
 
 ### 使用方式
 
@@ -32,13 +32,13 @@ python3 scripts/sync_progress_to_changelog.py
 建議在以下情況執行：
 - 每週固定時間（建議每週一）
 - 完成重要功能或階段性任務後
-- `progress.md` 文件過長，需要清理時
+- `project-status.md` 文件過長，需要清理時
 
 ### 執行結果
 
 腳本會：
 1. 在 `docs/changelog.md` 頂部插入新的進度快照
-2. 從 `memory-bank/progress.md` 移除已完成項目
+2. 從 `docs/project-status.md` 移除已完成項目
 3. 保持兩個文件的 Markdown 格式完整性
 
 ### 注意事項

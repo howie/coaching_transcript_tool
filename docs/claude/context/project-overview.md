@@ -125,4 +125,4 @@
 
 **文件用途：** 提供 Cline 專案核心概念的快速參考  
 **更新頻率：** 當專案定位或核心價值有重大變化時更新  
-**相關文件：** productContext.md, activeContext.md
+**相關文件：** product-strategy.md, active-work.md

@@ -134,7 +134,8 @@ coaching_transcript_tool/
 │   ├── shared-types/  # Shared TypeScript types
 │   └── eslint-config/ # Shared ESLint configuration
 ├── docs/              # Project documentation
-├── memory-bank/       # AI assistant's working memory
+│   ├── architecture/  # System architecture docs
+│   └── claude/        # AI assistant configuration
 └── ...
 ```
 

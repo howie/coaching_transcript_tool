@@ -416,4 +416,4 @@ jose[cryptography]==1.0.0
 
 **文件用途：** 為 Cline 提供 Coach Assistant MVP 完整技術環境  
 **更新頻率：** 技術選型變更或版本升級時更新  
-**相關文件：** systemPatterns.md, activeContext.md, mvp-v1.md
+**相關文件：** system-patterns.md, ../claude/context/active-work.md, ../features_done/mvp-v1.md

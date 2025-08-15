@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Data Consistency**: Improved field name alignment across frontend and backend systems
 
 ### 📚 Documentation Updates
-- Updated memory bank with recent bug fixes and system improvements
+- Updated project documentation with recent bug fixes and system improvements
 - Enhanced AI Audio Transcription documentation with latest fixes
 
 ---
@@ -398,7 +398,7 @@ This release resolves all critical bugs in the AI Audio Transcription system, ac
 - ✅ **專案組織優化**
   - 添加 Claude AI agents 文檔（post-commit updater、web research）
   - 測試檔案重組至正確目錄結構
-  - 更新 memory bank 反映當前進度
+  - 更新專案文檔反映當前進度
 
 ### 技術細節
 - Commit: `98d5450` - feat: prepare for production deployment with database migrations
@@ -507,8 +507,9 @@ coaching_transcript_tool/
 │   ├── shared-types/               # TypeScript 型別
 │   └── eslint-config/              # ESLint 配置
 │
-├── docs/                          # 正式文檔
-└── memory-bank/                   # Cline 工作記憶
+└── docs/                          # 正式文檔
+    ├── architecture/              # 系統架構文檔
+    └── claude/                    # AI 助理配置
 ```
   - ```
   - coaching_transcript_tool/
@@ -523,8 +524,9 @@ coaching_transcript_tool/
   - │   ├── shared-types/               # TypeScript 型別
   - │   └── eslint-config/              # ESLint 配置
   - │
-  - ├── docs/                          # 正式文檔
-  - └── memory-bank/                   # Cline 工作記憶
+  - └── docs/                          # 正式文檔
+  -     ├── architecture/              # 系統架構文檔
+  -     └── claude/                    # AI 助理配置
   - ```
 - ✅ 建立**：真正的 Single Source of Truth
 - ✅ 建立**：可擴展的 Monorepo 架構

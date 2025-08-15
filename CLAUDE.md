@@ -121,12 +121,14 @@ coaching_transcript_tool/
 ├── logs/                     # Application log files
 ├── examples/                 # Usage examples and tutorials
 ├── docs/                     # Documentation
+│   ├── architecture/         # System architecture documentation
+│   ├── claude/               # AI assistant configuration
+│   │   └── context/          # Project context for AI assistants
 │   ├── features/             # Feature documentation (in development)
 │   ├── features_done/        # Completed feature documentation
 │   └── deployment/          # Deployment guides and configs
 ├── scripts/                  # Development and maintenance scripts
 ├── terraform/               # Infrastructure as code (GCP)
-├── memory-bank/             # Project context for AI assistants
 ├── poc-assemblyAI/          # AssemblyAI integration prototypes
 ├── pyproject.toml           # Modern Python project configuration (PEP 518)
 ├── requirements.txt         # Production dependencies

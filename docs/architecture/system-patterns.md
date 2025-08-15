@@ -72,8 +72,9 @@ coaching_transcript_tool/
 │       │   └── integrations/ # 外部服務整合
 │       └── tests/          # 測試檔案
 │
-├── docs/                   # 正式專案文檔
-└── memory-bank/            # Cline 工作記憶
+└── docs/                   # 正式專案文檔
+    ├── architecture/       # 系統架構文檔
+    └── claude/            # AI 助理配置
 ```
 
 **混合雲架構優勢：**
@@ -692,4 +693,4 @@ class LoggingMiddleware:
 
 **文件用途：** 幫助 Cline 理解 Coach Assistant MVP 系統架構  
 **更新頻率：** 架構變更時更新  
-**相關文件：** activeContext.md, techContext.md, mvp-v1.md
+**相關文件：** tech-stack.md, ../claude/context/active-work.md, ../features_done/mvp-v1.md

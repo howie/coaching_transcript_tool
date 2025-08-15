@@ -131,4 +131,4 @@ DAU/MAU    首次轉換    週/月留存   MRR增長率
 
 **文件用途：** 幫助 Cline 理解產品策略和商業邏輯  
 **更新頻率：** 每季度或重大策略調整時更新  
-**相關文件：** projectBrief.md, progress.md
+**相關文件：** project-overview.md, ../../project-status.md
