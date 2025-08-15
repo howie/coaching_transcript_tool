@@ -2,7 +2,8 @@
 
 import enum
 import json
-from sqlalchemy import Column, String, Integer, Enum, Text
+from datetime import datetime
+from sqlalchemy import Column, String, Integer, Enum, Text, DateTime, DECIMAL, JSON
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -13,6 +14,15 @@ class UserPlan(enum.Enum):
     FREE = "free"
     PRO = "pro"
     ENTERPRISE = "enterprise"
+
+
+class UserRole(enum.Enum):
+    """User roles for access control."""
+    
+    USER = "user"                  # Regular user
+    STAFF = "staff"                # Support staff (read-only admin)
+    ADMIN = "admin"                # Full admin (read/write)
+    SUPER_ADMIN = "super_admin"    # System admin (manage other admins)
 
 
 class User(BaseModel):
@@ -29,9 +39,28 @@ class User(BaseModel):
     # SSO fields
     google_id = Column(String(255), unique=True, nullable=True, index=True)
 
+    # Role-based access control
+    role = Column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]), default=UserRole.USER, nullable=False, index=True)
+    
+    # Security fields
+    last_admin_login = Column(DateTime(timezone=True), nullable=True)
+    admin_access_expires = Column(DateTime(timezone=True), nullable=True)
+    allowed_ip_addresses = Column(JSON, nullable=True)  # Optional IP allowlist
+    
     # Subscription and usage
     plan = Column(Enum(UserPlan), default=UserPlan.FREE, nullable=False)
     usage_minutes = Column(Integer, default=0, nullable=False)
+    
+    # Monthly usage tracking
+    session_count = Column(Integer, default=0, nullable=False)
+    transcription_count = Column(Integer, default=0, nullable=False)
+    current_month_start = Column(DateTime(timezone=True), nullable=True)
+    
+    # Cumulative usage tracking
+    total_sessions_created = Column(Integer, default=0, nullable=False)
+    total_transcriptions_generated = Column(Integer, default=0, nullable=False)
+    total_minutes_processed = Column(DECIMAL(10, 2), default=0, nullable=False)
+    total_cost_usd = Column(DECIMAL(12, 4), default=0, nullable=False)
 
     # User preferences (stored as JSON)
     preferences = Column(Text, nullable=True)
@@ -54,6 +83,18 @@ class User(BaseModel):
         back_populates="user",
         cascade="all, delete-orphan",
         uselist=False,
+    )
+    usage_logs = relationship(
+        "UsageLog",
+        back_populates="user",
+        cascade="none",  # RESTRICT deletion
+        lazy="dynamic",
+    )
+    usage_analytics = relationship(
+        "UsageAnalytics",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
     )
 
     def __repr__(self):
@@ -109,3 +150,25 @@ class User(BaseModel):
     def google_connected(self):
         """Check if Google account is connected."""
         return bool(self.google_id)
+    
+    def has_role(self, required_role: UserRole) -> bool:
+        """Check if user has required role or higher."""
+        role_hierarchy = {
+            UserRole.USER: 0,
+            UserRole.STAFF: 1,
+            UserRole.ADMIN: 2,
+            UserRole.SUPER_ADMIN: 3
+        }
+        return role_hierarchy.get(self.role, 0) >= role_hierarchy.get(required_role, 0)
+    
+    def is_admin(self) -> bool:
+        """Check if user has admin privileges."""
+        return self.has_role(UserRole.ADMIN)
+    
+    def is_staff(self) -> bool:
+        """Check if user has staff privileges."""
+        return self.has_role(UserRole.STAFF)
+    
+    def is_super_admin(self) -> bool:
+        """Check if user is a super administrator."""
+        return self.role == UserRole.SUPER_ADMIN
