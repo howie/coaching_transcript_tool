@@ -1,5 +1,5 @@
 from .base import Base, TimestampMixin
-from .user import User, UserPlan
+from .user import User, UserPlan, UserRole
 from .session import Session, SessionStatus
 from .transcript import TranscriptSegment, SessionRole, SpeakerRole
 from .client import Client
@@ -15,12 +15,14 @@ from .coach_profile import (
 )
 from .usage_log import UsageLog, TranscriptionType
 from .usage_analytics import UsageAnalytics
+from .role_audit_log import RoleAuditLog
 
 __all__ = [
     "Base",
     "TimestampMixin",
     "User",
     "UserPlan",
+    "UserRole",
     "Session",
     "SessionStatus",
     "TranscriptSegment",
@@ -39,4 +41,5 @@ __all__ = [
     "UsageLog",
     "TranscriptionType",
     "UsageAnalytics",
+    "RoleAuditLog",
 ]

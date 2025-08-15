@@ -9,6 +9,7 @@ import logging
 
 from ..core.database import get_db
 from ..api.auth import get_current_user_dependency
+from ..api.dependencies import require_admin  # Use the new permission system
 from ..models.user import User
 from ..models.usage_log import UsageLog
 from ..models.usage_analytics import UsageAnalytics
@@ -17,15 +18,6 @@ from ..services.usage_tracking import UsageTrackingService
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/usage", tags=["usage"])
-
-
-def require_admin(current_user: User = Depends(get_current_user_dependency)) -> User:
-    """Require admin role for endpoint access."""
-    # For now, we'll check if user has enterprise plan (can be enhanced later)
-    # In production, you'd want a proper admin role field
-    if current_user.plan.value != "enterprise":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return current_user
 
 
 @router.get("/summary")
