@@ -45,6 +45,12 @@ class Client(BaseModel):
         cascade="all, delete-orphan",
         lazy="dynamic",
     )
+    usage_logs = relationship(
+        "UsageLog",
+        back_populates="client",
+        cascade="none",  # SET NULL on deletion
+        lazy="dynamic",
+    )
 
     def __repr__(self):
         return f"<Client(name={self.name}, user_id={self.user_id})>"

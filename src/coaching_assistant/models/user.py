@@ -2,7 +2,8 @@
 
 import enum
 import json
-from sqlalchemy import Column, String, Integer, Enum, Text
+from datetime import datetime
+from sqlalchemy import Column, String, Integer, Enum, Text, DateTime, DECIMAL
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -32,6 +33,17 @@ class User(BaseModel):
     # Subscription and usage
     plan = Column(Enum(UserPlan), default=UserPlan.FREE, nullable=False)
     usage_minutes = Column(Integer, default=0, nullable=False)
+    
+    # Monthly usage tracking
+    session_count = Column(Integer, default=0, nullable=False)
+    transcription_count = Column(Integer, default=0, nullable=False)
+    current_month_start = Column(DateTime(timezone=True), nullable=True)
+    
+    # Cumulative usage tracking
+    total_sessions_created = Column(Integer, default=0, nullable=False)
+    total_transcriptions_generated = Column(Integer, default=0, nullable=False)
+    total_minutes_processed = Column(DECIMAL(10, 2), default=0, nullable=False)
+    total_cost_usd = Column(DECIMAL(12, 4), default=0, nullable=False)
 
     # User preferences (stored as JSON)
     preferences = Column(Text, nullable=True)
@@ -54,6 +66,18 @@ class User(BaseModel):
         back_populates="user",
         cascade="all, delete-orphan",
         uselist=False,
+    )
+    usage_logs = relationship(
+        "UsageLog",
+        back_populates="user",
+        cascade="none",  # RESTRICT deletion
+        lazy="dynamic",
+    )
+    usage_analytics = relationship(
+        "UsageAnalytics",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
     )
 
     def __repr__(self):

@@ -32,6 +32,7 @@ from ..tasks.transcription_tasks import transcribe_audio
 from ..core.config import settings
 from ..exporters.excel import generate_excel
 from ..services.stt_factory import STTProviderFactory
+from ..services.usage_tracking import UsageTrackingService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -161,6 +162,16 @@ async def create_session(
     )
 
     db.add(session)
+    
+    # Increment user's session count
+    try:
+        usage_service = UsageTrackingService(db)
+        usage_service.increment_session_count(current_user)
+        logger.info(f"Session count incremented for user {current_user.id}")
+    except Exception as e:
+        logger.error(f"Failed to increment session count: {e}")
+        # Don't fail session creation if usage tracking fails
+    
     db.commit()
     db.refresh(session)
 

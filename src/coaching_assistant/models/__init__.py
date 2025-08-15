@@ -13,6 +13,8 @@ from .coach_profile import (
     CoachExperience,
     CoachingPlanType,
 )
+from .usage_log import UsageLog, TranscriptionType
+from .usage_analytics import UsageAnalytics
 
 __all__ = [
     "Base",
@@ -34,4 +36,7 @@ __all__ = [
     "CommunicationTool",
     "CoachExperience",
     "CoachingPlanType",
+    "UsageLog",
+    "TranscriptionType",
+    "UsageAnalytics",
 ]

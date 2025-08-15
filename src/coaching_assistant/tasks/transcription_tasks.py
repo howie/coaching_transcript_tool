@@ -20,7 +20,9 @@ from ..models.transcript import (
     SpeakerRole,
 )
 from ..models.processing_status import ProcessingStatus
+from ..models.usage_log import TranscriptionType
 from ..services import STTProviderFactory, STTProviderError, STTProviderUnavailableError
+from ..services.usage_tracking import UsageTrackingService
 from ..core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -297,6 +299,21 @@ def transcribe_audio(
                 100, "Transcription completed successfully!"
             )
             processing_status.status = "completed"
+            
+            # Create usage log for successful transcription
+            try:
+                usage_service = UsageTrackingService(db)
+                usage_log = usage_service.create_usage_log(
+                    session=session,
+                    transcription_type=TranscriptionType.ORIGINAL,
+                    cost_usd=float(result.cost_usd) if result.cost_usd else None,
+                    is_billable=True,
+                    billing_reason="transcription_completed"
+                )
+                logger.info(f"Usage log created for session {session_id}: {usage_log.id}")
+            except Exception as usage_error:
+                logger.error(f"Failed to create usage log for session {session_id}: {usage_error}")
+                # Don't fail the transcription if usage logging fails
 
             db.commit()
 
