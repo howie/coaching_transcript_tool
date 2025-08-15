@@ -11,6 +11,9 @@ export default function ChangePlanPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const { user } = useAuth()
   const router = useRouter()
+  
+  // Determine current plan from user data
+  const currentUserPlan = user?.plan?.toLowerCase() || 'free'
 
   const plans = [
     {
@@ -25,7 +28,7 @@ export default function ChangePlanPage() {
         'Basic export formats',
         'Email support'
       ],
-      isCurrent: user?.plan === 'Free' || !user?.plan,
+      isCurrent: currentUserPlan === 'free',
     },
     {
       name: 'Pro',
@@ -42,7 +45,7 @@ export default function ChangePlanPage() {
         'Custom branding'
       ],
       isPopular: true,
-      isCurrent: user?.plan === 'Pro',
+      isCurrent: currentUserPlan === 'pro',
     },
     {
       name: 'Business',
@@ -60,7 +63,7 @@ export default function ChangePlanPage() {
         'Custom integrations',
         'SLA guarantee'
       ],
-      isCurrent: user?.plan === 'Business',
+      isCurrent: currentUserPlan === 'business',
     },
   ]
 
@@ -74,6 +77,45 @@ export default function ChangePlanPage() {
     router.push('/dashboard/billing')
   }
 
+  const renderPlanButton = (plan: any) => {
+    const planOrder: Record<string, number> = { 'free': 0, 'pro': 1, 'business': 2 }
+    const currentOrder = planOrder[currentUserPlan] || 0
+    const targetOrder = planOrder[plan.name.toLowerCase()] || 0
+    
+    if (plan.isCurrent) {
+      return (
+        <div className="text-center py-2 px-4 rounded-lg bg-gray-600 text-gray-300">
+          目前使用中
+        </div>
+      )
+    } else if (targetOrder < currentOrder) {
+      // Downgrade not allowed
+      return (
+        <div className="text-center py-2 px-4 rounded-lg border border-gray-600 text-gray-500 cursor-not-allowed">
+          無法降級
+        </div>
+      )
+    } else {
+      // Upgrade available
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            handlePlanSelect(plan.name)
+          }}
+          className="w-full py-2 px-4 rounded-lg font-medium transition-all hover:scale-105"
+          style={{
+            backgroundColor: selectedPlan === plan.name ? 'var(--accent-color)' : 'transparent',
+            border: `2px solid var(--accent-color)`,
+            color: selectedPlan === plan.name ? 'var(--bg-primary)' : 'var(--accent-color)'
+          }}
+        >
+          {selectedPlan === plan.name ? '✓ 已選擇' : `升級至 ${plan.name}`}
+        </button>
+      )
+    }
+  }
+
   return (
     <div className="min-h-screen py-12" style={{backgroundColor: 'var(--bg-primary)'}}>
       <div className="max-w-6xl mx-auto px-4">
@@ -83,148 +125,120 @@ export default function ChangePlanPage() {
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
             返回 Billing
           </Link>
-          <h1 className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>選擇方案</h1>
-          <p className="mt-2" style={{color: 'var(--text-secondary)'}}>選擇最適合您需求的方案</p>
-        </div>
-
-        {/* 開發中標籤 */}
-        <div className="mb-6 bg-orange-500 bg-opacity-20 border border-orange-500 border-opacity-50 rounded-lg p-4">
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl">🚧</span>
-            <div>
-              <h4 className="font-semibold text-orange-300">功能施工中</h4>
-              <p className="text-sm text-orange-200 opacity-90">方案變更功能仍在開發中，目前僅供預覽</p>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>升級方案</h1>
+          <p className="mt-2" style={{color: 'var(--text-secondary)'}}>選擇更適合您需求的進階方案</p>
         </div>
 
         {/* Billing Cycle Toggle */}
-        <div className="text-center mb-12">
-          <div className="inline-flex rounded-full p-1" style={{backgroundColor: 'var(--card-bg)'}}>
-            <button
-              onClick={() => setBillingCycle('annual')}
-              className={`px-6 py-2 text-sm font-medium rounded-full transition-colors ${
-                billingCycle === 'annual'
-                  ? 'shadow'
-                  : ''
-              }`}
-              style={{
-                backgroundColor: billingCycle === 'annual' ? 'var(--accent-color)' : 'transparent',
-                color: billingCycle === 'annual' ? 'var(--bg-primary)' : 'var(--text-tertiary)'
-              }}
-            >
-              年繳 <span className="ml-2 bg-green-600 bg-opacity-20 text-green-400 text-xs font-semibold px-2 py-1 rounded-full">省 31%</span>
-            </button>
+        <div className="flex items-center justify-center mb-8">
+          <div className="flex items-center space-x-3 bg-dashboard-card rounded-lg p-1">
             <button
               onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-2 text-sm font-medium rounded-full transition-colors ${
+              className={`px-4 py-2 rounded-md transition-all ${
                 billingCycle === 'monthly'
-                  ? 'shadow'
-                  : ''
+                  ? 'bg-dashboard-accent text-white'
+                  : 'text-gray-400 hover:text-white'
               }`}
-              style={{
-                backgroundColor: billingCycle === 'monthly' ? 'var(--accent-color)' : 'transparent',
-                color: billingCycle === 'monthly' ? 'var(--bg-primary)' : 'var(--text-tertiary)'
-              }}
             >
               月繳
+            </button>
+            <button
+              onClick={() => setBillingCycle('annual')}
+              className={`px-4 py-2 rounded-md transition-all flex items-center ${
+                billingCycle === 'annual'
+                  ? 'bg-dashboard-accent text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              年繳
+              <span className="ml-2 px-2 py-1 bg-green-500 text-xs rounded-full">省 31%</span>
             </button>
           </div>
         </div>
 
         {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              onClick={() => !plan.isCurrent && handlePlanSelect(plan.name)}
-              className={`bg-dashboard-card rounded-lg shadow-lg p-8 flex flex-col cursor-pointer transition-all ${
-                plan.isPopular ? 'border-2 border-dashboard-accent' : 'border border-dashboard-accent border-opacity-20'
-              } ${
-                selectedPlan === plan.name ? 'ring-2 ring-dashboard-accent ring-opacity-50' : ''
-              } ${
-                plan.isCurrent ? 'opacity-60 cursor-not-allowed' : 'hover:border-dashboard-accent hover:border-opacity-40'
-              }`}
+              className={`bg-dashboard-card rounded-lg p-6 border ${
+                plan.isCurrent
+                  ? 'border-gray-600'
+                  : selectedPlan === plan.name
+                  ? 'border-dashboard-accent'
+                  : 'border-dashboard-accent border-opacity-20'
+              } ${plan.isPopular ? 'relative' : ''}`}
             >
               {plan.isPopular && (
-                <div className="text-center mb-4">
-                  <span className="bg-dashboard-accent text-white text-xs font-semibold px-3 py-1 rounded-full uppercase">最受歡迎</span>
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <span className="px-3 py-1 bg-dashboard-accent text-white text-sm rounded-full">
+                    最受歡迎
+                  </span>
                 </div>
               )}
-              
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-2xl font-semibold" style={{color: 'var(--text-primary)'}}>{plan.name}</h2>
-                {plan.isCurrent && (
-                  <span className="px-3 py-1 bg-green-600 bg-opacity-20 text-green-400 rounded-full text-sm font-medium">
-                    目前方案
+
+              <div className="mb-4">
+                <h3 className="text-xl font-bold" style={{color: 'var(--text-primary)'}}>
+                  {plan.name}
+                </h3>
+                <p className="text-sm mt-1" style={{color: 'var(--text-secondary)'}}>
+                  {plan.description}
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <div className="flex items-baseline">
+                  <span className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>
+                    ${billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
                   </span>
+                  <span className="ml-2" style={{color: 'var(--text-tertiary)'}}>
+                    /月
+                  </span>
+                </div>
+                {billingCycle === 'annual' && plan.price.annual > 0 && (
+                  <p className="text-sm mt-1" style={{color: 'var(--text-tertiary)'}}>
+                    每年 ${plan.price.annual * 12}
+                  </p>
                 )}
               </div>
-              
-              <p className="text-4xl font-bold" style={{color: 'var(--text-primary)'}}>
-                ${billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
-                <span className="text-lg font-medium" style={{color: 'var(--text-tertiary)'}}>/月</span>
-              </p>
-              <p className="text-sm mb-4" style={{color: 'var(--text-tertiary)'}}>
-                {billingCycle === 'annual' && plan.price.annual > 0 ? '按年計費' : ''}
-              </p>
-              <p className="mb-6" style={{color: 'var(--text-secondary)'}}>{plan.description}</p>
-              
-              <div className="flex-grow">
-                <ul className="space-y-3">
+
+              <div className="mb-6">
+                <ul className="space-y-2">
                   {plan.features.map((feature, index) => (
                     <li key={index} className="flex items-start">
-                      <CheckIcon className="w-5 h-5 text-dashboard-accent mr-3 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm" style={{color: 'var(--text-secondary)'}}>{feature}</span>
+                      <CheckIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm" style={{color: 'var(--text-secondary)'}}>
+                        {feature}
+                      </span>
                     </li>
                   ))}
                 </ul>
               </div>
 
               <div className="mt-8">
-                {plan.isCurrent ? (
-                  <div className="text-center font-medium" style={{color: 'var(--text-tertiary)'}}>
-                    目前使用中
-                  </div>
-                ) : plan.name === 'Pro' ? (
-                  <div className="text-center">
-                    <div className="font-medium mb-2" style={{color: 'var(--accent-color)'}}>Upgrade to Pro</div>
-                    <div className="text-sm" style={{color: 'var(--text-tertiary)'}}>(Coming Soon)</div>
-                  </div>
-                ) : plan.name === 'Business' ? (
-                  <div className="text-center">
-                    <div className="font-medium mb-2" style={{color: 'var(--accent-color)'}}>Upgrade to Business</div>
-                    <div className="text-sm" style={{color: 'var(--text-tertiary)'}}>(Coming Soon)</div>
-                  </div>
-                ) : (
-                  <div className="text-center font-medium" style={{
-                    color: selectedPlan === plan.name ? 'var(--accent-color)' : 'var(--text-tertiary)'
-                  }}>
-                    {selectedPlan === plan.name ? '✓ 已選擇' : '點擊選擇'}
-                  </div>
-                )}
+                {renderPlanButton(plan)}
               </div>
             </div>
           ))}
         </div>
 
         {/* Confirmation Section */}
-        {selectedPlan && (
+        {selectedPlan && selectedPlan !== plans.find(p => p.isCurrent)?.name && (
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
-            <h3 className="text-xl font-semibold mb-4" style={{color: 'var(--text-primary)'}}>確認方案變更</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <h3 className="text-xl font-semibold mb-4" style={{color: 'var(--text-primary)'}}>
+              確認升級
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div>
                 <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>新方案</p>
                 <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>{selectedPlan}</p>
               </div>
               <div>
                 <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>計費週期</p>
-                <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>{billingCycle === 'annual' ? '年繳' : '月繳'}</p>
-              </div>
-              <div>
-                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>每月費用</p>
                 <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>
-                  ${plans.find(p => p.name === selectedPlan)?.[billingCycle === 'annual' ? 'price' : 'price'][billingCycle === 'annual' ? 'annual' : 'monthly']}
+                  {billingCycle === 'annual' ? '年繳' : '月繳'} - $
+                  {plans.find(p => p.name === selectedPlan)?.[billingCycle === 'annual' ? 'price' : 'price'][billingCycle === 'annual' ? 'annual' : 'monthly']}
                 </p>
               </div>
               <div>
@@ -242,10 +256,10 @@ export default function ChangePlanPage() {
               </button>
               <button
                 onClick={handleConfirmChange}
-                className="flex-1 px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" style={{backgroundColor: 'var(--accent-color)', color: 'var(--bg-primary)'}}
+                className="flex-1 px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold" style={{backgroundColor: 'var(--accent-color)', color: 'var(--bg-primary)'}}
                 disabled
               >
-                確認變更（功能開發中）
+                確認升級（付款功能開發中）
               </button>
             </div>
           </div>
