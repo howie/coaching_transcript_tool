@@ -1,8 +1,8 @@
 """Session model and related enums."""
 
 import enum
-from sqlalchemy import Column, String, Integer, ForeignKey, Enum, Text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Integer, ForeignKey, Enum, Text, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -49,7 +49,7 @@ class Session(BaseModel):
     
     # STT Provider tracking
     stt_provider = Column(String(50), default="google", nullable=False)  # 'google' or 'assemblyai'
-    provider_metadata = Column(JSONB, default={}, nullable=False)  # Provider-specific metadata
+    provider_metadata = Column(JSON, default={}, nullable=False)  # Provider-specific metadata
     
     # Relationships
     user = relationship("User", back_populates="sessions")
