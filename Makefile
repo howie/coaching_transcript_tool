@@ -189,6 +189,30 @@ test: dev-setup
 	@echo "Test logs will be saved to logs/test.log (with colors preserved)"
 	pytest tests/ -v --color=yes 2>&1 | tee logs/test.log
 
+# Run tests with coverage report
+coverage: dev-setup
+	@mkdir -p logs htmlcov
+	@echo "Running tests with coverage analysis..."
+	@echo "============================================"
+	@echo "Coverage report will be saved to:"
+	@echo "  - Terminal output: logs/coverage.log"
+	@echo "  - HTML report: htmlcov/index.html"
+	@echo "============================================"
+	@$(PIP) install pytest-cov --break-system-packages 2>/dev/null || true
+	@pytest tests/ \
+		--cov=src/coaching_assistant \
+		--cov-report=term-missing \
+		--cov-report=html \
+		--cov-report=term:skip-covered \
+		--color=yes \
+		-v 2>&1 | tee logs/coverage.log
+	@echo ""
+	@echo "============================================"
+	@echo "Coverage Summary:"
+	@grep "^TOTAL" logs/coverage.log || echo "Coverage calculation complete"
+	@echo "============================================"
+	@echo "📊 View detailed HTML report: open htmlcov/index.html"
+
 # Install development dependencies
 dev-setup:
 	$(PIP) install -r apps/api-server/requirements.txt --break-system-packages
@@ -227,6 +251,7 @@ help:
 	@echo "  run-celery-debug : Start Celery worker with debug logging (logs to logs/celery-debug.log)"
 	@echo "  dev-setup      : Install development dependencies"
 	@echo "  test           : Run tests (logs to logs/test.log)"
+	@echo "  coverage       : Run tests with coverage report (HTML report in htmlcov/)"
 	@echo "  lint           : Run linting (logs to logs/lint.log)"
 	@echo ""
 	@echo "Frontend (Node.js):"
