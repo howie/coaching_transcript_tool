@@ -11,6 +11,7 @@ import logging
 import os
 
 from .api import (
+    admin,
     health,
     format_routes,
     user,
@@ -78,6 +79,7 @@ app.include_router(
 app.include_router(summary.router, prefix="/api/v1/dashboard", tags=["summary"])
 app.include_router(coach_profile.router, tags=["coach-profile"])
 app.include_router(usage.router, tags=["usage"])
+app.include_router(admin.router, tags=["admin"])
 
 # 僅在開發環境中載入偵錯路由
 if settings.ENVIRONMENT == "development":
