@@ -9,17 +9,19 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install dependencies
 COPY apps/api-server/requirements.txt /app/requirements.txt
-COPY packages/core-logic /app/packages/core-logic
+COPY src/ /app/src/
+COPY pyproject.toml /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install -e packages/core-logic
+RUN pip install -e .
 
-# Copy source code
-COPY packages/core-logic/src /app/packages/core-logic/src
+# Copy alembic configuration
+COPY alembic/ /app/alembic/
+COPY alembic.ini /app/
 
 # Set Python path
-ENV PYTHONPATH=/app/packages/core-logic/src:$PYTHONPATH
+ENV PYTHONPATH=/app/src:$PYTHONPATH
 
 # Health check for Docker
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

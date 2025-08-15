@@ -10,20 +10,21 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 複製 requirements
-COPY apps/api-server/requirements.txt /app/requirements.txt
-COPY packages/core-logic/pyproject.toml /app/packages/core-logic/pyproject.toml
+# 複製原始碼和配置
+COPY src /app/src
+COPY pyproject.toml /app/pyproject.toml
+COPY requirements.txt /app/requirements.txt
+COPY apps/api-server/requirements.txt /app/apps/api-server/requirements.txt
 
 # 安裝 Python 依賴
-RUN pip install --no-cache-dir -r /app/requirements.txt
-RUN pip install -e /app/packages/core-logic
+RUN pip install --no-cache-dir -r /app/apps/api-server/requirements.txt
+RUN pip install -e /app
 
-# 複製原始碼
-COPY packages/core-logic /app/packages/core-logic
+# 複製 API server 代碼
 COPY apps/api-server /app/apps/api-server
 
 # 設定 Python 路徑
-ENV PYTHONPATH=/app/packages/core-logic/src:/app/apps/api-server:$PYTHONPATH
+ENV PYTHONPATH=/app/src:/app/apps/api-server:$PYTHONPATH
 
 # 暴露端口
 EXPOSE 8000

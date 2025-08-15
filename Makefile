@@ -2,7 +2,7 @@
 
 # Variables
 PACKAGE_NAME = coaching_transcript_tool
-VERSION = $(shell grep -m 1 'version' packages/core-logic/pyproject.toml | cut -d '"' -f 2)
+VERSION = $(shell grep -m 1 'version' pyproject.toml | cut -d '"' -f 2)
 DOCKER_API_IMAGE = $(PACKAGE_NAME)-api:$(VERSION)
 DOCKER_CLI_IMAGE = $(PACKAGE_NAME)-cli:$(VERSION)
 DOCKER_API_LATEST = $(PACKAGE_NAME)-api:latest
@@ -38,7 +38,7 @@ clean-frontend:
 # Build the package
 build: clean
 	@echo "Installing core logic package..."
-	$(PYTHON) -m pip install -e packages/core-logic --break-system-packages
+	$(PYTHON) -m pip install -e . --break-system-packages
 	@echo "Installing api-server dependencies..."
 	$(PYTHON) -m pip install -r apps/api-server/requirements.txt --break-system-packages
 
@@ -187,21 +187,45 @@ test: dev-setup
 	@mkdir -p logs
 	@echo "Running tests..."
 	@echo "Test logs will be saved to logs/test.log (with colors preserved)"
-	pytest packages/core-logic/tests/ -v --color=yes 2>&1 | tee logs/test.log
+	pytest tests/ -v --color=yes 2>&1 | tee logs/test.log
+
+# Run tests with coverage report
+coverage: dev-setup
+	@mkdir -p logs htmlcov
+	@echo "Running tests with coverage analysis..."
+	@echo "============================================"
+	@echo "Coverage report will be saved to:"
+	@echo "  - Terminal output: logs/coverage.log"
+	@echo "  - HTML report: htmlcov/index.html"
+	@echo "============================================"
+	@$(PIP) install pytest-cov --break-system-packages 2>/dev/null || true
+	@pytest tests/ \
+		--cov=src/coaching_assistant \
+		--cov-report=term-missing \
+		--cov-report=html \
+		--cov-report=term:skip-covered \
+		--color=yes \
+		-v 2>&1 | tee logs/coverage.log
+	@echo ""
+	@echo "============================================"
+	@echo "Coverage Summary:"
+	@grep "^TOTAL" logs/coverage.log || echo "Coverage calculation complete"
+	@echo "============================================"
+	@echo "📊 View detailed HTML report: open htmlcov/index.html"
 
 # Install development dependencies
 dev-setup:
 	$(PIP) install -r apps/api-server/requirements.txt --break-system-packages
 	$(PIP) install -r apps/cli/requirements.txt --break-system-packages
 	$(PIP) install setuptools wheel build flake8 pytest --break-system-packages
-	$(PIP) install -e packages/core-logic --break-system-packages
+	$(PIP) install -e . --break-system-packages
 
 # Run linting
 lint: dev-setup
 	@mkdir -p logs
 	@echo "Running linting..."
 	@echo "Lint logs will be saved to logs/lint.log"
-	$(PYTHON) -m flake8 packages/core-logic/src/ packages/core-logic/tests/ 2>&1 | tee logs/lint.log
+	$(PYTHON) -m flake8 src/ tests/ 2>&1 | tee logs/lint.log
 
 # Create a distribution package
 dist: clean
@@ -227,6 +251,7 @@ help:
 	@echo "  run-celery-debug : Start Celery worker with debug logging (logs to logs/celery-debug.log)"
 	@echo "  dev-setup      : Install development dependencies"
 	@echo "  test           : Run tests (logs to logs/test.log)"
+	@echo "  coverage       : Run tests with coverage report (HTML report in htmlcov/)"
 	@echo "  lint           : Run linting (logs to logs/lint.log)"
 	@echo ""
 	@echo "Frontend (Node.js):"
