@@ -91,6 +91,52 @@ class ApiClient {
     return headers
   }
 
+  // Generic HTTP methods for plan service and other uses
+  async get(path: string) {
+    try {
+      const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`
+      const response = await this.fetcher(url, {
+        method: 'GET',
+        headers: await this.getHeaders(),
+      })
+
+      await this.handleResponse(response)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || `GET ${path} failed`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error(`GET ${path} error:`, error)
+      throw error
+    }
+  }
+
+  async post(path: string, data?: any) {
+    try {
+      const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`
+      const response = await this.fetcher(url, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: data ? JSON.stringify(data) : undefined,
+      })
+
+      await this.handleResponse(response)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || `POST ${path} failed`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error(`POST ${path} error:`, error)
+      throw error
+    }
+  }
+
   async healthCheck() {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/health`)

@@ -1,7 +1,7 @@
 """Usage tracking service for comprehensive usage analytics."""
 
 from typing import Dict, Any, List, Optional, Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 from sqlalchemy.orm import Session as DBSession
@@ -24,25 +24,40 @@ class PlanLimits:
         """Get plan limits as dictionary."""
         limits = {
             UserPlan.FREE: {
-                "minutes_per_month": 60,
-                "sessions_per_month": 5,
+                "minutes_per_month": 120,  # 2 hours
+                "sessions_per_month": 10,
                 "max_file_size_mb": 50,
+                "export_formats": ["json", "txt"],
                 "features": ["basic_transcription"]
             },
             UserPlan.PRO: {
-                "minutes_per_month": 600,
-                "sessions_per_month": 50,
+                "minutes_per_month": 1200,  # 20 hours
+                "sessions_per_month": 100,
                 "max_file_size_mb": 200,
+                "export_formats": ["json", "txt", "vtt", "srt"],
                 "features": ["basic_transcription", "speaker_diarization", "export_formats"]
             },
             UserPlan.ENTERPRISE: {
                 "minutes_per_month": float("inf"),
                 "sessions_per_month": float("inf"),
                 "max_file_size_mb": 500,
+                "export_formats": ["json", "txt", "vtt", "srt", "xlsx"],
                 "features": ["basic_transcription", "speaker_diarization", "export_formats", "api_access", "priority_support"]
             }
         }
         return limits.get(plan, limits[UserPlan.FREE])
+    
+    @staticmethod
+    def validate_file_size(plan: UserPlan, file_size_mb: float) -> bool:
+        """Validate if file size is within plan limits."""
+        limits = PlanLimits.get_limits(plan)
+        return file_size_mb <= limits["max_file_size_mb"]
+    
+    @staticmethod
+    def validate_export_format(plan: UserPlan, format: str) -> bool:
+        """Validate if export format is available for plan."""
+        limits = PlanLimits.get_limits(plan)
+        return format.lower() in limits.get("export_formats", [])
 
 
 class UsageTrackingService:
@@ -105,7 +120,7 @@ class UsageTrackingService:
             original_filename=session.audio_filename,
             
             transcription_started_at=session.updated_at,
-            transcription_completed_at=datetime.utcnow(),
+            transcription_completed_at=datetime.now(timezone.utc),
             
             provider_metadata=session.provider_metadata or {}
         )
@@ -132,8 +147,8 @@ class UsageTrackingService:
         logger.debug(f"📈 Updating usage counters for user {user.id}")
         
         # Check if we need to reset monthly usage
-        current_month = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        if not user.current_month_start or user.current_month_start < current_month:
+        current_month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if not user.current_month_start or user.current_month_start.replace(tzinfo=timezone.utc) < current_month:
             logger.info(f"🔄 Resetting monthly usage for user {user.id}")
             user.usage_minutes = 0
             user.session_count = 0
@@ -158,8 +173,8 @@ class UsageTrackingService:
         
         logger.debug(f"📈 Incrementing session count for user {user.id}")
         
-        current_month = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        if not user.current_month_start or user.current_month_start < current_month:
+        current_month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if not user.current_month_start or user.current_month_start.replace(tzinfo=timezone.utc) < current_month:
             logger.info(f"🔄 Resetting monthly session count for user {user.id}")
             user.session_count = 0
             user.usage_minutes = 0
@@ -215,7 +230,7 @@ class UsageTrackingService:
         elif usage_log.stt_provider == 'assemblyai':
             analytics.assemblyai_minutes = Decimal(str(analytics.assemblyai_minutes or 0)) + Decimal(str(usage_log.duration_minutes))
         
-        analytics.updated_at = datetime.utcnow()
+        analytics.updated_at = datetime.now(timezone.utc)
         self.db.flush()
         
         logger.debug(f"✅ Monthly analytics updated: transcriptions={analytics.transcriptions_completed}, minutes={analytics.total_minutes_processed}")
@@ -237,7 +252,7 @@ class UsageTrackingService:
         recent_logs = self.db.query(UsageLog).filter(
             and_(
                 UsageLog.user_id == user_id,
-                UsageLog.created_at >= datetime.utcnow() - timedelta(days=30)
+                UsageLog.created_at >= datetime.now(timezone.utc) - timedelta(days=30)
             )
         ).order_by(UsageLog.created_at.desc()).limit(10).all()
         
@@ -245,7 +260,7 @@ class UsageTrackingService:
         monthly_analytics = self.db.query(UsageAnalytics).filter(
             and_(
                 UsageAnalytics.user_id == user_id,
-                UsageAnalytics.period_start >= datetime.utcnow() - timedelta(days=365)
+                UsageAnalytics.period_start >= datetime.now(timezone.utc) - timedelta(days=365)
             )
         ).order_by(UsageAnalytics.period_start.desc()).all()
         
@@ -301,9 +316,9 @@ class UsageTrackingService:
         logger.info(f"📊 Getting admin analytics from {start_date} to {end_date}")
         
         if not start_date:
-            start_date = datetime.utcnow() - timedelta(days=90)  # Default 3 months
+            start_date = datetime.now(timezone.utc) - timedelta(days=90)  # Default 3 months
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
         
         # Build query
         query = self.db.query(UsageLog).filter(
@@ -377,7 +392,7 @@ class UsageTrackingService:
         if isinstance(user_id, str):
             user_id = UUID(user_id)
         
-        start_date = datetime.utcnow() - timedelta(days=months * 30)
+        start_date = datetime.now(timezone.utc) - timedelta(days=months * 30)
         
         usage_logs = self.db.query(UsageLog).filter(
             and_(
@@ -423,7 +438,7 @@ class UsageTrackingService:
             raise ValueError(f"User not found: {user_id}")
         
         # Get monthly analytics for past 12 months
-        start_date = datetime.utcnow() - timedelta(days=365)
+        start_date = datetime.now(timezone.utc) - timedelta(days=365)
         
         monthly_analytics = self.db.query(UsageAnalytics).filter(
             and_(
