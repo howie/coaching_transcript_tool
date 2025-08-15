@@ -3,7 +3,10 @@
 import pytest
 from datetime import date
 from uuid import uuid4
-from coaching_assistant.api.coaching_sessions import CoachingSessionCreate, SessionSource
+from coaching_assistant.api.coaching_sessions import (
+    CoachingSessionCreate,
+    SessionSource,
+)
 
 
 class TestCoachingSessionsAPIModels:
@@ -18,9 +21,9 @@ class TestCoachingSessionsAPIModels:
             duration_min=60,
             fee_currency="USD",
             fee_amount=100,
-            notes="Test session"
+            notes="Test session",
         )
-        
+
         assert session_data.source == SessionSource.FRIEND
         assert session_data.source.value == "FRIEND"
 
@@ -31,16 +34,21 @@ class TestCoachingSessionsAPIModels:
             client_id=uuid4(),
             duration_min=45,
             fee_currency="EUR",
-            fee_amount=75
+            fee_amount=75,
         )
-        
+
         assert session_data.source == SessionSource.CLIENT
         assert session_data.source.value == "CLIENT"
 
     def test_all_session_source_values(self):
         """Test that all SessionSource enum values work."""
-        sources = [SessionSource.CLIENT, SessionSource.FRIEND, SessionSource.CLASSMATE, SessionSource.SUBORDINATE]
-        
+        sources = [
+            SessionSource.CLIENT,
+            SessionSource.FRIEND,
+            SessionSource.CLASSMATE,
+            SessionSource.SUBORDINATE,
+        ]
+
         for source in sources:
             session_data = CoachingSessionCreate(
                 session_date=date.today(),
@@ -48,11 +56,16 @@ class TestCoachingSessionsAPIModels:
                 source=source,
                 duration_min=30,
                 fee_currency="GBP",
-                fee_amount=50
+                fee_amount=50,
             )
-            
+
             assert session_data.source == source
-            assert session_data.source.value in ["CLIENT", "FRIEND", "CLASSMATE", "SUBORDINATE"]
+            assert session_data.source.value in [
+                "CLIENT",
+                "FRIEND",
+                "CLASSMATE",
+                "SUBORDINATE",
+            ]
 
     def test_coaching_session_create_validation(self):
         """Test that validation still works with source field."""
@@ -64,9 +77,9 @@ class TestCoachingSessionsAPIModels:
                 source=SessionSource.CLIENT,
                 duration_min=0,  # Invalid: must be > 0
                 fee_currency="USD",
-                fee_amount=100
+                fee_amount=100,
             )
-        
+
         # Test invalid currency
         with pytest.raises(Exception):  # ValidationError from pydantic
             CoachingSessionCreate(
@@ -75,7 +88,7 @@ class TestCoachingSessionsAPIModels:
                 source=SessionSource.CLIENT,
                 duration_min=60,
                 fee_currency="INVALID",  # Invalid: must be 3 chars
-                fee_amount=100
+                fee_amount=100,
             )
 
     def test_coaching_session_create_serialization(self):
@@ -87,12 +100,12 @@ class TestCoachingSessionsAPIModels:
             duration_min=90,
             fee_currency="TWD",
             fee_amount=2000,
-            notes="Important session"
+            notes="Important session",
         )
-        
+
         # Test dict conversion
         session_dict = session_data.model_dump()
-        
+
         assert session_dict["source"] == SessionSource.CLASSMATE  # Enum in dict
         assert session_dict["duration_min"] == 90
         assert session_dict["fee_currency"] == "TWD"
