@@ -84,8 +84,16 @@ class TestConfig:
     @pytest.fixture(scope="function")
     def test_client(self, test_db_session):
         """Create a test client with the test database"""
+        # Disable reCAPTCHA for tests
+        from coaching_assistant.core.config import settings
+        original_recaptcha_enabled = settings.RECAPTCHA_ENABLED
+        settings.RECAPTCHA_ENABLED = False
+        
         with TestClient(app) as client:
             yield client
+            
+        # Restore original setting
+        settings.RECAPTCHA_ENABLED = original_recaptcha_enabled
 
     @pytest.fixture
     def sample_user_data(self):
