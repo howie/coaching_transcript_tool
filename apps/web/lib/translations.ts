@@ -456,7 +456,18 @@ export const translations = {
     'sessions.updateError': '更新會談失敗',
     'sessions.deleteError': '刪除會談失敗',
     'sessions.createError': '建立會談失敗',
-    'sessions.notesPlaceholder': '會談備註...'
+    'sessions.notesPlaceholder': '會談備註...',
+    
+    // Usage Limits
+    'limits.usageLimitReached': '使用量已達上限',
+    'limits.sessionLimitReached': '您本月的會談數已達到方案上限',
+    'limits.transcriptionLimitReached': '您本月的轉錄數已達到方案上限',
+    'limits.minutesLimitReached': '您本月的音檔分鐘數已達到方案上限',
+    'limits.sessions': '會談數',
+    'limits.transcriptions': '轉錄數',
+    'limits.minutes': '音檔分鐘數',
+    'limits.upgradeNow': '立即升級',
+    'limits.viewUsage': '查看使用量'
   },
   
   en: {
@@ -915,7 +926,18 @@ export const translations = {
     'sessions.updateError': 'Failed to update session',
     'sessions.deleteError': 'Failed to delete session',
     'sessions.createError': 'Failed to create session',
-    'sessions.notesPlaceholder': 'Session notes...'
+    'sessions.notesPlaceholder': 'Session notes...',
+    
+    // Usage Limits
+    'limits.usageLimitReached': 'Usage Limit Reached',
+    'limits.sessionLimitReached': 'You have reached your monthly session limit',
+    'limits.transcriptionLimitReached': 'You have reached your monthly transcription limit',
+    'limits.minutesLimitReached': 'You have reached your monthly audio minutes limit',
+    'limits.sessions': 'Sessions',
+    'limits.transcriptions': 'Transcriptions',
+    'limits.minutes': 'Audio Minutes',
+    'limits.upgradeNow': 'Upgrade Now',
+    'limits.viewUsage': 'View Usage'
   }
 }
 

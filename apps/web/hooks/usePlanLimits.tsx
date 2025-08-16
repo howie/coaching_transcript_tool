@@ -34,20 +34,20 @@ export function usePlanLimits() {
           const toastId = toast.error(
             <div>
               <p className="font-medium">{result.message}</p>
-              {result.limitInfo && (
+              {result.limit_info && (
                 <p className="text-sm mt-1 opacity-90">
-                  Current: {result.limitInfo.current} / Limit: {result.limitInfo.limit}
+                  Current: {result.limit_info.current} / Limit: {result.limit_info.limit}
                 </p>
               )}
-              {showUpgradePrompt && result.upgradeSuggestion && (
+              {showUpgradePrompt && result.upgrade_suggestion && (
                 <button
                   onClick={() => {
                     toast.dismiss(toastId);
-                    window.location.href = '/dashboard/billing/change-plan';
+                    window.location.href = '/dashboard/billing?tab=plans';
                   }}
                   className="mt-2 px-3 py-1 bg-white bg-opacity-20 rounded text-sm font-medium hover:bg-opacity-30 transition-colors"
                 >
-                  Upgrade to {result.upgradeSuggestion.displayName}
+                  Upgrade to {result.upgrade_suggestion.display_name}
                 </button>
               )}
             </div>,

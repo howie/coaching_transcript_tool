@@ -7,6 +7,7 @@ import { useTranscriptionStatus, formatTimeRemaining, formatDuration, Transcript
 import { TranscriptionProgress } from '@/components/ui/progress-bar'
 import { Button } from '@/components/ui/button'
 import { SpeakerWaveIcon, CloudArrowUpIcon, DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { usePlanLimits } from '@/hooks/usePlanLimits'
 
 interface UploadState {
   status: 'idle' | 'uploading' | 'pending' | 'processing' | 'completed' | 'failed'
@@ -36,6 +37,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
   transcriptionSession: parentTranscriptionSession
 }) => {
   const { t } = useI18n()
+  const { checkBeforeAction } = usePlanLimits()
   const [uploadState, setUploadState] = useState<UploadState>(() => {
     // Initialize with proper status if we have an existing session
     return existingAudioSessionId 
@@ -163,7 +165,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
     }
   }
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     // Validate file type
     const fileExtension = file.name.split('.').pop()?.toLowerCase()
     if (!fileExtension || !supportedFormats.includes(fileExtension)) {
@@ -185,8 +187,13 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       return
     }
 
-    setSelectedFile(file)
-    setUploadState({ status: 'idle', progress: 0 })
+    // Check plan limits before accepting the file
+    await checkBeforeAction('create_session', async () => {
+      await checkBeforeAction('transcribe', async () => {
+        setSelectedFile(file)
+        setUploadState({ status: 'idle', progress: 0 })
+      })
+    })
   }
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,9 +205,12 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
   const handleUpload = async () => {
     if (!selectedFile) return
 
-    setUploadState({ status: 'uploading', progress: 0 })
+    // Double-check limits before uploading
+    await checkBeforeAction('create_session', async () => {
+      await checkBeforeAction('transcribe', async () => {
+        setUploadState({ status: 'uploading', progress: 0 })
 
-    try {
+        try {
       // Step 1: Create transcription session
       const session = await apiClient.createTranscriptionSession({
         title: sessionTitle.trim(),
@@ -288,15 +298,17 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         taskId: transcriptionResult.task_id
       }))
 
-    } catch (error: any) {
-      console.error('Upload error:', error)
-      setUploadState(prev => ({
-        ...prev,
-        status: 'failed',
-        progress: 0,
-        error: error.message || '上傳失敗'
-      }))
-    }
+        } catch (error: any) {
+          console.error('Upload error:', error)
+          setUploadState(prev => ({
+            ...prev,
+            status: 'failed',
+            progress: 0,
+            error: error.message || '上傳失敗'
+          }))
+        }
+      })
+    })
   }
 
   const resetUpload = () => {
