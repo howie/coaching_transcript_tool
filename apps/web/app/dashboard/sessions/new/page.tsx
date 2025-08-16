@@ -85,18 +85,18 @@ const NewSessionContent = () => {
       } else {
         console.warn('Invalid currency data format, using defaults');
         setCurrencies([
-          { value: 'TWD', label: 'TWD - 新台幣' },
-          { value: 'USD', label: 'USD - 美元' },
-          { value: 'CNY', label: 'CNY - 人民幣' }
+          { value: 'TWD', label: `TWD - ${t('sessions.currency.twd')}` },
+          { value: 'USD', label: `USD - ${t('sessions.currency.usd')}` },
+          { value: 'CNY', label: `CNY - ${t('sessions.currency.cny')}` }
         ]);
       }
     } catch (error) {
       console.error('Failed to fetch currencies:', error);
       // Fallback to default currencies
       setCurrencies([
-        { value: 'TWD', label: 'TWD - 新台幣' },
-        { value: 'USD', label: 'USD - 美元' },
-        { value: 'CNY', label: 'CNY - 人民幣' }
+        { value: 'TWD', label: `TWD - ${t('sessions.currency.twd')}` },
+        { value: 'USD', label: `USD - ${t('sessions.currency.usd')}` },
+        { value: 'CNY', label: `CNY - ${t('sessions.currency.cny')}` }
       ]);
     }
   };
@@ -186,7 +186,7 @@ const NewSessionContent = () => {
                 {t('sessions.client')} *
                 {loadingLastSession && (
                   <span className="ml-2 text-sm text-content-secondary">
-                    (載入上次會談資料中...)
+                    ({t('sessions.loadingLastSession')}...)
                   </span>
                 )}
               </label>

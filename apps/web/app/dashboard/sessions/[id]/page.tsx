@@ -88,8 +88,8 @@ const getSpeakerRoleFromSegment = (segment: any, roleAssignments?: { [key: numbe
   return segment.speaker_id === 1 ? SpeakerRole.COACH : SpeakerRole.CLIENT;
 };
 
-const getRoleDisplayName = (role: SpeakerRole): string => {
-  return role === SpeakerRole.COACH ? '教練' : '客戶';
+const getRoleDisplayName = (role: SpeakerRole, t: any): string => {
+  return role === SpeakerRole.COACH ? t('sessions.coach') : t('sessions.client');
 };
 
 const getSpeakerColor = (role: SpeakerRole): string => {
@@ -435,7 +435,7 @@ const SessionDetailPage = () => {
     // Create a fake segment object for compatibility
     const fakeSegment = { speaker_id: speakerId };
     const role = getSpeakerRoleFromSegment(fakeSegment, transcript?.role_assignments);
-    return getRoleDisplayName(role);
+    return getRoleDisplayName(role, t);
   };
 
   const getSegmentSpeakerLabel = (segment: TranscriptSegment) => {
@@ -454,7 +454,7 @@ const SessionDetailPage = () => {
     }
     
     const role = roleString === 'coach' ? SpeakerRole.COACH : SpeakerRole.CLIENT;
-    return getRoleDisplayName(role);
+    return getRoleDisplayName(role, t);
   };
 
   const getSpeakerColorFromId = (speakerId: number) => {
@@ -518,24 +518,33 @@ const SessionDetailPage = () => {
     setIsGeneratingAnalysis(true);
     try {
       // Mock AI analysis - in real implementation, this would call an AI service
-      const mockSummary = `## 會談摘要
+      const duration = formatDuration(transcript.duration_sec);
+      const coachPct = speakingStats?.coach_percentage.toFixed(1) || '0';
+      const clientPct = speakingStats?.client_percentage.toFixed(1) || '0';
+      
+      const sessionDurationText = t('sessions.aiAnalysisSessionDuration')
+        .replace('{duration}', duration)
+        .replace('{coachPct}', coachPct)
+        .replace('{clientPct}', clientPct);
+      
+      const mockSummary = `## ${t('sessions.aiAnalysisSummaryTitle')}
 
-本次諮詢會談時長約 ${formatDuration(transcript.duration_sec)}，教練與客戶的對話比例為 ${speakingStats?.coach_percentage.toFixed(1)}% : ${speakingStats?.client_percentage.toFixed(1)}%。
+${sessionDurationText}
 
-### 主要討論議題
-- 客戶分享了近期工作上的挑戰
-- 探討了職涯發展的方向
-- 討論了工作與生活平衡的策略
+### ${t('sessions.aiAnalysisMainTopicsTitle')}
+- ${t('sessions.aiAnalysisMainTopic1')}
+- ${t('sessions.aiAnalysisMainTopic2')}
+- ${t('sessions.aiAnalysisMainTopic3')}
 
-### 教練觀察
-- 客戶在表達時較為謹慎，可能需要更多鼓勵
-- 對於目標設定有清晰的想法
-- 展現出積極的學習態度
+### ${t('sessions.aiAnalysisCoachObservationTitle')}
+- ${t('sessions.aiAnalysisObservation1')}
+- ${t('sessions.aiAnalysisObservation2')}
+- ${t('sessions.aiAnalysisObservation3')}
 
-### 後續建議
-1. 客戶可嘗試設定SMART目標
-2. 建議進行時間管理技巧的練習
-3. 下次會談可深入討論具體行動計畫`;
+### ${t('sessions.aiAnalysisFollowUpTitle')}
+1. ${t('sessions.aiAnalysisFollowUp1')}
+2. ${t('sessions.aiAnalysisFollowUp2')}
+3. ${t('sessions.aiAnalysisFollowUp3')}`;
       
       setAiAnalysis(mockSummary);
       
@@ -561,13 +570,13 @@ const SessionDetailPage = () => {
     
     // Mock AI response - in real implementation, this would call an AI service
     setTimeout(() => {
-      const mockResponse = `這是一個很好的問題。根據會談內容，我建議您可以從以下角度來思考：
+      const mockResponse = `${t('sessions.aiChatResponseIntro')}
 
-1. 客戶在這方面表現出的模式
-2. 可能的改善策略
-3. 下次會談的重點方向
+1. ${t('sessions.aiChatResponse1')}
+2. ${t('sessions.aiChatResponse2')}
+3. ${t('sessions.aiChatResponse3')}
 
-您還有其他想了解的嗎？`;
+${t('sessions.aiChatFollowUp')}`;
       setChatMessages(prev => [...prev, { role: 'assistant', content: mockResponse }]);
     }, 1000);
   };
@@ -595,7 +604,7 @@ const SessionDetailPage = () => {
       }
     } catch (error) {
       console.error('Failed to save role assignments:', error);
-      alert('儲存角色分配失敗，請稍後再試');
+      alert(t('sessions.saveRoleError'));
     }
   };
 
@@ -635,7 +644,7 @@ const SessionDetailPage = () => {
         // Parse and preview the file to identify speakers
         await parseFilePreview(file);
       } else {
-        alert('請選擇 VTT 或 SRT 格式的檔案');
+        alert(t('sessions.selectVttSrtFile'));
       }
     }
   };
@@ -743,7 +752,7 @@ const SessionDetailPage = () => {
       
     } catch (error) {
       console.error('Error parsing file preview:', error);
-      alert('無法解析檔案內容，請檢查檔案格式');
+      alert(t('sessions.parseFileError'));
     }
   };
 
@@ -791,7 +800,7 @@ const SessionDetailPage = () => {
       setSpeakerRoleMapping({});
       
       // Show success feedback
-      alert('逐字稿上傳成功！已建立 ' + response.segments_count + ' 個對話片段');
+      alert(t('sessions.uploadSuccess').replace('{count}', response.segments_count));
       
       // Switch to transcript tab to show the uploaded content
       setActiveTab('transcript');
@@ -801,7 +810,7 @@ const SessionDetailPage = () => {
       
     } catch (error) {
       console.error('Failed to upload transcript:', error);
-      let errorMessage = '逐字稿上傳失敗，請重試';
+      let errorMessage = t('sessions.uploadFailed');
       if (error instanceof Error) {
         errorMessage = error.message;
       }
@@ -821,17 +830,17 @@ const SessionDetailPage = () => {
       } else {
         console.warn('Invalid currency data format, using defaults');
         setCurrencies([
-          { value: 'TWD', label: 'TWD - 新台幣' },
-          { value: 'USD', label: 'USD - 美元' },
-          { value: 'CNY', label: 'CNY - 人民幣' }
+          { value: 'TWD', label: t('sessions.currencyTWD') },
+          { value: 'USD', label: t('sessions.currencyUSD') },
+          { value: 'CNY', label: t('sessions.currencyCNY') }
         ]);
       }
     } catch (error) {
       console.error('Failed to fetch currencies:', error);
       setCurrencies([
-        { value: 'TWD', label: 'TWD - 新台幣' },
-        { value: 'USD', label: 'USD - 美元' },
-        { value: 'CNY', label: 'CNY - 人民幣' }
+        { value: 'TWD', label: `TWD - ${t('sessions.twdCurrency')}` },
+        { value: 'USD', label: `USD - ${t('sessions.usdCurrency')}` },
+        { value: 'CNY', label: `CNY - ${t('sessions.cnyCurrency')}` }
       ]);
     }
   };
@@ -936,7 +945,7 @@ const SessionDetailPage = () => {
             }`}
           >
             <ChartBarIcon className="h-4 w-4" />
-            會談概覽
+            {t('sessions.overview')}
           </button>
           <button
             onClick={() => setActiveTab('transcript')}
@@ -947,18 +956,18 @@ const SessionDetailPage = () => {
             }`}
           >
             <DocumentTextIcon className="h-4 w-4" />
-            逐字稿
+            {t('sessions.transcript')}
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
               Beta
             </span>
             {isTranscribing && (
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                處理中
+                {t('sessions.processing')}
               </span>
             )}
             {hasTranscript && (
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                已完成
+                {t('sessions.processingCompleted')}
               </span>
             )}
           </button>
@@ -971,9 +980,9 @@ const SessionDetailPage = () => {
             }`}
           >
             <ChatBubbleLeftRightIcon className="h-4 w-4" />
-            AI 分析
+            {t('sessions.aiAnalysis')}
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-              即將推出
+              {t('sessions.comingSoon')}
             </span>
           </button>
         </div>
@@ -985,7 +994,7 @@ const SessionDetailPage = () => {
             <div className="bg-surface border border-border rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4 text-content-primary flex items-center gap-2">
                 <DocumentMagnifyingGlassIcon className="h-5 w-5" />
-                基本資料
+                {t('sessions.basicInfo')}
               </h3>
               
               {editMode ? (
@@ -1011,7 +1020,7 @@ const SessionDetailPage = () => {
                       value={formData.client_id}
                       onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
                     >
-                      <option value="" disabled>請選擇客戶</option>
+                      <option value="" disabled>{t('sessions.selectClient')}</option>
                       {clients.map((client) => (
                         <option key={client.id} value={client.id}>
                           {client.name}
@@ -1151,12 +1160,12 @@ const SessionDetailPage = () => {
                 {isTranscriptOnly ? (
                   <>
                     <DocumentTextIcon className="h-5 w-5" />
-                    逐字稿內容
+                    {t('sessions.transcriptContent')}
                   </>
                 ) : (
                   <>
                     <MicrophoneIcon className="h-5 w-5" />
-                    音檔分析
+                    {t('sessions.audioAnalysis')}
                   </>
                 )}
               </h3>
@@ -1164,7 +1173,7 @@ const SessionDetailPage = () => {
               {/* Upload Mode Selection */}
               {!session?.transcription_session_id && !hasTranscript && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
                 <div className="mb-6">
-                  <p className="text-sm text-content-secondary mb-3">請選擇上傳方式：</p>
+                  <p className="text-sm text-content-secondary mb-3">{t('sessions.selectUploadMethod')}</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button
                       onClick={() => setUploadMode('audio')}
@@ -1177,8 +1186,8 @@ const SessionDetailPage = () => {
                       <div className="flex items-center gap-3">
                         <MicrophoneIcon className="h-6 w-6 text-blue-600" />
                         <div className="text-left">
-                          <div className="font-medium text-content-primary">音檔分析</div>
-                          <div className="text-sm text-content-secondary">上傳音檔進行 AI 轉錄</div>
+                          <div className="font-medium text-content-primary">{t('sessions.audioAnalysisTitle')}</div>
+                          <div className="text-sm text-content-secondary">{t('sessions.audioAnalysisDesc')}</div>
                         </div>
                       </div>
                     </button>
@@ -1194,8 +1203,8 @@ const SessionDetailPage = () => {
                       <div className="flex items-center gap-3">
                         <DocumentTextIcon className="h-6 w-6 text-green-600" />
                         <div className="text-left">
-                          <div className="font-medium text-content-primary">直接上傳逐字稿</div>
-                          <div className="text-sm text-content-secondary">上傳 VTT/SRT 檔案</div>
+                          <div className="font-medium text-content-primary">{t('sessions.directUploadTitle')}</div>
+                          <div className="text-sm text-content-secondary">{t('sessions.directUploadDesc')}</div>
                         </div>
                       </div>
                     </button>
@@ -1277,7 +1286,7 @@ const SessionDetailPage = () => {
                     <div className="flex">
                       <div className="ml-3">
                         <p className="text-sm text-yellow-700 dark:text-yellow-200">
-                          <strong>注意：</strong> 直接上傳的逐字稿將無法享有自動說話者辨識功能，需要手動編輯角色分配。
+                          <strong>{t('common.note')}</strong> {t('sessions.directUploadWarning')}
                         </p>
                       </div>
                     </div>
@@ -1288,8 +1297,8 @@ const SessionDetailPage = () => {
                       <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
                       <div className="mt-4">
                         <label htmlFor="transcript-upload" className="cursor-pointer">
-                          <span className="text-lg font-medium text-content-primary">點擊上傳逐字稿</span>
-                          <p className="text-sm text-content-secondary mt-1">支援 VTT、SRT 格式</p>
+                          <span className="text-lg font-medium text-content-primary">{t('sessions.clickToUpload')}</span>
+                          <p className="text-sm text-content-secondary mt-1">{t('sessions.supportedFormatsVttSrt')}</p>
                         </label>
                         <input
                           id="transcript-upload"
@@ -1322,7 +1331,7 @@ const SessionDetailPage = () => {
                             className="text-red-600 hover:text-red-800 text-sm font-medium"
                             disabled={isUploadingTranscript}
                           >
-                            移除
+                            {t('sessions.remove')}
                           </button>
                         </div>
                       </div>
@@ -1338,9 +1347,9 @@ const SessionDetailPage = () => {
                             disabled={isUploadingTranscript}
                           />
                           <div className="flex-1">
-                            <span className="font-medium text-content-primary">轉換為繁體中文</span>
+                            <span className="font-medium text-content-primary">{t('sessions.convertToTraditionalChinese')}</span>
                             <p className="text-sm text-content-secondary">
-                              自動將簡體中文內容轉換為繁體中文
+                              {t('sessions.convertToTraditionalChineseDesc')}
                             </p>
                           </div>
                         </label>
@@ -1349,9 +1358,9 @@ const SessionDetailPage = () => {
                       {/* Speaker Role Assignment */}
                       {previewSegments.length > 0 && (
                         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                          <h4 className="font-medium text-content-primary mb-3">說話者角色分配</h4>
+                          <h4 className="font-medium text-content-primary mb-3">{t('sessions.speakerRoleAssignment')}</h4>
                           <p className="text-sm text-content-secondary mb-4">
-                            檔案中偵測到 {previewSegments.length} 位說話者，請為每位說話者指定角色：
+                            {t('sessions.detectSpeakersMessage').replace('{count}', previewSegments.length)}
                           </p>
                           
                           <div className="space-y-3">
@@ -1364,7 +1373,7 @@ const SessionDetailPage = () => {
                                         {segment.speaker_name}
                                       </span>
                                       <span className="text-xs text-content-secondary">
-                                        ({segment.count} 個片段)
+                                        {t('sessions.segmentsCount').replace('{count}', segment.count)}
                                       </span>
                                     </div>
                                     <p className="text-sm text-content-secondary italic">
@@ -1380,8 +1389,8 @@ const SessionDetailPage = () => {
                                       }))}
                                       className="text-sm px-3 py-1 border border-border rounded-md bg-surface focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     >
-                                      <option value="coach">教練</option>
-                                      <option value="client">客戶</option>
+                                      <option value="coach">{t('sessions.coachRole')}</option>
+                                      <option value="client">{t('sessions.clientRole')}</option>
                                     </select>
                                   </div>
                                 </div>
@@ -1399,10 +1408,10 @@ const SessionDetailPage = () => {
                         {isUploadingTranscript ? (
                           <div className="flex items-center gap-2">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            上傳中...
+                            {t('sessions.uploading')}
                           </div>
                         ) : (
-                          '上傳逐字稿'
+                          t('sessions.uploadTranscript')
                         )}
                       </Button>
                     </div>
@@ -1416,18 +1425,18 @@ const SessionDetailPage = () => {
                   <div className="flex items-center gap-3">
                     <DocumentTextIcon className="h-5 w-5 text-blue-600" />
                     <div>
-                      <h4 className="font-medium text-blue-800 dark:text-blue-200">轉檔記錄</h4>
+                      <h4 className="font-medium text-blue-800 dark:text-blue-200">{t('sessions.conversionHistory')}</h4>
                       <p className="text-sm text-blue-600 dark:text-blue-300">
                         {hasTranscript ? 
-                          '逐字稿已完成，可於逐字稿分頁查看內容' : 
+                          t('sessions.transcriptCompleted') : 
                           transcriptionSession?.status === 'completed' ? 
-                            '轉檔已完成，正在載入逐字稿...' :
-                            `轉檔狀態：${transcriptionSession?.status || '檢查中...'}`
+                            t('sessions.conversionCompleted') :
+                            t('sessions.conversionStatus').replace('{status}', transcriptionSession?.status || t('sessions.checking'))
                         }
                       </p>
                       {transcriptionSession?.id && (
                         <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
-                          轉檔 ID: {transcriptionSession.id}
+                          {t('sessions.conversionId').replace('{id}', transcriptionSession.id)}
                         </p>
                       )}
                     </div>
@@ -1439,16 +1448,16 @@ const SessionDetailPage = () => {
               {speakingStats && hasTranscript && (
                 <div className="mt-6 space-y-4">
                   <div className="border-t border-border pt-4">
-                    <h4 className="font-medium text-content-primary mb-3">談話分析結果</h4>
+                    <h4 className="font-medium text-content-primary mb-3">{t('sessions.talkAnalysisResults')}</h4>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Speaking Time Distribution */}
                     <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                      <h4 className="font-medium text-content-primary mb-3">談話時間分配</h4>
+                      <h4 className="font-medium text-content-primary mb-3">{t('sessions.talkTimeDistribution')}</h4>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-blue-600 font-medium">教練</span>
+                          <span className="text-blue-600 font-medium">{t('sessions.coach')}</span>
                           <span className="text-sm">{formatDuration(speakingStats.coach_speaking_time)} ({speakingStats.coach_percentage.toFixed(1)}%)</span>
                         </div>
                         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -1459,7 +1468,7 @@ const SessionDetailPage = () => {
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-green-600 font-medium">客戶</span>
+                          <span className="text-green-600 font-medium">{t('sessions.client')}</span>
                           <span className="text-sm">{formatDuration(speakingStats.client_speaking_time)} ({speakingStats.client_percentage.toFixed(1)}%)</span>
                         </div>
                         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -1473,30 +1482,30 @@ const SessionDetailPage = () => {
                     
                     {/* Overall Stats */}
                     <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                      <h4 className="font-medium text-content-primary mb-3">整體統計</h4>
+                      <h4 className="font-medium text-content-primary mb-3">{t('sessions.overallStats')}</h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-content-secondary">總時長</span>
+                          <span className="text-content-secondary">{t('sessions.totalDuration')}</span>
                           <span className="text-content-primary font-medium">{formatDuration(transcript?.duration_sec || 0)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-content-secondary">談話時間</span>
+                          <span className="text-content-secondary">{t('sessions.talkTime')}</span>
                           <span className="text-content-primary font-medium">{formatDuration(speakingStats.total_speaking_time)}</span>
                         </div>
                         {/* Silence time calculation is not accurate from STT, showing warning */}
                         <div className="flex justify-between">
                           <span className="text-content-secondary">
-                            靜默時間
-                            <span className="text-xs text-yellow-600 ml-1" title="此數據為推算值，可能不夠準確">
-                              (推算)
+                            {t('sessions.silenceTime')}
+                            <span className="text-xs text-yellow-600 ml-1" title={t('sessions.silenceTimeNote')}>
+                              ({t('sessions.silenceTimeNote')})
                             </span>
                           </span>
                           <span className="text-content-primary font-medium">
-                            {speakingStats.silence_time > 0 ? formatDuration(speakingStats.silence_time) : '無法計算'}
+                            {speakingStats.silence_time > 0 ? formatDuration(speakingStats.silence_time) : t('sessions.silenceTimeCalculationError')}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-content-secondary">對話段數</span>
+                          <span className="text-content-secondary">{t('sessions.conversationSegments')}</span>
                           <span className="text-content-primary font-medium">{transcript?.segments.length || 0}</span>
                         </div>
                       </div>
@@ -1514,12 +1523,12 @@ const SessionDetailPage = () => {
             {(isTranscribing || transcriptionSession?.status === 'pending') && transcriptionStatus && (
               <div className="bg-surface border border-border rounded-lg p-6">
                 <h3 className="text-lg font-semibold mb-4 text-content-primary">
-                  轉檔處理中
+                  {t('sessions.transcriptionProcessing')}
                 </h3>
                 <TranscriptionProgress
                   progress={Number(transcriptionStatus.progress) || 0}
                   status={transcriptionSession?.status === 'processing' ? 'processing' : 'pending'}
-                  message={transcriptionStatus.message || (transcriptionSession?.status === 'pending' ? '等待開始處理...' : '處理中...')}
+                  message={transcriptionStatus.message || (transcriptionSession?.status === 'pending' ? t('sessions.waitingToStart') : t('sessions.processing'))}
                   estimatedTime={transcriptionStatus.estimated_completion ? 
                     formatTimeRemaining(transcriptionStatus.estimated_completion) : undefined}
                 />
@@ -1527,7 +1536,7 @@ const SessionDetailPage = () => {
                  transcriptionStatus.duration_total != null && 
                  transcriptionStatus.duration_total > 0 && (
                   <div className="mt-2 text-sm text-content-secondary">
-                    已處理: {formatDuration(transcriptionStatus.duration_processed)} / {formatDuration(transcriptionStatus.duration_total)}
+                    {t('sessions.processed').replace('{processed}', formatDuration(transcriptionStatus.duration_processed)).replace('{total}', formatDuration(transcriptionStatus.duration_total))}
                   </div>
                 )}
               </div>
@@ -1539,7 +1548,7 @@ const SessionDetailPage = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <label className="text-sm font-medium text-content-primary">
-                      匯出格式:
+                      {t('sessions.exportFormat')}
                     </label>
                     <select
                       value={exportFormat}
@@ -1548,7 +1557,7 @@ const SessionDetailPage = () => {
                     >
                       <option value="vtt">WebVTT (.vtt)</option>
                       <option value="srt">SubRip (.srt)</option>
-                      <option value="txt">純文字 (.txt)</option>
+                      <option value="txt">{t('sessions.exportTxt')}</option>
                       <option value="json">JSON (.json)</option>
                       <option value="xlsx">Excel (.xlsx)</option>
                     </select>
@@ -1558,7 +1567,7 @@ const SessionDetailPage = () => {
                     className="flex items-center gap-2"
                   >
                     <DocumentArrowDownIcon className="h-4 w-4" />
-                    匯出逐字稿
+                    {t('sessions.exportTranscript')}
                   </Button>
                 </div>
               </div>
@@ -1570,11 +1579,11 @@ const SessionDetailPage = () => {
                 <div className="px-6 py-4 border-b border-border">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-content-primary">
-                      對話紀錄
+                      {t('sessions.conversationRecord')}
                     </h3>
                     <div className="flex items-center gap-4">
                       <div className="text-sm text-content-secondary">
-                        總時長: {formatDuration(transcript.duration_sec)} | {transcript.segments.length} 段對話
+                        {t('sessions.conversationSummary').replace('{duration}', formatDuration(transcript.duration_sec)).replace('{count}', transcript.segments.length)}
                       </div>
                       {!editingRoles ? (
                         <Button
@@ -1583,7 +1592,7 @@ const SessionDetailPage = () => {
                           className="flex items-center gap-2 text-sm px-3 py-1"
                         >
                           <PencilIcon className="h-3 w-3" />
-                          編輯角色
+                          {t('sessions.editRole')}
                         </Button>
                       ) : (
                         <div className="flex gap-2">
@@ -1592,13 +1601,13 @@ const SessionDetailPage = () => {
                             onClick={cancelRoleEditing}
                             className="text-sm px-3 py-1"
                           >
-                            取消
+                            {t('sessions.cancel')}
                           </Button>
                           <Button
                             onClick={saveRoleAssignments}
                             className="flex items-center gap-2 text-sm px-3 py-1"
                           >
-                            儲存
+                            {t('sessions.save')}
                           </Button>
                         </div>
                       )}
@@ -1611,16 +1620,16 @@ const SessionDetailPage = () => {
                     <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider w-20">
-                          時間
+                          {t('sessions.time')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider w-24">
-                          說話者
+                          {t('sessions.speaker')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">
-                          內容
+                          {t('sessions.content')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider w-16">
-                          信心度
+                          {t('sessions.confidence')}
                         </th>
                       </tr>
                     </thead>
@@ -1643,8 +1652,8 @@ const SessionDetailPage = () => {
                                 }}
                                 className="text-xs px-2 py-1 border border-border rounded bg-surface"
                               >
-                                <option value="coach">教練</option>
-                                <option value="client">客戶</option>
+                                <option value="coach">{t('sessions.coach')}</option>
+                                <option value="client">{t('sessions.client')}</option>
                               </select>
                             ) : (
                               <span className={`text-xs font-medium px-2 py-1 rounded-full ${
@@ -1688,14 +1697,14 @@ const SessionDetailPage = () => {
                 <div className="space-y-4">
                   <MicrophoneIcon className="h-16 w-16 text-content-secondary mx-auto" />
                   <p className="text-content-secondary mb-4">
-                    此諮詢記錄尚未上傳音檔或逐字稿
+                    {t('sessions.noTranscriptUploaded')}
                   </p>
                   <Button
                     onClick={() => setActiveTab('overview')}
                     className="mx-auto flex items-center gap-2"
                   >
                     <DocumentTextIcon className="h-4 w-4" />
-                    前往概覽頁面上傳{isTranscriptOnly ? '逐字稿' : '音檔'}
+                    {t('sessions.goToOverviewToUpload').replace('{type}', isTranscriptOnly ? t('sessions.transcriptFile') : t('sessions.audioFile'))}
                   </Button>
                 </div>
               </div>
@@ -1709,7 +1718,7 @@ const SessionDetailPage = () => {
               <div className="bg-surface border border-border rounded-lg p-12 text-center">
                 <ChatBubbleLeftRightIcon className="h-16 w-16 text-content-secondary mx-auto mb-4" />
                 <p className="text-content-secondary mb-4">
-                  需要先上傳{isTranscriptOnly ? '逐字稿' : '音檔並完成轉檔'}才能使用 AI 分析功能
+                  {t('sessions.needUploadForAI').replace('{type}', isTranscriptOnly ? t('sessions.transcriptFile') : t('sessions.needUploadAndTranscription').replace('{type}', t('sessions.audioFile')))}
                 </p>
                 <Button
                   onClick={() => setActiveTab('overview')}
@@ -1720,7 +1729,7 @@ const SessionDetailPage = () => {
                   ) : (
                     <MicrophoneIcon className="h-4 w-4" />
                   )}
-                  前往概覽頁面上傳{isTranscriptOnly ? '逐字稿' : '音檔'}
+                  {t('sessions.goToOverviewToUpload').replace('{type}', isTranscriptOnly ? t('sessions.transcriptFile') : t('sessions.audioFile'))}
                 </Button>
               </div>
             ) : (
@@ -1730,7 +1739,7 @@ const SessionDetailPage = () => {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-content-primary flex items-center gap-2">
                       <DocumentMagnifyingGlassIcon className="h-5 w-5" />
-                      會談摘要
+                      {t('sessions.sessionSummary')}
                     </h3>
                     <Button
                       onClick={generateAISummary}
@@ -1742,7 +1751,7 @@ const SessionDetailPage = () => {
                       ) : (
                         <ChatBubbleLeftRightIcon className="h-4 w-4" />
                       )}
-                      {isGeneratingAnalysis ? '產生中...' : '產生摘要'}
+                      {isGeneratingAnalysis ? t('sessions.generating') : t('sessions.generateSummary')}
                     </Button>
                   </div>
                   
@@ -1751,7 +1760,7 @@ const SessionDetailPage = () => {
                       <div className="whitespace-pre-wrap">{aiAnalysis}</div>
                     ) : (
                       <p className="text-content-secondary italic">
-                        點擊「產生摘要」按鈕，讓 AI 幫您分析這次會談的重點和洞察
+                        {t('sessions.generateSummaryDesc')}
                       </p>
                     )}
                   </div>
@@ -1761,14 +1770,14 @@ const SessionDetailPage = () => {
                 <div className="bg-surface border border-border rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-content-primary flex items-center gap-2 mb-4">
                     <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                    AI 對話
+                    {t('sessions.aiChat')}
                   </h3>
                   
                   {/* Chat Messages */}
                   <div className="space-y-4 max-h-96 overflow-y-auto mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     {chatMessages.length === 0 ? (
                       <p className="text-content-secondary text-sm italic text-center py-4">
-                        您可以在這裡對會談內容提問，或請 AI 提供更深入的分析
+                        {t('sessions.aiChatDesc')}
                       </p>
                     ) : (
                       chatMessages.map((message, index) => (
@@ -1792,7 +1801,7 @@ const SessionDetailPage = () => {
                       value={currentMessage}
                       onChange={(e) => setCurrentMessage(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-                      placeholder="輸入您的問題..."
+                      placeholder={t('sessions.enterQuestion')}
                       className="flex-1 px-3 py-2 border border-border rounded-md bg-surface text-content-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <Button
@@ -1801,7 +1810,7 @@ const SessionDetailPage = () => {
                       className="flex items-center gap-2"
                     >
                       <ChatBubbleLeftRightIcon className="h-4 w-4" />
-                      發送
+                      {t('sessions.send')}
                     </Button>
                   </div>
                 </div>

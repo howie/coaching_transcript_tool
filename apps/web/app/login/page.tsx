@@ -37,7 +37,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen" style={{backgroundColor: 'var(--section-light)'}}>
       <div className="w-full max-w-md p-8 space-y-6 rounded-lg shadow-md" style={{backgroundColor: 'var(--white)', boxShadow: 'var(--shadow)'}}>
         <h1 className="text-2xl font-bold text-center" style={{color: 'var(--text-primary)'}}>
-          {t('nav.login')}
+          {t('auth.loginTitle')}
         </h1>
         
         <button
@@ -51,39 +51,39 @@ export default function LoginPage() {
             <path fill="#EA4335" d="M24 48c5.9 0 11-2 14.7-5.4l-7.3-5.7c-2 1.3-4.5 2.1-7.4 2.1-5.9 0-11-3.8-12.9-9.1L3 37.5C7.1 44.7 14.8 48 24 48z"></path>
             <path fill="none" d="M0 0h48v48H0z"></path>
           </svg>
-          使用 Google 登入
+          {t('auth.googleLogin')}
         </button>
 
         <div className="flex items-center justify-center space-x-2">
           <span className="h-px bg-gray-300 w-full"></span>
-          <span className="text-gray-500 font-normal">或</span>
+          <span className="text-gray-500 font-normal">{t('auth.or')}</span>
           <span className="h-px bg-gray-300 w-full"></span>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="label">
-              Email
+              {t('auth.email')}
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input-base"
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               required
             />
           </div>
           <div>
             <label className="label">
-              密碼
+              {t('auth.password')}
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-base"
-              placeholder="••••••••"
+              placeholder={t('auth.passwordPlaceholder')}
               required
             />
           </div>
@@ -92,13 +92,13 @@ export default function LoginPage() {
             type="submit"
             className="w-full px-4 py-2 rounded-md transition-colors focus:outline-none" style={{backgroundColor: 'var(--accent-color)', color: 'var(--bg-primary)'}}
           >
-            登入
+            {t('auth.loginButton')}
           </button>
         </form>
         <p className="text-sm text-center" style={{color: 'var(--text-secondary)'}}>
-          還沒有帳號嗎？{' '}
+          {t('auth.noAccount')}{' '}
           <Link href={'/signup' as any} className="font-medium hover:opacity-80" style={{color: 'var(--accent-color)'}}>
-            建立帳號
+            {t('auth.createAccount')}
           </Link>
         </p>
       </div>

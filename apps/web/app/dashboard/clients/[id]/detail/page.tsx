@@ -117,24 +117,24 @@ const ClientDetailPage = () => {
       console.error('Failed to fetch options:', error);
       // Set default options when API fails
       setSourceOptions([
-        { value: 'referral', label: '轉介' },
-        { value: 'website', label: '網站' },
-        { value: 'social_media', label: '社群媒體' },
-        { value: 'event', label: '活動' },
-        { value: 'other', label: '其他' }
+        { value: 'referral', label: t('clients.sourceReferral') },
+        { value: 'website', label: t('clients.sourceWebsite') },
+        { value: 'social_media', label: t('clients.sourceSocialMedia') },
+        { value: 'event', label: t('clients.sourceEvent') },
+        { value: 'other', label: t('clients.sourceOther') }
       ]);
       setTypeOptions([
-        { value: 'individual', label: '個人' },
-        { value: 'corporate', label: '企業' },
-        { value: 'student', label: '學生' },
-        { value: 'professional', label: '專業人士' },
-        { value: 'other', label: '其他' }
+        { value: 'individual', label: t('clients.typeIndividual') },
+        { value: 'corporate', label: t('clients.typeCorporate') },
+        { value: 'student', label: t('clients.typeStudent') },
+        { value: 'professional', label: t('clients.typeProfessional') },
+        { value: 'other', label: t('clients.typeOther') }
       ]);
       setStatusOptions([
-        { value: 'first_session', label: '首次會談' },
-        { value: 'active', label: '進行中' },
-        { value: 'paused', label: '暫停' },
-        { value: 'completed', label: '已完成' }
+        { value: 'first_session', label: t('clients.statusFirstSession') },
+        { value: 'active', label: t('clients.statusInProgress') },
+        { value: 'paused', label: t('clients.statusPaused') },
+        { value: 'completed', label: t('clients.statusCompleted') }
       ]);
     }
   }, [t]);
@@ -149,10 +149,10 @@ const ClientDetailPage = () => {
 
   const getStatusLabel = (status: string) => {
     const statusMap = {
-      'first_session': '首次會談',
-      'in_progress': '進行中',
-      'paused': '暫停',
-      'completed': '結案'
+      'first_session': t('clients.statusFirstSession'),
+      'in_progress': t('clients.statusInProgress'),
+      'paused': t('clients.statusPaused'),
+      'completed': t('clients.statusCompleted')
     };
     return statusMap[status as keyof typeof statusMap] || status;
   };

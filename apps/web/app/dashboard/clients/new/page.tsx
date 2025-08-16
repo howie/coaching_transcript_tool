@@ -66,18 +66,18 @@ const NewClientPage = () => {
       console.error('Failed to fetch options:', error);
       // Set default options when API fails
       setSourceOptions([
-        { value: 'referral', label: '轉介' },
-        { value: 'website', label: '網站' },
-        { value: 'social_media', label: '社群媒體' },
-        { value: 'event', label: '活動' },
-        { value: 'other', label: '其他' }
+        { value: 'referral', label: t('clients.sourceReferral') },
+        { value: 'website', label: t('clients.sourceWebsite') },
+        { value: 'social_media', label: t('clients.sourceSocialMedia') },
+        { value: 'event', label: t('clients.sourceEvent') },
+        { value: 'other', label: t('clients.sourceOther') }
       ]);
       setTypeOptions([
-        { value: 'individual', label: '個人' },
-        { value: 'corporate', label: '企業' },
-        { value: 'student', label: '學生' },
-        { value: 'professional', label: '專業人士' },
-        { value: 'other', label: '其他' }
+        { value: 'individual', label: t('clients.typeIndividual') },
+        { value: 'corporate', label: t('clients.typeCorporate') },
+        { value: 'student', label: t('clients.typeStudent') },
+        { value: 'professional', label: t('clients.typeProfessional') },
+        { value: 'other', label: t('clients.typeOther') }
       ]);
     }
   }, [t]);
@@ -95,7 +95,7 @@ const NewClientPage = () => {
       router.push('/dashboard/clients');
     } catch (error) {
       console.error('Failed to create client:', error);
-      alert(`創建客戶失敗: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`${t('clients.createError')}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -152,13 +152,13 @@ const NewClientPage = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  客戶來源
+                  {t('clients.clientSource')}
                 </label>
                 <Select
                   value={formData.source}
                   onChange={(e) => setFormData({ ...formData, source: e.target.value })}
                 >
-                  <option value="">請選擇來源</option>
+                  <option value="">{t('clients.selectSource')}</option>
                   {sourceOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -171,13 +171,13 @@ const NewClientPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  客戶屬性
+                  {t('clients.clientType')}
                 </label>
                 <Select
                   value={formData.client_type}
                   onChange={(e) => setFormData({ ...formData, client_type: e.target.value })}
                 >
-                  <option value="">請選擇屬性</option>
+                  <option value="">{t('clients.selectType')}</option>
                   {typeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -188,12 +188,12 @@ const NewClientPage = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  議題類型
+                  {t('clients.issueTypes')}
                 </label>
                 <TagInput
                   value={formData.issue_types}
                   onChange={(value) => setFormData({ ...formData, issue_types: value })}
-                  placeholder="例如：職涯發展、人際關係、領導力"
+                  placeholder={t('clients.issueTypesPlaceholder')}
                 />
               </div>
             </div>
@@ -207,7 +207,7 @@ const NewClientPage = () => {
                 rows={4}
                 value={formData.memo}
                 onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
-                placeholder="備註資訊..."
+                placeholder={t('clients.memoPlaceholder')}
               />
             </div>
 

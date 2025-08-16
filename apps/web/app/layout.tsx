@@ -4,13 +4,14 @@ import { ThemeProvider } from '@/contexts/theme-context'
 import { I18nProvider } from '@/contexts/i18n-context'
 import { AuthProvider } from '@/contexts/auth-context'
 import { ReCaptchaProvider } from '@/components/recaptcha-provider'
+import { translations } from '@/lib/i18n'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Coachly - 你的 AI 教練夥伴',
-  description: '從新手教練到執業認證，Coachly 幫你記錄、成長與實踐。',
+  title: translations.zh['layout.coachlyTitle'],
+  description: translations.zh['layout.coachlyDescription'],
   icons: {
     icon: '/images/coachly-favicon.ico',
     shortcut: '/images/coachly-favicon.ico',
