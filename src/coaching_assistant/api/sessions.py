@@ -161,7 +161,7 @@ async def create_session(
                 "message": f"You have reached your monthly session limit of {plan_limits.max_sessions}",
                 "current_usage": current_sessions,
                 "limit": plan_limits.max_sessions,
-                "plan": current_user.plan
+                "plan": current_user.plan.value if current_user.plan else "free"
             }
         )
     
@@ -295,7 +295,7 @@ async def get_upload_url(
                 "message": f"File size {file_size_mb:.1f}MB exceeds your plan limit of {plan_limits.max_file_size_mb}MB",
                 "file_size_mb": file_size_mb,
                 "limit_mb": plan_limits.max_file_size_mb,
-                "plan": current_user.plan
+                "plan": current_user.plan.value if current_user.plan else "free"
             }
         )
     
@@ -514,7 +514,7 @@ async def start_transcription(
                 "message": f"You have reached your monthly transcription limit of {plan_limits.max_transcriptions}",
                 "current_usage": current_transcriptions,
                 "limit": plan_limits.max_transcriptions,
-                "plan": current_user.plan
+                "plan": current_user.plan.value if current_user.plan else "free"
             }
         )
     

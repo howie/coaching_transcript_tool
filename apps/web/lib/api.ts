@@ -1011,9 +1011,12 @@ class ApiClient {
     }
   }
 
-  async getUploadUrl(sessionId: string, filename: string) {
+  async getUploadUrl(sessionId: string, filename: string, fileSizeMB: number) {
     try {
-      const params = new URLSearchParams({ filename })
+      const params = new URLSearchParams({ 
+        filename,
+        file_size_mb: fileSizeMB.toString()
+      })
       const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/upload-url?${params}`, {
         method: 'POST',
         headers: await this.getHeaders(),

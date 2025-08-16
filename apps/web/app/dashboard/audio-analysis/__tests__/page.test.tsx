@@ -195,7 +195,7 @@ describe('AudioAnalysisPage', () => {
       })
     })
     
-    expect(mockApiClient.getUploadUrl).toHaveBeenCalledWith('session-123', 'test.mp3')
+    expect(mockApiClient.getUploadUrl).toHaveBeenCalledWith('session-123', 'test.mp3', expect.any(Number))
     expect(mockApiClient.confirmUpload).toHaveBeenCalledWith('session-123')
     expect(mockApiClient.startTranscription).toHaveBeenCalledWith('session-123')
   })
