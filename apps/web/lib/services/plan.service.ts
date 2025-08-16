@@ -27,8 +27,11 @@ export interface PlanConfig {
   pricing: {
     monthlyUsd: number;
     annualUsd: number;
+    monthlyTwd: number;
+    annualTwd: number;
     annualDiscountPercentage: number;
     annualSavingsUsd: number;
+    annualSavingsTwd: number;
   };
   display: {
     isPopular: boolean;

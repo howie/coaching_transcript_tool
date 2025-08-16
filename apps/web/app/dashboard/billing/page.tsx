@@ -105,15 +105,15 @@ export default function BillingPage() {
                       <div className="flex items-center mt-3 space-x-4">
                         <div className="flex items-center">
                           <CheckIcon className="h-5 w-5 text-dashboard-bg mr-2" />
-                          <span className="text-dashboard-bg font-medium">10x more sessions</span>
+                          <span className="text-dashboard-bg font-medium">{t('billing.benefit.10xSessions')}</span>
                         </div>
                         <div className="flex items-center">
                           <CheckIcon className="h-5 w-5 text-dashboard-bg mr-2" />
-                          <span className="text-dashboard-bg font-medium">Priority support</span>
+                          <span className="text-dashboard-bg font-medium">{t('billing.benefit.prioritySupport')}</span>
                         </div>
                         <div className="flex items-center">
                           <CheckIcon className="h-5 w-5 text-dashboard-bg mr-2" />
-                          <span className="text-dashboard-bg font-medium">All export formats</span>
+                          <span className="text-dashboard-bg font-medium">{t('billing.benefit.allExportFormats')}</span>
                         </div>
                       </div>
                     </div>
@@ -239,7 +239,7 @@ function CurrentPlanSummary({ plan, subscriptionInfo }: { plan: PlanConfig; subs
           {subscriptionInfo.endDate && (
             <p>{t('billing.nextBilling')}: {new Date(subscriptionInfo.endDate).toLocaleDateString()}</p>
           )}
-          <p>{isFreePlan ? t('billing.free') : `$${plan.pricing.monthlyUsd}/${t('billing.perMonth')}`}</p>
+          <p>{isFreePlan ? t('billing.free') : `NT$${plan.pricing.monthlyTwd || plan.pricing.monthlyUsd * 31.5}/${t('billing.perMonth')}`}</p>
           {plan.features.prioritySupport && (
             <p className="text-green-400">✓ {t('billing.prioritySupport')}</p>
           )}

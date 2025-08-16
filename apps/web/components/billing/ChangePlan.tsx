@@ -20,51 +20,54 @@ export function ChangePlan() {
 
   const plans = [
     {
-      name: 'Free',
+      name: t('billing.planNameFree'),
+      id: 'free',
       price: { monthly: 0, annual: 0 },
       description: t('billing.freeDescription'),
       features: [
-        '5 uploaded recordings',
-        '10 linked recordings per month',
-        '10 chat credits',
-        'Up to 30 min per recording',
-        'Basic export formats',
-        'Email support'
+        t('billing.feature.freeRecordings'),
+        t('billing.feature.freeLinkedRecordings'),
+        t('billing.feature.freeChatCredits'),
+        t('billing.feature.freeRecordingLength'),
+        t('billing.feature.basicExportFormats'),
+        t('billing.feature.emailSupport')
       ],
       isCurrent: currentUserPlan === 'free',
     },
     {
-      name: 'Pro',
-      price: { monthly: 25, annual: 20 },
+      name: t('billing.planNamePro'),
+      id: 'pro',
+      price: { monthly: 790, annual: 632 }, // TWD prices (25 USD = 790 TWD, 20 USD = 632 TWD)
       description: t('billing.proDescription'),
       features: [
-        'Unlimited uploaded recordings',
-        '1,200 min of transcription per month',
-        'Unlimited chat credits',
-        'Up to 90 min per recording',
-        'All export formats',
-        'Priority email support',
-        'Advanced analytics',
-        'Custom branding'
+        t('billing.feature.unlimitedRecordings'),
+        t('billing.feature.proTranscriptionMinutes'),
+        t('billing.feature.unlimitedChatCredits'),
+        t('billing.feature.proRecordingLength'),
+        t('billing.feature.allExportFormats'),
+        t('billing.feature.priorityEmailSupport'),
+        t('billing.feature.advancedAnalytics'),
+        t('billing.feature.customBranding')
       ],
       isPopular: true,
       isCurrent: currentUserPlan === 'pro',
     },
     {
-      name: 'Business',
-      price: { monthly: 60, annual: 50 },
+      name: t('billing.planNameBusiness'),
+      id: 'business',
+      price: { monthly: 1890, annual: 1575 }, // TWD prices (60 USD = 1890 TWD, 50 USD = 1575 TWD)
       description: t('billing.businessDescription'),
       features: [
-        'Unlimited uploaded recordings',
-        '6,000 min of transcription per month',
-        'Unlimited chat credits',
-        'Up to 4 hours per recording',
-        'All export formats',
-        'Dedicated support',
-        'Team collaboration',
-        'API access',
-        'Custom integrations',
-        'SLA guarantee'
+        t('billing.feature.unlimitedRecordings'),
+        t('billing.feature.businessTranscriptionMinutes'),
+        t('billing.feature.unlimitedChatCredits'),
+        t('billing.feature.businessRecordingLength'),
+        t('billing.feature.allExportFormats'),
+        t('billing.feature.dedicatedSupport'),
+        t('billing.feature.teamCollaboration'),
+        t('billing.feature.apiAccess'),
+        t('billing.feature.customIntegrations'),
+        t('billing.feature.slaGuarantee')
       ],
       isCurrent: currentUserPlan === 'business',
     },
@@ -84,7 +87,7 @@ export function ChangePlan() {
   const renderPlanButton = (plan: any) => {
     const planOrder: Record<string, number> = { 'free': 0, 'pro': 1, 'business': 2 }
     const currentOrder = planOrder[currentUserPlan] || 0
-    const targetOrder = planOrder[plan.name.toLowerCase()] || 0
+    const targetOrder = planOrder[plan.id] || 0
     
     if (plan.isCurrent) {
       return (
@@ -181,8 +184,9 @@ export function ChangePlan() {
 
             <div className="mb-6">
               <div className="flex items-baseline">
+                <span className="text-lg mr-1 text-gray-400">NT$</span>
                 <span className={`text-3xl font-bold ${themeClasses.textPrimary}`}>
-                  ${billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
+                  {billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
                 </span>
                 <span className={`ml-2 ${themeClasses.textTertiary}`}>
                   /{t('billing.perMonth')}
@@ -190,7 +194,7 @@ export function ChangePlan() {
               </div>
               {billingCycle === 'annual' && plan.price.annual > 0 && (
                 <p className={`text-sm mt-1 ${themeClasses.textTertiary}`}>
-                  {t('billing.perYear')}: ${plan.price.annual * 12}
+                  {t('billing.perYear')}: NT${plan.price.annual * 12}
                 </p>
               )}
             </div>
@@ -230,7 +234,7 @@ export function ChangePlan() {
             <div>
               <p className={`text-sm mb-1 ${themeClasses.textTertiary}`}>{t('billing.billingCycle')}</p>
               <p className={`text-lg font-medium ${themeClasses.textPrimary}`}>
-                {billingCycle === 'annual' ? t('billing.annual') : t('billing.monthly')} - $
+                {billingCycle === 'annual' ? t('billing.annual') : t('billing.monthly')} - NT$
                 {plans.find(p => p.name === selectedPlan)?.price[billingCycle === 'annual' ? 'annual' : 'monthly']}
               </p>
             </div>
