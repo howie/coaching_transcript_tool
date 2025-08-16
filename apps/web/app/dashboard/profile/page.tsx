@@ -450,7 +450,7 @@ export default function ProfilePage() {
                       className="flex items-center space-x-2 px-4 py-2 bg-dashboard-accent bg-opacity-10 text-dashboard-accent rounded-lg hover:bg-opacity-20 transition-colors"
                     >
                       <CameraIcon className="h-4 w-4" />
-                      <span>更換照片</span>
+                      <span>{t('profile.changePhoto')}</span>
                     </button>
                   </div>
                 )}
@@ -517,7 +517,7 @@ export default function ProfilePage() {
                   onChange={(e) => handleInputChange('country', e.target.value)}
                   disabled={!isEditing}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent disabled:opacity-50"
-                  placeholder="台灣"
+                  placeholder={t('profile.countryPlaceholder')}
                 />
               </div>
 
@@ -529,7 +529,7 @@ export default function ProfilePage() {
                   onChange={(e) => handleInputChange('city', e.target.value)}
                   disabled={!isEditing}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent disabled:opacity-50"
-                  placeholder="台北"
+                  placeholder={t('profile.cityPlaceholder')}
                 />
               </div>
 
@@ -563,11 +563,11 @@ export default function ProfilePage() {
               <label className="block text-sm font-medium text-gray-300 mb-3">{t('profile.languageServicesDescription')}</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { value: 'mandarin', label: '中文（普通話）' },
+                  { value: 'mandarin', label: t('profile.langMandarin') },
                   { value: 'english', label: 'English' },
-                  { value: 'cantonese', label: '廣東話' },
-                  { value: 'japanese', label: '日語' },
-                  { value: 'korean', label: '韓語' },
+                  { value: 'cantonese', label: t('profile.langCantonese') },
+                  { value: 'japanese', label: t('profile.langJapanese') },
+                  { value: 'korean', label: t('profile.langKorean') },
                   { value: 'spanish', label: 'Español' },
                   { value: 'french', label: 'Français' },
                   { value: 'german', label: 'Deutsch' }
@@ -609,7 +609,7 @@ export default function ProfilePage() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">支援的溝通平台（多選）</label>
+                <label className="block text-sm font-medium text-gray-300 mb-3">{t('profile.supportedPlatforms')}</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     { key: 'line', label: 'LINE' },
@@ -642,7 +642,7 @@ export default function ProfilePage() {
                     onChange={(e) => handleInputChange('line_id', e.target.value)}
                     disabled={!isEditing}
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent disabled:opacity-50"
-                    placeholder="請輸入您的 LINE ID"
+                    placeholder={t('profile.lineIdPlaceholder')}
                   />
                 </div>
               )}
@@ -665,7 +665,7 @@ export default function ProfilePage() {
                   disabled={!isEditing}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent disabled:opacity-50"
                 >
-                  <option value="">請選擇經驗等級</option>
+                  <option value="">{t('profile.selectExperience')}</option>
                   {experienceOptions.map(exp => (
                     <option key={exp.value} value={exp.value}>
                       {exp.label}
@@ -699,7 +699,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">個人網站</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t('profile.personalWebsite')}</label>
                 <input
                   type="url"
                   value={formData.personal_website}
@@ -736,7 +736,7 @@ export default function ProfilePage() {
                   <div className="flex space-x-2">
                     <input
                       type="text"
-                      placeholder="新增認證（按 Enter 確認）"
+                      placeholder={t('profile.addCertificationPlaceholder')}
                       className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
                       onKeyPress={(e) => {
                         if (e.key === 'Enter') {
@@ -776,7 +776,7 @@ export default function ProfilePage() {
                   <div className="flex space-x-2">
                     <input
                       type="text"
-                      placeholder="新增專長（按 Enter 確認）"
+                      placeholder={t('profile.addSpecialtyPlaceholder')}
                       className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
                       onKeyPress={(e) => {
                         if (e.key === 'Enter') {
@@ -799,7 +799,7 @@ export default function ProfilePage() {
                 disabled={!isEditing}
                 rows={4}
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent disabled:opacity-50"
-                placeholder="請介紹您的教練背景、理念與專長..."
+                placeholder={t('profile.bioPlaceholder')}
               />
             </div>
           </div>
@@ -839,8 +839,8 @@ export default function ProfilePage() {
               {coachingPlans.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">
                   <BriefcaseIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>尚未建立任何教練方案</p>
-                  <p className="text-sm mt-2">點選上方「新增方案」按鈕開始建立您的服務方案</p>
+                  <p>{t('profile.noPlanYet')}</p>
+                  <p className="text-sm mt-2">{t('profile.noPlanDescription')}</p>
                 </div>
               ) : (
                 coachingPlans.map(plan => (
@@ -854,7 +854,7 @@ export default function ProfilePage() {
                           </span>
                           {!plan.is_active && (
                             <span className="px-2 py-1 bg-gray-600 text-gray-300 text-xs rounded-full">
-                              未啟用
+                              {t('profile.planDisabled')}
                             </span>
                           )}
                         </div>
@@ -863,14 +863,14 @@ export default function ProfilePage() {
                         )}
                         <div className="flex flex-wrap gap-4 text-sm text-gray-400">
                           {plan.duration_minutes && (
-                            <span>時長：{plan.duration_minutes} 分鐘</span>
+                            <span>{t('profile.planDuration')}: {plan.duration_minutes} {t('profile.minutes')}</span>
                           )}
                           {plan.number_of_sessions > 1 && (
-                            <span>會談次數：{plan.number_of_sessions}</span>
+                            <span>{t('profile.planSessions')}: {plan.number_of_sessions}</span>
                           )}
-                          <span>價格：{plan.currency} ${plan.price}</span>
+                          <span>{t('profile.planPrice')}: {plan.currency} ${plan.price}</span>
                           {plan.max_participants > 1 && (
-                            <span>最多參與者：{plan.max_participants} 人</span>
+                            <span>{t('profile.planMaxParticipants')}: {plan.max_participants} {t('profile.people')}</span>
                           )}
                         </div>
                       </div>
@@ -903,12 +903,12 @@ export default function ProfilePage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-dashboard-card rounded-lg p-6 w-full max-w-md max-h-screen overflow-y-auto m-4">
             <h3 className="text-xl font-semibold text-white mb-4">
-              {editingPlanId ? '編輯教練方案' : '新增教練方案'}
+              {editingPlanId ? t('profile.editPlan') : t('profile.addPlan')}
             </h3>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">方案類型</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t('profile.planType')}</label>
                 <select
                   value={newPlan.plan_type}
                   onChange={(e) => setNewPlan({...newPlan, plan_type: e.target.value})}
@@ -923,31 +923,31 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">方案標題 *</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t('profile.planTitle')} *</label>
                 <input
                   type="text"
                   value={newPlan.title}
                   onChange={(e) => setNewPlan({...newPlan, title: e.target.value})}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
-                  placeholder="例：個人教練會談"
+                  placeholder={t('profile.planTitlePlaceholder')}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">方案說明</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t('profile.planDescription')}</label>
                 <textarea
                   value={newPlan.description}
                   onChange={(e) => setNewPlan({...newPlan, description: e.target.value})}
                   rows={3}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
-                  placeholder="詳細說明這個方案的內容..."
+                  placeholder={t('profile.planDescriptionPlaceholder')}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">會談時長（分鐘）</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">{t('profile.sessionDuration')}</label>
                   <input
                     type="number"
                     value={newPlan.duration_minutes}
@@ -959,7 +959,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">會談次數</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">{t('profile.numberOfSessions')}</label>
                   <input
                     type="number"
                     value={newPlan.number_of_sessions}
@@ -972,7 +972,7 @@ export default function ProfilePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">價格 *</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">{t('profile.planPrice')} *</label>
                   <input
                     type="number"
                     value={newPlan.price}
@@ -985,7 +985,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">幣別</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">{t('profile.currency')}</label>
                   <select
                     value={newPlan.currency}
                     onChange={(e) => setNewPlan({...newPlan, currency: e.target.value})}
@@ -1000,7 +1000,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">最多參與人數</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t('profile.maxParticipants')}</label>
                 <input
                   type="number"
                   value={newPlan.max_participants}
@@ -1018,7 +1018,7 @@ export default function ProfilePage() {
                     onChange={(e) => setNewPlan({...newPlan, is_active: e.target.checked})}
                     className="w-4 h-4 text-dashboard-accent bg-gray-100 border-gray-300 rounded focus:ring-dashboard-accent focus:ring-2"
                   />
-                  <span className="text-sm text-gray-300">啟用此方案</span>
+                  <span className="text-sm text-gray-300">{t('profile.enablePlan')}</span>
                 </label>
               </div>
             </div>
@@ -1031,14 +1031,14 @@ export default function ProfilePage() {
                 }}
                 className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
               >
-                取消
+                {t('common.cancel')}
               </button>
               <button
                 onClick={editingPlanId ? handleUpdatePlan : handleCreatePlan}
                 disabled={!newPlan.title.trim() || newPlan.price < 0}
                 className="px-4 py-2 bg-dashboard-accent text-white rounded-lg hover:bg-opacity-80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {editingPlanId ? '更新方案' : '建立方案'}
+                {editingPlanId ? t('profile.updatePlan') : t('profile.createPlan')}
               </button>
             </div>
           </div>
