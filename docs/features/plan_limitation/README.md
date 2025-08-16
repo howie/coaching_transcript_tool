@@ -48,25 +48,37 @@ Core infrastructure for billing plans and usage tracking
 | [US003](US003-usage-limits-enforcement.md) | Usage Limits Enforcement | P0 | ❌ TODO | ❌ TODO | 📝 Ready |
 | [US004](US004-smart-billing-logic.md) | Smart Billing Logic | P0 | ❌ TODO | ❌ TODO | 📝 Ready |
 
-### 💰 Billing & User Experience (Phase 2)  
-Plan management and user-facing features
+### 💰 Core Plan Features (Phase 2)  
+Core plan management features
 
 | Story | Title | Priority | Backend | Frontend | Status |
 |-------|-------|----------|---------|----------|--------|
-| [US005](US005-upgrade-downgrade-flow.md) | Upgrade/Downgrade Flow | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
+| [US005](US005-usage-history-analytics.md) | Usage History Analytics | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
 | [US006](US006-soft-delete-system.md) | Soft Delete System | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
-| [US007](US007-gdpr-compliance.md) | GDPR Compliance Enhancement | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
-| [US008](US008-audit-trail-logging.md) | Audit Trail Logging | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
 
-### 📊 Analytics & Management (Phase 3)
-Dashboard and administrative features
+### 📊 Data Governance (Phase 3)
+Data governance and compliance features
 
 | Story | Title | Priority | Backend | Frontend | Status |
 |-------|-------|----------|---------|----------|--------|
-| [US009](US009-usage-dashboard.md) | User Usage Dashboard | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-| [US010](US010-billing-analytics.md) | Billing Analytics & Insights | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-| [US011](US011-admin-management.md) | Admin Management Interface | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-| [US012](US012-data-retention-policies.md) | Data Retention Policies | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
+| [US007](US007-audit-trail-logging.md) | Audit Trail Logging | P1 | ❌ TODO | ❌ TODO | 📝 Ready |
+
+## 🔗 Related Feature Systems
+
+### Payment Integration
+**Payment processing, subscriptions, and billing** → [@docs/features/payment](../payment/README.md)
+- Stripe integration and payment processing
+- Subscription management and billing
+- Payment method management
+- Invoice generation and payment history
+
+### Admin Management & Analytics  
+**Administrative dashboard and system analytics** → [@docs/features/admin](../admin/README.md)
+- User usage dashboard and analytics
+- Billing analytics and revenue insights
+- Admin management interface
+- System performance monitoring
+- Data retention policies management
 
 ## 🏗️ Technical Architecture
 
@@ -190,30 +202,31 @@ components/
 - Plan configuration system
 - Basic limit enforcement
 
-### Phase 2: Billing & UX (Weeks 3-4)
+### Phase 2: Core Plan Features (Weeks 3-4)
 - Smart billing logic implementation
-- Plan upgrade/downgrade flow
+- Usage history analytics
 - User-facing dashboard components
-- Billing transparency features
+- Soft delete system implementation
 
-### Phase 3: Analytics & Admin (Weeks 5-6)
-- Administrative analytics dashboard
-- Advanced billing insights
-- Data governance enhancements
-- GDPR compliance implementation
+### Phase 3: Data Governance (Week 5)
+- Audit trail logging implementation
+- GDPR compliance enhancements
+- Data retention policy enforcement
 
-### Phase 4: Testing & Launch (Week 7)
+### Phase 4: Testing & Launch (Week 6)
 - Comprehensive testing
 - Performance optimization
 - Documentation completion
 - Gradual rollout strategy
+
+**Note**: Payment integration and admin features moved to separate feature systems (see Related Feature Systems above)
 
 ## 🔄 Dependencies & Integration
 
 ### Core Dependencies
 - ✅ Current transcription system (sessions, users)
 - ✅ Authentication system (user management)
-- ✅ Payment processing integration (Stripe/similar)
+- 📋 **Payment processing integration** → [@docs/features/payment](../payment/README.md)
 - ⏳ Email notification system (plan changes)
 
 ### Integration Points

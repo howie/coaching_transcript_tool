@@ -30,26 +30,25 @@ Core infrastructure for billing plans and usage tracking
 | US003 - Frontend Plan Implementation | N/A | ✅ Completed | ✅ Completed | ✅ Complete | UI components ready |
 | US004 - Billing Plan UI | ✅ Completed | ✅ Completed | ✅ Completed | ✅ Complete | Billing page functional |
 
-### 💰 Phase 2: Billing & User Experience (2/5 Complete)
-Plan management and user-facing features
+### 💰 Phase 2: Core Plan Features (2/3 Complete)
+Core plan management features (payment system moved to separate feature)
 
 | User Story | Backend | Frontend | Tests | Status | Notes |
 |------------|---------|----------|-------|---------|-------|
 | US005 - Usage History Analytics | 📝 Planned | 📝 Planned | ❌ Not Started | 📝 Planning | Design complete |
 | US006 - Usage Limit UI Blocking | ✅ Completed | ✅ Completed | ✅ Completed | ✅ Complete | `/api/v1/plan/validate-action` endpoint live |
-| US007 - Upgrade/Downgrade Flow | 🚧 In Progress | ✅ Completed | ❌ Not Started | 🚧 Development | UI ready, payment pending |
 | US008 - Soft Delete System | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on data governance |
-| US009 - Audit Trail Logging | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on US001 |
 
-### 📊 Phase 3: Analytics & Management (0/4 Complete)
-Dashboard and administrative features
+**Note**: US007 (Upgrade/Downgrade Flow) moved to [@docs/features/payment](../payment/README.md) - Payment Integration System
+
+### 📊 Phase 3: Data Governance (0/1 Complete)
+Data governance and compliance features (admin features moved to separate feature)
 
 | User Story | Backend | Frontend | Tests | Status | Notes |
 |------------|---------|----------|-------|---------|-------|
-| US009 - User Usage Dashboard | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on US005 |
-| US010 - Billing Analytics & Insights | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on US005 |
-| US011 - Admin Management Interface | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on US010 |
-| US012 - Data Retention Policies | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on US007 |
+| US009 - Audit Trail Logging | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on US001 |
+
+**Note**: Admin and analytics features moved to [@docs/features/admin](../admin/README.md) - Admin Management & Analytics System
 
 ## 🛠️ Technical Implementation Status
 
@@ -100,7 +99,7 @@ Dashboard and administrative features
 | Issue | Impact | Status | Owner | Target Resolution |
 |-------|--------|--------|-------|-------------------|
 | Plan configuration needs DB migration | Medium | 🟡 Open | Backend Team | Aug 30, 2025 |
-| Payment integration not implemented | High | 🔴 Open | Business Team | Sep 5, 2025 |
+| ~~Payment integration not implemented~~ | ~~High~~ | 📋 **Moved to [@docs/features/payment](../payment/README.md)** | ~~Business Team~~ | ~~Sep 5, 2025~~ |
 | ~~Test coverage at 0%~~ | ~~Medium~~ | ✅ Resolved | ~~QA Team~~ | Aug 15, 2025 |
 | Real-time usage updates not implemented | Low | 🟡 Open | Frontend Team | Sep 15, 2025 |
 
@@ -108,7 +107,7 @@ Dashboard and administrative features
 - ✅ Current transcription system is stable (prerequisite met)
 - ✅ User authentication system functional (prerequisite met)
 - ✅ Basic plan API endpoints implemented
-- ⏳ Payment processing integration (Stripe or equivalent)
+- 📋 **Payment processing integration** → Moved to [@docs/features/payment](../payment/README.md)
 - ⏳ Email notification system for plan changes
 - ⏳ Real-time usage updates via WebSocket
 

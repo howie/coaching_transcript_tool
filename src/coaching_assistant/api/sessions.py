@@ -33,6 +33,7 @@ from ..core.config import settings
 from ..exporters.excel import generate_excel
 from ..services.stt_factory import STTProviderFactory
 from ..services.usage_tracking import UsageTrackingService
+from ..services.plan_limits import PlanLimits
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -148,6 +149,22 @@ async def create_session(
     current_user: User = Depends(get_current_user_dependency),
 ):
     """Create a new transcription session."""
+    # CRITICAL: Check plan limits BEFORE creating session
+    plan_limits = PlanLimits.from_user_plan(current_user.plan)
+    current_sessions = current_user.session_count or 0
+    
+    if plan_limits.max_sessions != -1 and current_sessions >= plan_limits.max_sessions:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "session_limit_exceeded",
+                "message": f"You have reached your monthly session limit of {plan_limits.max_sessions}",
+                "current_usage": current_sessions,
+                "limit": plan_limits.max_sessions,
+                "plan": current_user.plan
+            }
+        )
+    
     # Determine STT provider - use settings default if 'auto'
     provider = session_data.stt_provider
     if provider == "auto":
@@ -262,12 +279,28 @@ async def get_session(
 async def get_upload_url(
     session_id: UUID,
     filename: str = Query(..., pattern=r"^[^\/\\]+\.(mp3|wav|flac|ogg|mp4|m4a)$"),
+    file_size_mb: float = Query(..., description="File size in MB for plan limit validation"),
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
 ):
     """Get signed URL for audio file upload."""
+    # CRITICAL: Check file size limits BEFORE generating upload URL
+    plan_limits = PlanLimits.from_user_plan(current_user.plan)
+    
+    if file_size_mb > plan_limits.max_file_size_mb:
+        raise HTTPException(
+            status_code=413,
+            detail={
+                "error": "file_size_exceeded",
+                "message": f"File size {file_size_mb:.1f}MB exceeds your plan limit of {plan_limits.max_file_size_mb}MB",
+                "file_size_mb": file_size_mb,
+                "limit_mb": plan_limits.max_file_size_mb,
+                "plan": current_user.plan
+            }
+        )
+    
     logger.info(
-        f"📤 UPLOAD URL REQUEST - Session: {session_id}, User: {current_user.id}, Filename: {filename}"
+        f"📤 UPLOAD URL REQUEST - Session: {session_id}, User: {current_user.id}, Filename: {filename}, Size: {file_size_mb}MB"
     )
 
     session = (
@@ -469,6 +502,22 @@ async def start_transcription(
     current_user: User = Depends(get_current_user_dependency),
 ):
     """Start transcription processing for uploaded audio."""
+    # CRITICAL: Check transcription limits BEFORE starting processing
+    plan_limits = PlanLimits.from_user_plan(current_user.plan)
+    current_transcriptions = current_user.transcription_count or 0
+    
+    if plan_limits.max_transcriptions != -1 and current_transcriptions >= plan_limits.max_transcriptions:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "transcription_limit_exceeded",
+                "message": f"You have reached your monthly transcription limit of {plan_limits.max_transcriptions}",
+                "current_usage": current_transcriptions,
+                "limit": plan_limits.max_transcriptions,
+                "plan": current_user.plan
+            }
+        )
+    
     session = (
         db.query(Session)
         .filter(Session.id == session_id, Session.user_id == current_user.id)

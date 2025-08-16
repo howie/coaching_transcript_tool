@@ -38,57 +38,74 @@ class PlanLimit:
 class PlanLimits:
     """Central configuration for all plan limits."""
     
+    # BETA SAFETY LIMITS - Conservative for cost control
     LIMITS = {
         PlanName.FREE: PlanLimit(
-            max_sessions=3,
-            max_transcriptions=3,
-            max_minutes=180,  # 3 hours
-            max_file_size_mb=100,
+            max_sessions=3,        # BETA: Reduced from 10 for safety
+            max_transcriptions=5,  # BETA: Reduced from 20 for safety  
+            max_minutes=60,        # BETA: Reduced from 120 for safety (1 hour)
+            max_file_size_mb=25,   # BETA: Reduced from 50MB for safety
             export_formats=["txt", "json"],
             concurrent_processing=1,
-            retention_days=7,
+            retention_days=30,
             monthly_price_twd=0,
             annual_price_twd=0,
             monthly_price_usd=0,
             annual_price_usd=0
         ),
         PlanName.PRO: PlanLimit(
-            max_sessions=50,
-            max_transcriptions=50,
-            max_minutes=3000,  # 50 hours
-            max_file_size_mb=500,
-            export_formats=["txt", "json", "docx", "pdf", "srt", "vtt"],
-            concurrent_processing=3,
-            retention_days=90,
-            monthly_price_twd=790,
-            annual_price_twd=632,  # 20% discount
-            monthly_price_usd=25,
-            annual_price_usd=20
+            max_sessions=25,       # BETA: Reduced from 100 for safety
+            max_transcriptions=50, # BETA: Reduced from 200 for safety
+            max_minutes=300,       # BETA: Reduced from 1200 for safety (5 hours)
+            max_file_size_mb=100,  # BETA: Reduced from 200MB for safety
+            export_formats=["txt", "json", "vtt", "srt"],
+            concurrent_processing=2,
+            retention_days=365,
+            monthly_price_twd=890,  # ~$29 USD
+            annual_price_twd=8900,  # ~$290 USD 
+            monthly_price_usd=29,
+            annual_price_usd=290
         ),
         PlanName.ENTERPRISE: PlanLimit(
-            max_sessions=-1,  # Unlimited
-            max_transcriptions=-1,
-            max_minutes=-1,
-            max_file_size_mb=2000,
-            export_formats=["txt", "json", "docx", "pdf", "srt", "vtt", "xlsx"],
-            concurrent_processing=10,
-            retention_days=365,
-            monthly_price_twd=1890,
-            annual_price_twd=1575,  # ~17% discount
-            monthly_price_usd=60,
+            max_sessions=500,      # BETA: Conservative limit (not unlimited)
+            max_transcriptions=1000, # BETA: Conservative limit  
+            max_minutes=1500,      # BETA: Conservative limit (25 hours)
+            max_file_size_mb=500,  # BETA: Conservative limit
+            export_formats=["txt", "json", "vtt", "srt", "docx", "xlsx"],
+            concurrent_processing=5,
+            retention_days=-1,     # Unlimited retention
+            monthly_price_twd=3040, # ~$99 USD
+            annual_price_twd=30400, # ~$990 USD
+            monthly_price_usd=99,
             annual_price_usd=50
         )
     }
     
     @classmethod
-    def get_plan_limit(cls, plan_name: str) -> PlanLimit:
+    def get_plan_limit(cls, plan_name) -> PlanLimit:
         """Get limits for a specific plan."""
         try:
-            plan_enum = PlanName(plan_name.lower())
+            # Handle both string and enum inputs
+            if hasattr(plan_name, 'value'):
+                # It's already an enum, use its value
+                plan_str = plan_name.value.lower()
+            elif hasattr(plan_name, 'lower'):
+                # It's a string
+                plan_str = plan_name.lower()
+            else:
+                # Convert to string and lowercase
+                plan_str = str(plan_name).lower()
+                
+            plan_enum = PlanName(plan_str)
             return cls.LIMITS.get(plan_enum, cls.LIMITS[PlanName.FREE])
-        except ValueError:
+        except (ValueError, AttributeError):
             # Default to free plan if invalid plan name
             return cls.LIMITS[PlanName.FREE]
+    
+    @classmethod
+    def from_user_plan(cls, user_plan) -> PlanLimit:
+        """Get plan limits from user's plan (string or enum). Alias for get_plan_limit."""
+        return cls.get_plan_limit(user_plan or 'free')
     
     @classmethod
     def get_upgrade_suggestion(cls, current_plan: str) -> Optional[Dict[str, Any]]:
