@@ -221,7 +221,7 @@ const ClientsPage = () => {
                 {t('clients.clientType')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                議題類型
+                {t('clients.issueTypes')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 {t('clients.sessions')}
@@ -301,7 +301,7 @@ const ClientsPage = () => {
                       <button
                         onClick={() => handleDetail(client)}
                         className="text-indigo-600 hover:text-indigo-900"
-                        title="檢視詳情"
+                        title={t('clients.viewDetails')}
                       >
                         <PencilIcon className="h-4 w-4" />
                       </button>
@@ -318,7 +318,7 @@ const ClientsPage = () => {
                       <button
                         onClick={() => handleAnonymize(client)}
                         className="text-orange-600 hover:text-orange-900"
-                        title="匿名化"
+                        title={t('clients.anonymize')}
                       >
                         <UserMinusIcon className="h-4 w-4" />
                       </button>
@@ -358,31 +358,31 @@ const ClientsPage = () => {
         </div>
       )}
 
-      {/* 刪除與匿名化規則說明 */}
+      {/* Delete and Anonymize Rules */
       <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
-          客戶資料管理規則
+          {t('clients.dataManagementRules')}
         </h3>
         <div className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
           <div className="flex items-start gap-2">
             <TrashIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-600 dark:text-red-400" />
             <div>
-              <span className="font-medium">直接刪除：</span>
-              <span className="ml-1">僅適用於沒有任何教練會話記錄的客戶。刪除後資料將永久移除且無法復原。</span>
+              <span className="font-medium">{t('clients.directDeleteTitle')}</span>
+              <span className="ml-1">{t('clients.directDeleteDesc')}</span>
             </div>
           </div>
           <div className="flex items-start gap-2">
             <UserMinusIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-orange-600 dark:text-orange-400" />
             <div>
-              <span className="font-medium">匿名化：</span>
-              <span className="ml-1">適用於已有教練會話記錄的客戶。匿名化會保留會話記錄但移除所有個人識別資訊（姓名、電話、Email、備註），符合 GDPR 隱私保護規範。</span>
+              <span className="font-medium">{t('clients.anonymizeTitle')}</span>
+              <span className="ml-1">{t('clients.anonymizeDesc')}</span>
             </div>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-gray-600 dark:text-gray-400 mt-0.5">•</span>
             <div>
-              <span className="font-medium">已匿名化：</span>
-              <span className="ml-1">已匿名化的客戶無法編輯或刪除，僅能查看歷史會話記錄。</span>
+              <span className="font-medium">{t('clients.anonymizedTitle')}</span>
+              <span className="ml-1">{t('clients.anonymizedDesc')}</span>
             </div>
           </div>
         </div>

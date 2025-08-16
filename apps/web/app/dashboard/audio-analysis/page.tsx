@@ -352,7 +352,7 @@ export default function AudioAnalysisPage() {
                       className="text-red-600 hover:text-red-800 text-sm font-medium"
                       disabled={uploadState.status === 'uploading' || uploadState.status === 'processing'}
                     >
-                      移除
+                      {t('audio.remove')}
                     </button>
                   </div>
                 </div>
@@ -433,30 +433,30 @@ export default function AudioAnalysisPage() {
                           onClick={() => handleDownloadTranscript('json')}
                           className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
                         >
-                          下載 JSON
+                          {t('audio.downloadJSON')}
                         </button>
                         <button 
                           onClick={() => handleDownloadTranscript('txt')}
                           className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
                         >
-                          下載文本
+                          {t('audio.downloadText')}
                         </button>
                         <button 
                           onClick={() => handleDownloadTranscript('vtt')}
                           className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
                         >
-                          下載 VTT
+                          {t('audio.downloadVTT')}
                         </button>
                         <button 
                           onClick={() => handleDownloadTranscript('srt')}
                           className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
                         >
-                          下載 SRT
+                          {t('audio.downloadSRT')}
                         </button>
                       </div>
                       {uploadState.transcriptData?.stt_cost_usd && (
                         <div className="text-sm text-gray-600">
-                          轉錄費用: ${uploadState.transcriptData.stt_cost_usd} USD
+                          {t('audio.transcriptionCost')}: ${uploadState.transcriptData.stt_cost_usd} USD
                         </div>
                       )}
                     </div>
