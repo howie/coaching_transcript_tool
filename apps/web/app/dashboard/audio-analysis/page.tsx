@@ -156,7 +156,7 @@ export default function AudioAnalysisPage() {
         ...prev, 
         status: 'processing',
         progress: 0,
-        estimatedTime: '約 15-30 分鐘',
+        estimatedTime: t('audio.estimatedTime15to30'),
         taskId: transcriptionResult.task_id
       }))
 
@@ -198,7 +198,7 @@ export default function AudioAnalysisPage() {
           progress: transcriptionStatus.progress,
           estimatedTime: transcriptionStatus.estimated_completion ? 
             formatTimeRemaining(transcriptionStatus.estimated_completion) : 
-            '約 15-30 分鐘'
+            t('audio.estimatedTime15to30')
         }))
       }
     }

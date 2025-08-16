@@ -63,12 +63,12 @@ export function PaymentSettings() {
           <div className="p-4 rounded-lg flex items-center justify-between" style={{backgroundColor: 'var(--card-bg)'}}>
             <div className="flex items-center space-x-4">
               <div className="w-12 h-8 bg-gradient-to-r from-blue-600 to-blue-400 rounded flex items-center justify-center">
-                <span className="text-white text-xs font-bold">VISA</span>
+                <span className="text-white text-xs font-bold">{t('billing.visa')}</span>
               </div>
               <div>
-                <p className="font-medium" style={{color: 'var(--text-primary)'}}>•••• •••• •••• 4242</p>
+                <p className="font-medium" style={{color: 'var(--text-primary)'}}>{t('billing.cardEnding')} 4242</p>
                 <p className="text-sm" style={{color: 'var(--text-tertiary)'}}>
-                  {t('billing.expiresOn')}: 12/2025
+                  {t('billing.expiresOn')}: {t('billing.exampleExpiry')}
                 </p>
               </div>
             </div>
@@ -196,9 +196,9 @@ export function PaymentSettings() {
         
         <div className="space-y-3">
           {[
-            { date: '2025-01-01', amount: 25, status: 'paid' },
-            { date: '2024-12-01', amount: 25, status: 'paid' },
-            { date: '2024-11-01', amount: 25, status: 'paid' }
+            { date: t('billing.invoice1Date'), amount: t('billing.invoiceAmount'), status: 'paid' },
+            { date: t('billing.invoice2Date'), amount: t('billing.invoiceAmount'), status: 'paid' },
+            { date: t('billing.invoice3Date'), amount: t('billing.invoiceAmount'), status: 'paid' }
           ].map((invoice, index) => (
             <div key={index} className="flex items-center justify-between p-4 rounded-lg" style={{backgroundColor: 'var(--card-bg)'}}>
               <div>
@@ -209,7 +209,7 @@ export function PaymentSettings() {
               </div>
               <div className="flex items-center space-x-4">
                 <div className="text-right">
-                  <p className="font-medium" style={{color: 'var(--text-primary)'}}>${invoice.amount}</p>
+                  <p className="font-medium" style={{color: 'var(--text-primary)'}}>{t('billing.currencySymbol')}{invoice.amount}</p>
                   <p className="text-sm text-green-400 flex items-center">
                     <CheckIcon className="h-3 w-3 mr-1" />
                     {t('billing.paid')}

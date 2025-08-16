@@ -16,6 +16,7 @@ from .coach_profile import (
 from .usage_log import UsageLog, TranscriptionType
 from .usage_analytics import UsageAnalytics
 from .role_audit_log import RoleAuditLog
+from .plan_configuration import PlanConfiguration, SubscriptionHistory
 
 __all__ = [
     "Base",
@@ -42,4 +43,6 @@ __all__ = [
     "TranscriptionType",
     "UsageAnalytics",
     "RoleAuditLog",
+    "PlanConfiguration",
+    "SubscriptionHistory",
 ]

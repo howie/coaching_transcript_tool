@@ -16,19 +16,27 @@ interface I18nProviderProps {
 }
 
 export function I18nProvider({ children }: I18nProviderProps) {
-  const [language, setLanguageState] = useState<Language>('zh')
-  const [mounted, setMounted] = useState(false)
+  // Get initial language from data attribute if available (set by script in layout)
+  const getInitialLanguage = (): Language => {
+    if (typeof window !== 'undefined') {
+      const dataLang = document.documentElement.getAttribute('data-lang') as Language
+      if (dataLang === 'zh' || dataLang === 'en') {
+        return dataLang
+      }
+    }
+    return 'zh'
+  }
 
-  // 避免 hydration 錯誤
+  const [language, setLanguageState] = useState<Language>(getInitialLanguage)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Ensure language is synced with localStorage on mount
   useEffect(() => {
-    setMounted(true)
-    // 載入儲存的語言設定
     const savedLanguage = localStorage.getItem('language') as Language
     if (savedLanguage && (savedLanguage === 'zh' || savedLanguage === 'en')) {
-      setLanguageState(savedLanguage)
-    } else {
-      // 預設使用繁體中文
-      setLanguageState('zh')
+      if (savedLanguage !== language) {
+        setLanguageState(savedLanguage)
+      }
     }
   }, [])
 
@@ -55,21 +63,16 @@ export function I18nProvider({ children }: I18nProviderProps) {
     return key
   }
 
-  // 避免 hydration 不匹配
-  if (!mounted) {
-    return (
-      <I18nContext.Provider value={{ 
-        language: 'zh', 
-        setLanguage: () => {}, 
-        t: (key: TranslationKey) => translations['zh'][key] || key 
-      }}>
-        {children}
-      </I18nContext.Provider>
-    )
+  // During loading, provide a consistent state
+  // This prevents hydration mismatches while still showing content
+  const value = {
+    language,
+    setLanguage: isLoading ? () => {} : setLanguage,
+    t
   }
 
   return (
-    <I18nContext.Provider value={{ language, setLanguage, t }}>
+    <I18nContext.Provider value={value}>
       {children}
     </I18nContext.Provider>
   )
