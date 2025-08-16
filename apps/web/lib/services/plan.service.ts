@@ -73,13 +73,18 @@ export interface UsageStatus {
 
 export interface ValidationResult {
   allowed: boolean;
-  message: string;
-  limitInfo?: {
+  message?: string;
+  limit_info?: {
     type: string;
     current: number;
     limit: number;
+    reset_date?: string;
   };
-  upgradeSuggestion?: any;
+  upgrade_suggestion?: {
+    plan_id: string;
+    display_name: string;
+    benefits: string[];
+  };
 }
 
 export interface SubscriptionInfo {
@@ -135,7 +140,7 @@ class PlanService {
 
   async validateAction(action: string, params?: any): Promise<ValidationResult> {
     try {
-      const response = await apiClient.post('/api/plans/validate', {
+      const response = await apiClient.post('/api/v1/plan/validate-action', {
         action,
         ...params
       });

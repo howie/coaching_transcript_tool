@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { PencilIcon, TrashIcon, ArrowLeftIcon, DocumentArrowDownIcon, MicrophoneIcon, DocumentTextIcon, ChartBarIcon, ChatBubbleLeftRightIcon, DocumentMagnifyingGlassIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, ArrowLeftIcon, DocumentArrowDownIcon, MicrophoneIcon, DocumentTextIcon, ChartBarIcon, ChatBubbleLeftRightIcon, DocumentMagnifyingGlassIcon, CloudArrowUpIcon, ExclamationTriangleIcon, ArrowUpIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -12,6 +12,7 @@ import { apiClient, TranscriptNotAvailableError } from '@/lib/api';
 import { TranscriptionProgress } from '@/components/ui/progress-bar';
 import { useTranscriptionStatus, formatTimeRemaining, formatDuration } from '@/hooks/useTranscriptionStatus';
 import { AudioUploader } from '@/components/AudioUploader';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 
 interface Session {
   id: string;
@@ -139,6 +140,16 @@ const SessionDetailPage = () => {
   const [speakerRoleMapping, setSpeakerRoleMapping] = useState<{[speakerId: string]: 'coach' | 'client'}>({});
   const [previewSegments, setPreviewSegments] = useState<Array<{speaker_id: string, speaker_name: string, content: string, count: number}>>([]);
   const [convertToTraditional, setConvertToTraditional] = useState(false);
+  const [canUseAudioAnalysis, setCanUseAudioAnalysis] = useState(true);
+  const [limitMessage, setLimitMessage] = useState<{
+    type: string;
+    current: number;
+    limit: number;
+    message: string;
+  } | null>(null);
+
+  // Use plan limits hook
+  const { canCreateSession, canTranscribe, validateAction, validateMultiple } = usePlanLimits();
 
   // Use transcription status hook for progress tracking
   const transcriptionSessionId = session?.transcription_session_id;
@@ -174,6 +185,7 @@ const SessionDetailPage = () => {
       fetchSession();
       fetchClients();
       fetchCurrencies();
+      checkUsageLimits();
     }
   }, [sessionId]);
 
@@ -230,6 +242,55 @@ const SessionDetailPage = () => {
       setTempSegmentRoles(segmentRoles);
     }
   }, [transcript]);
+
+  const checkUsageLimits = async () => {
+    try {
+      // Check if user can create sessions and transcriptions
+      const results = await validateMultiple([
+        { action: 'create_session', params: {} },
+        { action: 'transcribe', params: {} }
+      ], { silent: true });
+
+      if (!results) {
+        // If any check fails, get detailed info for display
+        const sessionResult = await validateAction('create_session', {}, { silent: true });
+        
+        if (!sessionResult.allowed) {
+          setCanUseAudioAnalysis(false);
+          setLimitMessage({
+            type: 'sessions',
+            current: sessionResult.limit_info?.current || 0,
+            limit: sessionResult.limit_info?.limit || 0,
+            message: t('limits.sessionLimitReached')
+          });
+          return;
+        }
+
+        const transcribeResult = await validateAction('transcribe', {}, { silent: true });
+        
+        if (!transcribeResult.allowed) {
+          setCanUseAudioAnalysis(false);
+          setLimitMessage({
+            type: 'transcriptions',
+            current: transcribeResult.limit_info?.current || 0,
+            limit: transcribeResult.limit_info?.limit || 0,
+            message: t('limits.transcriptionLimitReached')
+          });
+          return;
+        }
+      }
+
+      // All checks passed
+      setCanUseAudioAnalysis(true);
+      setLimitMessage(null);
+      
+    } catch (error) {
+      console.error('Error checking usage limits:', error);
+      // On error, allow usage (fail open)
+      setCanUseAudioAnalysis(true);
+      setLimitMessage(null);
+    }
+  };
 
   const fetchSession = async () => {
     try {
@@ -1143,7 +1204,54 @@ const SessionDetailPage = () => {
               )}
 
               {/* Audio Upload Mode */}
-              {uploadMode === 'audio' && !session?.transcription_session_id && !hasTranscript && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
+              {uploadMode === 'audio' && !canUseAudioAnalysis ? (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+                  <div className="flex items-start gap-4">
+                    <ExclamationTriangleIcon className="h-6 w-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-1" />
+                    <div className="flex-1">
+                      <h4 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">
+                        {t('limits.usageLimitReached')}
+                      </h4>
+                      <p className="text-red-700 dark:text-red-300 mb-3">
+                        {limitMessage?.message}
+                      </p>
+                      {limitMessage && (
+                        <div className="bg-white dark:bg-gray-800 rounded-md p-3 mb-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {t(`limits.${limitMessage.type}`)}
+                            </span>
+                            <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                              {limitMessage.current} / {limitMessage.limit}
+                            </span>
+                          </div>
+                          <div className="mt-2 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-red-600 h-2 rounded-full"
+                              style={{ width: '100%' }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => router.push('/dashboard/billing?tab=plans')}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <ArrowUpIcon className="h-4 w-4 inline mr-2" />
+                          {t('limits.upgradeNow')}
+                        </button>
+                        <button
+                          onClick={() => router.push('/dashboard/billing?tab=overview')}
+                          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          {t('limits.viewUsage')}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : uploadMode === 'audio' && !session?.transcription_session_id && !hasTranscript && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
                 <AudioUploader
                   sessionId={sessionId}
                   existingAudioSessionId={transcriptionSessionId || undefined}

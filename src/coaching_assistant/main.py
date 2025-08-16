@@ -23,6 +23,7 @@ from .api import (
     sessions,
     usage,
     plans,
+    plan_limits,
 )
 from .middleware.logging import setup_api_logging
 from .middleware.error_handler import error_handler
@@ -81,6 +82,7 @@ app.include_router(summary.router, prefix="/api/v1/dashboard", tags=["summary"])
 app.include_router(coach_profile.router, tags=["coach-profile"])
 app.include_router(usage.router, tags=["usage"])
 app.include_router(plans.router, tags=["plans"])
+app.include_router(plan_limits.router, tags=["plan-limits"])
 app.include_router(admin.router, tags=["admin"])
 
 # 僅在開發環境中載入偵錯路由

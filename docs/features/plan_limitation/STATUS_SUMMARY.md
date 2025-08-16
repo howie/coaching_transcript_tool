@@ -1,6 +1,6 @@
 # Billing Plan Limitation System - Implementation Status
 
-## 📊 Overall Progress: 55% Complete
+## 📊 Overall Progress: 60% Complete
 
 **Status**: 🚧 Active Development  
 **Start Date**: August 14, 2025  
@@ -30,15 +30,16 @@ Core infrastructure for billing plans and usage tracking
 | US003 - Frontend Plan Implementation | N/A | ✅ Completed | ❌ Not Started | ✅ Complete | UI components ready |
 | US004 - Billing Plan UI | ✅ Completed | ✅ Completed | ❌ Not Started | ✅ Complete | Billing page functional |
 
-### 💰 Phase 2: Billing & User Experience (1/4 Complete)
+### 💰 Phase 2: Billing & User Experience (2/5 Complete)
 Plan management and user-facing features
 
 | User Story | Backend | Frontend | Tests | Status | Notes |
 |------------|---------|----------|-------|---------|-------|
 | US005 - Usage History Analytics | 📝 Planned | 📝 Planned | ❌ Not Started | 📝 Planning | Design complete |
-| US006 - Upgrade/Downgrade Flow | 🚧 In Progress | ✅ Completed | ❌ Not Started | 🚧 Development | UI ready, payment pending |
-| US007 - Soft Delete System | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on data governance |
-| US008 - Audit Trail Logging | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on US001 |
+| US006 - Usage Limit UI Blocking | ⏳ Waiting | ✅ Completed | ✅ Completed | ✅ Complete | Frontend ready, awaiting backend API |
+| US007 - Upgrade/Downgrade Flow | 🚧 In Progress | ✅ Completed | ❌ Not Started | 🚧 Development | UI ready, payment pending |
+| US008 - Soft Delete System | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on data governance |
+| US009 - Audit Trail Logging | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on US001 |
 
 ### 📊 Phase 3: Analytics & Management (0/4 Complete)
 Dashboard and administrative features
@@ -156,7 +157,17 @@ Dashboard and administrative features
 
 ## 🔄 Recent Updates
 
-### August 15, 2025 (Today) - Major Milestone! 
+### August 15, 2025 - Usage Limit UI Implementation
+- ✅ Implemented US006: Usage Limit UI Blocking feature
+- ✅ Created comprehensive UI for displaying usage limit warnings
+- ✅ Added pre-upload limit checks in AudioUploader component
+- ✅ Integrated with existing `usePlanLimits` hook
+- ✅ Added full i18n support (Chinese/English) for limit messages
+- ✅ Created unit tests and E2E tests for limit blocking flow
+- ✅ Documented backend API requirements for limit validation
+- 📝 Frontend ready, awaiting backend `/api/v1/plan/validate-action` endpoint
+
+### August 15, 2025 - Major Milestone! 
 - ✅ Created `/api/plans/*` endpoints with full plan management
 - ✅ Implemented frontend plan service and API integration
 - ✅ Fixed billing page UI layout (50/50 split, removed redundant buttons)
