@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-TW">
+    <html lang="zh-TW" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/images/coachly-favicon.ico" sizes="any" />
         <link 
@@ -40,6 +40,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
+                  // Theme initialization
                   const stored = localStorage.getItem("theme");
                   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
                   const isDark = stored ? stored === "dark" : prefersDark;
@@ -50,6 +51,15 @@ export default function RootLayout({
                     document.body.classList.add("light-mode");
                   }
                   document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+                  
+                  // Language initialization
+                  const storedLang = localStorage.getItem("language");
+                  const browserLang = navigator.language.toLowerCase();
+                  const lang = storedLang || (browserLang.includes('en') ? 'en' : 'zh');
+                  document.documentElement.setAttribute("data-lang", lang);
+                  if (!storedLang) {
+                    localStorage.setItem("language", lang);
+                  }
                 } catch (e) {}
               })();
               

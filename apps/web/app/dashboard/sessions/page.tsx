@@ -53,7 +53,7 @@ const getTranscriptionStatusBadge = (session: CoachingSession) => {
   if (!session.transcription_session_id && !session.transcription_session) {
     return (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-        無逐字稿
+        {t('sessions.noTranscript')}
       </span>
     );
   }
@@ -64,37 +64,37 @@ const getTranscriptionStatusBadge = (session: CoachingSession) => {
     case 'uploading':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-          上傳中
+          {t('sessions.uploading')}
         </span>
       );
     case 'pending':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-          等待處理
+          {t('sessions.pending')}
         </span>
       );
     case 'processing':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
-          處理中
+          {t('sessions.processing')}
         </span>
       );
     case 'completed':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-          處理完畢
+          {t('sessions.completed')}
         </span>
       );
     case 'failed':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
-          處理失敗
+          {t('sessions.failed')}
         </span>
       );
     default:
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-          未知狀態
+          {t('sessions.unknownStatus')}
         </span>
       );
   }
@@ -107,16 +107,16 @@ const SessionsPage = () => {
   const [sessions, setSessions] = useState<CoachingSession[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [currencies, setCurrencies] = useState<{value: string, label: string}[]>([
-    { value: 'TWD', label: 'TWD - 新台幣' },
-    { value: 'USD', label: 'USD - 美元' },
-    { value: 'EUR', label: 'EUR - 歐元' },
-    { value: 'JPY', label: 'JPY - 日圓' },
-    { value: 'CNY', label: 'CNY - 人民幣' },
-    { value: 'HKD', label: 'HKD - 港幣' },
-    { value: 'GBP', label: 'GBP - 英鎊' },
-    { value: 'AUD', label: 'AUD - 澳幣' },
-    { value: 'CAD', label: 'CAD - 加幣' },
-    { value: 'SGD', label: 'SGD - 新加坡幣' }
+    { value: 'TWD', label: `TWD - ${t('sessions.currency.twd')}` },
+    { value: 'USD', label: `USD - ${t('sessions.currency.usd')}` },
+    { value: 'EUR', label: `EUR - ${t('sessions.currency.eur')}` },
+    { value: 'JPY', label: `JPY - ${t('sessions.currency.jpy')}` },
+    { value: 'CNY', label: `CNY - ${t('sessions.currency.cny')}` },
+    { value: 'HKD', label: `HKD - ${t('sessions.currency.hkd')}` },
+    { value: 'GBP', label: `GBP - ${t('sessions.currency.gbp')}` },
+    { value: 'AUD', label: `AUD - ${t('sessions.currency.aud')}` },
+    { value: 'CAD', label: `CAD - ${t('sessions.currency.cad')}` },
+    { value: 'SGD', label: `SGD - ${t('sessions.currency.sgd')}` }
   ]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);

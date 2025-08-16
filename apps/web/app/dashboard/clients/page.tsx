@@ -43,10 +43,10 @@ const ClientsPage = () => {
 
   const getStatusLabel = (status: string) => {
     const statusMap = {
-      'first_session': '首次會談',
-      'in_progress': '進行中',
-      'paused': '暫停',
-      'completed': '結案'
+      'first_session': t('clients.statusFirstSession'),
+      'in_progress': t('clients.statusInProgress'),
+      'paused': t('clients.statusPaused'),
+      'completed': t('clients.statusCompleted')
     };
     return statusMap[status as keyof typeof statusMap] || status;
   };
@@ -55,13 +55,13 @@ const ClientsPage = () => {
   const getSourceLabel = (value: string | null | undefined) => {
     if (!value) return '-';
     const sourceLabels: Record<string, string> = {
-      'referral': '別人推薦',
-      'organic': '自然搜尋',
-      'friend': '朋友介紹',
-      'social_media': '社群媒體',
-      'advertisement': '廣告',
-      'website': '官方網站',
-      'unknown': '未知'
+      'referral': t('clients.sourceReferral'),
+      'organic': t('clients.sourceOrganic'),
+      'friend': t('clients.sourceFriend'),
+      'social_media': t('clients.sourceSocialMedia'),
+      'advertisement': t('clients.sourceAdvertisement'),
+      'website': t('clients.sourceWebsite'),
+      'unknown': t('clients.sourceUnknown')
     };
     return sourceLabels[value] || value;
   };
@@ -69,11 +69,11 @@ const ClientsPage = () => {
   const getTypeLabel = (value: string | null | undefined) => {
     if (!value) return '-';
     const typeLabels: Record<string, string> = {
-      'paid': '付費客戶',
-      'pro_bono': '公益服務',
-      'free_practice': '免費練習',
-      'other': '其他',
-      'unknown': '未知'
+      'paid': t('clients.typePaid'),
+      'pro_bono': t('clients.typeProBono'),
+      'free_practice': t('clients.typeFreePractice'),
+      'other': t('clients.typeOther'),
+      'unknown': t('clients.typeUnknown')
     };
     return typeLabels[value] || value;
   };

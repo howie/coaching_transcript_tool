@@ -5,11 +5,13 @@ import { CheckIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
+import { useI18n } from '@/contexts/i18n-context'
 
 export default function ChangePlanPage() {
   const [billingCycle, setBillingCycle] = useState('annual')
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const { user } = useAuth()
+  const { t } = useI18n()
   const router = useRouter()
   
   // Determine current plan from user data
@@ -85,14 +87,14 @@ export default function ChangePlanPage() {
     if (plan.isCurrent) {
       return (
         <div className="text-center py-2 px-4 rounded-lg bg-gray-600 text-gray-300">
-          目前使用中
+          {t('billing.currentlyUsing')}
         </div>
       )
     } else if (targetOrder < currentOrder) {
       // Downgrade not allowed
       return (
         <div className="text-center py-2 px-4 rounded-lg border border-gray-600 text-gray-500 cursor-not-allowed">
-          無法降級
+          {t('billing.cannotDowngrade')}
         </div>
       )
     } else {
@@ -110,7 +112,7 @@ export default function ChangePlanPage() {
             color: selectedPlan === plan.name ? 'var(--bg-primary)' : 'var(--accent-color)'
           }}
         >
-          {selectedPlan === plan.name ? '✓ 已選擇' : `升級至 ${plan.name}`}
+          {selectedPlan === plan.name ? `✓ ${t('billing.selected')}` : `${t('billing.upgradeTo')} ${plan.name}`}
         </button>
       )
     }
@@ -123,10 +125,10 @@ export default function ChangePlanPage() {
         <div className="mb-8">
           <Link href="/dashboard/billing" className="inline-flex items-center text-dashboard-accent hover:text-dashboard-accent-hover mb-4">
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
-            返回 Billing
+            {t('common.back')} {t('billing.title')}
           </Link>
-          <h1 className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>升級方案</h1>
-          <p className="mt-2" style={{color: 'var(--text-secondary)'}}>選擇更適合您需求的進階方案</p>
+          <h1 className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>{t('billing.upgradePlan')}</h1>
+          <p className="mt-2" style={{color: 'var(--text-secondary)'}}>{t('billing.upgradePlanDescription')}</p>
         </div>
 
         {/* Billing Cycle Toggle */}
@@ -140,7 +142,7 @@ export default function ChangePlanPage() {
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              月繳
+              {t('billing.monthly')}
             </button>
             <button
               onClick={() => setBillingCycle('annual')}
@@ -150,8 +152,8 @@ export default function ChangePlanPage() {
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              年繳
-              <span className="ml-2 px-2 py-1 bg-green-500 text-xs rounded-full">省 31%</span>
+              {t('billing.annual')}
+              <span className="ml-2 px-2 py-1 bg-green-500 text-xs rounded-full">{t('billing.save31')}</span>
             </button>
           </div>
         </div>
@@ -172,7 +174,7 @@ export default function ChangePlanPage() {
               {plan.isPopular && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                   <span className="px-3 py-1 bg-dashboard-accent text-white text-sm rounded-full">
-                    最受歡迎
+                    {t('billing.popular')}
                   </span>
                 </div>
               )}
@@ -192,12 +194,12 @@ export default function ChangePlanPage() {
                     ${billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
                   </span>
                   <span className="ml-2" style={{color: 'var(--text-tertiary)'}}>
-                    /月
+                    /{t('billing.perMonth')}
                   </span>
                 </div>
                 {billingCycle === 'annual' && plan.price.annual > 0 && (
                   <p className="text-sm mt-1" style={{color: 'var(--text-tertiary)'}}>
-                    每年 ${plan.price.annual * 12}
+                    {t('billing.perYear')} ${plan.price.annual * 12}
                   </p>
                 )}
               </div>
@@ -226,24 +228,24 @@ export default function ChangePlanPage() {
         {selectedPlan && selectedPlan !== plans.find(p => p.isCurrent)?.name && (
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
             <h3 className="text-xl font-semibold mb-4" style={{color: 'var(--text-primary)'}}>
-              確認升級
+              {t('billing.confirmUpgrade')}
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div>
-                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>新方案</p>
+                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>{t('billing.newPlan')}</p>
                 <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>{selectedPlan}</p>
               </div>
               <div>
-                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>計費週期</p>
+                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>{t('billing.billingCycle')}</p>
                 <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>
-                  {billingCycle === 'annual' ? '年繳' : '月繳'} - $
+                  {billingCycle === 'annual' ? t('billing.annual') : t('billing.monthly')} - $
                   {plans.find(p => p.name === selectedPlan)?.[billingCycle === 'annual' ? 'price' : 'price'][billingCycle === 'annual' ? 'annual' : 'monthly']}
                 </p>
               </div>
               <div>
-                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>生效日期</p>
-                <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>立即生效</p>
+                <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>{t('billing.effectiveDate')}</p>
+                <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>{t('billing.immediately')}</p>
               </div>
             </div>
             
@@ -252,14 +254,14 @@ export default function ChangePlanPage() {
                 onClick={() => setSelectedPlan(null)}
                 className="flex-1 px-6 py-3 border rounded-lg transition-colors" style={{borderColor: 'var(--input-border)', color: 'var(--text-secondary)'}}
               >
-                取消
+                {t('billing.cancel')}
               </button>
               <button
                 onClick={handleConfirmChange}
                 className="flex-1 px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold" style={{backgroundColor: 'var(--accent-color)', color: 'var(--bg-primary)'}}
                 disabled
               >
-                確認升級（付款功能開發中）
+                {t('billing.confirmUpgradeDisabled')}
               </button>
             </div>
           </div>
