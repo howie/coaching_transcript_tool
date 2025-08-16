@@ -1,8 +1,8 @@
 {
-  "version": "2.9.0",
-  "displayVersion": "v2.9.0",
+  "version": "2.9.2",
+  "displayVersion": "v2.9.2",
   "description": "Coachly transcription service - Production Ready with Complete Bug Fixes",
-  "releaseDate": "2025-08-16",
-  "releaseNotes": "This release includes significant improvements to the transcription service, enhancing accuracy and performance. It also addresses several bugs reported in previous versions, ensuring a smoother user experience.",
+  "releaseDate": "2025-08-17",
+  "releaseNotes": "- Fixed transcription errors in multiple languages\n- Improved performance for large audio files\n- Enhanced user interface for better accessibility\n- Added support for new audio formats",
   "author": "Coachly Team"
 }

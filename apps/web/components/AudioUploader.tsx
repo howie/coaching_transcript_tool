@@ -225,7 +225,8 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       setCurrentSessionId(session.id)
 
       // Step 2: Get signed upload URL
-      const uploadData = await apiClient.getUploadUrl(session.id, selectedFile.name)
+      const fileSizeMB = selectedFile.size / (1024 * 1024) // Convert bytes to MB
+      const uploadData = await apiClient.getUploadUrl(session.id, selectedFile.name, fileSizeMB)
       
       setUploadState(prev => ({ 
         ...prev, 
