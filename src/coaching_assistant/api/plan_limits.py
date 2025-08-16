@@ -72,8 +72,13 @@ async def validate_action(
         tracker = UsageTracker(db)
         
         # Get user's current plan
-        user_plan = PlanName(current_user.plan) if current_user.plan else PlanName.FREE
-        plan_limits = PlanLimits.get_limits(user_plan)
+        if current_user.plan:
+            # Handle UserPlan enum conversion to PlanName
+            plan_value = current_user.plan.value if hasattr(current_user.plan, 'value') else str(current_user.plan)
+            user_plan = PlanName(plan_value)
+        else:
+            user_plan = PlanName.FREE
+        plan_limits = PlanLimits.get_plan_limit(user_plan)
         
         # Get reset date (first day of next month)
         now = datetime.utcnow()
@@ -86,7 +91,7 @@ async def validate_action(
         # Validate based on action type
         if request.action == "create_session":
             current_usage = current_user.session_count or 0
-            limit = plan_limits.max_sessions_per_month
+            limit = plan_limits.max_sessions
             limit_type = "sessions"
             
             # Check if unlimited (-1) or under limit
@@ -99,7 +104,7 @@ async def validate_action(
                 
         elif request.action == "transcribe":
             current_usage = current_user.transcription_count or 0
-            limit = plan_limits.max_transcriptions_per_month
+            limit = plan_limits.max_transcriptions
             limit_type = "transcriptions"
             
             allowed = limit == -1 or current_usage < limit
@@ -219,8 +224,13 @@ async def get_current_usage(
 ) -> Dict[str, Any]:
     """Get current usage statistics for the authenticated user."""
     try:
-        user_plan = PlanName(current_user.plan) if current_user.plan else PlanName.FREE
-        plan_limits = PlanLimits.get_limits(user_plan)
+        if current_user.plan:
+            # Handle UserPlan enum conversion to PlanName
+            plan_value = current_user.plan.value if hasattr(current_user.plan, 'value') else str(current_user.plan)
+            user_plan = PlanName(plan_value)
+        else:
+            user_plan = PlanName.FREE
+        plan_limits = PlanLimits.get_plan_limit(user_plan)
         
         # Calculate reset date
         now = datetime.utcnow()
@@ -234,18 +244,18 @@ async def get_current_usage(
             "usage": {
                 "sessions": {
                     "current": current_user.session_count or 0,
-                    "limit": plan_limits.max_sessions_per_month,
+                    "limit": plan_limits.max_sessions,
                     "percentage": calculate_percentage(
                         current_user.session_count or 0,
-                        plan_limits.max_sessions_per_month
+                        plan_limits.max_sessions
                     )
                 },
                 "transcriptions": {
                     "current": current_user.transcription_count or 0,
-                    "limit": plan_limits.max_transcriptions_per_month,
+                    "limit": plan_limits.max_transcriptions,
                     "percentage": calculate_percentage(
                         current_user.transcription_count or 0,
-                        plan_limits.max_transcriptions_per_month
+                        plan_limits.max_transcriptions
                     )
                 },
                 "minutes": {

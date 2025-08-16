@@ -138,19 +138,19 @@ class TestPlanLimitsE2E:
             "/api/v1/plan/validate-action",
             json={
                 "action": "upload_file",
-                "params": {"file_size_mb": 30}
+                "params": {"file_size_mb": 20}
             }
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["allowed"] is True  # 30MB is under Free limit of 50MB
+        assert data["allowed"] is True  # 20MB is under Free beta limit of 25MB
         
         # Test file too large
         response = self.client.post(
             "/api/v1/plan/validate-action",
             json={
                 "action": "upload_file",
-                "params": {"file_size_mb": 60}
+                "params": {"file_size_mb": 30}
             }
         )
         assert response.status_code == 200
