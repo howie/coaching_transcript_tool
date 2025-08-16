@@ -337,6 +337,39 @@ export const translations = {
     'billing.upgradeToPro': '升級到 Pro 方案',
     'billing.managePaymentMethods': '管理付款方式',
     
+    // Billing - Plan Names
+    'billing.planNameFree': '免費版',
+    'billing.planNamePro': '專業版',
+    'billing.planNameBusiness': '企業版',
+    
+    // Billing - Features
+    'billing.feature.freeRecordings': '5 個上傳錄音檔',
+    'billing.feature.freeLinkedRecordings': '每月 10 個連結錄音檔',
+    'billing.feature.freeChatCredits': '10 個對話額度',
+    'billing.feature.freeRecordingLength': '每個錄音檔最長 30 分鐘',
+    'billing.feature.basicExportFormats': '基本匯出格式',
+    'billing.feature.emailSupport': 'Email 支援',
+    'billing.feature.unlimitedRecordings': '無限上傳錄音檔',
+    'billing.feature.proTranscriptionMinutes': '每月 1,200 分鐘轉錄額度',
+    'billing.feature.unlimitedChatCredits': '無限對話額度',
+    'billing.feature.proRecordingLength': '每個錄音檔最長 90 分鐘',
+    'billing.feature.allExportFormats': '所有匯出格式',
+    'billing.feature.priorityEmailSupport': '優先 Email 支援',
+    'billing.feature.advancedAnalytics': '進階分析',
+    'billing.feature.customBranding': '自訂品牌',
+    'billing.feature.businessTranscriptionMinutes': '每月 6,000 分鐘轉錄額度',
+    'billing.feature.businessRecordingLength': '每個錄音檔最長 4 小時',
+    'billing.feature.dedicatedSupport': '專屬支援',
+    'billing.feature.teamCollaboration': '團隊協作',
+    'billing.feature.apiAccess': 'API 存取',
+    'billing.feature.customIntegrations': '自訂整合',
+    'billing.feature.slaGuarantee': 'SLA 保證',
+    
+    // Billing - Benefits
+    'billing.benefit.10xSessions': '10 倍會談數',
+    'billing.benefit.prioritySupport': '優先支援',
+    'billing.benefit.allExportFormats': '所有匯出格式',
+    
     // Clients Management
     'clients.title': '客戶管理',
     'clients.addClient': '新增客戶',
@@ -938,6 +971,197 @@ export const translations = {
     'limits.minutes': 'Audio Minutes',
     'limits.upgradeNow': 'Upgrade Now',
     'limits.viewUsage': 'View Usage'
+  },
+  
+  en: {
+    // Navigation
+    'nav.features': 'Features',
+    'nav.pricing': 'Pricing',
+    'nav.blog': 'Blog',
+    'nav.contact': 'Contact Us',
+    'nav.login': 'Login',
+    'nav.signup': 'Sign Up',
+    'nav.dashboard': 'Dashboard',
+    'nav.logout': 'Logout',
+    'nav.language': 'Language',
+    'nav.who_its_for': 'Who It\'s For',
+    
+    // Dashboard
+    'dashboard.title': 'Hi {name}, Welcome to Coachly',
+    'dashboard.subtitle': 'AI-powered tools to enhance your coaching practice',
+    
+    // Billing - Core
+    'billing.title': 'Billing & Plans',
+    'billing.overview': 'Overview',
+    'billing.currentPlan': 'Current Plan',
+    'billing.currentUsage': 'Current Usage',
+    'billing.usageHistory': 'Usage History',
+    'billing.paymentSettings': 'Payment Settings',
+    'billing.changePlan': 'Change Plan',
+    'billing.monthly': 'Monthly',
+    'billing.annual': 'Annual',
+    'billing.save31': 'Save 31%',
+    'billing.mostPopular': 'Most Popular',
+    'billing.free': 'Free',
+    'billing.perMonth': 'month',
+    'billing.perYear': 'Per year',
+    'billing.nextBilling': 'Next billing',
+    'billing.active': 'Active',
+    'billing.upgrade': 'Upgrade',
+    'billing.upgradeNow': 'Upgrade Now',
+    
+    // Billing - Plan Names
+    'billing.planNameFree': 'Free',
+    'billing.planNamePro': 'Pro',
+    'billing.planNameBusiness': 'Business',
+    
+    // Billing - Plan Descriptions
+    'billing.freeDescription': 'Start your journey with essential features',
+    'billing.proDescription': 'Unlock full potential with advanced features',
+    'billing.businessDescription': 'Powerful team features for seamless scaling',
+    
+    // Billing - Features
+    'billing.feature.freeRecordings': '5 uploaded recordings',
+    'billing.feature.freeLinkedRecordings': '10 linked recordings per month',
+    'billing.feature.freeChatCredits': '10 chat credits',
+    'billing.feature.freeRecordingLength': 'Up to 30 min per recording',
+    'billing.feature.basicExportFormats': 'Basic export formats',
+    'billing.feature.emailSupport': 'Email support',
+    'billing.feature.unlimitedRecordings': 'Unlimited uploaded recordings',
+    'billing.feature.proTranscriptionMinutes': '1,200 min of transcription per month',
+    'billing.feature.unlimitedChatCredits': 'Unlimited chat credits',
+    'billing.feature.proRecordingLength': 'Up to 90 min per recording',
+    'billing.feature.allExportFormats': 'All export formats',
+    'billing.feature.priorityEmailSupport': 'Priority email support',
+    'billing.feature.advancedAnalytics': 'Advanced analytics',
+    'billing.feature.customBranding': 'Custom branding',
+    'billing.feature.businessTranscriptionMinutes': '6,000 min of transcription per month',
+    'billing.feature.businessRecordingLength': 'Up to 4 hours per recording',
+    'billing.feature.dedicatedSupport': 'Dedicated support',
+    'billing.feature.teamCollaboration': 'Team collaboration',
+    'billing.feature.apiAccess': 'API access',
+    'billing.feature.customIntegrations': 'Custom integrations',
+    'billing.feature.slaGuarantee': 'SLA guarantee',
+    
+    // Billing - Benefits
+    'billing.benefit.10xSessions': '10x more sessions',
+    'billing.benefit.prioritySupport': 'Priority support',
+    'billing.benefit.allExportFormats': 'All export formats',
+    
+    // Billing - Actions
+    'billing.currentlyUsing': 'Currently Using',
+    'billing.cannotDowngrade': 'Cannot Downgrade',
+    'billing.upgradeTo': 'Upgrade to',
+    'billing.selected': 'Selected',
+    'billing.confirmUpgrade': 'Confirm Upgrade',
+    'billing.newPlan': 'New Plan',
+    'billing.billingCycle': 'Billing Cycle',
+    'billing.effectiveDate': 'Effective Date',
+    'billing.immediately': 'Immediately',
+    'billing.cancel': 'Cancel',
+    'billing.confirmUpgradeDisabled': 'Confirm Upgrade (Payment feature in development)',
+    
+    // Billing - Upgrade Messages
+    'billing.upgradeTitle': 'Ready to upgrade?',
+    'billing.upgradeDescription': 'Unlock more features to enhance your coaching practice.',
+    'billing.upgradeToPro': 'Upgrade to Pro',
+    'billing.freeTrialMessage': 'You are using the free trial plan. Upgrade to unlock more features.',
+    
+    // Billing - Errors
+    'billing.errorLoadingPlan': 'Failed to load plan data',
+    'billing.errorLoadingUsage': 'Failed to load usage data',
+    
+    // Billing - Usage
+    'billing.sessions': 'Sessions',
+    'billing.audioMinutes': 'Audio Minutes',
+    'billing.transcriptions': 'Transcriptions',
+    'billing.unlimited': 'Unlimited',
+    'billing.resetsIn': 'Resets in',
+    
+    // Audio Analysis
+    'audio.title': 'Audio Analysis',
+    'audio.subtitle': 'Upload coaching session recordings for AI transcription and intelligent analysis',
+    'audio.upload_text': 'Choose Audio File',
+    'audio.upload_subtext': 'Click to select or drag and drop files here',
+    'audio.file_info': 'Supports MP3, WAV, M4A, OGG, MP4 formats, max 1GB, max 120 minutes',
+    
+    // Transcript Converter
+    'converter.title': 'Transcript Converter',
+    'converter.subtitle': 'Convert VTT format transcripts to Markdown or Excel files',
+    
+    // Clients
+    'clients.title': 'Client Management',
+    'clients.addClient': 'Add Client',
+    'clients.name': 'Name',
+    'clients.email': 'Email',
+    'clients.phone': 'Phone',
+    'clients.sessions': 'Sessions',
+    'clients.status': 'Status',
+    
+    // Sessions
+    'sessions.title': 'Coaching Records',
+    'sessions.addSession': 'Add Session',
+    'sessions.date': 'Date',
+    'sessions.client': 'Client',
+    'sessions.duration': 'Duration',
+    'sessions.amount': 'Amount',
+    
+    // Usage Limits
+    'limits.usageLimitReached': 'Usage Limit Reached',
+    'limits.sessionLimitReached': 'You have reached your monthly session limit',
+    'limits.transcriptionLimitReached': 'You have reached your monthly transcription limit',
+    'limits.minutesLimitReached': 'You have reached your monthly audio minutes limit',
+    'limits.sessions': 'Sessions',
+    'limits.transcriptions': 'Transcriptions',
+    'limits.minutes': 'Audio Minutes',
+    'limits.upgradeNow': 'Upgrade Now',
+    'limits.viewUsage': 'View Usage',
+    
+    // Menu items
+    'menu.dashboard': 'Dashboard',
+    'menu.sessions': 'Coaching Records',
+    'menu.clients': 'Client Management',
+    'menu.converter': 'Transcript Converter',
+    'menu.audio_analysis': 'Audio Analysis',
+    'menu.analysis': 'ICF Analysis',
+    'menu.insights': 'Your AI Supervisor',
+    'menu.profile': 'Coach Profile',
+    'menu.feedback': 'Feedback',
+    'menu.coming_soon': 'Coming Soon',
+    'menu.experimental': 'Experimental',
+    'menu.account': 'Account Settings',
+    'menu.theme': 'Theme',
+    'menu.language': 'Language',
+    
+    // Dashboard stats
+    'dashboard.stats.total_hours': 'Total Hours',
+    'dashboard.stats.monthly_hours': 'Monthly Hours',
+    'dashboard.stats.transcripts': 'Transcripts Converted',
+    'dashboard.stats.monthly_revenue': 'Monthly Revenue',
+    'dashboard.stats.total_clients': 'Total Clients',
+    'dashboard.stats.icf_competency': 'ICF Core Competency',
+    
+    // Help menu
+    'help.systems_operational': 'All Systems Operational',
+    'help.get_help': 'Get Help',
+    'help.community_hub': 'Community Hub',
+    'help.view_updates': 'View Updates',
+    'help.read_docs': 'Read Documentation',
+    
+    // Account
+    'account.title': 'Account Settings',
+    'account.personalInfo': 'Personal Information',
+    'account.fullName': 'Full Name',
+    'account.fullNamePlaceholder': 'Enter your name',
+    'account.email': 'Email',
+    'account.emailHint': 'Email address cannot be changed',
+    
+    // Common
+    'common.save': 'Save',
+    'common.cancel': 'Cancel',
+    'common.delete': 'Delete',
+    'common.edit': 'Edit',
+    'common.loading': 'Loading...'
   }
 }
 
