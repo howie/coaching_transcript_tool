@@ -30,7 +30,7 @@ from coaching_assistant.main import app
 def engine():
     """Create an in-memory SQLite database for testing."""
     # Setup SQLite compatibility for PostgreSQL types
-    from tests.test_helpers import setup_sqlite_compatibility
+    from tests.unit.utils.test_helpers import setup_sqlite_compatibility
     setup_sqlite_compatibility()
     
     engine = create_engine(

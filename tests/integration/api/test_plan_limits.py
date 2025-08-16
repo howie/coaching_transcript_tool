@@ -9,7 +9,8 @@ from unittest.mock import Mock, patch, MagicMock
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from coaching_assistant.core.models import User, CoachProfile
+from coaching_assistant.models.user import User
+from coaching_assistant.models.coach_profile import CoachProfile
 from coaching_assistant.services.plan_limits import PlanLimits, PlanName
 
 
