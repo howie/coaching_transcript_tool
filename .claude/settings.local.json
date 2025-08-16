@@ -23,7 +23,9 @@
       "Bash(sed:*)",
       "Bash(awk:*)",
       "Bash(alembic current:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(pip install:*)",
+      "Bash(pytest:*)"
     ],
     "deny": []
   }
