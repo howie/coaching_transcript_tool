@@ -172,7 +172,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       setUploadState({
         status: 'failed',
         progress: 0,
-        error: '不支援的檔案格式。請上傳 MP3、WAV、FLAC、OGG、MP4 或 M4A 檔案。'
+        error: t('audio.unsupportedFormat')
       })
       return
     }
@@ -182,7 +182,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       setUploadState({
         status: 'failed',
         progress: 0,
-        error: '檔案太大。最大支援 1GB。'
+        error: t('audio.fileTooLarge')
       })
       return
     }
@@ -263,7 +263,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         ...prev, 
         status: 'processing',
         progress: 0,
-        estimatedTime: '準備開始轉檔...'
+        estimatedTime: t('audio.preparingConversion')
       }))
 
       // Step 6: Update coaching session with the transcription session ID
@@ -294,7 +294,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       // Update with actual task ID and estimated time
       setUploadState(prev => ({ 
         ...prev, 
-        estimatedTime: '約 15-30 分鐘',
+        estimatedTime: t('audio.estimatedTime'),
         taskId: transcriptionResult.task_id
       }))
 
@@ -304,7 +304,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
             ...prev,
             status: 'failed',
             progress: 0,
-            error: error.message || '上傳失敗'
+            error: error.message || t('audio.uploadFailed')
           }))
         }
       })
@@ -328,7 +328,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-content-secondary">載入音檔狀態中...</span>
+          <span className="ml-3 text-content-secondary">{t('audio.loadingAudioStatus')}</span>
         </div>
       </div>
     )
@@ -340,19 +340,19 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       <div className="space-y-4">
         {/* Current Status */}
         <div className="flex items-center justify-between">
-          <h4 className="font-medium text-content-primary">音檔處理狀態</h4>
+          <h4 className="font-medium text-content-primary">{t('audio.processingStatus')}</h4>
           {statusLoading ? (
-            <span className="text-sm text-gray-500 font-medium">🔍 檢查狀態中...</span>
+            <span className="text-sm text-gray-500 font-medium">{t('audio.checkingStatus')}</span>
           ) : transcriptionSession?.status === 'completed' ? (
-            <span className="text-sm text-green-600 font-medium">✅ 處理完成</span>
+            <span className="text-sm text-green-600 font-medium">{t('audio.processingComplete')}</span>
           ) : transcriptionSession?.status === 'processing' ? (
-            <span className="text-sm text-yellow-600 font-medium">⏳ 處理中</span>
+            <span className="text-sm text-yellow-600 font-medium">{t('audio.status_processing')}</span>
           ) : transcriptionSession?.status === 'failed' ? (
-            <span className="text-sm text-red-600 font-medium">❌ 處理失敗</span>
+            <span className="text-sm text-red-600 font-medium">{t('audio.processingFailed')}</span>
           ) : transcriptionSession?.status === 'pending' ? (
-            <span className="text-sm text-blue-600 font-medium">⏱️ 等待處理</span>
+            <span className="text-sm text-blue-600 font-medium">{t('audio.waitingToProcess')}</span>
           ) : (
-            <span className="text-sm text-gray-500 font-medium">📁 音檔已上傳</span>
+            <span className="text-sm text-gray-500 font-medium">{t('audio.audioUploaded')}</span>
           )}
         </div>
 
@@ -376,7 +376,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
               })()}
               status={transcriptionSession?.status === 'pending' ? 'pending' : 'processing'}
               message={transcriptionStatus?.message || 
-                (transcriptionSession?.status === 'pending' ? '等待開始處理...' : '處理音檔中...')}
+                (transcriptionSession?.status === 'pending' ? t('audio.waitingToStart') : t('audio.processingAudio'))}
               estimatedTime={transcriptionStatus?.estimated_completion ? 
                 formatTimeRemaining(transcriptionStatus.estimated_completion) : uploadState.estimatedTime}
             />
@@ -384,7 +384,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
              transcriptionStatus?.duration_total != null && 
              transcriptionStatus.duration_total > 0 && (
               <div className="mt-2 text-sm text-yellow-800 dark:text-yellow-200">
-                已處理: {formatDuration(transcriptionStatus.duration_processed)} / {formatDuration(transcriptionStatus.duration_total)}
+                {t('audio.processed')}: {formatDuration(transcriptionStatus.duration_processed)} / {formatDuration(transcriptionStatus.duration_total)}
               </div>
             )}
           </div>
@@ -407,7 +407,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
             variant="outline"
             className="text-sm"
           >
-            上傳新的音檔
+            {t('audio.uploadNewAudio')}
           </Button>
         </div>
       </div>
@@ -441,7 +441,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
           <div className="space-y-4">
             <SpeakerWaveIcon className="h-12 w-12 text-blue-500 mx-auto animate-pulse" />
             <div>
-              <p className="text-content-primary font-medium">上傳中...</p>
+              <p className="text-content-primary font-medium">{t('audio.uploading')}</p>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
                 <div 
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300"
@@ -455,7 +455,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
           <div className="space-y-4">
             <DocumentTextIcon className="h-12 w-12 text-green-500 mx-auto" />
             <div>
-              <p className="text-content-primary font-medium">已選擇檔案</p>
+              <p className="text-content-primary font-medium">{t('audio.fileSelected')}</p>
               <p className="text-sm text-content-secondary">{selectedFile.name}</p>
               <p className="text-xs text-content-secondary">
                 {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
@@ -463,10 +463,10 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
             </div>
             <div className="space-y-2">
               <Button onClick={handleUpload} className="w-full">
-                開始處理音檔
+                {t('audio.startProcessing')}
               </Button>
               <Button onClick={resetUpload} variant="outline" className="w-full">
-                重新選擇
+                {t('audio.reselect')}
               </Button>
             </div>
           </div>
@@ -474,16 +474,16 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
           <div className="space-y-4">
             <CloudArrowUpIcon className="h-12 w-12 text-content-secondary mx-auto" />
             <div>
-              <p className="text-content-primary font-medium">上傳音檔進行轉錄</p>
+              <p className="text-content-primary font-medium">{t('audio.uploadForTranscription')}</p>
               <p className="text-sm text-content-secondary">
-                拖拽檔案到這裡或點擊選擇檔案
+                {t('audio.dragDropFiles')}
               </p>
               <p className="text-xs text-content-secondary">
-                支援 MP3、WAV、FLAC、OGG、MP4、M4A 格式，最大 1GB
+                {t('audio.supportedFormatsHint')}
               </p>
             </div>
             <Button onClick={() => fileInputRef.current?.click()} className="mx-auto">
-              選擇檔案
+              {t('audio.selectFiles')}
             </Button>
           </div>
         )}
@@ -494,17 +494,17 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <div>
             <label className="block text-sm font-medium text-content-primary mb-2">
-              語言設定
+              {t('audio.languageSettings')}
             </label>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-md bg-surface text-content-primary"
             >
-              <option value="cmn-Hant-TW">繁體中文 (台灣)</option>
-              <option value="cmn-Hans-CN">簡體中文</option>
+              <option value="cmn-Hant-TW">{t('audio.langTraditionalChinese')}</option>
+              <option value="cmn-Hans-CN">{t('audio.langSimplifiedChinese')}</option>
               <option value="en-US">English (US)</option>
-              <option value="ja-JP">日本語</option>
+              <option value="ja-JP">{t('audio.langJapanese')}</option>
               <option value="ko-KR">한국어</option>
             </select>
           </div>

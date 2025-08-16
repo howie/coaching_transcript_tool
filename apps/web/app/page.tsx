@@ -65,7 +65,7 @@ function HomePageContent() {
             onClick={() => setShowLanguageMenu(!showLanguageMenu)}
             className="bg-nav-dark/90 backdrop-blur-sm text-white border-none rounded-md px-3 py-2 text-sm cursor-pointer hover:bg-primary-blue hover:text-nav-dark transition-colors min-w-[140px] flex items-center justify-between"
           >
-            <span>{language === 'zh' ? '🇹🇼 繁體中文' : '🇺🇸 English'}</span>
+            <span>{language === 'zh' ? `🇹🇼 ${t('layout.traditionalChinese')}` : `🇺🇸 ${t('layout.english')}`}</span>
             <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
@@ -77,13 +77,13 @@ function HomePageContent() {
                 onClick={() => handleLanguageChange('zh')}
                 className="block w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                🇹🇼 繁體中文
+                🇹🇼 {t('layout.traditionalChinese')}
               </button>
               <button
                 onClick={() => handleLanguageChange('en')}
                 className="block w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                🇺🇸 English
+                🇺🇸 {t('layout.english')}
               </button>
             </div>
           )}
@@ -254,14 +254,14 @@ function HomePageContent() {
         <div className="max-w-6xl mx-auto px-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
             <div>
-              <h3 className="text-primary-blue mb-4">build by Doxa Studio</h3>
+              <h3 className="text-primary-blue mb-4">{t('landing.footer.built_by')}</h3>
             </div>
             <div>
-              <h4 className="text-primary-blue mb-4">Contact</h4>
+              <h4 className="text-primary-blue mb-4">{t('landing.footer.contact')}</h4>
               <p className="text-gray-300">Email: service@doxa.com.tw</p>
             </div>
             <div>
-              <h4 className="text-primary-blue mb-4">Follow Us</h4>
+              <h4 className="text-primary-blue mb-4">{t('landing.footer.follow_us')}</h4>
               <div className="flex gap-4">
                 <a href="#" className="text-gray-300 hover:text-primary-blue transition-colors text-xl">
                   <i className="fab fa-linkedin"></i>
@@ -276,7 +276,7 @@ function HomePageContent() {
             </div>
           </div>
           <div className="text-center pt-5 border-t border-gray-600">
-            <p className="text-gray-300">&copy; 2025 Doxa Studio. All rights reserved.</p>
+            <p className="text-gray-300">{t('landing.footer.rights')}</p>
           </div>
         </div>
       </footer>

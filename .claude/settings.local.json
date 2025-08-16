@@ -22,7 +22,8 @@
       "Bash(uvicorn:*)",
       "Bash(sed:*)",
       "Bash(awk:*)",
-      "Bash(alembic current:*)"
+      "Bash(alembic current:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   }

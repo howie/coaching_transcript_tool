@@ -373,7 +373,7 @@ export default function AccountSettingsPage() {
                     } transition-colors`}
                   >
                     <div className="text-2xl mb-2">🇹🇼</div>
-                    <div className="font-medium">繁體中文</div>
+                    <div className="font-medium">{t('layout.traditionalChinese')}</div>
                   </button>
                   <button
                     onClick={async () => {

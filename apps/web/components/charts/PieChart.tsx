@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '@/contexts/i18n-context';
 
 interface PieChartData {
   name: string;
@@ -18,12 +19,13 @@ const PieChart: React.FC<PieChartProps> = ({
   width = 200, 
   height = 200 
 }) => {
+  const { t } = useI18n();
   if (!data || data.length === 0) {
     return (
       <div className="bg-surface border border-border rounded-lg p-4">
         <h3 className="text-lg font-medium text-content-primary mb-4">{title}</h3>
         <div className="flex items-center justify-center h-32 text-content-secondary">
-          無數據
+          {t('common.noData')}
         </div>
       </div>
     );
@@ -36,7 +38,7 @@ const PieChart: React.FC<PieChartProps> = ({
       <div className="bg-surface border border-border rounded-lg p-4">
         <h3 className="text-lg font-medium text-content-primary mb-4">{title}</h3>
         <div className="flex items-center justify-center h-32 text-content-secondary">
-          無數據
+          {t('common.noData')}
         </div>
       </div>
     );

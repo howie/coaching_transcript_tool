@@ -42,13 +42,13 @@ const ClientsPage = () => {
   const pageSize = 20;
 
   const getStatusLabel = (status: string) => {
-    const statusMap = {
+    const statusMap: Record<string, string> = {
       'first_session': t('clients.statusFirstSession'),
       'in_progress': t('clients.statusInProgress'),
       'paused': t('clients.statusPaused'),
       'completed': t('clients.statusCompleted')
     };
-    return statusMap[status as keyof typeof statusMap] || status;
+    return statusMap[status] || status;
   };
 
   // Translation helpers
@@ -358,7 +358,7 @@ const ClientsPage = () => {
         </div>
       )}
 
-      {/* Delete and Anonymize Rules */
+      {/* Delete and Anonymize Rules */}
       <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
           {t('clients.dataManagementRules')}

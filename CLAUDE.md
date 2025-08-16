@@ -52,7 +52,7 @@ Delegate specialized tasks to appropriate subagents:
 - **Before deployment** → `security-auditor`
 - **Container setup** → `docker-builder`
 - **Package updates** → `dependency-updater`
-- **Multi-language support** → `i18n-translator`
+- **Multi-language support and i18n fixes** → `i18n-translator`
 
 ### General
 - **Complex multi-step tasks** → `general-purpose`
@@ -441,12 +441,33 @@ For detailed information, reference these docs:
 
 - **Subagents Guide**: `@docs/claude/subagents.md` - Detailed subagent capabilities & usage
 - **Engineering Standards**: `@docs/claude/engineering-standards.md` - TDD, code style, quality
-- **Testing**: `@docs/claude/testing.md` - Test organization, coverage requirements
+- **Testing**: `@docs/claude/testing.md` - Test organization, frontend/backend testing strategies
+- **i18n Guidelines**: `@docs/claude/i18n.md` - Internationalization implementation and best practices
 - **Configuration**: `@docs/claude/configuration.md` - Environment variables, providers
 - **STT Architecture**: `@docs/claude/architecture/stt.md` - Provider details, fallback
 - **Deployment**: `@docs/claude/deployment/*.md` - Platform-specific guides
 - **API Reference**: See `/docs/api/` or OpenAPI at `/docs`
 - **Changelog**: `@docs/claude/CHANGELOG.md` - Complete version history and releases
+
+## Internationalization (i18n) Guidelines
+
+For comprehensive i18n guidelines and implementation details, see `@docs/claude/i18n.md`.
+
+**Key points:**
+- Always use `t()` function for user-facing text
+- Test both Chinese and English translations
+- Follow `namespace.specificFunction` naming convention
+- See detailed guidelines: `@docs/claude/i18n.md`
+
+## Frontend Testing Strategy
+
+For comprehensive frontend testing strategies and best practices, see `@docs/claude/testing.md`.
+
+**Key points:**
+- Unit tests for components (Jest + React Testing Library)
+- i18n testing for all translations
+- Mock external APIs and contexts properly
+- See detailed testing guide: `@docs/claude/testing.md`
 
 ## Important Notes
 

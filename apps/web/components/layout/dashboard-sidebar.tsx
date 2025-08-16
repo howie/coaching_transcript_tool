@@ -89,7 +89,7 @@ export function DashboardSidebar() {
         {/* Sidebar header - 只在行動端顯示 */}
         {isMobile && (
           <div className="flex items-center justify-between p-4 border-b border-dashboard-accent border-opacity-20">
-            <span className="text-lg font-semibold text-white">選單</span>
+            <span className="text-lg font-semibold text-white">{t('layout.menu')}</span>
             <button
               onClick={closeSidebar}
               className="p-1 text-white hover:text-dashboard-accent"
