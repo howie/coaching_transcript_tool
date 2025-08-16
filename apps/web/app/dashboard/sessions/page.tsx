@@ -49,57 +49,6 @@ interface SessionFormData {
 }
 
 
-const getTranscriptionStatusBadge = (session: CoachingSession) => {
-  if (!session.transcription_session_id && !session.transcription_session) {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-        {t('sessions.noTranscript')}
-      </span>
-    );
-  }
-
-  const status = session.transcription_session?.status || 'unknown';
-  
-  switch (status) {
-    case 'uploading':
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-          {t('sessions.uploading')}
-        </span>
-      );
-    case 'pending':
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-          {t('sessions.pending')}
-        </span>
-      );
-    case 'processing':
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
-          {t('sessions.processing')}
-        </span>
-      );
-    case 'completed':
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-          {t('sessions.completed')}
-        </span>
-      );
-    case 'failed':
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
-          {t('sessions.failed')}
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-          {t('sessions.unknownStatus')}
-        </span>
-      );
-  }
-};
-
 const SessionsPage = () => {
   const { t } = useI18n();
   const { logout } = useAuth();
@@ -139,6 +88,57 @@ const SessionsPage = () => {
     currency: ''
   });
   const pageSize = 20;
+
+  const getTranscriptionStatusBadge = (session: CoachingSession) => {
+    if (!session.transcription_session_id && !session.transcription_session) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+          {t('sessions.noTranscript')}
+        </span>
+      );
+    }
+
+    const status = session.transcription_session?.status || 'unknown';
+    
+    switch (status) {
+      case 'uploading':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+            {t('sessions.uploading')}
+          </span>
+        );
+      case 'pending':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+            {t('sessions.pending')}
+          </span>
+        );
+      case 'processing':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+            {t('sessions.processing')}
+          </span>
+        );
+      case 'completed':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+            {t('sessions.completed')}
+          </span>
+        );
+      case 'failed':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+            {t('sessions.failed')}
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+            {t('sessions.unknownStatus')}
+          </span>
+        );
+    }
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -397,7 +397,7 @@ const SessionsPage = () => {
                 {t('sessions.fee')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                逐字稿狀態
+                {t('sessions.transcriptStatus')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 {t('sessions.actions')}
@@ -429,7 +429,7 @@ const SessionsPage = () => {
                     <button
                       onClick={() => handleViewDetails(session.id)}
                       className="text-blue-600 hover:text-blue-900"
-                      title="查看詳情"
+                      title={t('sessions.viewDetails')}
                     >
                       <PencilIcon className="h-4 w-4" />
                     </button>
@@ -437,7 +437,7 @@ const SessionsPage = () => {
                     <button
                       onClick={() => handleDelete(session)}
                       className="text-red-600 hover:text-red-900"
-                      title="刪除"
+                      title={t('sessions.delete')}
                     >
                       <TrashIcon className="h-4 w-4" />
                     </button>
@@ -502,7 +502,7 @@ const SessionsPage = () => {
                   {t('sessions.client')} *
                   {loadingLastSession && (
                     <span className="ml-2 text-sm text-content-secondary">
-                      (載入上次會談資料中...)
+                      ({t('sessions.loadingLastSession')}...)
                     </span>
                   )}
                 </label>
@@ -519,7 +519,7 @@ const SessionsPage = () => {
                   }}
                 >
                   <option value="">{t('sessions.selectClient')}</option>
-                  <option value="new">+ 新增客戶</option>
+                  <option value="new">+ {t('sessions.addNewClient')}</option>
                   {clients.map((client) => (
                     <option key={client.id} value={client.id}>
                       {client.name}
