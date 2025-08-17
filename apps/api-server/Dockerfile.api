@@ -51,7 +51,7 @@ COPY --from=builder /install /usr/local
 # Copy source code and alembic files
 COPY src/ ./src/
 COPY alembic/ ./alembic/
-COPY alembic.ini pyproject.toml ./
+COPY alembic.ini pyproject.toml version.json ./
 
 # Copy the API server code and startup script
 COPY apps/api-server/main.py ./
