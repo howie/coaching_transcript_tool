@@ -1,4 +1,42 @@
 /** @type {import('next').NextConfig} */
+
+// Read version information from root version.json
+function getVersionInfo() {
+  try {
+    const fs = require('fs')
+    const path = require('path')
+    
+    // Look for version.json in the project root (../../version.json from apps/web)
+    const versionPath = path.join(__dirname, '../../version.json')
+    
+    if (fs.existsSync(versionPath)) {
+      const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'))
+      console.log('📦 Loaded version info from version.json:', versionData.displayVersion)
+      return versionData
+    }
+    
+    console.warn('⚠️  version.json not found, using fallback version')
+    return {
+      version: '2.11.0',
+      displayVersion: 'v2.11.0',
+      description: 'Coachly transcription service',
+      releaseDate: new Date().toISOString().split('T')[0],
+      author: 'Coachly Team'
+    }
+  } catch (error) {
+    console.error('❌ Error reading version.json:', error)
+    return {
+      version: '2.11.0',
+      displayVersion: 'v2.11.0',
+      description: 'Coachly transcription service',
+      releaseDate: new Date().toISOString().split('T')[0],
+      author: 'Coachly Team'
+    }
+  }
+}
+
+const versionInfo = getVersionInfo()
+
 const nextConfig = {
   experimental: {
     typedRoutes: true,
@@ -18,6 +56,13 @@ const nextConfig = {
   },
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
+    // Version information from root version.json
+    NEXT_PUBLIC_APP_VERSION: versionInfo.version,
+    NEXT_PUBLIC_APP_DISPLAY_VERSION: versionInfo.displayVersion,
+    NEXT_PUBLIC_APP_DESCRIPTION: versionInfo.description,
+    NEXT_PUBLIC_APP_RELEASE_DATE: versionInfo.releaseDate,
+    NEXT_PUBLIC_APP_RELEASE_NOTES: versionInfo.releaseNotes,
+    NEXT_PUBLIC_APP_AUTHOR: versionInfo.author,
   },
   // Generate consistent build ID to prevent chunk loading issues
   generateBuildId: async () => {
