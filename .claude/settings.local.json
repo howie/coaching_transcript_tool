@@ -26,7 +26,8 @@
       "Bash(npm run build:*)",
       "Bash(pip install:*)",
       "Bash(pytest:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }

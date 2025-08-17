@@ -22,6 +22,7 @@ from .api import (
     coach_profile,
     sessions,
     usage,
+    usage_history,
     plans,
     plan_limits,
 )
@@ -81,6 +82,7 @@ app.include_router(
 app.include_router(summary.router, prefix="/api/v1/dashboard", tags=["summary"])
 app.include_router(coach_profile.router, tags=["coach-profile"])
 app.include_router(usage.router, tags=["usage"])
+app.include_router(usage_history.router, prefix="/api/v1/usage", tags=["usage-history"])
 app.include_router(plans.router, tags=["plans"])
 app.include_router(plan_limits.router, tags=["plan-limits"])
 app.include_router(admin.router, tags=["admin"])
