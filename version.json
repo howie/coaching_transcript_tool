@@ -1,7 +1,8 @@
 {
-  "version": "2.3.6",
-  "displayVersion": "v2.3.6",
-  "description": "Coaching Transcript Tool",
-  "releaseDate": "2025-08-07",
-  "releaseNotes": "Add recaptcha v3 support, update dependencies, and improve performance.",
+  "version": "2.11.0",
+  "displayVersion": "v2.11.0",
+  "description": "Coachly transcription service - Production Ready with Complete Bug Fixes",
+  "releaseDate": "2025-08-17",
+  "releaseNotes": "Update billing and subscription management, fix transcription issues, and improve overall performance.",
+  "author": "Coachly Team"
 }

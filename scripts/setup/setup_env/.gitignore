@@ -1,0 +1,7 @@
+
+# Google Cloud Service Account Keys (SECURITY: NEVER COMMIT THESE!)
+coaching-storage-*.json
+*service-account*.json
+*credentials*.json
+*-key.json
+*-base64.txt

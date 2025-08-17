@@ -20,7 +20,7 @@ interface Client {
   source?: string;
   client_type?: string;
   issue_types?: string;
-  client_status: string;
+  status: string;
   is_anonymized: boolean;
   created_at: string;
   updated_at: string;
@@ -50,7 +50,7 @@ interface ClientFormData {
   source: string;
   client_type: string;
   issue_types: string;
-  client_status: string;
+  status: string;
 }
 
 interface OptionItem {
@@ -83,7 +83,7 @@ const ClientDetailPage = () => {
     source: '',
     client_type: '',
     issue_types: '',
-    client_status: ''
+    status: ''
   });
 
   const fetchOptions = useCallback(async () => {
@@ -117,24 +117,24 @@ const ClientDetailPage = () => {
       console.error('Failed to fetch options:', error);
       // Set default options when API fails
       setSourceOptions([
-        { value: 'referral', label: '轉介' },
-        { value: 'website', label: '網站' },
-        { value: 'social_media', label: '社群媒體' },
-        { value: 'event', label: '活動' },
-        { value: 'other', label: '其他' }
+        { value: 'referral', label: t('clients.sourceReferral') },
+        { value: 'website', label: t('clients.sourceWebsite') },
+        { value: 'social_media', label: t('clients.sourceSocialMedia') },
+        { value: 'event', label: t('clients.sourceEvent') },
+        { value: 'other', label: t('clients.sourceOther') }
       ]);
       setTypeOptions([
-        { value: 'individual', label: '個人' },
-        { value: 'corporate', label: '企業' },
-        { value: 'student', label: '學生' },
-        { value: 'professional', label: '專業人士' },
-        { value: 'other', label: '其他' }
+        { value: 'individual', label: t('clients.typeIndividual') },
+        { value: 'corporate', label: t('clients.typeCorporate') },
+        { value: 'student', label: t('clients.typeStudent') },
+        { value: 'professional', label: t('clients.typeProfessional') },
+        { value: 'other', label: t('clients.typeOther') }
       ]);
       setStatusOptions([
-        { value: 'first_session', label: '首次會談' },
-        { value: 'active', label: '進行中' },
-        { value: 'paused', label: '暫停' },
-        { value: 'completed', label: '已完成' }
+        { value: 'first_session', label: t('clients.statusFirstSession') },
+        { value: 'active', label: t('clients.statusInProgress') },
+        { value: 'paused', label: t('clients.statusPaused') },
+        { value: 'completed', label: t('clients.statusCompleted') }
       ]);
     }
   }, [t]);
@@ -149,10 +149,10 @@ const ClientDetailPage = () => {
 
   const getStatusLabel = (status: string) => {
     const statusMap = {
-      'first_session': '首次會談',
-      'in_progress': '進行中',
-      'paused': '暫停',
-      'completed': '結案'
+      'first_session': t('clients.statusFirstSession'),
+      'in_progress': t('clients.statusInProgress'),
+      'paused': t('clients.statusPaused'),
+      'completed': t('clients.statusCompleted')
     };
     return statusMap[status as keyof typeof statusMap] || status;
   };
@@ -181,7 +181,7 @@ const ClientDetailPage = () => {
         source: clientData.source || '',
         client_type: clientData.client_type || '',
         issue_types: clientData.issue_types || '',
-        client_status: clientData.client_status || 'first_session'
+        status: clientData.status || 'first_session'
       });
     } catch (error) {
       console.error('Failed to fetch client:', error);
@@ -318,7 +318,7 @@ const ClientDetailPage = () => {
                     source: client.source || '',
                     client_type: client.client_type || '',
                     issue_types: client.issue_types || '',
-                    client_status: client.client_status || 'first_session'
+                    status: client.status || 'first_session'
                   });
                 }}
                 className="flex items-center gap-2"
@@ -428,8 +428,8 @@ const ClientDetailPage = () => {
                   {t('clients.clientStatus')} *
                 </label>
                 <Select
-                  value={formData.client_status}
-                  onChange={(e) => setFormData({ ...formData, client_status: e.target.value })}
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   required
                 >
                   <option value="">{t('clients.selectStatus')}</option>
@@ -482,8 +482,8 @@ const ClientDetailPage = () => {
                   <label className="block text-sm font-medium text-content-secondary mb-1">
                     {t('clients.clientStatus')}
                   </label>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${getStatusColor(client.client_status)}`}>
-                    {getStatusLabel(client.client_status)}
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${getStatusColor(client.status)}`}>
+                    {getStatusLabel(client.status)}
                   </span>
                 </div>
               </div>

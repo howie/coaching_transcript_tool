@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusIcon, PencilIcon, TrashIcon, DocumentTextIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
 import { useI18n } from '@/contexts/i18n-context';
+import { useAuth } from '@/contexts/auth-context';
 import { apiClient } from '@/lib/api';
 import { ClientModal } from '@/components/ClientModal';
 
@@ -26,8 +27,13 @@ interface CoachingSession {
   fee_amount: number;
   fee_display: string;
   duration_display: string;
-  transcript_timeseq_id?: string;
-  audio_timeseq_id?: string;
+  transcription_session_id?: string;
+  transcription_session?: {
+    id: string;
+    status: 'uploading' | 'pending' | 'processing' | 'completed' | 'failed';
+    title: string;
+    segments_count: number;
+  };
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -45,32 +51,34 @@ interface SessionFormData {
 
 const SessionsPage = () => {
   const { t } = useI18n();
+  const { logout } = useAuth();
+  const router = useRouter();
   const [sessions, setSessions] = useState<CoachingSession[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [currencies, setCurrencies] = useState<{value: string, label: string}[]>([
-    { value: 'TWD', label: 'TWD - 新台幣' },
-    { value: 'USD', label: 'USD - 美元' },
-    { value: 'EUR', label: 'EUR - 歐元' },
-    { value: 'JPY', label: 'JPY - 日圓' },
-    { value: 'CNY', label: 'CNY - 人民幣' },
-    { value: 'HKD', label: 'HKD - 港幣' },
-    { value: 'GBP', label: 'GBP - 英鎊' },
-    { value: 'AUD', label: 'AUD - 澳幣' },
-    { value: 'CAD', label: 'CAD - 加幣' },
-    { value: 'SGD', label: 'SGD - 新加坡幣' }
+    { value: 'TWD', label: `TWD - ${t('sessions.currency.twd')}` },
+    { value: 'USD', label: `USD - ${t('sessions.currency.usd')}` },
+    { value: 'EUR', label: `EUR - ${t('sessions.currency.eur')}` },
+    { value: 'JPY', label: `JPY - ${t('sessions.currency.jpy')}` },
+    { value: 'CNY', label: `CNY - ${t('sessions.currency.cny')}` },
+    { value: 'HKD', label: `HKD - ${t('sessions.currency.hkd')}` },
+    { value: 'GBP', label: `GBP - ${t('sessions.currency.gbp')}` },
+    { value: 'AUD', label: `AUD - ${t('sessions.currency.aud')}` },
+    { value: 'CAD', label: `CAD - ${t('sessions.currency.cad')}` },
+    { value: 'SGD', label: `SGD - ${t('sessions.currency.sgd')}` }
   ]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
-  const [editingSession, setEditingSession] = useState<CoachingSession | null>(null);
   const [formData, setFormData] = useState<SessionFormData>({
-    session_date: '',
+    session_date: new Date().toISOString().split('T')[0],
     client_id: '',
-    duration_min: '',
+    duration_min: '60',
     fee_currency: 'TWD',
-    fee_amount: '',
+    fee_amount: '0',
     notes: ''
   });
+  const [loadingLastSession, setLoadingLastSession] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filters, setFilters] = useState({
@@ -81,6 +89,57 @@ const SessionsPage = () => {
   });
   const pageSize = 20;
 
+  const getTranscriptionStatusBadge = (session: CoachingSession) => {
+    if (!session.transcription_session_id && !session.transcription_session) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+          {t('sessions.noTranscript')}
+        </span>
+      );
+    }
+
+    const status = session.transcription_session?.status || 'unknown';
+    
+    switch (status) {
+      case 'uploading':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+            {t('sessions.uploading')}
+          </span>
+        );
+      case 'pending':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+            {t('sessions.pending')}
+          </span>
+        );
+      case 'processing':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+            {t('sessions.processing')}
+          </span>
+        );
+      case 'completed':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+            {t('sessions.completed')}
+          </span>
+        );
+      case 'failed':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+            {t('sessions.failed')}
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+            {t('sessions.unknownStatus')}
+          </span>
+        );
+    }
+  };
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -88,6 +147,24 @@ const SessionsPage = () => {
   useEffect(() => {
     fetchSessions();
   }, [currentPage, filters]);
+
+  // Load last session data when client is selected (only when modal is open)
+  useEffect(() => {
+    console.log('🔄 useEffect triggered:', { 
+      showModal, 
+      client_id: formData.client_id
+    });
+    
+    if (showModal && formData.client_id) {
+      console.log('✅ Conditions met, fetching last session data for:', formData.client_id);
+      fetchLastSessionData(formData.client_id);
+    } else {
+      console.log('❌ Conditions not met:', {
+        showModal,
+        hasClientId: !!formData.client_id
+      });
+    }
+  }, [formData.client_id, showModal]);
 
   const fetchInitialData = async () => {
     try {
@@ -123,8 +200,17 @@ const SessionsPage = () => {
       });
       setSessions(data.items);
       setTotalPages(data.total_pages);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch sessions:', error);
+      
+      // Check for authorization errors
+      const status = error.status;
+      if (status === 401 || status === 403) {
+        console.log(`Sessions fetch error (${status}): Unauthorized access, logging out...`);
+        logout();
+        router.push('/login');
+        return;
+      }
     } finally {
       setLoading(false);
     }
@@ -136,38 +222,21 @@ const SessionsPage = () => {
       const payload = {
         session_date: formData.session_date,
         client_id: formData.client_id,
+        source: "CLIENT",  // Default to CLIENT source
         duration_min: parseInt(formData.duration_min),
         fee_currency: formData.fee_currency,
         fee_amount: formData.fee_amount ? parseInt(formData.fee_amount) : 0,
         notes: formData.notes
       };
 
-      if (editingSession) {
-        await apiClient.updateSession(editingSession.id, payload);
-      } else {
-        await apiClient.createSession(payload);
-      }
+      await apiClient.createSession(payload);
 
       setShowModal(false);
-      setEditingSession(null);
       resetForm();
       fetchSessions();
     } catch (error) {
       console.error('Failed to save session:', error);
     }
-  };
-
-  const handleEdit = (session: CoachingSession) => {
-    setEditingSession(session);
-    setFormData({
-      session_date: session.session_date,
-      client_id: session.client.id,
-      duration_min: session.duration_min.toString(),
-      fee_currency: session.fee_currency,
-      fee_amount: session.fee_amount.toString(),
-      notes: session.notes || ''
-    });
-    setShowModal(true);
   };
 
   const handleDelete = async (session: CoachingSession) => {
@@ -183,17 +252,16 @@ const SessionsPage = () => {
 
   const resetForm = () => {
     setFormData({
-      session_date: '',
+      session_date: new Date().toISOString().split('T')[0],
       client_id: '',
-      duration_min: '',
+      duration_min: '60',
       fee_currency: 'TWD',
-      fee_amount: '',
+      fee_amount: '0',
       notes: ''
     });
   };
 
   const openCreateModal = async () => {
-    setEditingSession(null);
     resetForm();
     setShowModal(true);
     
@@ -207,17 +275,43 @@ const SessionsPage = () => {
     }
   };
 
+  const fetchLastSessionData = async (clientId: string) => {
+    if (!clientId) return;
+    
+    setLoadingLastSession(true);
+    try {
+      const lastSession = await apiClient.getClientLastSession(clientId);
+      
+      if (lastSession) {
+        console.log('✅ Loading last session data for client:', clientId, lastSession);
+        setFormData(prev => ({
+          ...prev,
+          duration_min: lastSession.duration_min.toString(),
+          fee_currency: lastSession.fee_currency,
+          fee_amount: lastSession.fee_amount.toString()
+        }));
+      } else {
+        console.log('ℹ️ No previous session found for client:', clientId);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch last session data:', error);
+      // Keep current values if fetch fails
+    } finally {
+      setLoadingLastSession(false);
+    }
+  };
+
   const handleClientCreated = async (newClient: Client) => {
     // Add new client to the list and select it
     setClients([...clients, newClient]);
     setFormData({ ...formData, client_id: newClient.id });
   };
 
-  const handleUploadTranscript = (sessionId: string) => {
-    window.location.href = `/dashboard/transcript-converter?session_id=${sessionId}`;
+  const handleViewDetails = (sessionId: string) => {
+    router.push(`/dashboard/sessions/${sessionId}`);
   };
 
-  if (loading && sessions.length === 0) {
+  if (loading && !sessions) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">{t('sessions.loading')}</div>
@@ -228,7 +322,7 @@ const SessionsPage = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-white">{t('sessions.title')}</h1>
+        <h1 className="text-3xl font-bold text-foreground">{t('sessions.title')}</h1>
         <Button onClick={openCreateModal} className="flex items-center gap-2">
           <PlusIcon className="h-5 w-5" />
           {t('sessions.addSession')}
@@ -303,12 +397,15 @@ const SessionsPage = () => {
                 {t('sessions.fee')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                {t('sessions.transcriptStatus')}
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 {t('sessions.actions')}
               </th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {sessions.map((session) => (
+            {sessions?.map((session) => (
               <tr key={session.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                   {session.session_date}
@@ -324,12 +421,15 @@ const SessionsPage = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                   {session.fee_display}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {getTranscriptionStatusBadge(session)}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleEdit(session)}
-                      className="text-indigo-600 hover:text-indigo-900"
-                      title="編輯"
+                      onClick={() => handleViewDetails(session.id)}
+                      className="text-blue-600 hover:text-blue-900"
+                      title={t('sessions.viewDetails')}
                     >
                       <PencilIcon className="h-4 w-4" />
                     </button>
@@ -337,25 +437,9 @@ const SessionsPage = () => {
                     <button
                       onClick={() => handleDelete(session)}
                       className="text-red-600 hover:text-red-900"
-                      title="刪除"
+                      title={t('sessions.delete')}
                     >
                       <TrashIcon className="h-4 w-4" />
-                    </button>
-                    
-                    <button
-                      onClick={() => handleUploadTranscript(session.id)}
-                      className="text-green-600 hover:text-green-900"
-                      title="上傳逐字稿"
-                    >
-                      <DocumentTextIcon className="h-4 w-4" />
-                    </button>
-                    
-                    <button
-                      onClick={() => console.log('Upload audio for', session.id)}
-                      className="text-blue-600 hover:text-blue-900"
-                      title="上傳錄音檔"
-                    >
-                      <MicrophoneIcon className="h-4 w-4" />
                     </button>
                   </div>
                 </td>
@@ -392,11 +476,11 @@ const SessionsPage = () => {
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Create Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
         <div className="bg-white dark:bg-gray-800 px-6 py-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
           <h3 className="text-lg font-medium text-foreground mb-4">
-            {editingSession ? t('sessions.editSession') : t('sessions.newSession')}
+            {t('sessions.newSession')}
           </h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -416,11 +500,17 @@ const SessionsPage = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {t('sessions.client')} *
+                  {loadingLastSession && (
+                    <span className="ml-2 text-sm text-content-secondary">
+                      ({t('sessions.loadingLastSession')}...)
+                    </span>
+                  )}
                 </label>
                 <Select
                   required
                   value={formData.client_id}
                   onChange={(e) => {
+                    console.log('👤 Client selection changed:', e.target.value);
                     if (e.target.value === 'new') {
                       setShowClientModal(true);
                     } else {
@@ -429,7 +519,7 @@ const SessionsPage = () => {
                   }}
                 >
                   <option value="">{t('sessions.selectClient')}</option>
-                  <option value="new">+ 新增客戶</option>
+                  <option value="new">+ {t('sessions.addNewClient')}</option>
                   {clients.map((client) => (
                     <option key={client.id} value={client.id}>
                       {client.name}
@@ -505,7 +595,7 @@ const SessionsPage = () => {
                 {t('common.cancel')}
               </Button>
               <Button type="submit">
-                {editingSession ? t('sessions.update') : t('sessions.create')}
+                {t('sessions.create')}
               </Button>
             </div>
           </form>

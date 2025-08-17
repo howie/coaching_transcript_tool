@@ -12,9 +12,11 @@ import {
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/auth-context'
+import { useI18n } from '@/contexts/i18n-context'
 
 export default function PaymentSettingsPage() {
   const { user } = useAuth()
+  const { t } = useI18n()
   const [billingCycle, setBillingCycle] = useState('monthly')
   const [autoRenew, setAutoRenew] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState({
@@ -44,11 +46,11 @@ export default function PaymentSettingsPage() {
         <div className="mb-8">
           <Link href="/dashboard/billing" className="inline-flex items-center text-dashboard-accent hover:text-dashboard-accent-hover mb-4">
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
-            返回 Billing
+            {t('common.back')} {t('billing.title')}
           </Link>
           <div className="flex items-center space-x-3">
             <CreditCardIcon className="h-8 w-8 text-dashboard-accent" />
-            <h1 className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>Payment Settings</h1>
+            <h1 className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>{t('billing.paymentSettings')}</h1>
           </div>
         </div>
 
@@ -57,8 +59,8 @@ export default function PaymentSettingsPage() {
           <div className="flex items-center space-x-3">
             <span className="text-2xl">🚧</span>
             <div>
-              <h4 className="font-semibold text-orange-300">功能施工中</h4>
-              <p className="text-sm text-orange-200 opacity-90">Billing 設定功能仍在開發中，目前僅供預覽</p>
+              <h4 className="font-semibold text-orange-300">{t('billing.featureInDevelopment')}</h4>
+              <p className="text-sm text-orange-200 opacity-90">{t('billing.billingPreviewOnly')}</p>
             </div>
           </div>
         </div>
@@ -68,27 +70,27 @@ export default function PaymentSettingsPage() {
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
             <div className="flex items-center space-x-3 mb-6">
               <CreditCardIcon className="h-6 w-6 text-dashboard-accent" />
-              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>付款方式</h2>
+              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>{t('billing.paymentMethod')}</h2>
             </div>
             
             <div className="space-y-4">
               <div className="p-4 rounded-lg flex items-center justify-between" style={{backgroundColor: 'var(--card-bg)'}}>
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-8 bg-gradient-to-r from-blue-600 to-blue-400 rounded flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">VISA</span>
+                    <span className="text-white text-xs font-bold">{t('billing.visa')}</span>
                   </div>
                   <div>
-                    <p className="font-medium" style={{color: 'var(--text-primary)'}}>•••• •••• •••• 4242</p>
-                    <p className="text-sm" style={{color: 'var(--text-tertiary)'}}>到期日: 12/2025</p>
+                    <p className="font-medium" style={{color: 'var(--text-primary)'}}>{t('billing.cardEnding')} 4242</p>
+                    <p className="text-sm" style={{color: 'var(--text-tertiary)'}}>{t('billing.expiresOn')}: {t('billing.exampleExpiry')}</p>
                   </div>
                 </div>
                 <span className="px-3 py-1 bg-green-600 bg-opacity-20 text-green-400 rounded-full text-sm font-medium">
-                  預設
+                  {t('billing.default')}
                 </span>
               </div>
 
               <button className="w-full px-4 py-3 border border-dashed rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" style={{borderColor: 'var(--input-border)', color: 'var(--text-tertiary)'}} disabled>
-                + 新增付款方式（功能開發中）
+                + {t('billing.addPaymentMethod')} ({t('billing.featureInDevelopment')})
               </button>
             </div>
           </div>
@@ -97,7 +99,7 @@ export default function PaymentSettingsPage() {
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
             <div className="flex items-center space-x-3 mb-6">
               <CalendarIcon className="h-6 w-6 text-dashboard-accent" />
-              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>計費週期</h2>
+              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>{t('billing.billingCycle')}</h2>
             </div>
             
             <div className="space-y-4">
@@ -110,8 +112,8 @@ export default function PaymentSettingsPage() {
                       : 'border-gray-600 hover:border-gray-500'
                   }`}
                 >
-                  <h3 className="font-medium mb-1" style={{color: 'var(--text-primary)'}}>月繳</h3>
-                  <p className="text-sm" style={{color: 'var(--text-tertiary)'}}>每月自動扣款</p>
+                  <h3 className="font-medium mb-1" style={{color: 'var(--text-primary)'}}>{t('billing.monthly')}</h3>
+                  <p className="text-sm" style={{color: 'var(--text-tertiary)'}}>{t('billing.monthlyDescription')}</p>
                 </button>
 
                 <button
@@ -122,15 +124,15 @@ export default function PaymentSettingsPage() {
                       : 'border-gray-600 hover:border-gray-500'
                   }`}
                 >
-                  <h3 className="font-medium mb-1" style={{color: 'var(--text-primary)'}}>年繳</h3>
-                  <p className="text-sm" style={{color: 'var(--text-tertiary)'}}>每年扣款，享 31% 折扣</p>
+                  <h3 className="font-medium mb-1" style={{color: 'var(--text-primary)'}}>{t('billing.annual')}</h3>
+                  <p className="text-sm" style={{color: 'var(--text-tertiary)'}}>{t('billing.annualDescription')}</p>
                 </button>
               </div>
 
               <div className="flex items-center justify-between p-4 rounded-lg" style={{backgroundColor: 'var(--card-bg)'}}>
                 <div>
-                  <h3 className="font-medium" style={{color: 'var(--text-primary)'}}>自動續約</h3>
-                  <p className="text-sm mt-1" style={{color: 'var(--text-tertiary)'}}>到期時自動續約您的方案</p>
+                  <h3 className="font-medium" style={{color: 'var(--text-primary)'}}>{t('billing.autoRenew')}</h3>
+                  <p className="text-sm mt-1" style={{color: 'var(--text-tertiary)'}}>{t('billing.autoRenewDescription')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -149,36 +151,36 @@ export default function PaymentSettingsPage() {
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
             <div className="flex items-center space-x-3 mb-6">
               <DocumentTextIcon className="h-6 w-6 text-dashboard-accent" />
-              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>帳單資訊</h2>
+              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>{t('billing.billingInformation')}</h2>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="label">公司名稱</label>
+                <label className="label">{t('billing.companyName')}</label>
                 <input
                   type="text"
                   className="input-base"
-                  placeholder="選填"
+                  placeholder={t('billing.optional')}
                   disabled
                 />
               </div>
 
               <div>
-                <label className="label">統一編號</label>
+                <label className="label">{t('billing.taxId')}</label>
                 <input
                   type="text"
                   className="input-base"
-                  placeholder="選填"
+                  placeholder={t('billing.optional')}
                   disabled
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="label">帳單地址</label>
+                <label className="label">{t('billing.billingAddress')}</label>
                 <input
                   type="text"
                   className="input-base"
-                  placeholder="請輸入帳單地址"
+                  placeholder={t('billing.enterBillingAddress')}
                   disabled
                 />
               </div>
@@ -189,16 +191,16 @@ export default function PaymentSettingsPage() {
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
             <div className="flex items-center space-x-3 mb-6">
               <BellIcon className="h-6 w-6 text-dashboard-accent" />
-              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>Email 通知設定</h2>
+              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>{t('billing.emailNotifications')}</h2>
             </div>
             
             <div className="space-y-4">
               {Object.entries({
-                paymentSuccess: '付款成功通知',
-                paymentFailed: '付款失敗通知',
-                planChanges: '方案變更通知',
-                usageAlerts: '用量警示通知（達到 80% 時）',
-                invoices: '發票和收據'
+                paymentSuccess: t('billing.paymentSuccessNotification'),
+                paymentFailed: t('billing.paymentFailedNotification'),
+                planChanges: t('billing.planChangeNotification'),
+                usageAlerts: t('billing.usageAlertNotification'),
+                invoices: t('billing.invoiceNotification')
               }).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between p-4 rounded-lg" style={{backgroundColor: 'var(--card-bg)'}}>
                   <span style={{color: 'var(--text-secondary)'}}>{label}</span>
@@ -220,7 +222,7 @@ export default function PaymentSettingsPage() {
           <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
             <div className="flex items-center space-x-3 mb-6">
               <DocumentTextIcon className="h-6 w-6 text-dashboard-accent" />
-              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>發票紀錄</h2>
+              <h2 className="text-xl font-semibold" style={{color: 'var(--text-primary)'}}>{t('billing.invoiceHistory')}</h2>
             </div>
             
             <div className="space-y-3">
@@ -232,18 +234,18 @@ export default function PaymentSettingsPage() {
                 <div key={index} className="flex items-center justify-between p-4 rounded-lg" style={{backgroundColor: 'var(--card-bg)'}}>
                   <div>
                     <p className="font-medium" style={{color: 'var(--text-primary)'}}>{invoice.date}</p>
-                    <p className="text-sm" style={{color: 'var(--text-tertiary)'}}>Pro 方案 - 月費</p>
+                    <p className="text-sm" style={{color: 'var(--text-tertiary)'}}>{t('billing.proPlan')} - {t('billing.monthlyFee')}</p>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="text-right">
-                      <p className="font-medium" style={{color: 'var(--text-primary)'}}>${invoice.amount}</p>
+                      <p className="font-medium" style={{color: 'var(--text-primary)'}}>{t('billing.currencySymbol')}{invoice.amount}</p>
                       <p className="text-sm text-green-400 flex items-center">
                         <CheckIcon className="h-3 w-3 mr-1" />
-                        已付款
+                        {t('billing.paid')}
                       </p>
                     </div>
                     <button className="text-dashboard-accent hover:text-dashboard-accent-hover disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                      下載
+                      {t('billing.download')}
                     </button>
                   </div>
                 </div>
@@ -258,7 +260,7 @@ export default function PaymentSettingsPage() {
               className="px-6 py-3 bg-dashboard-accent text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled
             >
-              儲存設定（功能開發中）
+              {t('billing.saveSettings')} ({t('billing.featureInDevelopment')})
             </button>
           </div>
         </div>

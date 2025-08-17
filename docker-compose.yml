@@ -24,7 +24,10 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
     volumes:
       - ./apps/api-server:/app/apps/api-server
-      - ./packages/core-logic:/app/packages/core-logic
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./alembic.ini:/app/alembic.ini
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

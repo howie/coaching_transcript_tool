@@ -190,4 +190,44 @@ apps/web/.wrangler/
 #tmp 
 terraform-preview-only/
 
+# Google Cloud Service Account Keys (NEVER COMMIT THESE!)
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!jest.config.js
+coaching-storage-*.json
+*service-account*.json
+*credentials*.json
+*-key.json
+*-base64.txt
+
+# Other sensitive files
+.env.*
+!.env.example
+
+# Repomix output files (may contain secrets)
 repomix-output.xml
+.repomix-output.xml
+
+# Terraform files
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+terraform.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+#tmp
+logs/

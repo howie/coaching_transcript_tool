@@ -11,7 +11,24 @@
       "Bash(grep:*)",
       "Bash(pkill:*)",
       "Bash(rm:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(terraform state rm:*)",
+      "Bash(gsutil ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(rg:*)",
+      "Bash(RECAPTCHA_ENABLED=false python -c \"\nfrom coaching_assistant.core.config import Settings\nprint(''RECAPTCHA_ENABLED:'', Settings().RECAPTCHA_ENABLED)\nprint(''SECRET_KEY:'', Settings().SECRET_KEY[:10] + ''...'')\nprint(''DATABASE_URL set:'', bool(Settings().DATABASE_URL))\n\")",
+      "Bash(RECAPTCHA_ENABLED=false python -m coaching_assistant.main)",
+      "Bash(alembic history:*)",
+      "Bash(uvicorn:*)",
+      "Bash(sed:*)",
+      "Bash(awk:*)",
+      "Bash(alembic current:*)",
+      "Bash(npm run build:*)",
+      "Bash(pip install:*)",
+      "Bash(pytest:*)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

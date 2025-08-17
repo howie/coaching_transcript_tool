@@ -68,9 +68,13 @@ services:
       - DATABASE_URL=postgresql://coach_user:coach_pass_dev@postgres:5432/coaching_assistant_dev
       - REDIS_URL=redis://:redis_pass_dev@redis:6379/0
       - GOOGLE_APPLICATION_CREDENTIALS_JSON=${GOOGLE_APPLICATION_CREDENTIALS_JSON}
-      - GOOGLE_STORAGE_BUCKET=${GOOGLE_STORAGE_BUCKET}
+      - AUDIO_STORAGE_BUCKET=${AUDIO_STORAGE_BUCKET}
+      - TRANSCRIPT_STORAGE_BUCKET=${TRANSCRIPT_STORAGE_BUCKET}
     volumes:
-      - ./packages/core-logic:/app/packages/core-logic
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./alembic.ini:/app/alembic.ini
       - ./apps/api-server:/app/apps/api-server
     networks:
       - coach-network
@@ -92,7 +96,10 @@ services:
       - DATABASE_URL=postgresql://coach_user:coach_pass_dev@postgres:5432/coaching_assistant_dev
       - REDIS_URL=redis://:redis_pass_dev@redis:6379/0
     volumes:
-      - ./packages/core-logic:/app/packages/core-logic
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./alembic.ini:/app/alembic.ini
       - ./apps/api-server:/app/apps/api-server
     networks:
       - coach-network

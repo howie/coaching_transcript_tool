@@ -4,13 +4,14 @@ import { ThemeProvider } from '@/contexts/theme-context'
 import { I18nProvider } from '@/contexts/i18n-context'
 import { AuthProvider } from '@/contexts/auth-context'
 import { ReCaptchaProvider } from '@/components/recaptcha-provider'
+import { translations } from '@/lib/i18n'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Coachly - 你的 AI 教練夥伴',
-  description: '從新手教練到執業認證，Coachly 幫你記錄、成長與實踐。',
+  title: translations.zh['layout.coachlyTitle'],
+  description: translations.zh['layout.coachlyDescription'],
   icons: {
     icon: '/images/coachly-favicon.ico',
     shortcut: '/images/coachly-favicon.ico',
@@ -24,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-TW">
+    <html lang="zh-TW" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/images/coachly-favicon.ico" sizes="any" />
         <link 
@@ -40,6 +41,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
+                  // Theme initialization
                   const stored = localStorage.getItem("theme");
                   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
                   const isDark = stored ? stored === "dark" : prefersDark;
@@ -50,6 +52,15 @@ export default function RootLayout({
                     document.body.classList.add("light-mode");
                   }
                   document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+                  
+                  // Language initialization
+                  const storedLang = localStorage.getItem("language");
+                  const browserLang = navigator.language.toLowerCase();
+                  const lang = storedLang || (browserLang.includes('en') ? 'en' : 'zh');
+                  document.documentElement.setAttribute("data-lang", lang);
+                  if (!storedLang) {
+                    localStorage.setItem("language", lang);
+                  }
                 } catch (e) {}
               })();
               
@@ -73,7 +84,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
           <ThemeProvider>
             <I18nProvider>

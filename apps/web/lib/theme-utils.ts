@@ -1,5 +1,24 @@
 import { useTheme } from '@/contexts/theme-context'
 
+// Utility function to combine class names
+type ClassValue = string | undefined | null | false | { [key: string]: boolean }
+
+export function cn(...classes: ClassValue[]) {
+  return classes
+    .filter(Boolean)
+    .map(cls => {
+      if (typeof cls === 'object' && cls !== null) {
+        // Handle object form: { 'class-name': boolean }
+        return Object.entries(cls)
+          .filter(([_, value]) => value)
+          .map(([key]) => key)
+          .join(' ')
+      }
+      return cls
+    })
+    .join(' ')
+}
+
 export function useThemeClasses() {
   const { theme } = useTheme()
   
