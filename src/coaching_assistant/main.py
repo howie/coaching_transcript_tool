@@ -36,12 +36,20 @@ from .version import VERSION, DISPLAY_VERSION, DESCRIPTION
 print("🚀 Starting Coaching Transcript Tool Backend API...")
 validate_environment()
 
-# 設定日誌（會同時輸出到控制台和文件）
-import pathlib
+# 設定日誌
+# 在 production/container 環境中，只輸出到 stdout，不寫檔案
+is_container = os.getenv('IS_CONTAINER', 'false').lower() == 'true'
+is_production = os.getenv('ENVIRONMENT', 'development') == 'production'
 
-project_root = pathlib.Path(__file__).parent.parent.parent.parent.parent
-api_log_file = project_root / "logs" / "api.log"
-setup_api_logging(log_file=str(api_log_file))
+if is_container or is_production:
+    # Container/Production: 只輸出到 stdout
+    setup_api_logging(log_file=None)
+else:
+    # Development: 輸出到檔案和 stdout
+    import pathlib
+    project_root = pathlib.Path(__file__).parent.parent.parent.parent.parent
+    api_log_file = project_root / "logs" / "api.log"
+    setup_api_logging(log_file=str(api_log_file))
 logger = logging.getLogger(__name__)
 
 app = FastAPI(

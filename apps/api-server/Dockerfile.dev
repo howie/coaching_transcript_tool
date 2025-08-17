@@ -25,7 +25,8 @@ RUN pip install --no-cache-dir -r ./apps/api-server/requirements.txt
 RUN pip install -e .
 
 # 設定 Python 路徑
-ENV PYTHONPATH=/app/src:/app
+ENV PYTHONPATH=/app/src:/app \
+    IS_CONTAINER=true
 
 # 暴露端口
 EXPOSE 8000

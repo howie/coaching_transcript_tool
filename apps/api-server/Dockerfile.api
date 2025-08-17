@@ -34,7 +34,8 @@ FROM python:3.11-slim
 ENV PYTHONPATH=/app/src:/app \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8000
+    PORT=8000 \
+    IS_CONTAINER=true
 
 WORKDIR /app
 

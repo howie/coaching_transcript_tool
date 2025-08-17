@@ -22,8 +22,9 @@ RUN pip install --no-cache-dir -r ./apps/api-server/requirements.txt
 RUN pip install -e .
 
 # Set Python path
-ENV PYTHONPATH=/app/src:/app
-ENV PORT=8080
+ENV PYTHONPATH=/app/src:/app \
+    IS_CONTAINER=true \
+    PORT=8080
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
