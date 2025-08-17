@@ -96,6 +96,12 @@ class User(BaseModel):
         cascade="all, delete-orphan",
         lazy="dynamic",
     )
+    usage_history = relationship(
+        "UsageHistory",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
+    )
 
     def __repr__(self):
         return f"<User(email={self.email}, plan={self.plan.value})>"
