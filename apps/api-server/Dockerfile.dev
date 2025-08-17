@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 # 複製原始碼和配置
 COPY src/ ./src/
-COPY pyproject.toml requirements.txt ./
+COPY pyproject.toml requirements.txt version.json ./
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
 

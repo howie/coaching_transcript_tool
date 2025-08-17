@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy source code and configuration
 COPY src/ ./src/
-COPY pyproject.toml requirements.txt ./
+COPY pyproject.toml requirements.txt version.json ./
 
 # Copy requirements and install dependencies
 COPY apps/api-server/requirements.txt ./apps/api-server/
