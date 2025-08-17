@@ -24,7 +24,8 @@ COPY alembic/ ./alembic/
 COPY alembic.ini ./
 
 # Set Python path
-ENV PYTHONPATH=/app/src:/app
+ENV PYTHONPATH=/app/src:/app \
+    IS_CONTAINER=true
 
 # Health check for Docker
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
