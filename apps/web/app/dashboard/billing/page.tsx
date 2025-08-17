@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CreditCardIcon, ClockIcon, ChartBarIcon, CheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { CreditCardIcon, ClockIcon, ChartBarIcon, CheckIcon, ArrowPathIcon, PresentationChartLineIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '@/contexts/auth-context'
 import { useThemeClasses } from '@/lib/theme-utils'
 import { useI18n } from '@/contexts/i18n-context'
@@ -11,6 +11,7 @@ import planService, { UsageStatus, PlanConfig, SubscriptionInfo } from '@/lib/se
 import { UsageCard } from '@/components/billing/UsageCard'
 import { PaymentSettings } from '@/components/billing/PaymentSettings'
 import { ChangePlan } from '@/components/billing/ChangePlan'
+import UsageHistory from '@/components/billing/UsageHistory'
 
 export default function BillingPage() {
   const { user } = useAuth()
@@ -74,7 +75,7 @@ export default function BillingPage() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'overview' | 'usage' | 'payment' | 'plans')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-dashboard-accent text-dashboard-accent'
@@ -91,85 +92,225 @@ export default function BillingPage() {
         <div className="space-y-8">
           {activeTab === 'overview' && (
             <>
-              {/* Upgrade CTA for Free Users */}
-              {currentPlan?.planName === 'free' && (
-                <div className="mb-6 bg-gradient-to-r from-dashboard-accent to-yellow-600 p-6 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold text-dashboard-bg mb-2">
-                        {t('billing.upgradeTitle')}
-                      </h2>
-                      <p className="text-dashboard-bg opacity-90">
-                        {t('billing.upgradeDescription')}
-                      </p>
-                      <div className="flex items-center mt-3 space-x-4">
-                        <div className="flex items-center">
-                          <CheckIcon className="h-5 w-5 text-dashboard-bg mr-2" />
-                          <span className="text-dashboard-bg font-medium">{t('billing.benefit.10xSessions')}</span>
+              
+              {/* Current Usage as Main Content */}
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Main Usage Card - Takes most of the space */}
+                <div className="flex-1">
+                  {usageStatus ? (
+                    <div className={`${themeClasses.card} p-8`}>
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className={`text-2xl font-bold ${themeClasses.textPrimary}`}>
+                          {t('billing.currentUsage')}
+                        </h2>
+                        {/* Upgrade Button for Free Users */}
+                        {currentPlan?.planName === 'free' && (
+                          <button
+                            onClick={handleUpgrade}
+                            className="bg-dashboard-accent text-dashboard-bg px-4 py-2 rounded-lg font-semibold hover:bg-dashboard-accent-hover transition-colors flex items-center space-x-2"
+                          >
+                            <span>🚀</span>
+                            <span>{t('billing.upgradeToPro')}</span>
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Enhanced Usage Metrics */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="text-3xl font-bold text-dashboard-accent mb-2">
+                            {usageStatus.currentUsage?.sessions || 0}
+                          </div>
+                          <div className="text-sm text-gray-500 mb-1">
+                            / {usageStatus.planLimits?.maxSessions === -1 ? '∞' : (usageStatus.planLimits?.maxSessions || 0)}
+                          </div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {t('billing.sessions')}
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                            <div 
+                              className="bg-dashboard-accent h-2 rounded-full" 
+                              style={{ 
+                                width: usageStatus.usagePercentages?.sessions 
+                                  ? `${Math.min(100, usageStatus.usagePercentages.sessions)}%`
+                                  : '0%'
+                              }}
+                            ></div>
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          <CheckIcon className="h-5 w-5 text-dashboard-bg mr-2" />
-                          <span className="text-dashboard-bg font-medium">{t('billing.benefit.prioritySupport')}</span>
+
+                        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="text-3xl font-bold text-dashboard-accent mb-2">
+                            {usageStatus.currentUsage?.minutes || 0}
+                          </div>
+                          <div className="text-sm text-gray-500 mb-1">
+                            / {usageStatus.planLimits?.maxTotalMinutes === -1 ? '∞' : (usageStatus.planLimits?.maxTotalMinutes || 0)}
+                          </div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {t('billing.audioMinutes')}
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                            <div 
+                              className="bg-dashboard-accent h-2 rounded-full" 
+                              style={{ 
+                                width: usageStatus.usagePercentages?.minutes 
+                                  ? `${Math.min(100, usageStatus.usagePercentages.minutes)}%`
+                                  : '0%'
+                              }}
+                            ></div>
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          <CheckIcon className="h-5 w-5 text-dashboard-bg mr-2" />
-                          <span className="text-dashboard-bg font-medium">{t('billing.benefit.allExportFormats')}</span>
+
+                        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="text-3xl font-bold text-dashboard-accent mb-2">
+                            {usageStatus.currentUsage?.transcriptions || 0}
+                          </div>
+                          <div className="text-sm text-gray-500 mb-1">
+                            / {usageStatus.planLimits?.maxTranscriptionCount === -1 ? '∞' : (usageStatus.planLimits?.maxTranscriptionCount || 0)}
+                          </div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {t('billing.transcriptions')}
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                            <div 
+                              className="bg-dashboard-accent h-2 rounded-full" 
+                              style={{ 
+                                width: usageStatus.usagePercentages?.transcriptions 
+                                  ? `${Math.min(100, usageStatus.usagePercentages.transcriptions)}%`
+                                  : '0%'
+                              }}
+                            ></div>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Reset Information */}
+                      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-blue-700 dark:text-blue-300">
+                            {t('billing.nextResetDate')}
+                          </span>
+                          <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                            {usageStatus.nextReset 
+                              ? new Date(usageStatus.nextReset).toLocaleDateString()
+                              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()
+                            }
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Upgrade Benefits for Free Users */}
+                      {currentPlan?.planName === 'free' && (
+                        <div className="mt-6 p-5 bg-gradient-to-r from-dashboard-accent/10 to-yellow-500/10 border border-dashboard-accent/20 rounded-lg">
+                          <h3 className="text-lg font-semibold text-dashboard-accent mb-3">
+                            {t('billing.upgradeTitle')}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                            {t('billing.upgradeDescription')}
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="flex items-center space-x-2">
+                              <CheckIcon className="h-4 w-4 text-dashboard-accent flex-shrink-0" />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {t('billing.benefit.10xSessions')}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <CheckIcon className="h-4 w-4 text-dashboard-accent flex-shrink-0" />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {t('billing.benefit.prioritySupport')}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <CheckIcon className="h-4 w-4 text-dashboard-accent flex-shrink-0" />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {t('billing.benefit.allExportFormats')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <button
-                      onClick={handleUpgrade}
-                      className="px-6 py-3 bg-dashboard-bg text-dashboard-accent rounded-lg font-semibold hover:bg-opacity-90 transition-colors"
-                    >
-                      {t('billing.upgradeToPro')}
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Current Plan & Usage - 50/50 layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  {currentPlan && subscriptionInfo ? (
-                    <CurrentPlanSummary 
-                      plan={currentPlan}
-                      subscriptionInfo={subscriptionInfo}
-                    />
                   ) : (
-                    <div className={`${themeClasses.card} p-6`}>
-                      <h2 className={`text-xl font-semibold ${themeClasses.textPrimary} mb-2`}>
-                        {t('billing.currentPlan')}
-                      </h2>
-                      <p className="text-red-400">{t('billing.errorLoadingPlan')}</p>
+                    <div className={`${themeClasses.card} p-8`}>
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className={`text-2xl font-bold ${themeClasses.textPrimary}`}>
+                          {t('billing.currentUsage')}
+                        </h2>
+                        {/* Upgrade Button for Free Users */}
+                        {currentPlan?.planName === 'free' && (
+                          <button
+                            onClick={handleUpgrade}
+                            className="bg-dashboard-accent text-dashboard-bg px-4 py-2 rounded-lg font-semibold hover:bg-dashboard-accent-hover transition-colors flex items-center space-x-2"
+                          >
+                            <span>🚀</span>
+                            <span>{t('billing.upgradeToPro')}</span>
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-red-400 text-center py-8">{t('billing.errorLoadingUsage')}</p>
                     </div>
                   )}
                 </div>
-                <div>
-                  {usageStatus ? (
-                    <UsageCard 
-                      usageStatus={usageStatus} 
-                      onUpgrade={handleUpgrade}
-                    />
-                  ) : (
+
+                {/* Sidebar - Plan Info (Smaller) */}
+                <div className="w-full lg:w-80">
+                  {currentPlan && subscriptionInfo ? (
                     <div className={`${themeClasses.card} p-6`}>
-                      <h2 className={`text-xl font-semibold ${themeClasses.textPrimary} mb-2`}>
-                        {t('billing.currentUsage')}
-                      </h2>
-                      <p className="text-red-400">{t('billing.errorLoadingUsage')}</p>
-                      <div className="mt-4 space-y-3">
+                      <h3 className={`text-lg font-semibold ${themeClasses.textPrimary} mb-4`}>
+                        {t('billing.planDetails')}
+                      </h3>
+                      
+                      <div className="space-y-3">
                         <div className="flex justify-between">
-                          <span className={themeClasses.textSecondary}>{t('billing.sessions')}</span>
-                          <span className={themeClasses.textPrimary}>0 / -</span>
+                          <span className="text-sm text-gray-500">{t('billing.currentPlan')}:</span>
+                          <span className="text-sm font-medium">{currentPlan.displayName}</span>
                         </div>
+                        
                         <div className="flex justify-between">
-                          <span className={themeClasses.textSecondary}>{t('billing.audioMinutes')}</span>
-                          <span className={themeClasses.textPrimary}>0 / -</span>
+                          <span className="text-sm text-gray-500">{t('billing.status')}:</span>
+                          <span className={`text-sm font-medium ${subscriptionInfo.active ? 'text-green-600' : 'text-red-600'}`}>
+                            {subscriptionInfo.active ? t('billing.active') : t('billing.inactive')}
+                          </span>
                         </div>
+                        
+                        {subscriptionInfo.endDate && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-500">{t('billing.nextBilling')}:</span>
+                            <span className="text-sm font-medium">
+                              {new Date(subscriptionInfo.endDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                        
                         <div className="flex justify-between">
-                          <span className={themeClasses.textSecondary}>{t('billing.transcriptions')}</span>
-                          <span className={themeClasses.textPrimary}>0 / -</span>
+                          <span className="text-sm text-gray-500">{t('billing.monthlyFee')}:</span>
+                          <span className="text-sm font-medium">
+                            {currentPlan.planName === 'free' 
+                              ? t('billing.free') 
+                              : `NT$${currentPlan.pricing.monthlyTwd || currentPlan.pricing.monthlyUsd * 31.5}`
+                            }
+                          </span>
                         </div>
                       </div>
+
+                      {currentPlan.planName !== 'business' && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <button
+                            onClick={() => window.location.href = '/dashboard/billing/change-plan'}
+                            className="w-full text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-md transition-colors"
+                          >
+                            {t('billing.changePlan')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={`${themeClasses.card} p-6`}>
+                      <h3 className={`text-lg font-semibold ${themeClasses.textPrimary} mb-2`}>
+                        {t('billing.planDetails')}
+                      </h3>
+                      <p className="text-red-400 text-sm">{t('billing.errorLoadingPlan')}</p>
                     </div>
                   )}
                 </div>
@@ -177,14 +318,16 @@ export default function BillingPage() {
             </>
           )}
 
-          {activeTab === 'usage' && (
-            <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
-              <h2 className={`text-xl font-semibold ${themeClasses.textPrimary} mb-4`}>
-                {t('billing.usageHistory')}
-              </h2>
-              <p className="text-gray-400">Usage history coming soon...</p>
-            </div>
+          {activeTab === 'usage' && user && (
+            <UsageHistory 
+              userId={user.id}
+              userPlan={currentPlan?.planName || 'free'}
+              defaultPeriod="30d"
+              showInsights={true}
+              showPredictions={true}
+            />
           )}
+
 
           {activeTab === 'payment' && (
             <PaymentSettings />
@@ -199,60 +342,3 @@ export default function BillingPage() {
   )
 }
 
-// Component for displaying current plan summary
-function CurrentPlanSummary({ plan, subscriptionInfo }: { plan: PlanConfig; subscriptionInfo: SubscriptionInfo }) {
-  const { t } = useI18n();
-  const themeClasses = useThemeClasses();
-  const router = useRouter();
-  
-  const isFreePlan = plan.planName === 'free';
-  
-  return (
-    <div className={themeClasses.card}>
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className={`text-xl font-semibold ${themeClasses.textPrimary}`}>
-              {t('billing.currentPlan')}
-            </h2>
-            <div className="flex items-center mt-2">
-              <p className="text-3xl font-bold text-dashboard-accent">
-                {plan.displayName}
-              </p>
-              {isFreePlan && (
-                <button
-                  onClick={() => router.push('/dashboard/billing/change-plan')}
-                  className="ml-4 px-3 py-1 bg-dashboard-accent text-dashboard-bg rounded-full text-sm font-medium hover:bg-dashboard-accent-hover transition-colors"
-                >
-                  {t('billing.upgrade')}
-                </button>
-              )}
-            </div>
-          </div>
-          {subscriptionInfo.active && (
-            <span className="px-3 py-1 bg-dashboard-accent bg-opacity-20 text-dashboard-accent rounded-full text-sm font-medium">
-              {t('billing.active')}
-            </span>
-          )}
-        </div>
-        <div className={`space-y-2 text-sm ${themeClasses.textSecondary}`}>
-          {subscriptionInfo.endDate && (
-            <p>{t('billing.nextBilling')}: {new Date(subscriptionInfo.endDate).toLocaleDateString()}</p>
-          )}
-          <p>{isFreePlan ? t('billing.free') : `NT$${plan.pricing.monthlyTwd || plan.pricing.monthlyUsd * 31.5}/${t('billing.perMonth')}`}</p>
-          {plan.features.prioritySupport && (
-            <p className="text-green-400">✓ {t('billing.prioritySupport')}</p>
-          )}
-        </div>
-        
-        {isFreePlan && (
-          <div className="mt-4 p-3 bg-dashboard-accent bg-opacity-10 rounded-lg border border-dashboard-accent border-opacity-30">
-            <p className={`text-sm ${themeClasses.textSecondary}`}>
-              {t('billing.freeTrialMessage')}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}

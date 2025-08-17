@@ -1,8 +1,8 @@
 {
-  "version": "2.10.0",
-  "displayVersion": "v2.10.0",
+  "version": "2.11.0",
+  "displayVersion": "v2.11.0",
   "description": "Coachly transcription service - Production Ready with Complete Bug Fixes",
   "releaseDate": "2025-08-17",
-  "releaseNotes": "MPV online prepare - phase 1 complete. This release includes significant improvements to the transcription service, enhancing performance and reliability. All known bugs have been addressed, ensuring a smoother user experience.",
+  "releaseNotes": "Update billing and subscription management, fix transcription issues, and improve overall performance.",
   "author": "Coachly Team"
 }

@@ -2,9 +2,11 @@
 
 ## 📋 User Story
 
-**As a** platform user  
+**As an** enterprise plan user  
 **I want** to view my historical usage patterns and trends  
 **So that** I can optimize my subscription and predict future needs
+
+> **Note**: This feature is exclusive to Enterprise plan users as part of advanced analytics capabilities.
 
 ## 💼 Business Value
 

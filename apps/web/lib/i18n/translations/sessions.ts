@@ -169,6 +169,8 @@ export const sessionsTranslations = {
     'sessions.enterQuestion': '輸入您的問題...',
     'sessions.send': '發送',
     'sessions.checking': '檢查中...',
+    'sessions.sessions': '會談數',
+    'sessions.transcriptions': '轉錄數',
   },
   en: {
     'sessions.title': 'Coaching Records',
@@ -339,5 +341,7 @@ export const sessionsTranslations = {
     'sessions.enterQuestion': 'Enter your question...',
     'sessions.send': 'Send',
     'sessions.checking': 'Checking...',
+    'sessions.sessions': 'Sessions',
+    'sessions.transcriptions': 'Transcriptions',
   }
 }
