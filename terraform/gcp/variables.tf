@@ -35,8 +35,10 @@ variable "allowed_origins" {
   description = "Allowed CORS origins for storage buckets"
   type        = list(string)
   default = [
-    "https://coaching-transcript-tool.pages.dev",  # Production frontend
+    "https://coachly.doxa.com.tw",                 # Production frontend (new domain)
+    "https://coaching-transcript-tool.pages.dev",  # Production frontend (legacy)
     "https://*.pages.dev",                         # Cloudflare Pages preview
+    "https://*.doxa.com.tw",                       # Doxa domain wildcards
     "http://localhost:3000",                       # Local development
     "https://localhost:3000"                       # Local development (HTTPS)
   ]
