@@ -4,7 +4,7 @@ export const landingTranslations = {
     // Hero Section
     'landing.slogan': '你的 AI 教練夥伴',
     'landing.subtitle': '從新手教練到執業認證，Coachly 幫你記錄、成長與實踐。透過 AI 驅動的轉錄和分析，提升你的教練技能。',
-    'landing.get_started': '立即開始',
+    'landing.get_started': '立即開始，免費試用',
     'landing.contact_sales': '聯絡銷售',
 
     // Who it's for Section

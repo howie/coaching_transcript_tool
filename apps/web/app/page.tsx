@@ -38,7 +38,6 @@ function HomePageContent() {
               <div className="hidden md:flex items-center gap-8">
                 <a href="#who-its-for" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.who_its_for')}</a>
                 <a href="#features" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.features')}</a>
-                <a href="#pricing" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.pricing')}</a>
                 <a href="#" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.blog')}</a>
                 <a href="#" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.contact')}</a>
               </div>
@@ -196,51 +195,6 @@ function HomePageContent() {
           </div>
         </section>
 
-        {/* Pricing Section */}
-        <section id="pricing" className="py-20 bg-section-light text-center">
-          <h2 className="text-4xl font-bold mb-12">{t('landing.pricing')}</h2>
-          <div className="max-w-4xl mx-auto px-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-white p-8 rounded-lg shadow-custom border-2 border-nav-dark flex flex-col">
-                <h3 className="text-2xl font-semibold mb-5">{t('landing.pricing.free')}</h3>
-                <p className="text-5xl font-bold mb-5">$0</p>
-                
-                <Link 
-                  href={getStartedLink} 
-                  className="bg-nav-dark text-white border-2 border-nav-dark px-8 py-4 rounded-lg text-center font-semibold hover:-translate-y-1 transition-all mb-5 inline-block"
-                >
-                  {t('landing.get_started')}
-                </Link>
-                
-                <div className="border-t pt-5 mt-2">
-                  <ul className="text-left space-y-2">
-                    <li>• {t('landing.pricing.free.feature1')}</li>
-                    <li>• {t('landing.pricing.free.feature2')}</li>
-                  </ul>
-                </div>
-              </div>
-              
-              <div className="bg-white p-8 rounded-lg shadow-custom border-2 border-primary-blue flex flex-col">
-                <h3 className="text-2xl font-semibold mb-5">{t('landing.pricing.pro')}</h3>
-                <p className="text-3xl font-bold mb-5">Custom Pricing</p>
-                
-                <a 
-                  href="mailto:service@doxa.com.tw" 
-                  className="bg-primary-blue text-white border-2 border-primary-blue px-8 py-4 rounded-lg text-center font-semibold hover:-translate-y-1 hover:shadow-lg hover:shadow-primary-blue/50 transition-all mb-5 inline-block"
-                >
-                  {t('landing.pro.contact_sales')}
-                </a>
-                
-                <div className="border-t pt-5 mt-2">
-                  <ul className="text-left space-y-2">
-                    <li>• {t('landing.pricing.pro.feature1')}</li>
-                    <li>• {t('landing.pricing.pro.feature2')}</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Coming Soon Section */}
         <section id="coming-soon" className="py-20 bg-primary-blue text-white text-center">
