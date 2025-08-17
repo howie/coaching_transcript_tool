@@ -24,10 +24,10 @@ def seed_beta_plan_configs():
             'description': 'Perfect for trying out our coaching transcription service',
             'tagline': 'Start your coaching journey',
             'limits': {
-                'maxSessions': 3,        # Reduced from 10 for beta safety
-                'maxMinutes': 60,        # Reduced from 120 for beta safety
-                'maxTranscriptions': 5,  # Reduced from 20 for beta safety  
-                'maxFileSize': 25,       # Reduced from 50MB for beta safety
+                'maxSessions': 10,       # Updated: 10 sessions per month
+                'maxMinutes': 200,       # Updated: 200 min of transcription per month
+                'maxTranscriptions': 5,  # Updated: 5 transcriptions per month
+                'maxFileSize': 60,       # Updated: up to 40 min per recording (60MB ~= 40min)
                 'maxExports': 10,        # Conservative limit
                 'retentionDays': 30,
                 'concurrentJobs': 1
@@ -186,15 +186,15 @@ def seed_beta_plan_configs():
         for plan_name, display_name in plans:
             print(f"  - {plan_name}: {display_name}")
         
-        # Show beta safety measures
+        # Show current free plan limits
         result = conn.execute(text("SELECT plan_name, limits FROM plan_configurations WHERE plan_name = 'free'"))
         free_plan = result.fetchone()
         if free_plan:
-            print(f"\n🔒 Beta safety measures (Free plan limits):")
-            print(f"  - Sessions: 3 (vs final: 10)")
-            print(f"  - Minutes: 60 (vs final: 120)")  
-            print(f"  - Transcriptions: 5 (vs final: 20)")
-            print(f"  - File size: 25MB (vs final: 50MB)")
+            print(f"\n📊 Free plan limits:")
+            print(f"  - Sessions: 10 per month")
+            print(f"  - Transcription minutes: 200 per month")  
+            print(f"  - Transcriptions: 5 per month")
+            print(f"  - Max file size: 60MB (up to 40 min per recording)")
 
 if __name__ == "__main__":
     seed_beta_plan_configs()

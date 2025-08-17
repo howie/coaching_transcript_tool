@@ -9,7 +9,7 @@ export const menuTranslations = {
     'menu.analysis': 'ICF 分析',
     'menu.insights': '你的 AI 督導',
     'menu.profile': '教練履歷',
-    'menu.billing': '方案與計費',
+    'menu.billing': '費用與方案',
     'menu.feedback': '意見回饋',
     'menu.coming_soon': '即將推出',
     'menu.experimental': '實驗版',
