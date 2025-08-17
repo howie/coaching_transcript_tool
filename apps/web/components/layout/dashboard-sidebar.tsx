@@ -11,7 +11,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CalendarDaysIcon,
-  UsersIcon
+  UsersIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline'
 import { useI18n } from '@/contexts/i18n-context'
 import { useSidebar } from '@/contexts/sidebar-context'
@@ -19,7 +20,7 @@ import { useSidebar } from '@/contexts/sidebar-context'
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { t } = useI18n()
-  const { isOpen, isCollapsed, isMobile, closeSidebar, toggleCollapse } = useSidebar()
+  const { isOpen, isCollapsed, isMobile, closeSidebar } = useSidebar()
 
   const navigation = [
     {
@@ -51,6 +52,12 @@ export function DashboardSidebar() {
       href: '/dashboard/profile',
       icon: UserIcon,
       current: pathname === '/dashboard/profile'
+    },
+    {
+      name: t('menu.billing'),
+      href: '/dashboard/billing',
+      icon: CreditCardIcon,
+      current: pathname.startsWith('/dashboard/billing')
     },
     {
       name: t('menu.analysis'),
@@ -89,7 +96,7 @@ export function DashboardSidebar() {
         {/* Sidebar header - 只在行動端顯示 */}
         {isMobile && (
           <div className="flex items-center justify-between p-4 border-b border-dashboard-accent border-opacity-20">
-            <span className="text-lg font-semibold text-white">選單</span>
+            <span className="text-lg font-semibold text-white">{t('layout.menu')}</span>
             <button
               onClick={closeSidebar}
               className="p-1 text-white hover:text-dashboard-accent"
@@ -142,7 +149,14 @@ export function DashboardSidebar() {
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
                     {(!isCollapsed || isMobile) && (
-                      <span className="ml-3">{item.name}</span>
+                      <>
+                        <span className="ml-3 flex-1">{item.name}</span>
+                        {('experimental' in item && item.experimental) ? (
+                          <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded-full ml-2">
+                            {t('menu.experimental')}
+                          </span>
+                        ) : null}
+                      </>
                     )}
                     
                     {/* Active indicator for collapsed state */}
@@ -154,6 +168,11 @@ export function DashboardSidebar() {
                     {isCollapsed && !isMobile && (
                       <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                         {item.name}
+                        {('experimental' in item && item.experimental) ? (
+                          <span className="ml-2 text-xs bg-orange-600 px-1 rounded">
+                            {t('menu.experimental')}
+                          </span>
+                        ) : null}
                         {item.comingSoon && (
                           <span className="ml-2 text-xs bg-gray-600 px-1 rounded">
                             {t('menu.coming_soon')}
@@ -172,7 +191,12 @@ export function DashboardSidebar() {
         {(!isCollapsed || isMobile) && (
           <div className="p-4 border-t border-dashboard-accent border-opacity-20">
             <div className="text-xs text-white text-center">
-              <div>Coachly v2.0</div>
+              <div className="flex items-center justify-center gap-2">
+                <span>Coachly v2.0</span>
+                <span className="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs font-medium">
+                  Beta
+                </span>
+              </div>
               <div className="mt-1">© 2025 Doxa Studio</div>
             </div>
           </div>

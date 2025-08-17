@@ -24,18 +24,18 @@ export function DashboardHeader() {
 
   const handleLogout = async () => {
     try {
-      // 清除本地存儲
+      // Clear local storage
       localStorage.removeItem('theme')
       localStorage.removeItem('language')
       localStorage.removeItem('sidebarCollapsed')
       
-      // 調用 auth context 的 logout
+      // Call auth context logout
       logout()
       
-      // 重定向到首頁
+      // Redirect to home page
       router.push('/')
     } catch (error) {
-      console.error('登出失敗:', error)
+      console.error(t('dashboard.logoutFailed'), error)
     }
   }
 
@@ -61,7 +61,7 @@ export function DashboardHeader() {
           <button
             onClick={toggleCollapse}
             className="hidden lg:block text-white hover:text-dashboard-accent transition-colors p-1"
-            title="縮放側邊欄"
+            title={t('dashboard.toggleSidebar')}
           >
             <Bars3Icon className="h-6 w-6" />
           </button>
@@ -83,7 +83,7 @@ export function DashboardHeader() {
           {/* Notifications */}
           <button 
             className="p-2 text-white hover:text-dashboard-accent transition-colors rounded-md hover:bg-dashboard-accent hover:bg-opacity-10"
-            title="通知"
+            title={t('dashboard.notifications')}
           >
             <BellIcon className="h-5 w-5" />
           </button>
@@ -93,7 +93,7 @@ export function DashboardHeader() {
             <button
               onClick={() => setShowHelpMenu(!showHelpMenu)}
               className="p-2 text-white hover:text-dashboard-accent transition-colors rounded-md hover:bg-dashboard-accent hover:bg-opacity-10"
-              title="幫助"
+              title={t('dashboard.help')}
             >
               <QuestionMarkCircleIcon className="h-5 w-5" />
             </button>
@@ -102,24 +102,24 @@ export function DashboardHeader() {
               <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
                 <div className="px-4 py-2 flex items-center space-x-3 text-sm text-gray-700 dark:text-gray-300">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>所有系統運行正常</span>
+                  <span>{t('dashboard.systemStatusOk')}</span>
                 </div>
                 <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                 <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
                   <QuestionMarkCircleIcon className="h-4 w-4" />
-                  <span>取得幫助</span>
+                  <span>{t('help.get_help')}</span>
                 </a>
                 <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
                   <span className="text-dashboard-accent">🌐</span>
-                  <span>社群中心</span>
+                  <span>{t('help.community_hub')}</span>
                 </a>
                 <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
                   <span className="text-dashboard-accent">⭐</span>
-                  <span>查看更新</span>
+                  <span>{t('help.view_updates')}</span>
                 </a>
                 <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
                   <span className="text-dashboard-accent">📚</span>
-                  <span>閱讀文件</span>
+                  <span>{t('help.read_docs')}</span>
                 </a>
               </div>
             )}
@@ -134,7 +134,7 @@ export function DashboardHeader() {
               <div className="w-6 h-6 bg-dashboard-accent rounded-full flex items-center justify-center text-white text-sm font-medium">
                 {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
-              <span className="text-sm font-medium">{user?.name || '用戶'}</span>
+              <span className="text-sm font-medium">{user?.name || 'User'}</span>
               <ChevronDownIcon className="h-4 w-4" />
             </button>
 
@@ -142,11 +142,7 @@ export function DashboardHeader() {
               <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
                 <Link href={'/dashboard/account-settings' as any} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
                   <span className="text-dashboard-accent">⚙️</span>
-                  <span>帳戶設定</span>
-                </Link>
-                <Link href={'/dashboard/billing' as any} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
-                  <span className="text-dashboard-accent">💳</span>
-                  <span>Billing</span>
+                  <span>{t('menu.account')}</span>
                 </Link>
                 
                 <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
@@ -156,20 +152,20 @@ export function DashboardHeader() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <span className="text-dashboard-accent">🎨</span>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">主題</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{t('menu.theme')}</span>
                     </div>
                     <div className="flex space-x-1">
                       <button
                         onClick={() => setTheme('dark')}
                         className={`p-1 rounded ${theme === 'dark' ? 'bg-dashboard-accent text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                        title="深色模式"
+                        title={t('account.darkTheme')}
                       >
                         🌙
                       </button>
                       <button
                         onClick={() => setTheme('light')}
                         className={`p-1 rounded ${theme === 'light' ? 'bg-dashboard-accent text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                        title="淺色模式"
+                        title={t('account.lightTheme')}
                       >
                         ☀️
                       </button>
@@ -182,7 +178,7 @@ export function DashboardHeader() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <span className="text-dashboard-accent">🌐</span>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">語言</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{t('menu.language')}</span>
                     </div>
                     <div className="relative">
                       <button
@@ -199,7 +195,7 @@ export function DashboardHeader() {
                             onClick={() => switchLanguage('zh')}
                             className="block w-full text-left px-3 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
                           >
-                            🇹🇼 繁體中文
+                            🇹🇼 {t('layout.traditionalChinese')}
                           </button>
                           <button
                             onClick={() => switchLanguage('en')}

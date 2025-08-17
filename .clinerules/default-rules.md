@@ -15,18 +15,27 @@
 - 用戶手冊和 FAQ
 - 貢獻指南和代碼規範
 
-### /memory-bank - Cline 工作記憶
-**用途：** 專門為 Cline AI 助手設計的動態工作記憶
+### /docs/claude/context - AI 助手工作記憶
+**用途：** 專門為 Claude AI 助手設計的動態工作記憶
 **特性：** 動態更新、上下文豐富、內部使用、決策支援
-**更新權限：** Cline 可根據專案進展自動更新
+**更新權限：** Claude 可根據專案進展自動更新
 
 核心文件結構：
-- projectBrief.md - 專案核心概念 (必需)
-- productContext.md - 產品定位與目標 (必需)
-- activeContext.md - 當前工作重點 (必需)
-- systemPatterns.md - 系統架構模式 (必需)
-- techContext.md - 技術堆疊 (必需)
-- progress.md - 進度追蹤 (必需)
+- project-overview.md - 專案核心概念 (必需)
+- product-strategy.md - 產品定位與目標 (必需)
+- active-work.md - 當前工作重點 (必需)
+
+### /docs/architecture - 系統架構文檔
+**用途：** 技術架構與系統設計文檔
+**特性：** 技術規範、架構模式、設計決策
+
+核心文件結構：
+- system-patterns.md - 系統架構模式 (必需)
+- tech-stack.md - 技術堆疊 (必需)
+
+### /docs/project-status.md - 進度追蹤
+**用途：** 專案進度與狀態追蹤
+**特性：** 定期更新、版本記錄、里程碑追蹤
 
 ## Cline Workflow Guidelines
 
@@ -38,8 +47,8 @@
 
 ### Context Management
 - 當對話變長時，使用 `/smol` 指令產生摘要並壓縮上下文
-- 定期更新 memory-bank 文件反映當前狀態
-- 保持 memory-bank 內容簡潔且聚焦當前狀態
+- 定期更新 docs/claude/context 文件反映當前狀態
+- 保持 AI 助手上下文內容簡潔且聚焦當前狀態
 
 
 ## Code Style & Patterns

@@ -38,7 +38,6 @@ function HomePageContent() {
               <div className="hidden md:flex items-center gap-8">
                 <a href="#who-its-for" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.who_its_for')}</a>
                 <a href="#features" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.features')}</a>
-                <a href="#pricing" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.pricing')}</a>
                 <a href="#" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.blog')}</a>
                 <a href="#" className="text-white hover:text-primary-blue transition-colors text-sm">{t('nav.contact')}</a>
               </div>
@@ -65,7 +64,7 @@ function HomePageContent() {
             onClick={() => setShowLanguageMenu(!showLanguageMenu)}
             className="bg-nav-dark/90 backdrop-blur-sm text-white border-none rounded-md px-3 py-2 text-sm cursor-pointer hover:bg-primary-blue hover:text-nav-dark transition-colors min-w-[140px] flex items-center justify-between"
           >
-            <span>{language === 'zh' ? '🇹🇼 繁體中文' : '🇺🇸 English'}</span>
+            <span>{language === 'zh' ? `🇹🇼 ${t('layout.traditionalChinese')}` : `🇺🇸 ${t('layout.english')}`}</span>
             <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
@@ -77,13 +76,13 @@ function HomePageContent() {
                 onClick={() => handleLanguageChange('zh')}
                 className="block w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                🇹🇼 繁體中文
+                🇹🇼 {t('layout.traditionalChinese')}
               </button>
               <button
                 onClick={() => handleLanguageChange('en')}
                 className="block w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                🇺🇸 English
+                🇺🇸 {t('layout.english')}
               </button>
             </div>
           )}
@@ -196,51 +195,6 @@ function HomePageContent() {
           </div>
         </section>
 
-        {/* Pricing Section */}
-        <section id="pricing" className="py-20 bg-section-light text-center">
-          <h2 className="text-4xl font-bold mb-12">{t('landing.pricing')}</h2>
-          <div className="max-w-4xl mx-auto px-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-white p-8 rounded-lg shadow-custom border-2 border-nav-dark flex flex-col">
-                <h3 className="text-2xl font-semibold mb-5">{t('landing.pricing.free')}</h3>
-                <p className="text-5xl font-bold mb-5">$0</p>
-                
-                <Link 
-                  href={getStartedLink} 
-                  className="bg-nav-dark text-white border-2 border-nav-dark px-8 py-4 rounded-lg text-center font-semibold hover:-translate-y-1 transition-all mb-5 inline-block"
-                >
-                  {t('landing.get_started')}
-                </Link>
-                
-                <div className="border-t pt-5 mt-2">
-                  <ul className="text-left space-y-2">
-                    <li>• {t('landing.pricing.free.feature1')}</li>
-                    <li>• {t('landing.pricing.free.feature2')}</li>
-                  </ul>
-                </div>
-              </div>
-              
-              <div className="bg-white p-8 rounded-lg shadow-custom border-2 border-primary-blue flex flex-col">
-                <h3 className="text-2xl font-semibold mb-5">{t('landing.pricing.pro')}</h3>
-                <p className="text-3xl font-bold mb-5">Custom Pricing</p>
-                
-                <a 
-                  href="mailto:service@doxa.com.tw" 
-                  className="bg-primary-blue text-white border-2 border-primary-blue px-8 py-4 rounded-lg text-center font-semibold hover:-translate-y-1 hover:shadow-lg hover:shadow-primary-blue/50 transition-all mb-5 inline-block"
-                >
-                  {t('landing.pro.contact_sales')}
-                </a>
-                
-                <div className="border-t pt-5 mt-2">
-                  <ul className="text-left space-y-2">
-                    <li>• {t('landing.pricing.pro.feature1')}</li>
-                    <li>• {t('landing.pricing.pro.feature2')}</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Coming Soon Section */}
         <section id="coming-soon" className="py-20 bg-primary-blue text-white text-center">
@@ -254,14 +208,14 @@ function HomePageContent() {
         <div className="max-w-6xl mx-auto px-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
             <div>
-              <h3 className="text-primary-blue mb-4">build by Doxa Studio</h3>
+              <h3 className="text-primary-blue mb-4">{t('landing.footer.built_by')}</h3>
             </div>
             <div>
-              <h4 className="text-primary-blue mb-4">Contact</h4>
+              <h4 className="text-primary-blue mb-4">{t('landing.footer.contact')}</h4>
               <p className="text-gray-300">Email: service@doxa.com.tw</p>
             </div>
             <div>
-              <h4 className="text-primary-blue mb-4">Follow Us</h4>
+              <h4 className="text-primary-blue mb-4">{t('landing.footer.follow_us')}</h4>
               <div className="flex gap-4">
                 <a href="#" className="text-gray-300 hover:text-primary-blue transition-colors text-xl">
                   <i className="fab fa-linkedin"></i>
@@ -276,7 +230,7 @@ function HomePageContent() {
             </div>
           </div>
           <div className="text-center pt-5 border-t border-gray-600">
-            <p className="text-gray-300">&copy; 2025 Doxa Studio. All rights reserved.</p>
+            <p className="text-gray-300">{t('landing.footer.rights')}</p>
           </div>
         </div>
       </footer>

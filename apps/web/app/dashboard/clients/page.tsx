@@ -19,7 +19,7 @@ interface Client {
   source?: string;
   client_type?: string;
   issue_types?: string;
-  client_status: string;
+  status: string;
   is_anonymized: boolean;
   anonymized_at?: string;
   session_count: number;
@@ -42,26 +42,26 @@ const ClientsPage = () => {
   const pageSize = 20;
 
   const getStatusLabel = (status: string) => {
-    const statusMap = {
-      'first_session': '首次會談',
-      'in_progress': '進行中',
-      'paused': '暫停',
-      'completed': '結案'
+    const statusMap: Record<string, string> = {
+      'first_session': t('clients.statusFirstSession'),
+      'in_progress': t('clients.statusInProgress'),
+      'paused': t('clients.statusPaused'),
+      'completed': t('clients.statusCompleted')
     };
-    return statusMap[status as keyof typeof statusMap] || status;
+    return statusMap[status] || status;
   };
 
   // Translation helpers
   const getSourceLabel = (value: string | null | undefined) => {
     if (!value) return '-';
     const sourceLabels: Record<string, string> = {
-      'referral': '別人推薦',
-      'organic': '自然搜尋',
-      'friend': '朋友介紹',
-      'social_media': '社群媒體',
-      'advertisement': '廣告',
-      'website': '官方網站',
-      'unknown': '未知'
+      'referral': t('clients.sourceReferral'),
+      'organic': t('clients.sourceOrganic'),
+      'friend': t('clients.sourceFriend'),
+      'social_media': t('clients.sourceSocialMedia'),
+      'advertisement': t('clients.sourceAdvertisement'),
+      'website': t('clients.sourceWebsite'),
+      'unknown': t('clients.sourceUnknown')
     };
     return sourceLabels[value] || value;
   };
@@ -69,11 +69,11 @@ const ClientsPage = () => {
   const getTypeLabel = (value: string | null | undefined) => {
     if (!value) return '-';
     const typeLabels: Record<string, string> = {
-      'paid': '付費客戶',
-      'pro_bono': '公益服務',
-      'free_practice': '免費練習',
-      'other': '其他',
-      'unknown': '未知'
+      'paid': t('clients.typePaid'),
+      'pro_bono': t('clients.typeProBono'),
+      'free_practice': t('clients.typeFreePractice'),
+      'other': t('clients.typeOther'),
+      'unknown': t('clients.typeUnknown')
     };
     return typeLabels[value] || value;
   };
@@ -221,7 +221,7 @@ const ClientsPage = () => {
                 {t('clients.clientType')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                議題類型
+                {t('clients.issueTypes')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 {t('clients.sessions')}
@@ -290,8 +290,8 @@ const ClientsPage = () => {
                       {t('clients.anonymized')}
                     </span>
                   ) : (
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(client.client_status)}`}>
-                      {getStatusLabel(client.client_status)}
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(client.status)}`}>
+                      {getStatusLabel(client.status)}
                     </span>
                   )}
                 </td>
@@ -301,7 +301,7 @@ const ClientsPage = () => {
                       <button
                         onClick={() => handleDetail(client)}
                         className="text-indigo-600 hover:text-indigo-900"
-                        title="檢視詳情"
+                        title={t('clients.viewDetails')}
                       >
                         <PencilIcon className="h-4 w-4" />
                       </button>
@@ -318,7 +318,7 @@ const ClientsPage = () => {
                       <button
                         onClick={() => handleAnonymize(client)}
                         className="text-orange-600 hover:text-orange-900"
-                        title="匿名化"
+                        title={t('clients.anonymize')}
                       >
                         <UserMinusIcon className="h-4 w-4" />
                       </button>
@@ -357,6 +357,36 @@ const ClientsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Delete and Anonymize Rules */}
+      <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+          {t('clients.dataManagementRules')}
+        </h3>
+        <div className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
+          <div className="flex items-start gap-2">
+            <TrashIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-600 dark:text-red-400" />
+            <div>
+              <span className="font-medium">{t('clients.directDeleteTitle')}</span>
+              <span className="ml-1">{t('clients.directDeleteDesc')}</span>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <UserMinusIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-orange-600 dark:text-orange-400" />
+            <div>
+              <span className="font-medium">{t('clients.anonymizeTitle')}</span>
+              <span className="ml-1">{t('clients.anonymizeDesc')}</span>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-gray-600 dark:text-gray-400 mt-0.5">•</span>
+            <div>
+              <span className="font-medium">{t('clients.anonymizedTitle')}</span>
+              <span className="ml-1">{t('clients.anonymizedDesc')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </div>
   );

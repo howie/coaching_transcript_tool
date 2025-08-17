@@ -30,7 +30,7 @@ export default function SignupPage() {
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (password !== confirmPassword) {
-      setError('密碼不符')
+      setError(t('auth.passwordMismatch'))
       return
     }
     
@@ -69,9 +69,9 @@ export default function SignupPage() {
       }
     } catch (err) {
       if (err instanceof Error && err.message.includes('Human Verification')) {
-        setError('人機驗證失敗，請稍後再試')
+        setError(t('auth.recaptchaError'))
       } else {
-        setError(err instanceof Error ? err.message : '發生未知錯誤')
+        setError(err instanceof Error ? err.message : t('auth.unknownError'))
       }
       setIsLoading(false)
     }
@@ -89,10 +89,10 @@ export default function SignupPage() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold" style={{color: 'var(--text-primary)'}}>
-              註冊成功！
+              {t('auth.signupSuccess')}
             </h2>
             <p style={{color: 'var(--text-secondary)'}}>
-              歡迎加入 Coachly！正在為您跳轉到個人資料頁面...
+              {t('auth.signupSuccessMessage')}
             </p>
             <div className="flex justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -101,7 +101,7 @@ export default function SignupPage() {
         ) : (
           <>
             <h1 className="text-2xl font-bold text-center" style={{color: 'var(--text-primary)'}}>
-              建立您的帳號
+              {t('auth.signupTitle')}
             </h1>
         
         <button
@@ -115,65 +115,65 @@ export default function SignupPage() {
             <path fill="#EA4335" d="M24 48c5.9 0 11-2 14.7-5.4l-7.3-5.7c-2 1.3-4.5 2.1-7.4 2.1-5.9 0-11-3.8-12.9-9.1L3 37.5C7.1 44.7 14.8 48 24 48z"></path>
             <path fill="none" d="M0 0h48v48H0z"></path>
           </svg>
-          使用 Google 註冊
+          {t('auth.googleSignup')}
         </button>
 
         <div className="flex items-center justify-center space-x-2">
           <span className="h-px bg-gray-300 w-full"></span>
-          <span className="text-gray-500 font-normal">或</span>
+          <span className="text-gray-500 font-normal">{t('auth.or')}</span>
           <span className="h-px bg-gray-300 w-full"></span>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="label">
-              Name
+              {t('auth.name')}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="input-base"
-              placeholder="Your Name"
+              placeholder={t('auth.namePlaceholder')}
               required
             />
           </div>
           <div>
             <label className="label">
-              Email
+              {t('auth.email')}
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input-base"
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               required
             />
           </div>
           <div>
             <label className="label">
-              密碼
+              {t('auth.password')}
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-base"
-              placeholder="••••••••"
+              placeholder={t('auth.passwordPlaceholder')}
               required
             />
           </div>
           <div>
             <label className="label">
-              確認密碼
+              {t('auth.confirmPassword')}
             </label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="input-base"
-              placeholder="••••••••"
+              placeholder={t('auth.confirmPasswordPlaceholder')}
               required
             />
           </div>
@@ -181,7 +181,7 @@ export default function SignupPage() {
           {recaptchaError && (
             <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200">
               <p className="text-sm text-yellow-800">
-                ⚠️ 無法載入人機驗證服務，但您仍可以繼續註冊。如果遇到問題，請稍後再試。
+                {t('auth.recaptchaWarning')}
               </p>
             </div>
           )}
@@ -190,13 +190,13 @@ export default function SignupPage() {
             disabled={isLoading}
             className="w-full px-4 py-2 rounded-md transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed" style={{backgroundColor: 'var(--accent-color)', color: 'var(--bg-primary)'}}
           >
-            {isLoading ? '註冊中...' : '註冊'}
+            {isLoading ? t('auth.signingUp') : t('auth.signupButton')}
           </button>
         </form>
         <p className="text-sm text-center" style={{color: 'var(--text-secondary)'}}>
-          已經有帳號了嗎？{' '}
+          {t('auth.hasAccount')}{' '}
           <Link href={'/login' as any} className="font-medium hover:opacity-80" style={{color: 'var(--accent-color)'}}>
-            登入
+            {t('auth.loginHere')}
           </Link>
         </p>
           </>

@@ -1,0 +1,36 @@
+# Example Terraform variables file
+# Copy this file to terraform.tfvars and customize the values
+
+# GCP Project Configuration
+gcp_project_id = "coachingassistant"
+gcp_region     = "asia-southeast1"
+environment    = "prod"
+
+# Optional: Override default APIs if needed
+# required_apis = [
+#   "speech.googleapis.com",
+#   "storage-api.googleapis.com",
+#   "storage-component.googleapis.com",
+#   "iam.googleapis.com",
+#   "cloudresourcemanager.googleapis.com",
+#   "serviceusage.googleapis.com"
+# ]
+
+# Optional: Override CORS origins
+# allowed_origins = [
+#   "https://your-frontend-domain.com",
+#   "https://*.pages.dev",
+#   "http://localhost:3000"
+# ]
+
+# Optional: Override service account roles
+# service_account_roles = [
+#   "roles/speech.user",
+#   "roles/storage.objectAdmin",
+#   "roles/storage.legacyBucketWriter"
+# ]
+
+# Optional: Enable additional services
+# enable_cloud_functions = true
+# enable_pubsub = true
+# enable_scheduler = true

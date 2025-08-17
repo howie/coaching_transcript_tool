@@ -7,14 +7,105 @@ interface TranscriptOptions {
   convertToTraditional: boolean
 }
 
+export class TranscriptNotAvailableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'TranscriptNotAvailableError'
+  }
+}
+
 // Augment the global scope to include the Cloudflare service binding
 declare global {
   var API_SERVICE: { fetch: typeof fetch } | undefined;
 }
 
+/**
+ * Parse error response and extract human-readable message with i18n support
+ */
+function parseErrorMessage(
+  errorData: any, 
+  defaultMessage: string, 
+  t?: (key: string, params?: Record<string, any>) => string
+): string {
+  // Handle structured error responses from backend
+  if (errorData.detail && typeof errorData.detail === 'object') {
+    const baseMessage = errorData.detail.message || errorData.detail.error || defaultMessage
+    
+    // Add helpful context for plan limit errors with i18n
+    if (t && (errorData.detail.error === 'session_limit_exceeded' || 
+              errorData.detail.error === 'transcription_limit_exceeded' ||
+              errorData.detail.error === 'file_size_exceeded')) {
+      
+      // Get localized plan name
+      const planKey = errorData.detail.plan === 'free' ? 'errors.planFree' :
+                     errorData.detail.plan === 'pro' ? 'errors.planPro' :
+                     errorData.detail.plan === 'business' ? 'errors.planBusiness' :
+                     errorData.detail.plan?.toUpperCase()
+      
+      const planName = planKey?.startsWith('errors.') ? t(planKey) : planKey
+      
+      // Use appropriate i18n message based on error type
+      if (errorData.detail.error === 'session_limit_exceeded') {
+        return t('errors.sessionLimitExceededWithPlan', {
+          limit: errorData.detail.limit || errorData.detail.current_usage,
+          plan: planName
+        })
+      } else if (errorData.detail.error === 'transcription_limit_exceeded') {
+        return t('errors.transcriptionLimitExceededWithPlan', {
+          limit: errorData.detail.limit || errorData.detail.current_usage,
+          plan: planName
+        })
+      } else if (errorData.detail.error === 'file_size_exceeded') {
+        return t('errors.fileSizeExceededWithPlan', {
+          fileSize: errorData.detail.file_size_mb,
+          limit: errorData.detail.limit_mb,
+          plan: planName
+        })
+      }
+    }
+    
+    // Fallback to original logic if no i18n function or unhandled error
+    if (errorData.detail.error === 'session_limit_exceeded' || 
+        errorData.detail.error === 'transcription_limit_exceeded' ||
+        errorData.detail.error === 'file_size_exceeded') {
+      const planType = errorData.detail.plan === 'free' ? 'FREE' : errorData.detail.plan?.toUpperCase()
+      return `${baseMessage}${planType ? ` (${planType} plan)` : ''}. Consider upgrading your plan for higher limits.`
+    }
+    
+    return baseMessage
+  } else if (errorData.detail && typeof errorData.detail === 'string') {
+    return errorData.detail
+  } else if (errorData.message) {
+    return errorData.message
+  }
+  return defaultMessage
+}
+
 class ApiClient {
   private baseUrl: string
   private fetcher: typeof fetch
+  private translateFn?: (key: string, params?: Record<string, any>) => string
+
+  setTranslationFunction(t: (key: string, params?: Record<string, any>) => string) {
+    this.translateFn = t
+  }
+
+  private handleUnauthorized() {
+    // Clear the stored token
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token')
+      // Redirect to login page
+      window.location.href = '/login'
+    }
+  }
+
+  private async handleResponse(response: Response) {
+    if (response.status === 401) {
+      this.handleUnauthorized()
+      throw new Error('Unauthorized - please login again')
+    }
+    return response
+  }
 
   constructor() {
     // In a Cloudflare Worker environment, a service binding `API_SERVICE` will be available.
@@ -65,6 +156,52 @@ class ApiClient {
     }
     
     return headers
+  }
+
+  // Generic HTTP methods for plan service and other uses
+  async get(path: string) {
+    try {
+      const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`
+      const response = await this.fetcher(url, {
+        method: 'GET',
+        headers: await this.getHeaders(),
+      })
+
+      await this.handleResponse(response)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || `GET ${path} failed`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error(`GET ${path} error:`, error)
+      throw error
+    }
+  }
+
+  async post(path: string, data?: any) {
+    try {
+      const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`
+      const response = await this.fetcher(url, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: data ? JSON.stringify(data) : undefined,
+      })
+
+      await this.handleResponse(response)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || `POST ${path} failed`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error(`POST ${path} error:`, error)
+      throw error
+    }
   }
 
   async healthCheck() {
@@ -357,7 +494,7 @@ class ApiClient {
     source?: string
     client_type?: string
     issue_types?: string
-    client_status?: string
+    status?: string
   }) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/clients`, {
@@ -386,7 +523,7 @@ class ApiClient {
     source?: string
     client_type?: string
     issue_types?: string
-    client_status?: string
+    status?: string
   }) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}`, {
@@ -537,12 +674,15 @@ class ApiClient {
         })
       }
 
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions?${params}`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions?${params}`, {
         headers: await this.getHeaders(),
       })
 
       if (!response.ok) {
-        throw new Error(`Get sessions failed: ${response.statusText}`)
+        const error = new Error(`Get sessions failed: ${response.statusText}`) as any;
+        error.status = response.status;
+        error.statusText = response.statusText;
+        throw error;
       }
 
       return await response.json()
@@ -554,12 +694,15 @@ class ApiClient {
 
   async getSession(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {
         headers: await this.getHeaders(),
       })
 
       if (!response.ok) {
-        throw new Error(`Get session failed: ${response.statusText}`)
+        const error = new Error(`Get session failed: ${response.statusText}`) as any;
+        error.status = response.status;
+        error.statusText = response.statusText;
+        throw error;
       }
 
       return await response.json()
@@ -578,7 +721,7 @@ class ApiClient {
     notes?: string
   }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify(sessionData),
@@ -603,13 +746,17 @@ class ApiClient {
     fee_currency?: string
     fee_amount?: number
     notes?: string
+    transcription_session_id?: string
   }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {
         method: 'PATCH',
         headers: await this.getHeaders(),
         body: JSON.stringify(sessionData),
       })
+
+      // Handle 401 errors
+      await this.handleResponse(response)
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -625,7 +772,7 @@ class ApiClient {
 
   async deleteSession(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {
         method: 'DELETE',
         headers: await this.getHeaders(),
       })
@@ -644,7 +791,7 @@ class ApiClient {
 
   async getCurrencies() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/options/currencies`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/options/currencies`, {
         headers: await this.getHeaders(),
       })
 
@@ -655,6 +802,23 @@ class ApiClient {
       return await response.json()
     } catch (error) {
       console.error('Get currencies error:', error)
+      throw error
+    }
+  }
+
+  async getClientLastSession(clientId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/clients/${clientId}/last-session`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Get client last session failed: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get client last session error:', error)
       throw error
     }
   }
@@ -886,6 +1050,347 @@ class ApiClient {
       return await response.json()
     } catch (error) {
       console.error('Get summary error:', error)
+      throw error
+    }
+  }
+
+  // Audio transcription session methods
+  async createTranscriptionSession(sessionData: {
+    title: string
+    language?: string
+  }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(sessionData),
+      })
+
+      if (!response.ok) {
+        let errorMessage = 'Create transcription session failed'
+        try {
+          const errorData = await response.json()
+          console.error('Create session error details:', errorData)
+          
+          errorMessage = parseErrorMessage(errorData, errorMessage, this.translateFn)
+        } catch (e) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Create transcription session error:', error)
+      throw error
+    }
+  }
+
+  async getUploadUrl(sessionId: string, filename: string, fileSizeMB: number) {
+    try {
+      const params = new URLSearchParams({ 
+        filename,
+        file_size_mb: fileSizeMB.toString()
+      })
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/upload-url?${params}`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        let errorMessage = 'Get upload URL failed'
+        try {
+          const errorData = await response.json()
+          console.error('Upload URL error details:', errorData)
+          
+          errorMessage = parseErrorMessage(errorData, errorMessage, this.translateFn)
+        } catch (e) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get upload URL error:', error)
+      throw error
+    }
+  }
+
+  async uploadToGCS(uploadUrl: string, file: File, onProgress?: (progress: number) => void) {
+    try {
+      return new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        
+        if (onProgress) {
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const progress = (event.loaded / event.total) * 100
+              onProgress(progress)
+            }
+          })
+        }
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve()
+          } else {
+            reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`))
+          }
+        })
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Upload failed: Network error'))
+        })
+
+        xhr.addEventListener('abort', () => {
+          reject(new Error('Upload cancelled'))
+        })
+
+        // Map file extensions to proper MIME types (must match backend)
+        const getContentType = (file: File): string => {
+          const extension = file.name.split('.').pop()?.toLowerCase()
+          const contentTypeMap: Record<string, string> = {
+            'mp3': 'audio/mpeg',
+            'wav': 'audio/wav',
+            'flac': 'audio/flac',
+            'ogg': 'audio/ogg',
+            'mp4': 'audio/mp4',
+            'm4a': 'audio/mp4'
+          }
+          return contentTypeMap[extension || ''] || file.type || 'audio/mpeg'
+        }
+
+        const contentType = getContentType(file)
+        
+        xhr.open('PUT', uploadUrl)
+        xhr.setRequestHeader('Content-Type', contentType)
+        xhr.send(file)
+      })
+    } catch (error) {
+      console.error('GCS upload error:', error)
+      throw error
+    }
+  }
+
+  async confirmUpload(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/confirm-upload`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Confirm upload failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Confirm upload error:', error)
+      throw error
+    }
+  }
+
+  async startTranscription(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/start-transcription`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Start transcription failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Start transcription error:', error)
+      throw error
+    }
+  }
+
+  async getTranscriptionSession(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Get transcription session failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get transcription session error:', error)
+      throw error
+    }
+  }
+
+  async listTranscriptionSessions(status?: string, limit = 50, offset = 0) {
+    try {
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString(),
+      })
+      
+      if (status) {
+        params.append('status', status)
+      }
+
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions?${params}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'List transcription sessions failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('List transcription sessions error:', error)
+      throw error
+    }
+  }
+
+  async exportTranscript(sessionId: string, format: 'json' | 'vtt' | 'srt' | 'txt' | 'xlsx' = 'json') {
+    try {
+      const params = new URLSearchParams({ format })
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/transcript?${params}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        
+        // Handle specific error cases
+        if (response.status === 404 && errorData.detail === 'No transcript segments found') {
+          // This is a normal case when transcription hasn't completed or failed
+          throw new TranscriptNotAvailableError(errorData.detail)
+        }
+        
+        // Handle case when session is still processing (HTTP 400)
+        if (response.status === 400 && errorData.detail?.includes('Transcript not available. Session status:')) {
+          // This is normal when transcription is still in progress
+          throw new TranscriptNotAvailableError(errorData.detail)
+        }
+        
+        throw new Error(errorData.detail || 'Export transcript failed')
+      }
+
+      return response.blob()
+    } catch (error) {
+      // Only log as error if it's not the expected TranscriptNotAvailableError
+      if (!(error instanceof TranscriptNotAvailableError)) {
+        console.error('Export transcript error:', error)
+      }
+      throw error
+    }
+  }
+
+  async getTranscriptionStatus(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/status`, {
+        headers: await this.getHeaders(),
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Get transcription status failed')
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Get transcription status error:', error)
+      throw error
+    }
+  }
+
+  async updateSpeakerRoles(sessionId: string, roleAssignments: { [speakerId: number]: 'coach' | 'client' }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/speaker-roles`, {
+        method: 'PATCH',
+        headers: await this.getHeaders(),
+        body: JSON.stringify({
+          speaker_roles: roleAssignments
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update speaker roles failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Update speaker roles error:', error)
+      throw error
+    }
+  }
+
+  async updateSegmentRoles(sessionId: string, segmentRoles: { [segmentId: string]: 'coach' | 'client' }) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/segment-roles`, {
+        method: 'PATCH',
+        headers: await this.getHeaders(),
+        body: JSON.stringify({
+          segment_roles: segmentRoles
+        }),
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update segment roles failed')
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Update segment roles error:', error)
+      throw error
+    }
+  }
+
+  async uploadSessionTranscript(sessionId: string, file: File, speakerRoleMapping?: {[speakerId: string]: 'coach' | 'client'}, convertToTraditional?: boolean) {
+    try {
+      console.log('[API] uploadSessionTranscript called with:', {
+        sessionId,
+        fileName: file.name,
+        speakerRoleMapping,
+        convertToTraditional
+      });
+      
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      // Add speaker role mapping if provided
+      if (speakerRoleMapping) {
+        const rolesJson = JSON.stringify(speakerRoleMapping);
+        console.log('[API] Sending speaker_roles:', rolesJson);
+        formData.append('speaker_roles', rolesJson)
+      }
+      
+      // Add convert to traditional Chinese option
+      if (convertToTraditional) {
+        formData.append('convert_to_traditional', 'true')
+      }
+      
+      // Get base headers without Content-Type for FormData
+      const headers = await this.getHeaders()
+      delete headers['Content-Type'] // Remove Content-Type to let browser set it for FormData
+      
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}/transcript`, {
+        method: 'POST',
+        headers: headers,
+        body: formData,
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Upload transcript failed')
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Upload session transcript error:', error)
       throw error
     }
   }
