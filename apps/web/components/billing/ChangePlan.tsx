@@ -27,6 +27,7 @@ export function ChangePlan() {
       features: [
         t('billing.feature.freeRecordings'),
         t('billing.feature.freeLinkedRecordings'),
+        t('billing.feature.freeTranscriptionMinutes'),
         t('billing.feature.freeRecordingLength'),
         t('billing.feature.freeFileSize'),
         t('billing.feature.basicExportFormats'),

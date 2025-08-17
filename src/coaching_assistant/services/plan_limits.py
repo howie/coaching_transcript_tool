@@ -38,13 +38,13 @@ class PlanLimit:
 class PlanLimits:
     """Central configuration for all plan limits."""
     
-    # BETA SAFETY LIMITS - Conservative for cost control
+    # UPDATED PLAN LIMITS - Current production configuration
     LIMITS = {
         PlanName.FREE: PlanLimit(
-            max_sessions=3,        # BETA: Reduced from 10 for safety
-            max_transcriptions=5,  # BETA: Reduced from 20 for safety  
-            max_minutes=60,        # BETA: Reduced from 120 for safety (1 hour)
-            max_file_size_mb=25,   # BETA: Reduced from 50MB for safety
+            max_sessions=10,       # Updated: 10 sessions per month
+            max_transcriptions=5,  # Updated: 5 transcriptions per month  
+            max_minutes=200,       # Updated: 200 min of transcription per month
+            max_file_size_mb=60,   # Updated: up to 40 min per recording (~60MB)
             export_formats=["txt", "json"],
             concurrent_processing=1,
             retention_days=30,

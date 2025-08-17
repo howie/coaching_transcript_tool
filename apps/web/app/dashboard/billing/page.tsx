@@ -69,9 +69,9 @@ export default function BillingPage() {
         <div className="flex space-x-1 mb-8 border-b border-gray-700">
           {[
             { id: 'overview', label: t('billing.overview'), icon: ChartBarIcon },
-            { id: 'usage', label: t('billing.usageHistory'), icon: ClockIcon },
             { id: 'payment', label: t('billing.paymentSettings'), icon: CreditCardIcon },
             { id: 'plans', label: t('billing.changePlan'), icon: ArrowPathIcon },
+            { id: 'usage', label: t('billing.usageHistory'), icon: ClockIcon },
           ].map((tab) => (
             <button
               key={tab.id}
