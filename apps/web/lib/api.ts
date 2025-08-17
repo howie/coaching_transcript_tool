@@ -19,9 +19,76 @@ declare global {
   var API_SERVICE: { fetch: typeof fetch } | undefined;
 }
 
+/**
+ * Parse error response and extract human-readable message with i18n support
+ */
+function parseErrorMessage(
+  errorData: any, 
+  defaultMessage: string, 
+  t?: (key: string, params?: Record<string, any>) => string
+): string {
+  // Handle structured error responses from backend
+  if (errorData.detail && typeof errorData.detail === 'object') {
+    const baseMessage = errorData.detail.message || errorData.detail.error || defaultMessage
+    
+    // Add helpful context for plan limit errors with i18n
+    if (t && (errorData.detail.error === 'session_limit_exceeded' || 
+              errorData.detail.error === 'transcription_limit_exceeded' ||
+              errorData.detail.error === 'file_size_exceeded')) {
+      
+      // Get localized plan name
+      const planKey = errorData.detail.plan === 'free' ? 'errors.planFree' :
+                     errorData.detail.plan === 'pro' ? 'errors.planPro' :
+                     errorData.detail.plan === 'business' ? 'errors.planBusiness' :
+                     errorData.detail.plan?.toUpperCase()
+      
+      const planName = planKey?.startsWith('errors.') ? t(planKey) : planKey
+      
+      // Use appropriate i18n message based on error type
+      if (errorData.detail.error === 'session_limit_exceeded') {
+        return t('errors.sessionLimitExceededWithPlan', {
+          limit: errorData.detail.limit || errorData.detail.current_usage,
+          plan: planName
+        })
+      } else if (errorData.detail.error === 'transcription_limit_exceeded') {
+        return t('errors.transcriptionLimitExceededWithPlan', {
+          limit: errorData.detail.limit || errorData.detail.current_usage,
+          plan: planName
+        })
+      } else if (errorData.detail.error === 'file_size_exceeded') {
+        return t('errors.fileSizeExceededWithPlan', {
+          fileSize: errorData.detail.file_size_mb,
+          limit: errorData.detail.limit_mb,
+          plan: planName
+        })
+      }
+    }
+    
+    // Fallback to original logic if no i18n function or unhandled error
+    if (errorData.detail.error === 'session_limit_exceeded' || 
+        errorData.detail.error === 'transcription_limit_exceeded' ||
+        errorData.detail.error === 'file_size_exceeded') {
+      const planType = errorData.detail.plan === 'free' ? 'FREE' : errorData.detail.plan?.toUpperCase()
+      return `${baseMessage}${planType ? ` (${planType} plan)` : ''}. Consider upgrading your plan for higher limits.`
+    }
+    
+    return baseMessage
+  } else if (errorData.detail && typeof errorData.detail === 'string') {
+    return errorData.detail
+  } else if (errorData.message) {
+    return errorData.message
+  }
+  return defaultMessage
+}
+
 class ApiClient {
   private baseUrl: string
   private fetcher: typeof fetch
+  private translateFn?: (key: string, params?: Record<string, any>) => string
+
+  setTranslationFunction(t: (key: string, params?: Record<string, any>) => string) {
+    this.translateFn = t
+  }
 
   private handleUnauthorized() {
     // Clear the stored token
@@ -1000,8 +1067,16 @@ class ApiClient {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Create transcription session failed')
+        let errorMessage = 'Create transcription session failed'
+        try {
+          const errorData = await response.json()
+          console.error('Create session error details:', errorData)
+          
+          errorMessage = parseErrorMessage(errorData, errorMessage, this.translateFn)
+        } catch (e) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
       }
 
       return await response.json()
@@ -1027,7 +1102,8 @@ class ApiClient {
         try {
           const errorData = await response.json()
           console.error('Upload URL error details:', errorData)
-          errorMessage = errorData.detail || errorData.message || errorMessage
+          
+          errorMessage = parseErrorMessage(errorData, errorMessage, this.translateFn)
         } catch (e) {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`
         }
