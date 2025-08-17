@@ -21,9 +21,14 @@ __all__ = ["app"]
 if __name__ == "__main__":
     # 從環境變數讀取 PORT，預設為 8000
     port = int(os.environ.get("PORT", 8000))
-    host = os.environ.get("API_HOST", "0.0.0.0")
+    
+    # 在容器內部始終綁定到 0.0.0.0，不要使用外部域名
+    host = "0.0.0.0"
+    external_host = os.environ.get("API_HOST", f"{host}:{port}")
     
     print(f"🌐 Server starting on http://{host}:{port}")
+    if external_host != f"{host}:{port}":
+        print(f"🌐 External access via: http://{external_host}")
     
     uvicorn.run(
         "coaching_assistant.main:app",
