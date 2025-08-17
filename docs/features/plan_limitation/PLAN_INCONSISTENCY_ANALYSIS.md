@@ -132,10 +132,47 @@ interface PlanStructure {
 
 ## 修復優先級
 
-### Phase 1: 緊急修復 (本週)
+### Phase 1: 緊急修復 ✅ **已完成**
 1. ✅ **完成**: 修復 i18n 翻譯顯示問題
-2. 🔄 **進行中**: 統一 plan 名稱映射 (frontend ↔ backend)
-3. 🔄 **待完成**: 更新前端 change-plan 頁面顯示正確的 BETA limits
+2. ✅ **完成**: 統一 plan 名稱映射 (frontend ↔ backend)  
+3. ✅ **完成**: 更新前端顯示正確的動態 plan limits
+4. ✅ **完成**: 實施動態檔案大小限制系統
+5. ✅ **完成**: 重構翻譯系統為模組化結構
+
+## ✅ 已實施的解決方案
+
+### 1. 動態檔案大小限制系統
+- **FREE Plan**: 60MB per file
+- **PRO Plan**: 200MB per file  
+- **ENTERPRISE Plan**: 500MB per file
+- **前端**: AudioUploader 組件現在根據用戶方案動態顯示檔案大小限制
+- **後端**: API 從資料庫讀取方案配置而非硬編碼
+- **資料庫**: PostgreSQL 中儲存完整的方案限制配置
+
+### 2. 前後端一致性
+- **API 整合**: `/api/plans/current` 端點提供即時限制資訊
+- **前端驗證**: 檔案上傳前根據用戶方案驗證檔案大小
+- **錯誤訊息**: 包含正確的方案背景資訊
+- **動態 UI**: 計費頁面顯示準確的功能比較
+
+### 3. 翻譯系統重構
+- **模組化結構**: 按功能領域組織翻譯檔案 (15個模組)
+- **消除重複**: 移除 1406 行的重複翻譯檔案
+- **更好維護性**: 每個翻譯檔案專注於特定功能領域
+- **保持相容性**: 所有現有功能繼續正常運作
+
+### 4. 系統架構改進
+```typescript
+// 新的動態限制系統
+interface PlanConfig {
+  planName: 'free' | 'pro' | 'business'
+  limits: {
+    maxFileSizeMb: number      // 動態檔案大小限制
+    maxSessions: number        // 會談數限制
+    maxTranscriptionCount: number // 轉錄數限制
+  }
+}
+```
 
 ### Phase 2: 成本分析 (下週)
 1. 進行詳細的成本與獲利分析
@@ -171,5 +208,6 @@ interface PlanStructure {
 ---
 
 **文件更新日期**: 2025-01-17  
+**最後更新**: 2024-12-17  
 **負責人**: Claude Code Assistant  
-**狀態**: 分析完成，待修復實施
+**狀態**: Phase 1 修復已完成，系統已達到前後端一致性

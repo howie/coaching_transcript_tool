@@ -9,6 +9,7 @@ import logging
 from ..core.database import get_db
 from ..api.auth import get_current_user_dependency
 from ..models.user import User, UserPlan
+from ..models.plan_configuration import PlanConfiguration
 from ..services.usage_tracking import PlanLimits
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,66 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/plans", tags=["plans"])
 
 
-# Plan configurations - in production this should be in database
+def get_plan_config_from_db(db: Session, plan_type: UserPlan) -> Dict[str, Any]:
+    """Get plan configuration from database."""
+    plan_config = db.query(PlanConfiguration).filter(
+        PlanConfiguration.plan_type == plan_type
+    ).first()
+    
+    if not plan_config:
+        logger.warning(f"Plan configuration not found for {plan_type}, using fallback")
+        # Fallback to hardcoded config if not found in DB
+        return PLAN_CONFIGS[plan_type].copy()
+    
+    # Convert database model to API format
+    limits = plan_config.limits.copy()
+    
+    # Map database keys to API keys for consistency
+    api_limits = {
+        "maxSessions": limits.get("maxSessions", -1),
+        "maxTotalMinutes": limits.get("maxMinutes", -1),  
+        "maxTranscriptionCount": limits.get("maxTranscriptions", -1),
+        "maxFileSizeMb": limits.get("maxFileSize", 60),
+        "exportFormats": ["json", "txt"],  # Default formats
+        "concurrentProcessing": limits.get("concurrentJobs", 1),
+        "retentionDays": limits.get("retentionDays", 30)
+    }
+    
+    # Convert -1 to "unlimited" for frontend display
+    if api_limits["maxSessions"] == -1:
+        api_limits["maxSessions"] = "unlimited"
+    if api_limits["maxTotalMinutes"] == -1:
+        api_limits["maxTotalMinutes"] = "unlimited"
+    if api_limits["maxTranscriptionCount"] == -1:
+        api_limits["maxTranscriptionCount"] = "unlimited"
+    if api_limits["retentionDays"] == -1:
+        api_limits["retentionDays"] = "permanent"
+    
+    return {
+        "planName": plan_config.plan_name,
+        "displayName": plan_config.display_name,
+        "description": plan_config.description,
+        "tagline": plan_config.tagline,
+        "limits": api_limits,
+        "features": plan_config.features or {},
+        "pricing": {
+            "monthlyUsd": plan_config.monthly_price_cents / 100,
+            "annualUsd": plan_config.annual_price_cents / 100,
+            "monthlyTwd": plan_config.monthly_price_twd_cents / 100,
+            "annualTwd": plan_config.annual_price_twd_cents / 100,
+            "annualDiscountPercentage": plan_config._calculate_annual_discount(),
+            "annualSavingsUsd": plan_config._calculate_annual_savings(),
+            "currency": plan_config.currency
+        },
+        "display": {
+            "isPopular": plan_config.is_popular,
+            "colorScheme": plan_config.color_scheme,
+            "sortOrder": plan_config.sort_order
+        }
+    }
+
+
+# Plan configurations - DEPRECATED: now using database, keeping as fallback
 PLAN_CONFIGS = {
     UserPlan.FREE: {
         "planName": "free",
@@ -120,12 +180,12 @@ async def get_available_plans(
 ) -> Dict[str, Any]:
     """Get all available billing plans with features and pricing."""
     
-    logger.info("📋 Fetching available plans")
+    logger.info("📋 Fetching available plans from database")
     
     plans = []
     for plan_enum in [UserPlan.FREE, UserPlan.PRO, UserPlan.ENTERPRISE]:
-        config = PLAN_CONFIGS[plan_enum].copy()
-        # Convert unlimited values for consistency
+        config = get_plan_config_from_db(db, plan_enum)
+        # Convert unlimited values for frontend consistency
         if config["limits"]["maxSessions"] == "unlimited":
             config["limits"]["maxSessions"] = -1
         if config["limits"]["maxTotalMinutes"] == "unlimited":
@@ -138,7 +198,7 @@ async def get_available_plans(
     
     return {
         "plans": plans,
-        "currency": "USD",
+        "currency": "TWD",  # Updated to TWD
         "billingCycles": ["monthly", "annual"],
         "featuresComparison": {
             "sessions": "Number of coaching sessions you can upload per month",
@@ -162,8 +222,8 @@ async def get_current_plan_status(
     
     logger.info(f"📊 User {current_user.id} requesting current plan status")
     
-    # Get plan configuration
-    plan_config = PLAN_CONFIGS[current_user.plan].copy()
+    # Get plan configuration from database
+    plan_config = get_plan_config_from_db(db, current_user.plan)
     
     # Convert unlimited values
     if plan_config["limits"]["maxSessions"] == "unlimited":
@@ -298,8 +358,8 @@ async def validate_action(
     action = request.get("action")
     logger.info(f"🔍 Validating action '{action}' for user {current_user.id}")
     
-    # Get plan limits
-    plan_config = PLAN_CONFIGS[current_user.plan]
+    # Get plan limits from database
+    plan_config = get_plan_config_from_db(db, current_user.plan)
     limits = plan_config["limits"]
     
     validation_result = {

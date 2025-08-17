@@ -25,51 +25,46 @@ def reset_user_usage(email: str = None, user_id: str = None, reset_sessions: boo
         print("❌ Error: Must provide either --email or --user-id")
         return False
     
-    session = get_db_session()
-    
-    try:
-        # Find the user
-        if email:
-            user = session.query(User).filter(User.email == email).first()
-            if not user:
-                print(f"❌ Error: User with email '{email}' not found")
-                return False
-        else:
-            user = session.query(User).filter(User.id == user_id).first()
-            if not user:
-                print(f"❌ Error: User with ID '{user_id}' not found")
-                return False
-        
-        print(f"👤 Found user: {user.email} (ID: {user.id})")
-        print(f"📊 Current usage - Sessions: {user.session_count}, Transcriptions: {user.transcription_count}")
-        print(f"📋 Plan: {user.plan.value if user.plan else 'None'}")
-        
-        # Reset counts
-        changes_made = []
-        
-        if reset_sessions and user.session_count > 0:
-            user.session_count = 0
-            changes_made.append("sessions")
-        
-        if reset_transcriptions and user.transcription_count > 0:
-            user.transcription_count = 0
-            changes_made.append("transcriptions")
-        
-        if changes_made:
-            session.commit()
-            print(f"✅ Successfully reset {', '.join(changes_made)} count(s) to 0")
-            print(f"📊 New usage - Sessions: {user.session_count}, Transcriptions: {user.transcription_count}")
-        else:
-            print("ℹ️  No changes needed - usage counts are already 0")
-        
-        return True
-        
-    except Exception as e:
-        session.rollback()
-        print(f"❌ Error resetting usage: {e}")
-        return False
-    finally:
-        session.close()
+    with get_db_session() as session:
+        try:
+            # Find the user
+            if email:
+                user = session.query(User).filter(User.email == email).first()
+                if not user:
+                    print(f"❌ Error: User with email '{email}' not found")
+                    return False
+            else:
+                user = session.query(User).filter(User.id == user_id).first()
+                if not user:
+                    print(f"❌ Error: User with ID '{user_id}' not found")
+                    return False
+            
+            print(f"👤 Found user: {user.email} (ID: {user.id})")
+            print(f"📊 Current usage - Sessions: {user.session_count}, Transcriptions: {user.transcription_count}")
+            print(f"📋 Plan: {user.plan.value if user.plan else 'None'}")
+            
+            # Reset counts
+            changes_made = []
+            
+            if reset_sessions and user.session_count > 0:
+                user.session_count = 0
+                changes_made.append("sessions")
+            
+            if reset_transcriptions and user.transcription_count > 0:
+                user.transcription_count = 0
+                changes_made.append("transcriptions")
+            
+            if changes_made:
+                print(f"✅ Successfully reset {', '.join(changes_made)} count(s) to 0")
+                print(f"📊 New usage - Sessions: {user.session_count}, Transcriptions: {user.transcription_count}")
+            else:
+                print("ℹ️  No changes needed - usage counts are already 0")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error resetting usage: {e}")
+            return False
 
 
 def main():
