@@ -23,10 +23,10 @@ export default function ChangePlanPage() {
       price: { monthly: 0, annual: 0 },
       description: 'Start your journey with essential features',
       features: [
-        '5 uploaded recordings',
-        '10 linked recordings per month',
-        '10 chat credits',
+        '3 sessions per month',
+        '5 transcriptions per month',
         'Up to 30 min per recording',
+        'Max 60MB per file',
         'Basic export formats',
         'Email support'
       ],
@@ -34,13 +34,14 @@ export default function ChangePlanPage() {
     },
     {
       name: 'Pro',
-      price: { monthly: 25, annual: 20 },
+      price: { monthly: 790, annual: 632 },
       description: 'Unlock your full potential with premium features',
       features: [
-        'Unlimited uploaded recordings',
-        '1,200 min of transcription per month',
-        'Unlimited chat credits',
+        '25 sessions per month',
+        '50 transcriptions per month',
+        '300 min of transcription per month',
         'Up to 90 min per recording',
+        'Max 200MB per file',
         'All export formats',
         'Priority email support',
         'Advanced analytics',
@@ -51,13 +52,14 @@ export default function ChangePlanPage() {
     },
     {
       name: 'Business',
-      price: { monthly: 60, annual: 50 },
+      price: { monthly: 1890, annual: 1575 },
       description: 'Scale seamlessly with powerful team capabilities',
       features: [
-        'Unlimited uploaded recordings',
-        '6,000 min of transcription per month',
-        'Unlimited chat credits',
+        '500 sessions per month',
+        '1000 transcriptions per month',
+        '1500 min of transcription per month',
         'Up to 4 hours per recording',
+        'Max 500MB per file',
         'All export formats',
         'Dedicated support',
         'Team collaboration',
@@ -191,7 +193,7 @@ export default function ChangePlanPage() {
               <div className="mb-6">
                 <div className="flex items-baseline">
                   <span className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>
-                    ${billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
+                    NT${billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
                   </span>
                   <span className="ml-2" style={{color: 'var(--text-tertiary)'}}>
                     /{t('billing.perMonth')}
@@ -199,7 +201,7 @@ export default function ChangePlanPage() {
                 </div>
                 {billingCycle === 'annual' && plan.price.annual > 0 && (
                   <p className="text-sm mt-1" style={{color: 'var(--text-tertiary)'}}>
-                    {t('billing.perYear')} ${plan.price.annual * 12}
+                    {t('billing.perYear')} NT${plan.price.annual * 12}
                   </p>
                 )}
               </div>

@@ -8,6 +8,7 @@ import { TranscriptionProgress } from '@/components/ui/progress-bar'
 import { Button } from '@/components/ui/button'
 import { SpeakerWaveIcon, CloudArrowUpIcon, DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { usePlanLimits } from '@/hooks/usePlanLimits'
+import planService, { PlanConfig } from '@/lib/services/plan.service'
 
 interface UploadState {
   status: 'idle' | 'uploading' | 'pending' | 'processing' | 'completed' | 'failed'
@@ -37,12 +38,28 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
   transcriptionSession: parentTranscriptionSession
 }) => {
   const { t } = useI18n()
-  const { checkBeforeAction } = usePlanLimits()
+  const { checkBeforeAction, validateFile } = usePlanLimits()
+  const [currentPlan, setCurrentPlan] = useState<PlanConfig | null>(null)
   
   // Set translation function for API client error messages
   useEffect(() => {
     apiClient.setTranslationFunction(t)
   }, [t])
+
+  // Load current plan information
+  useEffect(() => {
+    const loadPlanInfo = async () => {
+      try {
+        const planStatus = await planService.getCurrentPlanStatus()
+        setCurrentPlan(planStatus.currentPlan)
+      } catch (error) {
+        console.error('Failed to load plan info:', error)
+        // Fallback to default limits if plan info fails
+        setCurrentPlan(null)
+      }
+    }
+    loadPlanInfo()
+  }, [])
   const [uploadState, setUploadState] = useState<UploadState>(() => {
     // Initialize with proper status if we have an existing session
     return existingAudioSessionId 
@@ -76,7 +93,20 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
   const transcriptionSession = parentTranscriptionSession || localTranscriptionSession
 
   const supportedFormats = ['mp3', 'wav', 'flac', 'ogg', 'mp4', 'm4a']
-  const maxFileSize = 1 * 1024 * 1024 * 1024 // 1GB
+  
+  // Get file size limit from current plan
+  const getFileSizeLimit = () => {
+    const maxFileSizeMb = currentPlan?.limits?.maxFileSizeMb || 60 // Default to 60MB if plan not loaded
+    return maxFileSizeMb
+  }
+
+  // Format file size for display
+  const formatFileSize = (mb: number) => {
+    if (mb >= 1024) {
+      return `${(mb / 1024).toFixed(1)}GB`
+    }
+    return `${mb}MB`
+  }
 
   // Update currentSessionId when existingAudioSessionId changes
   useEffect(() => {
@@ -182,17 +212,18 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       return
     }
 
-    // Validate file size
-    if (file.size > maxFileSize) {
+    // Check plan limits including file size before accepting the file
+    const fileValidationResult = await validateFile(file, { showError: false })
+    if (!fileValidationResult) {
+      const maxSize = formatFileSize(getFileSizeLimit())
       setUploadState({
         status: 'failed',
         progress: 0,
-        error: t('audio.fileTooLarge')
+        error: t('audio.fileTooLarge').replace('1GB', maxSize)
       })
       return
     }
 
-    // Check plan limits before accepting the file
     await checkBeforeAction('create_session', async () => {
       await checkBeforeAction('transcribe', async () => {
         setSelectedFile(file)
@@ -485,7 +516,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
                 {t('audio.dragDropFiles')}
               </p>
               <p className="text-xs text-content-secondary">
-                {t('audio.supportedFormatsHint')}
+                {t('audio.supportedFormats')} • {t('audio.maxFileSize').replace('1GB', formatFileSize(getFileSizeLimit()))}
               </p>
             </div>
             <Button onClick={() => fileInputRef.current?.click()} className="mx-auto">
