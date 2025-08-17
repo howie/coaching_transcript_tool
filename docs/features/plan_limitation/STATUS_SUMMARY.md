@@ -1,6 +1,6 @@
 # Billing Plan Limitation System - Implementation Status
 
-## 📊 Overall Progress: 75% Complete
+## 📊 Overall Progress: 85% Complete
 
 **Status**: 🚧 Active Development  
 **Start Date**: August 14, 2025  
@@ -30,23 +30,17 @@ Core infrastructure for billing plans and usage tracking
 | US003 - Frontend Plan Implementation | N/A | ✅ Completed | ✅ Completed | ✅ Complete | UI components ready |
 | US004 - Billing Plan UI | ✅ Completed | ✅ Completed | ✅ Completed | ✅ Complete | Billing page functional |
 
-### 💰 Phase 2: Core Plan Features (2/3 Complete)
-Core plan management features (payment system moved to separate feature)
+### 💰 Phase 2: Core Plan Features (1/1 Complete)
+Core plan management features (other features moved to separate systems)
 
 | User Story | Backend | Frontend | Tests | Status | Notes |
 |------------|---------|----------|-------|---------|-------|
-| US005 - Usage History Analytics | 📝 Planned | 📝 Planned | ❌ Not Started | 📝 Planning | Design complete |
 | US006 - Usage Limit UI Blocking | ✅ Completed | ✅ Completed | ✅ Completed | ✅ Complete | `/api/v1/plan/validate-action` endpoint live |
-| US008 - Soft Delete System | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on data governance |
 
-**Note**: US007 (Upgrade/Downgrade Flow) moved to [@docs/features/payment](../payment/README.md) - Payment Integration System
-
-### 📊 Phase 3: Data Governance (0/1 Complete)
-Data governance and compliance features (admin features moved to separate feature)
-
-| User Story | Backend | Frontend | Tests | Status | Notes |
-|------------|---------|----------|-------|---------|-------|
-| US009 - Audit Trail Logging | ❌ Not Started | ❌ Not Started | ❌ Not Started | ⏳ Blocked | Depends on US001 |
+**Note**: Features moved to separate systems:
+- **US005 - Usage History Analytics** → [@docs/features/usage_analytic](../usage_analytic/README.md) - Usage Analytics System
+- **US007 - Upgrade/Downgrade Flow** → [@docs/features/payment](../payment/README.md) - Payment Integration System
+- **US008 - Soft Delete System** → [@docs/features/data_policy](../data_policy/README.md) - Data Policy & Retention System
 
 **Note**: Admin and analytics features moved to [@docs/features/admin](../admin/README.md) - Admin Management & Analytics System
 
