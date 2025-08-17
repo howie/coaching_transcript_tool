@@ -540,6 +540,15 @@ export const translations = {
     'limits.upgradeNow': '立即升級',
     'limits.viewUsage': '查看使用量',
     
+    // Error Messages with Plan Context
+    'errors.sessionLimitExceededWithPlan': '您已達到每月會談數限制 {limit} 次（{plan} 方案）。考慮升級方案以獲得更高限制。',
+    'errors.transcriptionLimitExceededWithPlan': '您已達到每月轉錄數限制 {limit} 次（{plan} 方案）。考慮升級方案以獲得更高限制。',
+    'errors.fileSizeExceededWithPlan': '檔案大小 {fileSize}MB 超過 {plan} 方案限制 {limit}MB。考慮升級方案以獲得更大檔案限制。',
+    'errors.planFree': '免費',
+    'errors.planPro': '專業版',
+    'errors.planBusiness': '企業版',
+    'errors.considerUpgrade': '考慮升級方案以獲得更高限制。',
+    
     // Profile Page
     'profile.country.taiwan': '台灣',
     'profile.country.usa': '美國',
@@ -1211,6 +1220,15 @@ export const translations = {
     'limits.upgradeNow': 'Upgrade Now',
     'limits.usageLimitReached': 'Usage Limit Reached',
     'limits.viewUsage': 'View Usage',
+    
+    // Error Messages with Plan Context
+    'errors.sessionLimitExceededWithPlan': 'You have reached your monthly session limit of {limit} ({plan} plan). Consider upgrading your plan for higher limits.',
+    'errors.transcriptionLimitExceededWithPlan': 'You have reached your monthly transcription limit of {limit} ({plan} plan). Consider upgrading your plan for higher limits.',
+    'errors.fileSizeExceededWithPlan': 'File size {fileSize}MB exceeds {plan} plan limit of {limit}MB. Consider upgrading your plan for larger file limits.',
+    'errors.planFree': 'FREE',
+    'errors.planPro': 'PRO',
+    'errors.planBusiness': 'BUSINESS',
+    'errors.considerUpgrade': 'Consider upgrading your plan for higher limits.',
     'menu.account': 'Account Settings',
     'menu.analysis': 'ICF Analysis',
     'menu.audioAnalysis': '音檔分析',

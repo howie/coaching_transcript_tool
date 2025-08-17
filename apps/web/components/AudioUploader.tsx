@@ -38,6 +38,11 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 }) => {
   const { t } = useI18n()
   const { checkBeforeAction } = usePlanLimits()
+  
+  // Set translation function for API client error messages
+  useEffect(() => {
+    apiClient.setTranslationFunction(t)
+  }, [t])
   const [uploadState, setUploadState] = useState<UploadState>(() => {
     // Initialize with proper status if we have an existing session
     return existingAudioSessionId 
