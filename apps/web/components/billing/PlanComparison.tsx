@@ -51,7 +51,7 @@ function PlanCard({ plan, price, billingCycle, isSelected, isCurrent, onSelect }
       
       <div className="mb-6">
         <div className="flex items-baseline">
-          <span className="text-4xl font-bold text-white">${price}</span>
+          <span className="text-4xl font-bold text-white">NT${price}</span>
           <span className="text-gray-400 ml-2">/ month</span>
         </div>
         {billingCycle === 'annual' && price > 0 && (
@@ -141,8 +141,8 @@ export function PlanComparison() {
 
   const getPrice = (plan: PlanConfig) => {
     return billingCycle === 'annual' 
-      ? plan.pricing.annualUsd 
-      : plan.pricing.monthlyUsd;
+      ? plan.pricing.annualTwd 
+      : plan.pricing.monthlyTwd;
   };
 
   const features = [
@@ -309,8 +309,8 @@ export function PlanComparison() {
               </h3>
               <p className="text-sm text-gray-400 mt-1">
                 {billingCycle === 'annual' 
-                  ? `Billed annually at $${plans.find(p => p.planName === selectedPlan)?.pricing.annualUsd * 12}/year`
-                  : `Billed monthly at $${plans.find(p => p.planName === selectedPlan)?.pricing.monthlyUsd}/month`
+                  ? `Billed annually at NT$${(plans.find(p => p.planName === selectedPlan)?.pricing.annualTwd || 0) * 12}/year`
+                  : `Billed monthly at NT$${plans.find(p => p.planName === selectedPlan)?.pricing.monthlyTwd || 0}/month`
                 }
               </p>
             </div>

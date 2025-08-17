@@ -27,8 +27,8 @@ export function ChangePlan() {
       features: [
         t('billing.feature.freeRecordings'),
         t('billing.feature.freeLinkedRecordings'),
-        t('billing.feature.freeChatCredits'),
         t('billing.feature.freeRecordingLength'),
+        t('billing.feature.freeFileSize'),
         t('billing.feature.basicExportFormats'),
         t('billing.feature.emailSupport')
       ],
@@ -40,10 +40,11 @@ export function ChangePlan() {
       price: { monthly: 790, annual: 632 }, // TWD prices (25 USD = 790 TWD, 20 USD = 632 TWD)
       description: t('billing.proDescription'),
       features: [
-        t('billing.feature.unlimitedRecordings'),
+        t('billing.feature.proSessions'),
+        t('billing.feature.proTranscriptions'),
         t('billing.feature.proTranscriptionMinutes'),
-        t('billing.feature.unlimitedChatCredits'),
         t('billing.feature.proRecordingLength'),
+        t('billing.feature.proFileSize'),
         t('billing.feature.allExportFormats'),
         t('billing.feature.priorityEmailSupport'),
         t('billing.feature.advancedAnalytics'),
@@ -58,10 +59,11 @@ export function ChangePlan() {
       price: { monthly: 1890, annual: 1575 }, // TWD prices (60 USD = 1890 TWD, 50 USD = 1575 TWD)
       description: t('billing.businessDescription'),
       features: [
-        t('billing.feature.unlimitedRecordings'),
+        t('billing.feature.businessSessions'),
+        t('billing.feature.businessTranscriptions'),
         t('billing.feature.businessTranscriptionMinutes'),
-        t('billing.feature.unlimitedChatCredits'),
         t('billing.feature.businessRecordingLength'),
+        t('billing.feature.businessFileSize'),
         t('billing.feature.allExportFormats'),
         t('billing.feature.dedicatedSupport'),
         t('billing.feature.teamCollaboration'),

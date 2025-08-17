@@ -149,7 +149,7 @@ const SessionDetailPage = () => {
   } | null>(null);
 
   // Use plan limits hook
-  const { canCreateSession, canTranscribe, validateAction, validateMultiple } = usePlanLimits();
+  const { canCreateSession, canTranscribe, validateAction, validateMultiple, lastValidation } = usePlanLimits();
 
   // Use transcription status hook for progress tracking
   const transcriptionSessionId = session?.transcription_session_id;
@@ -253,27 +253,27 @@ const SessionDetailPage = () => {
 
       if (!results) {
         // If any check fails, get detailed info for display
-        const sessionResult = await validateAction('create_session', {}, { silent: true });
+        await validateAction('create_session', {}, { silent: true });
         
-        if (!sessionResult.allowed) {
+        if (!lastValidation?.allowed) {
           setCanUseAudioAnalysis(false);
           setLimitMessage({
             type: 'sessions',
-            current: sessionResult.limit_info?.current || 0,
-            limit: sessionResult.limit_info?.limit || 0,
+            current: lastValidation?.limit_info?.current || 0,
+            limit: lastValidation?.limit_info?.limit || 0,
             message: t('limits.sessionLimitReached')
           });
           return;
         }
 
-        const transcribeResult = await validateAction('transcribe', {}, { silent: true });
+        await validateAction('transcribe', {}, { silent: true });
         
-        if (!transcribeResult.allowed) {
+        if (!lastValidation?.allowed) {
           setCanUseAudioAnalysis(false);
           setLimitMessage({
             type: 'transcriptions',
-            current: transcribeResult.limit_info?.current || 0,
-            limit: transcribeResult.limit_info?.limit || 0,
+            current: lastValidation?.limit_info?.current || 0,
+            limit: lastValidation?.limit_info?.limit || 0,
             message: t('limits.transcriptionLimitReached')
           });
           return;
@@ -1360,7 +1360,7 @@ ${t('sessions.aiChatFollowUp')}`;
                         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                           <h4 className="font-medium text-content-primary mb-3">{t('sessions.speakerRoleAssignment')}</h4>
                           <p className="text-sm text-content-secondary mb-4">
-                            {t('sessions.detectSpeakersMessage').replace('{count}', previewSegments.length)}
+                            {t('sessions.detectSpeakersMessage').replace('{count}', previewSegments.length.toString())}
                           </p>
                           
                           <div className="space-y-3">
@@ -1373,7 +1373,7 @@ ${t('sessions.aiChatFollowUp')}`;
                                         {segment.speaker_name}
                                       </span>
                                       <span className="text-xs text-content-secondary">
-                                        {t('sessions.segmentsCount').replace('{count}', segment.count)}
+                                        {t('sessions.segmentsCount').replace('{count}', segment.count.toString())}
                                       </span>
                                     </div>
                                     <p className="text-sm text-content-secondary italic">
@@ -1583,7 +1583,7 @@ ${t('sessions.aiChatFollowUp')}`;
                     </h3>
                     <div className="flex items-center gap-4">
                       <div className="text-sm text-content-secondary">
-                        {t('sessions.conversationSummary').replace('{duration}', formatDuration(transcript.duration_sec)).replace('{count}', transcript.segments.length)}
+                        {t('sessions.conversationSummary').replace('{duration}', formatDuration(transcript.duration_sec)).replace('{count}', transcript.segments.length.toString())}
                       </div>
                       {!editingRoles ? (
                         <Button
