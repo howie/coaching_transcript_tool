@@ -4,7 +4,7 @@
 
 import { render, screen } from '@testing-library/react'
 import { I18nProvider } from '@/contexts/i18n-context'
-import { translations } from '@/lib/translations'
+import { translations } from '@/lib/i18n'
 
 // Mock API client with error simulation
 class MockApiClient {
