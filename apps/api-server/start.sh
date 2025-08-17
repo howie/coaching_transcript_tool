@@ -37,7 +37,7 @@ else:
 
 # Run database migrations
 echo "Running database migrations..."
-cd /app/packages/core-logic
+cd /app
 alembic upgrade head
 
 echo "Migrations completed successfully!"

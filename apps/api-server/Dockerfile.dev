@@ -11,20 +11,21 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 複製原始碼和配置
-COPY src /app/src
-COPY pyproject.toml /app/pyproject.toml
-COPY requirements.txt /app/requirements.txt
-COPY apps/api-server/requirements.txt /app/apps/api-server/requirements.txt
+COPY src/ ./src/
+COPY pyproject.toml requirements.txt ./
+COPY alembic/ ./alembic/
+COPY alembic.ini ./
+
+# 複製 API server 相關文件
+COPY apps/api-server/requirements.txt ./apps/api-server/
+COPY apps/api-server/main.py ./
 
 # 安裝 Python 依賴
-RUN pip install --no-cache-dir -r /app/apps/api-server/requirements.txt
-RUN pip install -e /app
-
-# 複製 API server 代碼
-COPY apps/api-server /app/apps/api-server
+RUN pip install --no-cache-dir -r ./apps/api-server/requirements.txt
+RUN pip install -e .
 
 # 設定 Python 路徑
-ENV PYTHONPATH=/app/src:/app/apps/api-server:$PYTHONPATH
+ENV PYTHONPATH=/app/src:/app
 
 # 暴露端口
 EXPOSE 8000

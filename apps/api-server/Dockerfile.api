@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.10-slim AS builder
+FROM python:3.11-slim AS builder
 
 # Set environment variables for the build stage
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,6 +12,8 @@ WORKDIR /app
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libpq-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the source code and configuration files
@@ -26,10 +28,10 @@ RUN pip install --prefix=/install -r ./apps/api-server/requirements.txt
 RUN pip install --prefix=/install ./
 
 # Runtime stage
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 # Set environment variables
-ENV PYTHONPATH=/app/src \
+ENV PYTHONPATH=/app/src:/app \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000
@@ -39,6 +41,7 @@ WORKDIR /app
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
