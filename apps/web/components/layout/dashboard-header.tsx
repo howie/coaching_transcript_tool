@@ -144,10 +144,6 @@ export function DashboardHeader() {
                   <span className="text-dashboard-accent">⚙️</span>
                   <span>{t('menu.account')}</span>
                 </Link>
-                <Link href={'/dashboard/billing' as any} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3">
-                  <span className="text-dashboard-accent">💳</span>
-                  <span>Billing</span>
-                </Link>
                 
                 <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                 

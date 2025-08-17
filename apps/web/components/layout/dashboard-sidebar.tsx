@@ -12,6 +12,7 @@ import {
   ChevronRightIcon,
   CalendarDaysIcon,
   UsersIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline'
 import { useI18n } from '@/contexts/i18n-context'
 import { useSidebar } from '@/contexts/sidebar-context'
@@ -51,6 +52,12 @@ export function DashboardSidebar() {
       href: '/dashboard/profile',
       icon: UserIcon,
       current: pathname === '/dashboard/profile'
+    },
+    {
+      name: t('menu.billing'),
+      href: '/dashboard/billing',
+      icon: CreditCardIcon,
+      current: pathname.startsWith('/dashboard/billing')
     },
     {
       name: t('menu.analysis'),

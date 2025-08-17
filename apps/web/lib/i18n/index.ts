@@ -14,6 +14,7 @@ import { layoutTranslations } from './translations/layout'
 import { converterTranslations } from './translations/converter'
 import { authTranslations } from './translations/auth'
 import { landingTranslations } from './translations/landing'
+import { analyticsTranslations } from './translations/analytics'
 
 // Combine all translations
 export const translations = {
@@ -33,6 +34,7 @@ export const translations = {
     ...converterTranslations.zh,
     ...authTranslations.zh,
     ...landingTranslations.zh,
+    ...analyticsTranslations.zh,
   },
   en: {
     ...navTranslations.en,
@@ -50,6 +52,7 @@ export const translations = {
     ...converterTranslations.en,
     ...authTranslations.en,
     ...landingTranslations.en,
+    ...analyticsTranslations.en,
   }
 }
 
