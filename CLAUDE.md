@@ -435,6 +435,27 @@ GET /api/v1/coaching-sessions - List coaching sessions
 POST /api/v1/coaching-sessions - Create session
 ```
 
+## Plan Limitations & Features
+
+The platform enforces different limits based on user subscription plans:
+
+### File Size Limits
+- **FREE Plan**: 60MB per file
+- **PRO Plan**: 200MB per file  
+- **ENTERPRISE Plan**: 500MB per file
+
+### Session & Transcription Limits
+- **Database-driven**: All plan limits are stored in PostgreSQL and dynamically loaded
+- **API Integration**: `/api/plans/current` endpoint provides real-time limit information
+- **Frontend Validation**: File upload component shows dynamic size limits based on user's plan
+- **Backend Enforcement**: Plan validation occurs before processing to prevent overuse
+
+### Dynamic Limit Display
+The frontend automatically adapts to show the correct limits:
+- AudioUploader component displays plan-specific file size limits
+- Error messages include current plan context
+- Billing pages show accurate feature comparisons per plan
+
 ## Documentation Pointers
 
 For detailed information, reference these docs:
@@ -451,12 +472,34 @@ For detailed information, reference these docs:
 
 ## Internationalization (i18n) Guidelines
 
-For comprehensive i18n guidelines and implementation details, see `@docs/claude/i18n.md`.
+The application uses a **modular translation system** organized by feature domain for better maintainability.
+
+**Translation Structure:**
+```
+apps/web/lib/i18n/translations/
+├── account.ts      # Account management
+├── audio.ts        # Audio upload/processing  
+├── auth.ts         # Authentication
+├── billing.ts      # Billing and plans
+├── clients.ts      # Client management
+├── common.ts       # Common UI, limits, features
+├── converter.ts    # Transcript converter
+├── dashboard.ts    # Dashboard
+├── help.ts         # Help and support
+├── landing.ts      # Landing page
+├── layout.ts       # Layout components
+├── menu.ts         # Navigation menus
+├── nav.ts          # Navigation
+├── profile.ts      # User profile
+└── sessions.ts     # Session management
+```
 
 **Key points:**
 - Always use `t()` function for user-facing text
 - Test both Chinese and English translations
-- Follow `namespace.specificFunction` naming convention
+- Follow `namespace.specificFunction` naming convention (e.g., `billing.upgradePlan`, `sessions.processingCompleted`)
+- Add new translations to the appropriate domain-specific file
+- All translations are combined automatically in `lib/i18n/index.ts`
 - See detailed guidelines: `@docs/claude/i18n.md`
 
 ## Frontend Testing Strategy

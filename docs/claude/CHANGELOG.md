@@ -5,6 +5,41 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2024-12-17
+
+### ✨ Major Features
+- **Dynamic Plan Limitations**: Implemented database-driven plan limits with dynamic file size restrictions by plan tier
+  - FREE: 60MB per file
+  - PRO: 200MB per file  
+  - ENTERPRISE: 500MB per file
+- **Translation System Refactoring**: Complete overhaul of i18n system from monolithic to modular architecture
+  - Eliminated 1406-line translation file duplication
+  - 15 domain-specific translation modules for better maintainability
+  - Preserved all existing functionality
+
+### 🔧 Enhanced
+- **Frontend Plan Integration**: AudioUploader component now displays dynamic file size limits based on user's subscription
+- **API Improvements**: Plans endpoint now reads from database instead of hardcoded configurations
+- **Error Message Localization**: Fixed i18n display issues, users now see properly translated error messages
+- **Frontend Validation**: File upload validation now enforces correct plan-specific limits
+- **Currency Consistency**: Updated billing displays to use TWD consistently
+
+### 🐛 Fixes
+- **Translation Key Duplicates**: Resolved TypeScript compilation errors from duplicate translation keys
+- **Plan Display Inconsistencies**: Fixed mismatched plan features between frontend and backend
+- **Chat Credits Removal**: Cleaned up references to unused chat credits feature
+- **Missing Chinese Translations**: Added missing translation for `sessions.processingCompleted` (已完成)
+
+### 📚 Documentation
+- **Updated CLAUDE.md**: Added plan limitations section and modular translation structure documentation
+- **Plan Analysis Document**: Updated to reflect completed Phase 1 fixes and system consistency achievements
+- **Architecture Documentation**: Enhanced with dynamic limit system and translation organization details
+
+### 🏗️ System Architecture
+- **Database-Driven Limits**: Plan configurations now stored in PostgreSQL with real-time API access
+- **Modular Translations**: Organized by domain (auth, billing, sessions, etc.) for better maintainability
+- **Frontend Adaptability**: Dynamic UI components that adjust to user's plan capabilities
+
 ## [2.7.1] - 2025-08-13
 
 ### 🐛 Critical Fixes

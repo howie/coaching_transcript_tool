@@ -50,7 +50,7 @@ def seed_plan_configurations(db: Session):
             "max_sessions": 10,
             "max_total_minutes": 120,
             "max_transcription_count": 20,
-            "max_file_size_mb": 50,
+            "max_file_size_mb": 60,
             "export_formats": ["json", "txt"],
             "concurrent_processing": 1,
             "retention_days": 30
@@ -92,7 +92,7 @@ def seed_plan_configurations(db: Session):
             "max_sessions": 100,
             "max_total_minutes": 1200,
             "max_transcription_count": 200,
-            "max_file_size_mb": 200,
+            "max_file_size_mb": 60,
             "export_formats": ["json", "txt", "vtt", "srt", "docx"],
             "concurrent_processing": 3,
             "retention_days": 365
@@ -137,7 +137,7 @@ def seed_plan_configurations(db: Session):
             "max_sessions": -1,  # Unlimited
             "max_total_minutes": -1,  # Unlimited
             "max_transcription_count": -1,  # Unlimited
-            "max_file_size_mb": 500,
+            "max_file_size_mb": 60,
             "export_formats": ["json", "txt", "vtt", "srt", "docx", "xlsx", "pdf"],
             "concurrent_processing": 10,
             "retention_days": -1  # Permanent
