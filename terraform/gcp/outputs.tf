@@ -52,6 +52,26 @@ output "transcript_storage_bucket_url" {
   value       = google_storage_bucket.transcript_storage.url
 }
 
+output "audio_storage_bucket_prod" {
+  description = "The production audio storage bucket name"
+  value       = google_storage_bucket.audio_storage_prod.name
+}
+
+output "audio_storage_bucket_prod_url" {
+  description = "The production audio storage bucket URL"
+  value       = google_storage_bucket.audio_storage_prod.url
+}
+
+output "transcript_storage_bucket_prod" {
+  description = "The production transcript storage bucket name"
+  value       = google_storage_bucket.transcript_storage_prod.name
+}
+
+output "transcript_storage_bucket_prod_url" {
+  description = "The production transcript storage bucket URL"
+  value       = google_storage_bucket.transcript_storage_prod.url
+}
+
 output "enabled_apis" {
   description = "List of enabled APIs"
   value       = [for api in google_project_service.apis : api.service]

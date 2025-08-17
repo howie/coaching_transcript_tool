@@ -5,22 +5,24 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
+    libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy source code and configuration
+COPY src/ ./src/
+COPY pyproject.toml requirements.txt ./
+
 # Copy requirements and install dependencies
-COPY apps/api-server/requirements.txt /app/requirements.txt
-COPY packages/core-logic /app/packages/core-logic
+COPY apps/api-server/requirements.txt ./apps/api-server/
+COPY apps/worker/health_server.py ./health_server.py
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install -e packages/core-logic
-
-# Copy source code
-COPY packages/core-logic/src /app/packages/core-logic/src
-COPY apps/worker/health_server.py /app/health_server.py
+RUN pip install --no-cache-dir -r ./apps/api-server/requirements.txt
+RUN pip install -e .
 
 # Set Python path
-ENV PYTHONPATH=/app/packages/core-logic/src:$PYTHONPATH
+ENV PYTHONPATH=/app/src:/app
 ENV PORT=8080
 
 # Create startup script

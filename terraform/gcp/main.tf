@@ -109,3 +109,66 @@ resource "google_storage_bucket" "transcript_storage" {
   uniform_bucket_level_access = true
   public_access_prevention = "enforced"
 }
+
+# Production Cloud Storage bucket for audio files
+resource "google_storage_bucket" "audio_storage_prod" {
+  name          = "coaching-audio-prod"
+  location      = var.gcp_region
+  project       = var.gcp_project_id
+  force_destroy = false
+
+  # Enable versioning
+  versioning {
+    enabled = true
+  }
+
+  # Lifecycle rules for GDPR compliance (auto-delete after 24 hours)
+  lifecycle_rule {
+    condition {
+      age = 1
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  # CORS configuration for frontend uploads
+  cors {
+    origin          = var.allowed_origins
+    method          = ["GET", "HEAD", "PUT", "POST", "DELETE"]
+    response_header = ["*"]
+    max_age_seconds = 3600
+  }
+
+  # Public access prevention
+  uniform_bucket_level_access = true
+  public_access_prevention = "enforced"
+}
+
+# Production Cloud Storage bucket for processed transcripts
+resource "google_storage_bucket" "transcript_storage_prod" {
+  name          = "coaching-transcript-prod"
+  location      = var.gcp_region
+  project       = var.gcp_project_id
+  force_destroy = false
+
+  # Enable versioning
+  versioning {
+    enabled = true
+  }
+
+  # Lifecycle rules for long-term storage
+  lifecycle_rule {
+    condition {
+      age = 90
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "COLDLINE"
+    }
+  }
+
+  # Public access prevention
+  uniform_bucket_level_access = true
+  public_access_prevention = "enforced"
+}
