@@ -15,6 +15,7 @@ interface UsageDataPoint {
   utilization: number;
   success_rate: number;
   avg_duration: number;
+  [key: string]: string | number;
 }
 
 interface UsageInsight {
@@ -182,7 +183,7 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
       // const response = await fetch(`/api/usage/insights?userId=${userId}`);
       
       // Mock insights for now
-      const mockInsights = [
+      const mockInsights: UsageInsight[] = [
         {
           type: 'pattern',
           title: t('analytics.peakUsageDay'),
@@ -210,7 +211,7 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
       // const response = await fetch(`/api/usage/analytics?type=predictions&userId=${userId}`);
       
       // Mock predictions for now
-      const mockPredictions = {
+      const mockPredictions: UsagePrediction = {
         predicted_sessions: 25,
         predicted_minutes: 450,
         estimated_limit_date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
