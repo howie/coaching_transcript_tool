@@ -1,0 +1,57 @@
+# Provider Credentials
+cloudflare_api_token = "your-cloudflare-api-token"
+render_api_key       = "your-render-api-key"
+
+# Cloudflare Configuration
+cloudflare_zone_id    = "your-zone-id"
+cloudflare_account_id = "your-account-id"
+domain                = "doxa.com.tw"
+frontend_subdomain    = "coachly"
+api_subdomain         = "api"
+
+# Project Configuration
+project_name = "coaching-assistant"
+app_version  = "1.0.0"
+
+# GitHub Configuration
+github_owner    = "your-github-username"
+github_repo     = "coaching_transcript_tool"
+github_repo_url = "https://github.com/your-github-username/coaching_transcript_tool"
+
+# GCP Configuration
+gcp_project_id = "coachingassistant"
+gcp_region     = "asia-southeast1"
+
+# Render Configuration
+render_region = "oregon"
+
+# Application Secrets
+api_secret_key = "your-super-secret-key-for-production"
+
+# Google OAuth Configuration
+google_client_id        = "your-google-client-id.apps.googleusercontent.com"
+google_client_secret    = "your-google-client-secret"
+google_client_id_staging = "your-staging-google-client-id.apps.googleusercontent.com"
+
+# reCAPTCHA Configuration
+recaptcha_site_key         = "your-recaptcha-site-key"
+recaptcha_site_key_staging = "your-staging-recaptcha-site-key"
+recaptcha_secret          = "your-recaptcha-secret"
+
+# STT Configuration
+stt_provider           = "google"
+google_stt_model       = "chirp_2"
+google_stt_location    = "asia-southeast1"
+assemblyai_api_key     = "your-assemblyai-api-key"
+
+# Analytics Configuration
+web_analytics_tag   = "your-analytics-tag"
+web_analytics_token = "your-analytics-token"
+
+# Monitoring Configuration
+monitoring_email = "alerts@yourcompany.com"
+sentry_dsn      = "https://your-sentry-dsn@sentry.io/project-id"
+
+# Feature Flags
+enable_flower_monitoring = false
+flower_auth             = "admin:secure-password"
