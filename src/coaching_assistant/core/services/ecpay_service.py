@@ -62,8 +62,15 @@ class ECPaySubscriptionService:
             
             # Generate unique merchant member ID and trade number
             timestamp = int(time.time())
-            merchant_member_id = f"USER{user_id[:8]}{timestamp}"
-            merchant_trade_no = f"SUB{timestamp}{user_id[:8].upper()}"  # Must be unique and <= 20 chars
+            # Sanitize user ID to ensure safe characters (alphanumeric only)
+            safe_user_prefix = ''.join(c for c in user_id[:8].upper() if c.isalnum())[:8]
+            # Pad with zeros if too short after sanitization
+            safe_user_prefix = safe_user_prefix.ljust(8, '0')[:8]
+            
+            merchant_member_id = f"USER{safe_user_prefix}{timestamp}"
+            # ECPay MerchantTradeNo must be <= 20 characters
+            # Format: SUB + last 6 digits of timestamp + sanitized 8 chars of user_id
+            merchant_trade_no = f"SUB{str(timestamp)[-6:]}{safe_user_prefix}"
             
             # Prepare authorization data for ECPay Credit Card Authorization API
             auth_data = {
@@ -110,6 +117,11 @@ class ECPaySubscriptionService:
             
             # Generate CheckMacValue
             auth_data["CheckMacValue"] = self._generate_check_mac_value(auth_data)
+            
+            # Log key fields for debugging
+            logger.info(f"ECPay Authorization - MerchantTradeNo: {merchant_trade_no} (length: {len(merchant_trade_no)})")
+            logger.info(f"ECPay Authorization - TotalAmount: {auth_data['TotalAmount']}")
+            logger.info(f"ECPay Authorization - PeriodType: {auth_data['PeriodType']}")
             
             # Create authorization record
             auth_record = ECPayCreditAuthorization(

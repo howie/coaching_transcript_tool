@@ -120,6 +120,12 @@ class Settings(BaseSettings):
     # Frontend/Backend URLs for ECPay callbacks
     FRONTEND_URL: str = "http://localhost:3000"
     API_BASE_URL: str = "http://localhost:8000"
+    
+    # Email Configuration (for payment notifications)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
 
     # Worker 設定
     WORKER_CONCURRENCY: int = 4
