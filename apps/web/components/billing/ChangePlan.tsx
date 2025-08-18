@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { useI18n } from '@/contexts/i18n-context'
 import { useThemeClasses } from '@/lib/theme-utils'
+import { apiClient } from '@/lib/api'
 
 export function ChangePlan() {
   const [billingCycle, setBillingCycle] = useState('annual')
@@ -38,7 +39,7 @@ export function ChangePlan() {
     {
       name: t('billing.planNamePro'),
       id: 'pro',
-      price: { monthly: 790, annual: 632 }, // TWD prices (25 USD = 790 TWD, 20 USD = 632 TWD)
+      price: { monthly: 899, annual: 749 }, // Updated ECPay pricing (899.00 TWD monthly, 8999.00 TWD annual)
       description: t('billing.proDescription'),
       features: [
         t('billing.feature.proSessions'),
@@ -56,8 +57,8 @@ export function ChangePlan() {
     },
     {
       name: t('billing.planNameBusiness'),
-      id: 'business',
-      price: { monthly: 1890, annual: 1575 }, // TWD prices (60 USD = 1890 TWD, 50 USD = 1575 TWD)
+      id: 'enterprise',
+      price: { monthly: 2999, annual: 2499 }, // Updated ECPay pricing (2999.00 TWD monthly, 2999.00 * 10 = 29999.00 TWD annual)
       description: t('billing.businessDescription'),
       features: [
         t('billing.feature.businessSessions'),
@@ -72,7 +73,7 @@ export function ChangePlan() {
         t('billing.feature.customIntegrations'),
         t('billing.feature.slaGuarantee')
       ],
-      isCurrent: currentUserPlan === 'business',
+      isCurrent: currentUserPlan === 'business' || currentUserPlan === 'enterprise',
     },
   ]
 
@@ -80,11 +81,71 @@ export function ChangePlan() {
     setSelectedPlan(planName)
   }
 
-  const handleConfirmChange = () => {
-    // TODO: Implement plan change
-    console.log(`Changing to ${selectedPlan} plan with ${billingCycle} billing`)
-    // For now, just close the selection
-    setSelectedPlan(null)
+  const handleConfirmChange = async () => {
+    if (!selectedPlan || !user) return
+    
+    // Map selected plan name to ECPay plan IDs
+    const planMapping: Record<string, string> = {
+      [t('billing.planNamePro')]: 'PRO',
+      [t('billing.planNameBusiness')]: 'ENTERPRISE'
+    }
+    
+    const ecpayPlanId = planMapping[selectedPlan]
+    if (!ecpayPlanId) {
+      console.error('Invalid plan selection:', selectedPlan)
+      return
+    }
+    
+    try {
+      console.log(`🔄 開始升級流程: ${ecpayPlanId} (${billingCycle})`)
+      
+      // Call ECPay subscription API using apiClient
+      const data = await apiClient.post('/api/v1/subscriptions/authorize', {
+        plan_id: ecpayPlanId,
+        billing_cycle: billingCycle
+      })
+      
+      console.log('✅ API 回應成功:', data)
+        
+        // Show confirmation before redirecting to ECPay
+        const confirmed = window.confirm(
+          `即將跳轉至 ECPay 付款頁面\n\n` +
+          `方案: ${selectedPlan}\n` +
+          `計費週期: ${billingCycle}\n` +
+          `付款網址: ${data.action_url}\n\n` +
+          `確認要繼續嗎？`
+        )
+        
+        if (!confirmed) {
+          console.log('❌ 用戶取消付款流程')
+          return
+        }
+        
+        // Redirect to ECPay payment form
+        const form = document.createElement('form')
+        form.method = 'POST'
+        form.action = data.action_url
+        form.target = '_blank'
+        
+        // Add form data
+        Object.entries(data.form_data).forEach(([key, value]) => {
+          const input = document.createElement('input')
+          input.type = 'hidden'
+          input.name = key
+          input.value = String(value)
+          form.appendChild(input)
+        })
+        
+        document.body.appendChild(form)
+        form.submit()
+        document.body.removeChild(form)
+        
+        console.log('🚀 ECPay 付款表單已送出')
+        alert('ECPay 付款視窗已開啟，請在新視窗中完成付款')
+    } catch (error) {
+      console.error('💥 升級流程錯誤:', error)
+      alert(`升級過程中發生錯誤: ${error.message}`)
+    }
   }
 
   const renderPlanButton = (plan: any) => {
@@ -247,20 +308,34 @@ export function ChangePlan() {
             </div>
           </div>
           
-          <div className="flex space-x-4">
-            <button
-              onClick={() => setSelectedPlan(null)}
-              className={`flex-1 px-6 py-3 border rounded-lg transition-colors ${themeClasses.buttonSecondary}`}
-            >
-              {t('billing.cancel')}
-            </button>
-            <button
-              onClick={handleConfirmChange}
-              className="flex-1 px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold bg-dashboard-accent text-white hover:bg-opacity-90"
-              disabled
-            >
-              {t('billing.confirmUpgradeDisabled')}
-            </button>
+          <div className="flex flex-col space-y-4">
+            {/* Development Testing Info */}
+            <div className="p-3 bg-blue-600 bg-opacity-10 border border-blue-600 border-opacity-20 rounded-lg">
+              <p className="text-xs text-blue-400 mb-2">
+                <strong>測試資訊:</strong> 點擊確認升級將會：
+              </p>
+              <ul className="text-xs text-blue-300 space-y-1 ml-4">
+                <li>• 呼叫 /api/v1/subscriptions/authorize API</li>
+                <li>• 生成 ECPay 付款表單</li>
+                <li>• 在新視窗開啟 ECPay 付款頁面</li>
+                <li>• 使用 ECPay 測試環境 (payment-stage.ecpay.com.tw)</li>
+              </ul>
+            </div>
+
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setSelectedPlan(null)}
+                className={`flex-1 px-6 py-3 border rounded-lg transition-colors ${themeClasses.buttonSecondary}`}
+              >
+                {t('billing.cancel')}
+              </button>
+              <button
+                onClick={handleConfirmChange}
+                className="flex-1 px-6 py-3 rounded-lg transition-colors font-semibold bg-dashboard-accent text-white hover:bg-opacity-90"
+              >
+                {t('billing.confirmUpgrade')}
+              </button>
+            </div>
           </div>
         </div>
       )}
