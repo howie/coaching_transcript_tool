@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { useI18n } from '@/contexts/i18n-context'
+import { apiClient } from '@/lib/api'
 
 export default function ChangePlanPage() {
   const [billingCycle, setBillingCycle] = useState('annual')
@@ -19,55 +20,59 @@ export default function ChangePlanPage() {
 
   const plans = [
     {
-      name: 'Free',
+      name: t('billing.planNameFree'),
+      id: 'free',
       price: { monthly: 0, annual: 0 },
-      description: 'Start your journey with essential features',
+      description: t('billing.freeDescription'),
       features: [
-        '3 sessions per month',
-        '5 transcriptions per month',
-        'Up to 30 min per recording',
-        'Max 60MB per file',
-        'Basic export formats',
-        'Email support'
+        t('billing.feature.freeRecordings'),
+        t('billing.feature.freeLinkedRecordings'),
+        t('billing.feature.freeTranscriptionMinutes'),
+        t('billing.feature.freeRecordingLength'),
+        t('billing.feature.freeFileSize'),
+        t('billing.feature.basicExportFormats'),
+        t('billing.feature.emailSupport')
       ],
       isCurrent: currentUserPlan === 'free',
     },
     {
-      name: 'Pro',
-      price: { monthly: 790, annual: 632 },
-      description: 'Unlock your full potential with premium features',
+      name: t('billing.planNamePro'),
+      id: 'pro',
+      price: { monthly: 899, annual: 749 }, // Updated ECPay pricing
+      description: t('billing.proDescription'),
       features: [
-        '25 sessions per month',
-        '50 transcriptions per month',
-        '300 min of transcription per month',
-        'Up to 90 min per recording',
-        'Max 200MB per file',
-        'All export formats',
-        'Priority email support',
-        'Advanced analytics',
-        'Custom branding'
+        t('billing.feature.proSessions'),
+        t('billing.feature.proTranscriptions'),
+        t('billing.feature.proTranscriptionMinutes'),
+        t('billing.feature.proRecordingLength'),
+        t('billing.feature.proFileSize'),
+        t('billing.feature.allExportFormats'),
+        t('billing.feature.priorityEmailSupport'),
+        t('billing.feature.advancedAnalytics'),
+        t('billing.feature.customBranding')
       ],
       isPopular: true,
       isCurrent: currentUserPlan === 'pro',
     },
     {
-      name: 'Business',
-      price: { monthly: 1890, annual: 1575 },
-      description: 'Scale seamlessly with powerful team capabilities',
+      name: t('billing.planNameBusiness'),
+      id: 'enterprise',
+      price: { monthly: 2999, annual: 2499 }, // Updated ECPay pricing
+      description: t('billing.businessDescription'),
       features: [
-        '500 sessions per month',
-        '1000 transcriptions per month',
-        '1500 min of transcription per month',
-        'Up to 4 hours per recording',
-        'Max 500MB per file',
-        'All export formats',
-        'Dedicated support',
-        'Team collaboration',
-        'API access',
-        'Custom integrations',
-        'SLA guarantee'
+        t('billing.feature.businessSessions'),
+        t('billing.feature.businessTranscriptions'),
+        t('billing.feature.businessTranscriptionMinutes'),
+        t('billing.feature.businessRecordingLength'),
+        t('billing.feature.businessFileSize'),
+        t('billing.feature.allExportFormats'),
+        t('billing.feature.dedicatedSupport'),
+        t('billing.feature.teamCollaboration'),
+        t('billing.feature.apiAccess'),
+        t('billing.feature.customIntegrations'),
+        t('billing.feature.slaGuarantee')
       ],
-      isCurrent: currentUserPlan === 'business',
+      isCurrent: currentUserPlan === 'business' || currentUserPlan === 'enterprise',
     },
   ]
 
@@ -75,16 +80,110 @@ export default function ChangePlanPage() {
     setSelectedPlan(planName)
   }
 
-  const handleConfirmChange = () => {
-    // TODO: Implement plan change
-    console.log(`Changing to ${selectedPlan} plan with ${billingCycle} billing`)
-    router.push('/dashboard/billing')
+  const handleConfirmChange = async () => {
+    if (!selectedPlan || !user) return
+    
+    // Map selected plan name to ECPay plan IDs
+    const planMapping: Record<string, string> = {
+      [t('billing.planNamePro')]: 'PRO',
+      [t('billing.planNameBusiness')]: 'ENTERPRISE'
+    }
+    
+    const ecpayPlanId = planMapping[selectedPlan]
+    if (!ecpayPlanId) {
+      console.error('Invalid plan selection:', selectedPlan)
+      return
+    }
+    
+    try {
+      console.log(`🔄 開始升級流程: ${ecpayPlanId} (${billingCycle})`)
+      
+      // Call ECPay subscription API using apiClient
+      const data = await apiClient.post('/api/v1/subscriptions/authorize', {
+        plan_id: ecpayPlanId,
+        billing_cycle: billingCycle
+      })
+      
+      console.log('✅ API 回應成功:', data)
+        
+      // Show confirmation before redirecting to ECPay
+      const confirmed = window.confirm(
+        `即將跳轉至 ECPay 付款頁面\n\n` +
+        `方案: ${selectedPlan}\n` +
+        `計費週期: ${billingCycle}\n` +
+        `付款網址: ${data.action_url}\n\n` +
+        `確認要繼續嗎？`
+      )
+      
+      if (!confirmed) {
+        console.log('❌ 用戶取消付款流程')
+        return
+      }
+      
+      // Redirect to ECPay payment form with enhanced debugging
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = data.action_url
+      form.target = '_blank'
+      
+      console.log("=== ECPay Form Debug ===");
+      console.log("Backend Response:", data);
+
+      // Check each form field with comprehensive debugging
+      const formDebug: Record<string, any> = {};
+      
+      // Add form data with enhanced debugging and value sanitization
+      Object.entries(data.form_data).forEach(([key, value]) => {
+        const input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = key
+        
+        // Sanitize and preserve exact value - trim to remove hidden characters
+        const sanitizedValue = value === null || value === undefined ? '' : String(value).trim()
+        input.value = sanitizedValue
+        form.appendChild(input)
+        
+        // Comprehensive debug info
+        formDebug[key] = {
+          original: value,
+          sanitized: sanitizedValue,
+          final: input.value,
+          type: typeof value,
+          length: sanitizedValue.length,
+          hasHiddenChars: sanitizedValue !== String(value || ''),
+        }
+        
+        // Enhanced debug logging for key fields
+        if (key === 'CheckMacValue' || key === 'TotalAmount' || key === 'MerchantTradeNo' || key === 'TradeDesc' || key === 'ItemName') {
+          console.log(`ECPay Form Field - ${key}: "${input.value}" (original: "${value}", type: ${typeof value}, len: ${sanitizedValue.length})`)
+        }
+      })
+
+      console.log("Form Fields Debug:", formDebug);
+
+      // Check for fields with hidden characters
+      Object.entries(formDebug).forEach(([key, info]) => {
+        if (info.hasHiddenChars) {
+          console.warn(`${key} had hidden characters:`, JSON.stringify(String(info.original)))
+        }
+      })
+      
+      document.body.appendChild(form)
+      form.submit()
+      document.body.removeChild(form)
+      
+      console.log('🚀 ECPay 付款表單已送出')
+      alert('ECPay 付款視窗已開啟，請在新視窗中完成付款')
+    } catch (error: any) {
+      console.error('💥 升級流程錯誤:', error)
+      alert(`升級過程中發生錯誤: ${error.message}`)
+    }
   }
 
   const renderPlanButton = (plan: any) => {
-    const planOrder: Record<string, number> = { 'free': 0, 'pro': 1, 'business': 2 }
+    const planOrder: Record<string, number> = { 'free': 0, 'pro': 1, 'enterprise': 2 }
     const currentOrder = planOrder[currentUserPlan] || 0
-    const targetOrder = planOrder[plan.name.toLowerCase()] || 0
+    const targetOrder = planOrder[plan.id] || 0
     
     if (plan.isCurrent) {
       return (
@@ -192,8 +291,9 @@ export default function ChangePlanPage() {
 
               <div className="mb-6">
                 <div className="flex items-baseline">
+                  <span className="text-lg mr-1 text-gray-400">NT$</span>
                   <span className="text-3xl font-bold" style={{color: 'var(--text-primary)'}}>
-                    NT${billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
+                    {billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
                   </span>
                   <span className="ml-2" style={{color: 'var(--text-tertiary)'}}>
                     /{t('billing.perMonth')}
@@ -201,7 +301,7 @@ export default function ChangePlanPage() {
                 </div>
                 {billingCycle === 'annual' && plan.price.annual > 0 && (
                   <p className="text-sm mt-1" style={{color: 'var(--text-tertiary)'}}>
-                    {t('billing.perYear')} NT${plan.price.annual * 12}
+                    {t('billing.perYear')}: NT${plan.price.annual * 12}
                   </p>
                 )}
               </div>
@@ -241,8 +341,8 @@ export default function ChangePlanPage() {
               <div>
                 <p className="text-sm mb-1" style={{color: 'var(--text-tertiary)'}}>{t('billing.billingCycle')}</p>
                 <p className="text-lg font-medium" style={{color: 'var(--text-primary)'}}>
-                  {billingCycle === 'annual' ? t('billing.annual') : t('billing.monthly')} - $
-                  {plans.find(p => p.name === selectedPlan)?.[billingCycle === 'annual' ? 'price' : 'price'][billingCycle === 'annual' ? 'annual' : 'monthly']}
+                  {billingCycle === 'annual' ? t('billing.annual') : t('billing.monthly')} - NT$
+                  {plans.find(p => p.name === selectedPlan)?.price[billingCycle === 'annual' ? 'annual' : 'monthly']}
                 </p>
               </div>
               <div>
@@ -251,20 +351,34 @@ export default function ChangePlanPage() {
               </div>
             </div>
             
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setSelectedPlan(null)}
-                className="flex-1 px-6 py-3 border rounded-lg transition-colors" style={{borderColor: 'var(--input-border)', color: 'var(--text-secondary)'}}
-              >
-                {t('billing.cancel')}
-              </button>
-              <button
-                onClick={handleConfirmChange}
-                className="flex-1 px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold" style={{backgroundColor: 'var(--accent-color)', color: 'var(--bg-primary)'}}
-                disabled
-              >
-                {t('billing.confirmUpgradeDisabled')}
-              </button>
+            <div className="flex flex-col space-y-4">
+              {/* Development Testing Info */}
+              <div className="p-3 bg-blue-600 bg-opacity-10 border border-blue-600 border-opacity-20 rounded-lg">
+                <p className="text-xs text-blue-400 mb-2">
+                  <strong>測試資訊:</strong> 點擊確認升級將會：
+                </p>
+                <ul className="text-xs text-blue-300 space-y-1 ml-4">
+                  <li>• 呼叫 /api/v1/subscriptions/authorize API</li>
+                  <li>• 生成 ECPay 付款表單</li>
+                  <li>• 在新視窗開啟 ECPay 付款頁面</li>
+                  <li>• 使用 ECPay 測試環境 (payment-stage.ecpay.com.tw)</li>
+                </ul>
+              </div>
+
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setSelectedPlan(null)}
+                  className="flex-1 px-6 py-3 border rounded-lg transition-colors" style={{borderColor: 'var(--input-border)', color: 'var(--text-secondary)'}}
+                >
+                  {t('billing.cancel')}
+                </button>
+                <button
+                  onClick={handleConfirmChange}
+                  className="flex-1 px-6 py-3 rounded-lg transition-colors font-semibold" style={{backgroundColor: 'var(--accent-color)', color: 'var(--bg-primary)'}}
+                >
+                  {t('billing.confirmUpgrade')}
+                </button>
+              </div>
             </div>
           </div>
         )}
