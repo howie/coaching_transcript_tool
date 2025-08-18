@@ -49,21 +49,23 @@ credit_url = "https://payment-stage.ecpay.com.tw/CreditDetail/DoAction"
 aio_url = "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5"
 ```
 
-### 3. ExecTimes Error (10100228)
+### 3. ExecTimes Error (10100228 / 10100227)
 
-**錯誤訊息**: `ExecTimes Error, PeriodType equal Y, ExecTimes between 2 and 99`
+**錯誤訊息**: 
+- `ExecTimes Error, PeriodType equal Y, ExecTimes between 2 and 99`
+- `ExecTimes Error, PeriodType equal M, ExecTimes between 2 and 999`
 
 **可能原因**:
 - ExecTimes 值不符合 ECPay 業務規則
 
-**ECPay 規則**:
-- `PeriodType = "M"`: ExecTimes 可設為 0（無限次）
+**ECPay 規則** (2025年更新):
+- `PeriodType = "M"`: ExecTimes 必須在 2-999 之間
 - `PeriodType = "Y"`: ExecTimes 必須在 2-99 之間
 
 **解決方案**:
 ```python
-# 正確的 ExecTimes 設定
-exec_times = "0" if billing_cycle == "monthly" else "99"
+# 正確的 ExecTimes 設定 (2025年更新)
+exec_times = "999" if billing_cycle == "monthly" else "99"
 period_type = "M" if billing_cycle == "monthly" else "Y"
 ```
 

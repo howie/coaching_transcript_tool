@@ -28,7 +28,7 @@ def debug_checkmacvalue_step_by_step():
         "PeriodType": "M",
         "Frequency": "1", 
         "PeriodAmount": "899",
-        "ExecTimes": "0",
+        "ExecTimes": "999",
         "PaymentType": "aio",
         "ChoosePayment": "Credit",
         "TradeDesc": "教練助手訂閱",

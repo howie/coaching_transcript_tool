@@ -90,8 +90,8 @@ class ECPaySubscriptionService:
                 "PeriodType": "M" if billing_cycle == "monthly" else "Y",  # ECPay uses M/Y not Month/Year
                 "Frequency": "1",  # String format for ECPay
                 "PeriodAmount": str(plan_pricing["amount_twd"] // 100),  # Amount per period as string
-                # ECPay ExecTimes rules: M=0 (unlimited), Y=2-99 (limited)
-                "ExecTimes": str(0 if billing_cycle == "monthly" else 99),  # Monthly=unlimited, Yearly=99 times as string
+                # ECPay ExecTimes rules updated: M=2-999, Y=2-99 (both limited)
+                "ExecTimes": str(999 if billing_cycle == "monthly" else 99),  # Monthly=999 times, Yearly=99 times as string
                 
                 # Payment method specification
                 "PaymentType": "aio",
@@ -131,7 +131,7 @@ class ECPaySubscriptionService:
             logger.info(f"ECPay Authorization - MerchantTradeNo: {merchant_trade_no} (length: {len(merchant_trade_no)})")
             logger.info(f"ECPay Authorization - TotalAmount: {auth_data['TotalAmount']}")
             logger.info(f"ECPay Authorization - PeriodType: {auth_data['PeriodType']}")
-            logger.info(f"ECPay Authorization - ExecTimes: {auth_data['ExecTimes']} ({'unlimited' if auth_data['ExecTimes'] == 0 else 'limited'})")
+            logger.info(f"ECPay Authorization - ExecTimes: {auth_data['ExecTimes']} ({'monthly 999 times' if auth_data['ExecTimes'] == '999' else 'yearly 99 times'})")
             logger.info(f"ECPay Authorization - TradeDesc: '{auth_data['TradeDesc']}' (length: {len(auth_data['TradeDesc'])})")
             logger.info(f"ECPay Authorization - ItemName: '{auth_data['ItemName']}' (length: {len(auth_data['ItemName'])})")
             
