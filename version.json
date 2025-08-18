@@ -1,8 +1,8 @@
 {
-  "version": "2.11.0",
-  "displayVersion": "v2.11.0",
+  "version": "2.12.0",
+  "displayVersion": "v2.12.0",
   "description": "Coachly transcription service - Production Ready with Complete Bug Fixes",
-  "releaseDate": "2025-08-17",
-  "releaseNotes": "Update billing and subscription management, fix transcription issues, and improve overall performance.",
+  "releaseDate": "2025-08-18",
+  "releaseNotes": "Payment integration with ECpay, bug fixes, and performance improvements.",
   "author": "Coachly Team"
 }

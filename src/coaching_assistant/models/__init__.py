@@ -19,6 +19,18 @@ from .usage_history import UsageHistory
 from .billing_analytics import BillingAnalytics
 from .role_audit_log import RoleAuditLog
 from .plan_configuration import PlanConfiguration, SubscriptionHistory
+from .ecpay_subscription import (
+    ECPayCreditAuthorization,
+    SaasSubscription,
+    SubscriptionPayment,
+    SubscriptionPendingChange,
+    PaymentRetryAttempt,
+    GracePeriod,
+    ECPayAuthStatus,
+    SubscriptionStatus,
+    PaymentStatus,
+    PeriodType,
+)
 
 __all__ = [
     "Base",
@@ -49,4 +61,15 @@ __all__ = [
     "RoleAuditLog",
     "PlanConfiguration",
     "SubscriptionHistory",
+    # ECPay subscription models
+    "ECPayCreditAuthorization",
+    "SaasSubscription",
+    "SubscriptionPayment",
+    "SubscriptionPendingChange",
+    "PaymentRetryAttempt",
+    "GracePeriod",
+    "ECPayAuthStatus",
+    "SubscriptionStatus", 
+    "PaymentStatus",
+    "PeriodType",
 ]
