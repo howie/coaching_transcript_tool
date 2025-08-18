@@ -43,7 +43,7 @@ class TestECPayParameterGeneration:
         
     def test_exec_times_business_rules(self):
         """測試 ExecTimes 業務規則"""
-        # 月繳: ExecTimes = "0"
+        # 月繳: ExecTimes = "999" (2025年更新規則)
         # 年繳: ExecTimes = "99"
         
     def test_period_type_format(self):
@@ -248,7 +248,7 @@ ECPAY_TEST_SCENARIOS = [
         "plan_id": "PRO", 
         "billing_cycle": "monthly",
         "expected_amount": "899",
-        "expected_exec_times": "0"
+        "expected_exec_times": "999"
     },
     {
         "name": "enterprise_annual",

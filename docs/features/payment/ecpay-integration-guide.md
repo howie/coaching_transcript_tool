@@ -163,8 +163,8 @@ const submitECPayForm = (data: any) => {
 
 ### 業務規則
 
-1. **ExecTimes 規則**:
-   - 月繳 (`PeriodType = "M"`): 設為 `"0"` (無限次)
+1. **ExecTimes 規則** (2025年更新):
+   - 月繳 (`PeriodType = "M"`): 設為 `"999"` (999次)
    - 年繳 (`PeriodType = "Y"`): 設為 `"99"` (99次)
 
 2. **金額計算**:

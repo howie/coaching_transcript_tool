@@ -18,10 +18,11 @@
 - **修正**: 切換至 `AioCheckOut/V5` 端點（定期定額專用）
 - **格式更新**: PeriodType 從 `"Month"/"Year"` 改為 `"M"/"Y"`
 
-### 3. ExecTimes Error (10100228)
+### 3. ExecTimes Error (10100228 / 10100227)
 **問題**: 執行次數不符合 ECPay 規則
-- **ECPay 規則**: 月繳 (`M`) 可設 0（無限），年繳 (`Y`) 必須 2-99
-- **修正**: 動態設定 `ExecTimes = 0 (monthly) / 99 (annual)`
+- **ECPay 舊規則**: 月繳 (`M`) 可設 0（無限），年繳 (`Y`) 必須 2-99
+- **ECPay 新規則 (2025)**: 月繳 (`M`) 必須 2-999，年繳 (`Y`) 必須 2-99
+- **修正**: 動態設定 `ExecTimes = 999 (monthly) / 99 (annual)`
 
 ### 4. ActionType Parameter Error (10100050)
 **問題**: 使用了 AioCheckOut 不支援的參數
