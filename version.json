@@ -1,8 +1,8 @@
 {
-  "version": "2.12.0",
-  "displayVersion": "v2.12.0",
-  "description": "Coachly transcription service - Production Ready with Complete Bug Fixes",
+  "version": "2.12.1",
+  "displayVersion": "v2.12.1",
+  "description": "Coachly transcription service - Production Ready with ECPay Integration",
   "releaseDate": "2025-08-18",
-  "releaseNotes": "Payment integration with ECpay, bug fixes, and performance improvements.",
+  "releaseNotes": "Fixed ECPay MerchantTradeNo API error, completed subscription system integration, and verified all endpoints.",
   "author": "Coachly Team"
 }

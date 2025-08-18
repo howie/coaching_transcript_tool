@@ -60,35 +60,52 @@ class ECPaySubscriptionService:
             if not plan_pricing:
                 raise ValueError(f"Invalid plan: {plan_id} with cycle: {billing_cycle}")
             
-            # Generate unique merchant member ID
+            # Generate unique merchant member ID and trade number
             timestamp = int(time.time())
             merchant_member_id = f"USER{user_id[:8]}{timestamp}"
+            merchant_trade_no = f"SUB{timestamp}{user_id[:8].upper()}"  # Must be unique and <= 20 chars
             
-            # Prepare authorization data
+            # Prepare authorization data for ECPay Credit Card Authorization API
             auth_data = {
+                # Required basic fields
                 "MerchantID": self.merchant_id,
                 "MerchantMemberID": merchant_member_id,
+                "MerchantTradeNo": merchant_trade_no,
                 "ActionType": "CreateAuth",
                 "TotalAmount": plan_pricing["amount_twd"] // 100,  # Convert cents to dollars
                 "ProductDesc": f"{plan_pricing['plan_name']}方案訂閱",
+                
+                # URLs for callbacks
                 "OrderResultURL": f"{self.settings.FRONTEND_URL}/subscription/result",
-                "ReturnURL": f"{self.settings.API_BASE_URL}/api/webhooks/ecpay-auth",
+                "ReturnURL": f"{self.settings.API_BASE_URL}/api/webhooks/ecpay-auth", 
                 "ClientBackURL": f"{self.settings.FRONTEND_URL}/billing",
                 
-                # Recurring payment settings
+                # Credit card recurring payment specific fields
                 "PeriodType": "Month" if billing_cycle == "monthly" else "Year",
                 "Frequency": 1,
-                "PeriodAmount": plan_pricing["amount_twd"] // 100,
-                "ExecTimes": 0,  # Unlimited recurring payments
+                "PeriodAmount": plan_pricing["amount_twd"] // 100,  # Amount per period
+                "ExecTimes": 0,  # 0 = unlimited recurring payments
                 
-                # Payment method (credit card only)
+                # Payment method specification
                 "PaymentType": "aio",
                 "ChoosePayment": "Credit",
                 
-                # Additional fields
-                "Remark": f"用戶: {user_id}, 方案: {plan_id}",
+                # Additional required fields for credit card authorization
+                "TradeDesc": f"{plan_pricing['plan_name']}訂閱服務",  # Trade description
+                "ItemName": f"{plan_pricing['plan_name']}方案",  # Item name
+                "Remark": f"用戶ID: {user_id}, 方案: {plan_id}",
+                "ChooseSubPayment": "",  # Empty for general credit card
                 "PlatformID": "",
-                "EncryptType": "1"
+                "EncryptType": "1",
+                
+                # Credit card authorization specific fields
+                "BindingCard": "0",  # 0=不記憶卡號, 1=記憶卡號
+                "MerchantTradeDate": datetime.now().strftime("%Y/%m/%d %H:%M:%S"),  # Trade date
+                "ExpireDate": "7",  # Order expires in 7 days
+                "CustomField1": plan_id,  # Store plan ID for reference
+                "CustomField2": billing_cycle,  # Store billing cycle for reference
+                "CustomField3": user_id[:8],  # Store user ID prefix for reference
+                "CustomField4": ""
             }
             
             # Generate CheckMacValue

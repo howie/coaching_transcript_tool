@@ -11,6 +11,8 @@ import planService, { UsageStatus, PlanConfig, SubscriptionInfo } from '@/lib/se
 import { UsageCard } from '@/components/billing/UsageCard'
 import { PaymentSettings } from '@/components/billing/PaymentSettings'
 import { ChangePlan } from '@/components/billing/ChangePlan'
+import { SubscriptionStatusBanner } from '@/components/billing/SubscriptionStatusBanner'
+import { ECPayStatus } from '@/components/billing/ECPayStatus'
 import UsageHistory from '@/components/billing/UsageHistory'
 
 export default function BillingPage() {
@@ -22,6 +24,15 @@ export default function BillingPage() {
   const [currentPlan, setCurrentPlan] = useState<PlanConfig | null>(null)
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'usage' | 'payment' | 'plans'>('overview')
+
+  // Check for tab parameter in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const tabParam = urlParams.get('tab')
+    if (tabParam && ['overview', 'usage', 'payment', 'plans'].includes(tabParam)) {
+      setActiveTab(tabParam as 'overview' | 'usage' | 'payment' | 'plans')
+    }
+  }, [])
 
   useEffect(() => {
     loadPlanData()
@@ -60,10 +71,16 @@ export default function BillingPage() {
     <div className={`min-h-screen ${themeClasses.dashboardBg} py-12`}>
       <div className="max-w-7xl mx-auto px-4">
         {/* Page Header */}
-        <div className="flex items-center space-x-3 mb-8">
-          <CreditCardIcon className="h-8 w-8 text-dashboard-accent" />
-          <h1 className={`text-3xl font-bold ${themeClasses.textPrimary}`}>{t('billing.title')}</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-3">
+            <CreditCardIcon className="h-8 w-8 text-dashboard-accent" />
+            <h1 className={`text-3xl font-bold ${themeClasses.textPrimary}`}>{t('billing.title')}</h1>
+          </div>
+          <ECPayStatus />
         </div>
+
+        {/* Subscription Status Banner */}
+        <SubscriptionStatusBanner />
 
         {/* Tabs */}
         <div className="flex space-x-1 mb-8 border-b border-gray-700">

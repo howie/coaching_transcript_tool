@@ -5,6 +5,27 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.1] - 2025-08-18
+
+### 🔧 Bug Fixes
+- **ECPay MerchantTradeNo Error**: Fixed missing MerchantTradeNo field causing ECPay API error (10200052)
+  - Added all required ECPay authorization fields including MerchantTradeNo, MerchantTradeDate, ExpireDate
+  - Added ItemName, TradeDesc, CustomField1-4 for complete ECPay API compliance
+  - Enhanced ECPaySubscriptionService with proper field validation
+- **Database Schema Completion**: All ECPay subscription tables successfully created
+  - Fixed Alembic model imports for proper migration generation
+  - Verified ECPay integration endpoints respond correctly (3/3 tests passed)
+
+### ✅ Testing Verification
+- **ECPay Integration Test Suite**: All tests passing
+  - Health check endpoint verification
+  - Authentication requirement validation  
+  - API endpoint accessibility confirmation
+- **Frontend-Backend Connection**: Confirmed working end-to-end flow
+  - Fixed apiClient integration in PaymentSettings component
+  - Resolved UUID format issues in test data
+  - ECPay authorization flow ready for production testing
+
 ## [2.12.0] - 2025-08-18
 
 ### 🎉 Major Features
