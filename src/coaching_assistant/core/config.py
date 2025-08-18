@@ -111,6 +111,16 @@ class Settings(BaseSettings):
     # 其他STT功能
     ENABLE_PUNCTUATION: bool = True
 
+    # ECPay 金流設定
+    ECPAY_MERCHANT_ID: str = ""  # 商店代號
+    ECPAY_HASH_KEY: str = ""  # HashKey
+    ECPAY_HASH_IV: str = ""  # HashIV
+    ECPAY_ENVIRONMENT: str = "sandbox"  # "sandbox" or "production"
+    
+    # Frontend/Backend URLs for ECPay callbacks
+    FRONTEND_URL: str = "http://localhost:3000"
+    API_BASE_URL: str = "http://localhost:8000"
+
     # Worker 設定
     WORKER_CONCURRENCY: int = 4
     TASK_TIME_LIMIT: int = 7200  # seconds
