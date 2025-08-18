@@ -72,15 +72,14 @@ class ECPaySubscriptionService:
             # Format: SUB + last 6 digits of timestamp + sanitized 8 chars of user_id
             merchant_trade_no = f"SUB{str(timestamp)[-6:]}{safe_user_prefix}"
             
-            # Prepare authorization data for ECPay Credit Card Authorization API
+            # Prepare authorization data for ECPay AioCheckOut recurring payment API
             auth_data = {
                 # Required basic fields
                 "MerchantID": self.merchant_id,
                 "MerchantMemberID": merchant_member_id,
                 "MerchantTradeNo": merchant_trade_no,
-                "ActionType": "CreateAuth",
-                "TotalAmount": plan_pricing["amount_twd"] // 100,  # Convert cents to dollars
-                "ProductDesc": f"{plan_pricing['plan_name']}方案訂閱",
+                "TotalAmount": str(plan_pricing["amount_twd"] // 100),  # Convert to string for ECPay
+                # Note: ECPay V5 API does not have ProductDesc field, only TradeDesc and ItemName
                 
                 # URLs for callbacks
                 "OrderResultURL": f"{self.settings.FRONTEND_URL}/subscription/result",
@@ -88,31 +87,41 @@ class ECPaySubscriptionService:
                 "ClientBackURL": f"{self.settings.FRONTEND_URL}/billing",
                 
                 # Credit card recurring payment specific fields
-                "PeriodType": "Month" if billing_cycle == "monthly" else "Year",
-                "Frequency": 1,
-                "PeriodAmount": plan_pricing["amount_twd"] // 100,  # Amount per period
-                "ExecTimes": 0,  # 0 = unlimited recurring payments
+                "PeriodType": "M" if billing_cycle == "monthly" else "Y",  # ECPay uses M/Y not Month/Year
+                "Frequency": "1",  # String format for ECPay
+                "PeriodAmount": str(plan_pricing["amount_twd"] // 100),  # Amount per period as string
+                # ECPay ExecTimes rules: M=0 (unlimited), Y=2-99 (limited)
+                "ExecTimes": str(0 if billing_cycle == "monthly" else 99),  # Monthly=unlimited, Yearly=99 times as string
                 
                 # Payment method specification
                 "PaymentType": "aio",
                 "ChoosePayment": "Credit",
                 
                 # Additional required fields for credit card authorization
-                "TradeDesc": f"{plan_pricing['plan_name']}訂閱服務",  # Trade description
-                "ItemName": f"{plan_pricing['plan_name']}方案",  # Item name
-                "Remark": f"用戶ID: {user_id}, 方案: {plan_id}",
+                "TradeDesc": "教練助手訂閱",  # Chinese trade description
+                "ItemName": f"訂閱方案#1#個#{plan_pricing['amount_twd'] // 100}",  # Already string format
+                "Remark": "",  # Empty to avoid any format issues
                 "ChooseSubPayment": "",  # Empty for general credit card
                 "PlatformID": "",
                 "EncryptType": "1",
                 
-                # Credit card authorization specific fields
-                "BindingCard": "0",  # 0=不記憶卡號, 1=記憶卡號
+                # Required fields for ECPay payments
                 "MerchantTradeDate": datetime.now().strftime("%Y/%m/%d %H:%M:%S"),  # Trade date
                 "ExpireDate": "7",  # Order expires in 7 days
+                # Note: TradeNo is ECPay-generated, should NOT be included in order creation
+                
+                # Credit card authorization specific fields  
+                "BindingCard": "0",  # 0=不記憶卡號, 1=記憶卡號
                 "CustomField1": plan_id,  # Store plan ID for reference
                 "CustomField2": billing_cycle,  # Store billing cycle for reference
                 "CustomField3": user_id[:8],  # Store user ID prefix for reference
-                "CustomField4": ""
+                "CustomField4": "",
+                
+                # Additional fields that might be required
+                "NeedExtraPaidInfo": "N",  # Don't need extra payment info
+                "DeviceSource": "",  # Empty for web
+                "IgnorePayment": "",  # Don't ignore any payment methods
+                "Language": "",  # Use default language
             }
             
             # Generate CheckMacValue
@@ -122,6 +131,9 @@ class ECPaySubscriptionService:
             logger.info(f"ECPay Authorization - MerchantTradeNo: {merchant_trade_no} (length: {len(merchant_trade_no)})")
             logger.info(f"ECPay Authorization - TotalAmount: {auth_data['TotalAmount']}")
             logger.info(f"ECPay Authorization - PeriodType: {auth_data['PeriodType']}")
+            logger.info(f"ECPay Authorization - ExecTimes: {auth_data['ExecTimes']} ({'unlimited' if auth_data['ExecTimes'] == 0 else 'limited'})")
+            logger.info(f"ECPay Authorization - TradeDesc: '{auth_data['TradeDesc']}' (length: {len(auth_data['TradeDesc'])})")
+            logger.info(f"ECPay Authorization - ItemName: '{auth_data['ItemName']}' (length: {len(auth_data['ItemName'])})")
             
             # Create authorization record
             auth_record = ECPayCreditAuthorization(
@@ -130,7 +142,7 @@ class ECPaySubscriptionService:
                 auth_amount=plan_pricing["amount_twd"],
                 period_type=auth_data["PeriodType"],
                 period_amount=plan_pricing["amount_twd"],
-                description=f"{plan_pricing['plan_name']}方案訂閱",
+                description=f"{plan_id} Plan Subscription",
                 auth_status=ECPayAuthStatus.PENDING.value
             )
             
@@ -140,7 +152,7 @@ class ECPaySubscriptionService:
             logger.info(f"Created ECPay authorization for user {user_id}, plan {plan_id}")
             
             return {
-                "action_url": self.credit_detail_url,
+                "action_url": self.aio_url,  # Use AioCheckOut for recurring payments
                 "form_data": auth_data,
                 "merchant_member_id": merchant_member_id,
                 "auth_id": str(auth_record.id)
@@ -185,9 +197,9 @@ class ECPaySubscriptionService:
                 auth_record.auth_date = datetime.now()
                 
                 # Calculate next payment date
-                if auth_record.period_type == "Month":
+                if auth_record.period_type == "M":
                     auth_record.next_pay_date = date.today() + timedelta(days=30)
-                else:  # Year
+                else:  # Y
                     auth_record.next_pay_date = date.today() + timedelta(days=365)
                 
                 # Create subscription
@@ -270,10 +282,10 @@ class ECPaySubscriptionService:
                 payment_record.status = PaymentStatus.SUCCESS.value
                 
                 # Extend subscription period
-                if auth_record.period_type == "Month":
+                if auth_record.period_type == "M":
                     new_period_start = subscription.current_period_end + timedelta(days=1)
                     new_period_end = new_period_start + timedelta(days=30)
-                else:  # Year
+                else:  # Y
                     new_period_start = subscription.current_period_end + timedelta(days=1)
                     new_period_end = new_period_start + timedelta(days=365)
                 
@@ -312,11 +324,11 @@ class ECPaySubscriptionService:
         plan_details = self._get_plan_from_amount(auth_record.period_amount * 100)  # Convert to cents
         
         # Set subscription period
-        if auth_record.period_type == "Month":
+        if auth_record.period_type == "M":
             period_start = date.today()
             period_end = period_start + timedelta(days=30)
             billing_cycle = "monthly"
-        else:  # Year
+        else:  # Y
             period_start = date.today()
             period_end = period_start + timedelta(days=365)
             billing_cycle = "annual"

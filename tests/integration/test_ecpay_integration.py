@@ -118,7 +118,7 @@ class TestECPayIntegration:
                     "MerchantID",
                     "MerchantMemberID", 
                     "MerchantTradeNo",  # This was missing before!
-                    "ActionType",
+                    # "ActionType",  # Removed for AioCheckOut endpoint
                     "TotalAmount",
                     "ProductDesc",
                     "OrderResultURL",
@@ -145,7 +145,7 @@ class TestECPayIntegration:
                 # Specific value validations
                 assert auth_data["MerchantTradeNo"] != "", "MerchantTradeNo cannot be empty"
                 assert len(auth_data["MerchantTradeNo"]) <= 20, "MerchantTradeNo too long"
-                assert auth_data["ActionType"] == "CreateAuth", "Wrong ActionType"
+                # ActionType no longer used in AioCheckOut endpoint
                 assert auth_data["PaymentType"] == "aio", "Wrong PaymentType"
                 assert auth_data["ChoosePayment"] == "Credit", "Wrong ChoosePayment"
                 
@@ -216,8 +216,8 @@ class TestECPayIntegration:
         """Test that PeriodType is correctly set based on billing cycle"""
         
         test_cases = [
-            ("monthly", "Month"),
-            ("annual", "Year"),
+            ("monthly", "M"),  # ECPay format
+            ("annual", "Y"),   # ECPay format
         ]
         
         user_id = "550e8400-e29b-41d4-a716-446655440000"

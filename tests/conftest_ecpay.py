@@ -92,12 +92,12 @@ class ECPayTestHelper:
     def validate_required_fields(form_data):
         """Validate all required ECPay fields are present"""
         required_fields = [
-            "MerchantID", "MerchantMemberID", "MerchantTradeNo", "ActionType",
-            "TotalAmount", "ProductDesc", "OrderResultURL", "ReturnURL",
+            "MerchantID", "MerchantMemberID", "MerchantTradeNo", 
+            "TotalAmount", "OrderResultURL", "ReturnURL",
             "ClientBackURL", "PeriodType", "Frequency", "PeriodAmount",
             "ExecTimes", "PaymentType", "ChoosePayment", "TradeDesc",
             "ItemName", "MerchantTradeDate", "ExpireDate", "CheckMacValue"
-        ]
+        ]  # Note: ProductDesc & TradeNo removed - not used in order creation
         
         missing_fields = []
         for field in required_fields:

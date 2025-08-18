@@ -127,13 +127,46 @@ export function ChangePlan() {
         form.action = data.action_url
         form.target = '_blank'
         
-        // Add form data
+        console.log("=== ECPay Form Debug ===");
+        console.log("Backend Response:", data);
+
+        // Check each form field with comprehensive debugging
+        const formDebug: Record<string, any> = {};
+        
+        // Add form data with enhanced debugging and value sanitization
         Object.entries(data.form_data).forEach(([key, value]) => {
           const input = document.createElement('input')
           input.type = 'hidden'
           input.name = key
-          input.value = String(value)
+          
+          // Sanitize and preserve exact value - trim to remove hidden characters
+          const sanitizedValue = value === null || value === undefined ? '' : String(value).trim()
+          input.value = sanitizedValue
           form.appendChild(input)
+          
+          // Comprehensive debug info
+          formDebug[key] = {
+            original: value,
+            sanitized: sanitizedValue,
+            final: input.value,
+            type: typeof value,
+            length: sanitizedValue.length,
+            hasHiddenChars: sanitizedValue !== String(value || ''),
+          }
+          
+          // Enhanced debug logging for key fields
+          if (key === 'CheckMacValue' || key === 'TotalAmount' || key === 'MerchantTradeNo' || key === 'TradeDesc' || key === 'ItemName') {
+            console.log(`ECPay Form Field - ${key}: "${input.value}" (original: "${value}", type: ${typeof value}, len: ${sanitizedValue.length})`)
+          }
+        })
+
+        console.log("Form Fields Debug:", formDebug);
+
+        // Check for fields with hidden characters
+        Object.entries(formDebug).forEach(([key, info]) => {
+          if (info.hasHiddenChars) {
+            console.warn(`${key} had hidden characters:`, JSON.stringify(String(info.original)))
+          }
         })
         
         document.body.appendChild(form)
