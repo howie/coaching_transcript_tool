@@ -7,10 +7,12 @@ import pytest
 import requests
 import time
 import json
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Any
 
-from tests.conftest import API_BASE_URL
+# API Base URL for testing
+API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:8000')
 
 
 class TestECPayAuthorizationE2E:
