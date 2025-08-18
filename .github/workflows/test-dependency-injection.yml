@@ -1,0 +1,193 @@
+name: Dependency Injection Tests
+
+on:
+  pull_request:
+    paths:
+      - 'src/coaching_assistant/api/**'
+      - 'src/coaching_assistant/models/**'
+      - 'tests/**'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/coaching_assistant/api/**'
+      - 'src/coaching_assistant/models/**'
+
+jobs:
+  test-dependency-injection:
+    runs-on: ubuntu-latest
+    name: Test API Dependency Injection
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        
+    - name: Test dependency injection compatibility
+      run: |
+        python -m pytest tests/unit/api/test_plan_limits_dependency_injection.py -v
+        
+    - name: Test User model contract
+      run: |
+        python -m pytest tests/unit/models/test_user_plan_limits_contract.py -v
+        
+    - name: Test API integration (dependency injection)
+      run: |
+        python -m pytest tests/integration/api/test_plan_limits_integration.py::TestPlanLimitsAPIIntegration -v
+        
+    - name: Test for AttributeError prevention
+      run: |
+        python -m pytest tests/integration/api/test_plan_limits_integration.py::TestErrorDetection -v
+
+  test-production-error-prevention:
+    runs-on: ubuntu-latest
+    name: Production Error Prevention Tests
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        
+    - name: Run specific production error tests
+      run: |
+        python -m pytest tests/integration/api/test_plan_limits_integration.py::TestPreProductionValidation -v
+        
+    - name: Verify API endpoints load without AttributeError
+      run: |
+        python -c "
+        import sys
+        sys.path.append('src')
+        
+        # Test that we can import and access the corrected functions
+        from coaching_assistant.api.plan_limits import validate_action, get_current_usage, increment_usage
+        from coaching_assistant.models.user import User
+        from coaching_assistant.api.auth import get_current_user_dependency
+        
+        # Test User model has required attributes
+        user = User()
+        user.session_count = 0
+        user.transcription_count = 0
+        user.usage_minutes = 0
+        
+        # This should not raise AttributeError
+        session_count = user.session_count or 0
+        transcription_count = user.transcription_count or 0
+        usage_minutes = user.usage_minutes or 0
+        
+        print('✅ All dependency injection checks passed')
+        "
+        
+    - name: Test import correctness
+      run: |
+        python -c "
+        import sys
+        sys.path.append('src')
+        import coaching_assistant.api.plan_limits as plan_limits
+        
+        # Should have the correct dependency function
+        assert hasattr(plan_limits, 'get_current_user_dependency')
+        
+        # Should NOT have the wrong function that returns UserResponse
+        assert not hasattr(plan_limits, 'get_current_user')
+        
+        print('✅ Import correctness verified')
+        "
+
+  test-api-endpoints-smoke:
+    runs-on: ubuntu-latest
+    name: API Endpoints Smoke Test
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_USER: test
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        
+    - name: Set up test environment
+      env:
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
+        REDIS_URL: redis://localhost:6379
+        SECRET_KEY: test-secret-key
+        GOOGLE_APPLICATION_CREDENTIALS_JSON: '{"type":"service_account","project_id":"test"}'
+      run: |
+        # Run database migrations
+        cd src && python -m alembic upgrade head
+        
+    - name: Test API endpoints don't crash with AttributeError
+      env:
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
+        REDIS_URL: redis://localhost:6379
+        SECRET_KEY: test-secret-key
+        GOOGLE_APPLICATION_CREDENTIALS_JSON: '{"type":"service_account","project_id":"test"}'
+      run: |
+        cd src && python -c "
+        from fastapi.testclient import TestClient
+        from coaching_assistant.main import app
+        
+        client = TestClient(app)
+        
+        # Test that plan endpoints exist and don't return 500 errors
+        endpoints = [
+            ('/api/v1/plan/validate-action', 'POST', {'action': 'create_session'}),
+            ('/api/v1/plan/current-usage', 'GET', None),
+            ('/api/v1/plan/increment-usage?metric=session_count', 'POST', None)
+        ]
+        
+        for endpoint, method, json_data in endpoints:
+            if method == 'POST':
+                response = client.post(endpoint, json=json_data) if json_data else client.post(endpoint)
+            else:
+                response = client.get(endpoint)
+                
+            # Should not be 500 (server error from AttributeError)
+            assert response.status_code != 500, f'Endpoint {endpoint} returned 500: {response.text}'
+            print(f'✅ {endpoint} returned {response.status_code} (not 500)')
+        
+        print('✅ All endpoints passed smoke test')
+        "

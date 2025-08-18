@@ -34,3 +34,12 @@ repos:
       - id: mypy
         additional_dependencies: [types-requests, types-redis]
         args: ["--config-file=mypy.ini"]
+  
+  - repo: local
+    hooks:
+      - id: check-dependency-injection
+        name: Check API Dependency Injection
+        entry: python scripts/check_dependency_injection.py
+        language: system
+        files: ^src/coaching_assistant/api/.*\.py$
+        description: Prevents AttributeError from wrong dependency injection in API endpoints
