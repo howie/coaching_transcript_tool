@@ -96,13 +96,37 @@ period_type = "M" if billing_cycle == "monthly" else "Y"
 
 ### 5. CheckMacValue Error (10200073)
 
-**錯誤訊息**: `CheckMacValue Error`
+**錯誤訊息**: `CheckMacValue Error` + 常見失敗原因說明
 
-**可能原因**:
-- 參數格式不一致（前後端）
-- 簽章計算錯誤
-- 編碼問題（UTF-8）
-- 參數順序錯誤
+**ECPay 提供的常見原因**:
+- 商店尚未開啟收款服務，請聯繫商店處理
+- 交易金額低於下限或超過上限
+- 此商店未提供任何付款方式，請聯繫商店處理
+- 此商店所傳送串接參數錯誤，請聯繫商店處理
+
+**診斷方法**:
+1. **測試 ECPay 服務狀態**:
+   ```bash
+   curl -I https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5
+   # 應該回傳 200，如果是 500 表示服務異常
+   ```
+
+2. **檢查測試商店狀態**:
+   - 確認測試商店 3002607 是否仍然可用
+   - 聯繫 ECPay 技術支援確認狀態
+
+3. **驗證 CheckMacValue 計算**:
+   ```python
+   # 使用官方範例參數測試
+   test_params = {
+       "MerchantID": "3002607",
+       "MerchantTradeNo": "TEST" + str(int(time.time())),
+       "TotalAmount": "100",  # 使用小額測試
+       "TradeDesc": "Test Order",
+       "ItemName": "Test Item",
+       # ... 其他基本參數
+   }
+   ```
 
 **診斷步驟**:
 

@@ -133,6 +133,30 @@ export function ChangePlan() {
         // Check each form field with comprehensive debugging
         const formDebug: Record<string, any> = {};
         
+        // 完整參數列表輸出 (按 ASCII 排序，與後端一致)
+        const sortedFormData = Object.keys(data.form_data).sort().reduce((acc, key) => {
+          acc[key] = data.form_data[key];
+          return acc;
+        }, {} as Record<string, any>);
+        
+        console.log("📋 前端接收到的完整參數 (按 ASCII 排序):");
+        Object.entries(sortedFormData).forEach(([key, value]) => {
+          console.log(`   ${key}: '${value}' (type: ${typeof value}, len: ${String(value).length})`);
+        });
+        
+        // 特別檢查關鍵時間參數
+        if (data.form_data.MerchantTradeDate) {
+          console.log(`🕐 MerchantTradeDate 詳細分析:`);
+          console.log(`   原始值: "${data.form_data.MerchantTradeDate}"`);
+          console.log(`   長度: ${data.form_data.MerchantTradeDate.length}`);
+          console.log(`   格式檢查: ${/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(data.form_data.MerchantTradeDate) ? '✅ 正確' : '❌ 格式錯誤'}`);
+          console.log(`   URL編碼後: "${encodeURIComponent(data.form_data.MerchantTradeDate)}"`);
+        }
+        
+        // 輸出前端將要提交的完整 JSON (與後端計算比較用)
+        console.log(`📤 前端即將提交的完整參數 JSON:`);
+        console.log(JSON.stringify(sortedFormData, null, 2));
+        
         // Add form data with enhanced debugging and value sanitization
         Object.entries(data.form_data).forEach(([key, value]) => {
           const input = document.createElement('input')
@@ -154,20 +178,29 @@ export function ChangePlan() {
             hasHiddenChars: sanitizedValue !== String(value || ''),
           }
           
-          // Enhanced debug logging for key fields
-          if (key === 'CheckMacValue' || key === 'TotalAmount' || key === 'MerchantTradeNo' || key === 'TradeDesc' || key === 'ItemName') {
-            console.log(`ECPay Form Field - ${key}: "${input.value}" (original: "${value}", type: ${typeof value}, len: ${sanitizedValue.length})`)
+          // Enhanced debug logging for ALL fields to catch any discrepancies
+          if (key === 'CheckMacValue' || key === 'TotalAmount' || key === 'MerchantTradeNo' || key === 'TradeDesc' || key === 'ItemName' || key === 'MerchantTradeDate' || key === 'PeriodType' || key === 'ExecTimes') {
+            console.log(`🔍 ${key}: "${input.value}" (original: "${value}", type: ${typeof value}, len: ${sanitizedValue.length})`)
           }
         })
 
-        console.log("Form Fields Debug:", formDebug);
+        console.log("📊 Form Fields Debug Summary:", formDebug);
 
         // Check for fields with hidden characters
         Object.entries(formDebug).forEach(([key, info]) => {
           if (info.hasHiddenChars) {
-            console.warn(`${key} had hidden characters:`, JSON.stringify(String(info.original)))
+            console.warn(`⚠️  ${key} had hidden characters:`, JSON.stringify(String(info.original)))
           }
         })
+        
+        // 輸出 CheckMacValue 比較
+        console.log(`🔐 CheckMacValue 比較:`);
+        console.log(`   前端即將提交: ${data.form_data.CheckMacValue}`);
+        console.log(`   期望後端計算: (請在後端日誌中查看)`);
+        
+        // 提醒用戶檢查時間差異
+        console.log(`⏰ 重要提醒: CheckMacValue 不匹配通常是因為 MerchantTradeDate 時間差異`);
+        console.log(`   請確認後端生成時間與前端提交時間完全一致（精確到秒）`)
         
         document.body.appendChild(form)
         form.submit()

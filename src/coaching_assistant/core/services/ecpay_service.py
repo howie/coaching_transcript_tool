@@ -125,15 +125,38 @@ class ECPaySubscriptionService:
             }
             
             # Generate CheckMacValue
-            auth_data["CheckMacValue"] = self._generate_check_mac_value(auth_data)
+            calculated_mac = self._generate_check_mac_value(auth_data)
+            auth_data["CheckMacValue"] = calculated_mac
             
-            # Log key fields for debugging
-            logger.info(f"ECPay Authorization - MerchantTradeNo: {merchant_trade_no} (length: {len(merchant_trade_no)})")
-            logger.info(f"ECPay Authorization - TotalAmount: {auth_data['TotalAmount']}")
-            logger.info(f"ECPay Authorization - PeriodType: {auth_data['PeriodType']}")
-            logger.info(f"ECPay Authorization - ExecTimes: {auth_data['ExecTimes']} ({'monthly 999 times' if auth_data['ExecTimes'] == '999' else 'yearly 99 times'})")
-            logger.info(f"ECPay Authorization - TradeDesc: '{auth_data['TradeDesc']}' (length: {len(auth_data['TradeDesc'])})")
-            logger.info(f"ECPay Authorization - ItemName: '{auth_data['ItemName']}' (length: {len(auth_data['ItemName'])})")
+            # Comprehensive debugging output (按照用戶建議)
+            logger.info("=== ECPay Backend Authorization Debug ===")
+            logger.info(f"🕐 MerchantTradeDate: '{auth_data['MerchantTradeDate']}' (length: {len(auth_data['MerchantTradeDate'])})")
+            logger.info(f"📋 完整參數列表 (按 ASCII 排序):")
+            
+            # 按 ASCII 排序輸出所有參數（與前端一致）
+            for key in sorted(auth_data.keys()):
+                value = auth_data[key]
+                if key != "CheckMacValue":  # CheckMacValue 單獨處理
+                    logger.info(f"   {key}: '{value}' (type: {type(value).__name__}, len: {len(str(value))})")
+            
+            # 特別標注關鍵參數
+            critical_fields = ['MerchantTradeDate', 'TotalAmount', 'TradeDesc', 'ItemName', 'PeriodType', 'ExecTimes']
+            logger.info(f"🔍 關鍵參數檢查:")
+            for field in critical_fields:
+                if field in auth_data:
+                    value = auth_data[field]
+                    logger.info(f"   {field}: '{value}' (type: {type(value).__name__}, len: {len(str(value))})")
+            
+            # CheckMacValue 計算結果
+            logger.info(f"🔐 CheckMacValue 計算結果:")
+            logger.info(f"   計算出的值: {calculated_mac}")
+            logger.info(f"   值長度: {len(calculated_mac)}")
+            
+            # 輸出完整 JSON 供比較
+            import json
+            logger.info(f"📤 後端生成的完整參數 JSON:")
+            sorted_auth_data = {k: auth_data[k] for k in sorted(auth_data.keys())}
+            logger.info(json.dumps(sorted_auth_data, ensure_ascii=False, indent=2))
             
             # Create authorization record
             auth_record = ECPayCreditAuthorization(
