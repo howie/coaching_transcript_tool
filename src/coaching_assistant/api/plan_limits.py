@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from coaching_assistant.core.database import get_db
-from coaching_assistant.api.auth import get_current_user
+from coaching_assistant.api.auth import get_current_user_dependency
 from coaching_assistant.models.user import User
 from coaching_assistant.services.usage_tracker import UsageTracker
 from coaching_assistant.services.plan_limits import PlanLimits, PlanName
@@ -54,7 +54,7 @@ class ValidateActionResponse(BaseModel):
 @router.post("/validate-action", response_model=ValidateActionResponse)
 async def validate_action(
     request: ValidateActionRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ) -> ValidateActionResponse:
     """
@@ -219,7 +219,7 @@ async def validate_action(
 
 @router.get("/current-usage")
 async def get_current_usage(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """Get current usage statistics for the authenticated user."""
@@ -286,7 +286,7 @@ async def get_current_usage(
 async def increment_usage(
     metric: str,
     amount: int = 1,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
