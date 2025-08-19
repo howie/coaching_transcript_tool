@@ -128,6 +128,21 @@ export default function ChangePlanPage() {
       
       console.log("=== ECPay Form Debug ===");
       console.log("Backend Response:", data);
+      
+      // 完整參數列表輸出 (按 ASCII 排序，與後端一致)
+      const sortedFormData = Object.keys(data.form_data).sort().reduce((acc, key) => {
+        acc[key] = data.form_data[key];
+        return acc;
+      }, {} as Record<string, any>);
+      
+      console.log("📋 前端接收到的完整參數 (按 ASCII 排序):");
+      Object.entries(sortedFormData).forEach(([key, value]) => {
+        console.log(`   ${key}: '${value}' (type: ${typeof value}, len: ${String(value).length})`);
+      });
+      
+      // 輸出前端將要提交的完整 JSON (與後端計算比較用)
+      console.log(`📤 前端即將提交的完整參數 JSON:`);
+      console.log(JSON.stringify(sortedFormData, null, 2));
 
       // Check each form field with comprehensive debugging
       const formDebug: Record<string, any> = {};
