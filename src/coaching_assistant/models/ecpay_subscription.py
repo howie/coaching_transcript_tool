@@ -267,3 +267,96 @@ class GracePeriod(BaseModel):
 
     def __repr__(self):
         return f"<GracePeriod(subscription_id={self.subscription_id}, end_date={self.end_date}, status={self.status})>"
+
+
+class WebhookStatus(enum.Enum):
+    """Webhook processing status."""
+    RECEIVED = "received"
+    PROCESSING = "processing"
+    SUCCESS = "success"
+    FAILED = "failed"
+    RETRYING = "retrying"
+
+
+class WebhookLog(BaseModel):
+    """Log of webhook calls for monitoring and debugging."""
+    
+    __tablename__ = "webhook_logs"
+    
+    # Webhook details
+    webhook_type = Column(String(50), nullable=False, index=True)  # auth_callback, billing_callback
+    source = Column(String(50), default="ecpay", nullable=False)  # ecpay, stripe, etc.
+    
+    # Request information
+    method = Column(String(10), default="POST", nullable=False)
+    endpoint = Column(String(255), nullable=False)
+    headers = Column(JSON, nullable=True)
+    raw_body = Column(Text, nullable=True)
+    form_data = Column(JSON, nullable=True)
+    
+    # Processing information
+    status = Column(String(20), default=WebhookStatus.RECEIVED.value, nullable=False, index=True)
+    processing_started_at = Column(DateTime(timezone=True), nullable=True)
+    processing_completed_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Result
+    success = Column(Boolean, nullable=True)
+    error_message = Column(Text, nullable=True)
+    response_body = Column(Text, nullable=True)
+    
+    # Related entities
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=True, index=True)
+    subscription_id = Column(UUID(as_uuid=True), ForeignKey("saas_subscriptions.id"), nullable=True, index=True)
+    payment_id = Column(UUID(as_uuid=True), ForeignKey("subscription_payments.id"), nullable=True, index=True)
+    
+    # ECPay specific fields
+    merchant_member_id = Column(String(30), nullable=True, index=True)
+    gwsr = Column(String(30), nullable=True, index=True)
+    rtn_code = Column(String(10), nullable=True)
+    
+    # Security verification
+    check_mac_value_verified = Column(Boolean, nullable=True)
+    ip_address = Column(String(45), nullable=True)  # Support IPv6
+    
+    # Retry information
+    retry_count = Column(Integer, default=0, nullable=False)
+    next_retry_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Timestamps
+    received_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User", backref="webhook_logs")
+    subscription = relationship("SaasSubscription", backref="webhook_logs")
+    payment = relationship("SubscriptionPayment", backref="webhook_logs")
+    
+    def __repr__(self):
+        return f"<WebhookLog(type={self.webhook_type}, status={self.status}, received_at={self.received_at})>"
+    
+    def mark_processing(self):
+        """Mark webhook as processing."""
+        self.status = WebhookStatus.PROCESSING.value
+        self.processing_started_at = datetime.utcnow()
+    
+    def mark_success(self, response_body: str = None):
+        """Mark webhook as successfully processed."""
+        self.status = WebhookStatus.SUCCESS.value
+        self.success = True
+        self.processing_completed_at = datetime.utcnow()
+        if response_body:
+            self.response_body = response_body
+    
+    def mark_failed(self, error_message: str):
+        """Mark webhook as failed."""
+        self.status = WebhookStatus.FAILED.value
+        self.success = False
+        self.error_message = error_message
+        self.processing_completed_at = datetime.utcnow()
+    
+    def mark_retry(self, next_retry_at: datetime):
+        """Mark webhook for retry."""
+        self.status = WebhookStatus.RETRYING.value
+        self.retry_count += 1
+        self.next_retry_at = next_retry_at

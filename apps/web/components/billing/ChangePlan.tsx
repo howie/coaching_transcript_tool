@@ -1,98 +1,68 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CheckIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { useI18n } from '@/contexts/i18n-context'
 import { useThemeClasses } from '@/lib/theme-utils'
 import { apiClient } from '@/lib/api'
+import { SubscriptionDashboard } from './SubscriptionDashboard'
+import subscriptionService, { SubscriptionData, PlanData } from '@/lib/services/subscription.service'
 
 export function ChangePlan() {
-  const [billingCycle, setBillingCycle] = useState('annual')
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const { user } = useAuth()
   const { t } = useI18n()
   const themeClasses = useThemeClasses()
   const router = useRouter()
   
-  // Determine current plan from user data
-  const currentUserPlan = user?.plan?.toLowerCase() || 'free'
+  // State management
+  const [loading, setLoading] = useState(true)
+  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null)
+  const [availablePlans, setAvailablePlans] = useState<PlanData[]>([])
+  const [activeView, setActiveView] = useState<'plans' | 'subscription'>('plans')
+  
+  // Determine current plan from subscription data
+  const currentUserPlan = subscriptionData?.subscription?.plan_id?.toLowerCase() || 'free'
 
-  const plans = [
-    {
-      name: t('billing.planNameFree'),
-      id: 'free',
-      price: { monthly: 0, annual: 0 },
-      description: t('billing.freeDescription'),
-      features: [
-        t('billing.feature.freeRecordings'),
-        t('billing.feature.freeLinkedRecordings'),
-        t('billing.feature.freeTranscriptionMinutes'),
-        t('billing.feature.freeRecordingLength'),
-        t('billing.feature.freeFileSize'),
-        t('billing.feature.basicExportFormats'),
-        t('billing.feature.emailSupport')
-      ],
-      isCurrent: currentUserPlan === 'free',
-    },
-    {
-      name: t('billing.planNamePro'),
-      id: 'pro',
-      price: { monthly: 899, annual: 749 }, // Updated ECPay pricing (899.00 TWD monthly, 8999.00 TWD annual)
-      description: t('billing.proDescription'),
-      features: [
-        t('billing.feature.proSessions'),
-        t('billing.feature.proTranscriptions'),
-        t('billing.feature.proTranscriptionMinutes'),
-        t('billing.feature.proRecordingLength'),
-        t('billing.feature.proFileSize'),
-        t('billing.feature.allExportFormats'),
-        t('billing.feature.priorityEmailSupport'),
-        t('billing.feature.advancedAnalytics'),
-        t('billing.feature.customBranding')
-      ],
-      isPopular: true,
-      isCurrent: currentUserPlan === 'pro',
-    },
-    {
-      name: t('billing.planNameBusiness'),
-      id: 'enterprise',
-      price: { monthly: 2999, annual: 2499 }, // Updated ECPay pricing (2999.00 TWD monthly, 2999.00 * 10 = 29999.00 TWD annual)
-      description: t('billing.businessDescription'),
-      features: [
-        t('billing.feature.businessSessions'),
-        t('billing.feature.businessTranscriptions'),
-        t('billing.feature.businessTranscriptionMinutes'),
-        t('billing.feature.businessRecordingLength'),
-        t('billing.feature.businessFileSize'),
-        t('billing.feature.allExportFormats'),
-        t('billing.feature.dedicatedSupport'),
-        t('billing.feature.teamCollaboration'),
-        t('billing.feature.apiAccess'),
-        t('billing.feature.customIntegrations'),
-        t('billing.feature.slaGuarantee')
-      ],
-      isCurrent: currentUserPlan === 'business' || currentUserPlan === 'enterprise',
-    },
-  ]
+  // Load data on component mount
+  useEffect(() => {
+    if (user) {
+      loadSubscriptionData()
+    }
+  }, [user])
 
-  const handlePlanSelect = (planName: string) => {
-    setSelectedPlan(planName)
+  const loadSubscriptionData = async () => {
+    try {
+      setLoading(true)
+      const [subscription, plans] = await Promise.all([
+        subscriptionService.getCurrentSubscription(),
+        subscriptionService.getAvailablePlans()
+      ])
+      
+      setSubscriptionData(subscription)
+      setAvailablePlans(plans)
+    } catch (error) {
+      console.error('Failed to load subscription data:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleConfirmChange = async () => {
-    if (!selectedPlan || !user) return
+  const handlePlanSelect = async (planId: string, billingCycle: string) => {
+    if (!user || planId.toUpperCase() === 'FREE') return
     
-    // Map selected plan name to ECPay plan IDs
+    // Map plan IDs to ECPay plan IDs - handle both upper and lower case
     const planMapping: Record<string, string> = {
-      [t('billing.planNamePro')]: 'PRO',
-      [t('billing.planNameBusiness')]: 'ENTERPRISE'
+      'pro': 'PRO',
+      'PRO': 'PRO',
+      'enterprise': 'ENTERPRISE',
+      'ENTERPRISE': 'ENTERPRISE'
     }
     
-    const ecpayPlanId = planMapping[selectedPlan]
+    const ecpayPlanId = planMapping[planId] || planMapping[planId.toUpperCase()]
     if (!ecpayPlanId) {
-      console.error('Invalid plan selection:', selectedPlan)
+      console.error('Invalid plan selection:', planId)
       return
     }
     
@@ -107,304 +77,411 @@ export function ChangePlan() {
       
       console.log('✅ API 回應成功:', data)
         
-        // Show confirmation before redirecting to ECPay
-        const confirmed = window.confirm(
-          `即將跳轉至 ECPay 付款頁面\n\n` +
-          `方案: ${selectedPlan}\n` +
-          `計費週期: ${billingCycle}\n` +
-          `付款網址: ${data.action_url}\n\n` +
-          `確認要繼續嗎？`
-        )
-        
-        if (!confirmed) {
-          console.log('❌ 用戶取消付款流程')
-          return
-        }
-        
-        // Redirect to ECPay payment form
-        const form = document.createElement('form')
-        form.method = 'POST'
-        form.action = data.action_url
-        form.target = '_blank'
-        
-        console.log("=== ECPay Form Debug ===");
-        console.log("Backend Response:", data);
-
-        // Check each form field with comprehensive debugging
-        const formDebug: Record<string, any> = {};
-        
-        // 完整參數列表輸出 (按 ASCII 排序，與後端一致)
-        const sortedFormData = Object.keys(data.form_data).sort().reduce((acc, key) => {
-          acc[key] = data.form_data[key];
-          return acc;
-        }, {} as Record<string, any>);
-        
-        console.log("📋 前端接收到的完整參數 (按 ASCII 排序):");
-        Object.entries(sortedFormData).forEach(([key, value]) => {
-          console.log(`   ${key}: '${value}' (type: ${typeof value}, len: ${String(value).length})`);
-        });
-        
-        // 特別檢查關鍵時間參數
-        if (data.form_data.MerchantTradeDate) {
-          console.log(`🕐 MerchantTradeDate 詳細分析:`);
-          console.log(`   原始值: "${data.form_data.MerchantTradeDate}"`);
-          console.log(`   長度: ${data.form_data.MerchantTradeDate.length}`);
-          console.log(`   格式檢查: ${/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(data.form_data.MerchantTradeDate) ? '✅ 正確' : '❌ 格式錯誤'}`);
-          console.log(`   URL編碼後: "${encodeURIComponent(data.form_data.MerchantTradeDate)}"`);
-        }
-        
-        // 輸出前端將要提交的完整 JSON (與後端計算比較用)
-        console.log(`📤 前端即將提交的完整參數 JSON:`);
-        console.log(JSON.stringify(sortedFormData, null, 2));
-        
-        // Add form data with enhanced debugging and value sanitization
-        Object.entries(data.form_data).forEach(([key, value]) => {
-          const input = document.createElement('input')
-          input.type = 'hidden'
-          input.name = key
-          
-          // Sanitize and preserve exact value - trim to remove hidden characters
-          const sanitizedValue = value === null || value === undefined ? '' : String(value).trim()
-          input.value = sanitizedValue
-          form.appendChild(input)
-          
-          // Comprehensive debug info
-          formDebug[key] = {
-            original: value,
-            sanitized: sanitizedValue,
-            final: input.value,
-            type: typeof value,
-            length: sanitizedValue.length,
-            hasHiddenChars: sanitizedValue !== String(value || ''),
-          }
-          
-          // Enhanced debug logging for ALL fields to catch any discrepancies
-          if (key === 'CheckMacValue' || key === 'TotalAmount' || key === 'MerchantTradeNo' || key === 'TradeDesc' || key === 'ItemName' || key === 'MerchantTradeDate' || key === 'PeriodType' || key === 'ExecTimes') {
-            console.log(`🔍 ${key}: "${input.value}" (original: "${value}", type: ${typeof value}, len: ${sanitizedValue.length})`)
-          }
-        })
-
-        console.log("📊 Form Fields Debug Summary:", formDebug);
-
-        // Check for fields with hidden characters
-        Object.entries(formDebug).forEach(([key, info]) => {
-          if (info.hasHiddenChars) {
-            console.warn(`⚠️  ${key} had hidden characters:`, JSON.stringify(String(info.original)))
-          }
-        })
-        
-        // 輸出 CheckMacValue 比較
-        console.log(`🔐 CheckMacValue 比較:`);
-        console.log(`   前端即將提交: ${data.form_data.CheckMacValue}`);
-        console.log(`   期望後端計算: (請在後端日誌中查看)`);
-        
-        // 提醒用戶檢查時間差異
-        console.log(`⏰ 重要提醒: CheckMacValue 不匹配通常是因為 MerchantTradeDate 時間差異`);
-        console.log(`   請確認後端生成時間與前端提交時間完全一致（精確到秒）`)
-        
-        document.body.appendChild(form)
-        form.submit()
-        document.body.removeChild(form)
-        
-        console.log('🚀 ECPay 付款表單已送出')
-        alert('ECPay 付款視窗已開啟，請在新視窗中完成付款')
+      // Show confirmation before redirecting to ECPay
+      const confirmed = window.confirm(
+        `即將跳轉至 ECPay 付款頁面\n\n` +
+        `方案: ${planId.toUpperCase()}\n` +
+        `計費週期: ${billingCycle}\n` +
+        `付款網址: ${data.action_url}\n\n` +
+        `確認要繼續嗎？`
+      )
+      
+      if (!confirmed) {
+        console.log('❌ 用戶取消付款流程')
+        return
+      }
+      
+      // Submit ECPay form
+      await submitECPayForm(data)
+      
     } catch (error) {
       console.error('💥 升級流程錯誤:', error)
-      alert(`升級過程中發生錯誤: ${error.message}`)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      alert(`升級過程中發生錯誤: ${errorMessage}`)
     }
   }
 
-  const renderPlanButton = (plan: any) => {
-    const planOrder: Record<string, number> = { 'free': 0, 'pro': 1, 'business': 2 }
-    const currentOrder = planOrder[currentUserPlan] || 0
-    const targetOrder = planOrder[plan.id] || 0
+  const submitECPayForm = async (data: any) => {
+    // Create and submit form to ECPay
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = data.action_url
+    form.target = '_blank'
     
-    if (plan.isCurrent) {
-      return (
-        <div className="text-center py-2 px-4 rounded-lg bg-gray-600 text-gray-300">
-          {t('billing.currentlyUsing')}
-        </div>
-      )
-    } else if (targetOrder < currentOrder) {
-      // Downgrade not allowed
-      return (
-        <div className="text-center py-2 px-4 rounded-lg border border-gray-600 text-gray-500 cursor-not-allowed">
-          {t('billing.cannotDowngrade')}
-        </div>
-      )
-    } else {
-      // Upgrade available
-      return (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            handlePlanSelect(plan.name)
-          }}
-          className="w-full py-2 px-4 rounded-lg font-medium transition-all hover:scale-105 border-2"
-          style={{
-            backgroundColor: selectedPlan === plan.name ? 'var(--accent-color)' : 'transparent',
-            borderColor: 'var(--accent-color)',
-            color: selectedPlan === plan.name ? 'var(--bg-primary)' : 'var(--accent-color)'
-          }}
-        >
-          {selectedPlan === plan.name ? `✓ ${t('billing.selected')}` : `${t('billing.upgradeTo')} ${plan.name}`}
-        </button>
-      )
-    }
+    // Add form data
+    Object.entries(data.form_data).forEach(([key, value]) => {
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = key
+      input.value = value === null || value === undefined ? '' : String(value).trim()
+      form.appendChild(input)
+    })
+    
+    document.body.appendChild(form)
+    form.submit()
+    document.body.removeChild(form)
+    
+    console.log('🚀 ECPay 付款表單已送出')
+    alert('ECPay 付款視窗已開啟，請在新視窗中完成付款')
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-dashboard-accent"></div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-8">
-      {/* Billing Cycle Toggle */}
-      <div className="flex items-center justify-center">
-        <div className="flex items-center space-x-3 bg-dashboard-card rounded-lg p-1 border border-dashboard-accent border-opacity-20">
+      {/* View Toggle */}
+      <div className="flex justify-center mb-8">
+        <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
           <button
-            onClick={() => setBillingCycle('monthly')}
-            className={`px-4 py-2 rounded-md transition-all ${
-              billingCycle === 'monthly'
-                ? 'bg-dashboard-accent text-white'
-                : 'text-gray-400 hover:text-white'
+            onClick={() => setActiveView('plans')}
+            className={`px-6 py-3 rounded-md font-medium transition-all ${
+              activeView === 'plans'
+                ? 'bg-white dark:bg-gray-700 shadow-md text-dashboard-accent'
+                : 'text-gray-600 dark:text-gray-400 hover:text-dashboard-accent'
             }`}
           >
-            {t('billing.monthly')}
+            📋 查看方案
+          </button>
+          <button
+            onClick={() => setActiveView('subscription')}
+            className={`px-6 py-3 rounded-md font-medium transition-all ${
+              activeView === 'subscription'
+                ? 'bg-white dark:bg-gray-700 shadow-md text-dashboard-accent'
+                : 'text-gray-600 dark:text-gray-400 hover:text-dashboard-accent'
+            }`}
+          >
+            🔧 訂閱管理
+          </button>
+        </div>
+      </div>
+
+      {/* Content based on active view */}
+      {activeView === 'plans' ? (
+        <DatabasePricingDisplay 
+          currentPlan={currentUserPlan}
+          availablePlans={availablePlans}
+          subscriptionData={subscriptionData}
+          onSelectPlan={handlePlanSelect}
+        />
+      ) : (
+        <SubscriptionDashboard />
+      )}
+    </div>
+  )
+}
+
+// Database-driven pricing display component
+function DatabasePricingDisplay({ 
+  currentPlan, 
+  availablePlans, 
+  subscriptionData,
+  onSelectPlan 
+}: {
+  currentPlan: string
+  availablePlans: PlanData[]
+  subscriptionData: SubscriptionData | null
+  onSelectPlan: (planId: string, billingCycle: string) => void
+}) {
+  const { t } = useI18n()
+  const themeClasses = useThemeClasses()
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual')
+
+  const formatPrice = (amountCents: number) => {
+    return new Intl.NumberFormat('zh-TW', {
+      style: 'currency',
+      currency: 'TWD',
+      minimumFractionDigits: 0
+    }).format(amountCents / 100)
+  }
+
+  const calculateSavings = (monthlyPrice: number, annualPrice: number) => {
+    if (monthlyPrice === 0 || annualPrice === 0) return 0
+    const monthlyCost = monthlyPrice * 12
+    const savings = ((monthlyCost - annualPrice) / monthlyCost) * 100
+    return Math.round(savings)
+  }
+
+  const getPlanStatus = (planId: string) => {
+    const planIdUpper = planId.toUpperCase()
+    const currentPlanUpper = currentPlan.toUpperCase()
+    
+    if (planIdUpper === currentPlanUpper) return 'current'
+    
+    const hierarchy: Record<string, number> = { 'FREE': 0, 'PRO': 1, 'ENTERPRISE': 2 }
+    const currentLevel = hierarchy[currentPlanUpper] || 0
+    const targetLevel = hierarchy[planIdUpper] || 0
+    
+    if (targetLevel > currentLevel) return 'upgrade'
+    if (targetLevel < currentLevel) return 'downgrade'
+    return 'available'
+  }
+
+  const getButtonText = (planId: string) => {
+    const status = getPlanStatus(planId)
+    switch (status) {
+      case 'current': return '目前方案'
+      case 'upgrade': return '升級至此方案'
+      case 'downgrade': return '降級至此方案'
+      default: return planId === 'FREE' ? '免費使用' : '選擇此方案'
+    }
+  }
+
+  const isButtonDisabled = (planId: string) => {
+    return getPlanStatus(planId) === 'current'
+  }
+
+  return (
+    <div className="space-y-12">
+      {/* Subscription Info Header */}
+      {subscriptionData?.subscription && (
+        <div className={`${themeClasses.card} p-6`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className={`text-lg font-semibold ${themeClasses.textPrimary}`}>
+                目前訂閱：{subscriptionData.subscription.plan_name}
+              </h3>
+              <p className={`text-sm ${themeClasses.textSecondary}`}>
+                計費週期：{subscriptionData.subscription.billing_cycle === 'monthly' ? '月繳' : '年繳'} | 
+                狀態：{subscriptionData.subscription.status === 'active' ? '使用中' : '非使用中'}
+              </p>
+            </div>
+            <div className="text-right">
+              <div className={`text-2xl font-bold ${themeClasses.textPrimary}`}>
+                {formatPrice(subscriptionData.subscription.amount_twd)}
+              </div>
+              <div className="text-sm text-gray-500">
+                /{subscriptionData.subscription.billing_cycle === 'monthly' ? '月' : '年'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Billing Cycle Toggle */}
+      <div className="flex justify-center">
+        <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <button
+            onClick={() => setBillingCycle('monthly')}
+            className={`px-6 py-3 rounded-md font-medium transition-all ${
+              billingCycle === 'monthly'
+                ? 'bg-white dark:bg-gray-700 shadow-md text-dashboard-accent'
+                : 'text-gray-600 dark:text-gray-400 hover:text-dashboard-accent'
+            }`}
+          >
+            月繳方案
           </button>
           <button
             onClick={() => setBillingCycle('annual')}
-            className={`px-4 py-2 rounded-md transition-all flex items-center ${
+            className={`px-6 py-3 rounded-md font-medium transition-all relative ${
               billingCycle === 'annual'
-                ? 'bg-dashboard-accent text-white'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-white dark:bg-gray-700 shadow-md text-dashboard-accent'
+                : 'text-gray-600 dark:text-gray-400 hover:text-dashboard-accent'
             }`}
           >
-            {t('billing.annual')}
-            <span className="ml-2 px-2 py-1 bg-green-500 text-xs rounded-full">{t('billing.save31')}</span>
+            年繳方案
+            <span className="ml-2 px-2 py-1 bg-green-500 text-white text-xs rounded-full">
+              最高省 17%
+            </span>
           </button>
         </div>
       </div>
 
       {/* Plans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {plans.map((plan) => (
-          <div
-            key={plan.name}
-            className={`bg-dashboard-card rounded-lg p-6 border ${
-              plan.isCurrent
-                ? 'border-gray-600'
-                : selectedPlan === plan.name
-                ? 'border-dashboard-accent'
-                : 'border-dashboard-accent border-opacity-20'
-            } ${plan.isPopular ? 'relative' : ''}`}
-          >
-            {plan.isPopular && (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span className="px-3 py-1 bg-dashboard-accent text-white text-sm rounded-full">
-                  {t('billing.mostPopular')}
-                </span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {availablePlans
+          .filter(plan => plan.is_active)
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((plan) => {
+            const status = getPlanStatus(plan.id)
+            const savings = calculateSavings(plan.pricing.monthly_twd, plan.pricing.annual_twd)
+            const currentPrice = billingCycle === 'monthly' ? plan.pricing.monthly_twd : plan.pricing.annual_twd
+
+            return (
+              <div
+                key={plan.id}
+                className={`relative bg-white dark:bg-gray-800 rounded-2xl border-2 transition-all duration-300 hover:shadow-xl ${
+                  plan.id === 'PRO' 
+                    ? 'border-dashboard-accent shadow-lg scale-105' 
+                    : 'border-gray-200 dark:border-gray-700 hover:border-dashboard-accent'
+                } ${status === 'current' ? 'ring-2 ring-dashboard-accent' : ''}`}
+              >
+                {/* Popular Badge */}
+                {plan.id === 'PRO' && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <div className="flex items-center bg-dashboard-accent text-white px-4 py-2 rounded-full text-sm font-medium">
+                      ⭐ 最受歡迎
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-8">
+                  {/* Plan Header */}
+                  <div className="text-center mb-8">
+                    <h3 className={`text-2xl font-bold ${themeClasses.textPrimary} mb-2`}>
+                      {plan.display_name}
+                    </h3>
+                    <p className={`text-sm ${themeClasses.textSecondary} mb-6`}>
+                      {plan.description}
+                    </p>
+
+                    {/* Pricing */}
+                    <div className="space-y-2">
+                      <div className="flex items-baseline justify-center">
+                        <span className={`text-4xl font-bold ${themeClasses.textPrimary}`}>
+                          {formatPrice(currentPrice)}
+                        </span>
+                        <span className={`text-sm ${themeClasses.textSecondary} ml-2`}>
+                          /{billingCycle === 'monthly' ? '月' : '年'}
+                        </span>
+                      </div>
+
+                      {billingCycle === 'annual' && plan.pricing.annual_twd > 0 && savings > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-sm text-gray-500">
+                            相當於每月 {formatPrice(plan.pricing.annual_twd / 12)}
+                          </div>
+                          <div className="flex items-center justify-center space-x-2 text-sm">
+                            <span className="line-through text-gray-400">
+                              原價 {formatPrice(plan.pricing.monthly_twd * 12)}
+                            </span>
+                            <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs">
+                              省 {savings}%
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Features */}
+                  <div className="space-y-4 mb-8">
+                    {plan.features.map((feature, index) => (
+                      <div key={index} className="flex items-center">
+                        <CheckIcon className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                        <span className={`text-sm ${themeClasses.textSecondary}`}>
+                          {feature}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CTA Button */}
+                  <button
+                    onClick={() => !isButtonDisabled(plan.id) && onSelectPlan(plan.id, billingCycle)}
+                    disabled={isButtonDisabled(plan.id)}
+                    className={`w-full py-4 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                      plan.id === 'PRO'
+                        ? 'bg-dashboard-accent text-white hover:bg-opacity-90 shadow-lg hover:shadow-xl'
+                        : isButtonDisabled(plan.id)
+                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
+                        : 'border-2 border-dashboard-accent text-dashboard-accent hover:bg-dashboard-accent hover:text-white'
+                    } ${isButtonDisabled(plan.id) ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105'}`}
+                  >
+                    {getButtonText(plan.id)}
+                  </button>
+                </div>
               </div>
-            )}
-
-            <div className="mb-4">
-              <h3 className={`text-xl font-bold ${themeClasses.textPrimary}`}>
-                {plan.name}
-              </h3>
-              <p className={`text-sm mt-1 ${themeClasses.textSecondary}`}>
-                {plan.description}
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <div className="flex items-baseline">
-                <span className="text-lg mr-1 text-gray-400">NT$</span>
-                <span className={`text-3xl font-bold ${themeClasses.textPrimary}`}>
-                  {billingCycle === 'annual' ? plan.price.annual : plan.price.monthly}
-                </span>
-                <span className={`ml-2 ${themeClasses.textTertiary}`}>
-                  /{t('billing.perMonth')}
-                </span>
-              </div>
-              {billingCycle === 'annual' && plan.price.annual > 0 && (
-                <p className={`text-sm mt-1 ${themeClasses.textTertiary}`}>
-                  {t('billing.perYear')}: NT${plan.price.annual * 12}
-                </p>
-              )}
-            </div>
-
-            <div className="mb-6">
-              <ul className="space-y-2">
-                {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-start">
-                    <CheckIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <span className={`text-sm ${themeClasses.textSecondary}`}>
-                      {feature}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-8">
-              {renderPlanButton(plan)}
-            </div>
-          </div>
-        ))}
+            )
+          })}
       </div>
 
-      {/* Confirmation Section */}
-      {selectedPlan && selectedPlan !== plans.find(p => p.isCurrent)?.name && (
-        <div className="bg-dashboard-card rounded-lg p-6 border border-dashboard-accent border-opacity-20">
-          <h3 className={`text-xl font-semibold mb-4 ${themeClasses.textPrimary}`}>
-            {t('billing.confirmUpgrade')}
+      {/* Features Comparison Table */}
+      <div className="mt-16">
+        <div className="text-center mb-8">
+          <h3 className={`text-3xl font-bold ${themeClasses.textPrimary} mb-4`}>
+            詳細功能比較
           </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div>
-              <p className={`text-sm mb-1 ${themeClasses.textTertiary}`}>{t('billing.newPlan')}</p>
-              <p className={`text-lg font-medium ${themeClasses.textPrimary}`}>{selectedPlan}</p>
-            </div>
-            <div>
-              <p className={`text-sm mb-1 ${themeClasses.textTertiary}`}>{t('billing.billingCycle')}</p>
-              <p className={`text-lg font-medium ${themeClasses.textPrimary}`}>
-                {billingCycle === 'annual' ? t('billing.annual') : t('billing.monthly')} - NT$
-                {plans.find(p => p.name === selectedPlan)?.price[billingCycle === 'annual' ? 'annual' : 'monthly']}
-              </p>
-            </div>
-            <div>
-              <p className={`text-sm mb-1 ${themeClasses.textTertiary}`}>{t('billing.effectiveDate')}</p>
-              <p className={`text-lg font-medium ${themeClasses.textPrimary}`}>{t('billing.immediately')}</p>
-            </div>
-          </div>
-          
-          <div className="flex flex-col space-y-4">
-            {/* Development Testing Info */}
-            <div className="p-3 bg-blue-600 bg-opacity-10 border border-blue-600 border-opacity-20 rounded-lg">
-              <p className="text-xs text-blue-400 mb-2">
-                <strong>測試資訊:</strong> 點擊確認升級將會：
-              </p>
-              <ul className="text-xs text-blue-300 space-y-1 ml-4">
-                <li>• 呼叫 /api/v1/subscriptions/authorize API</li>
-                <li>• 生成 ECPay 付款表單</li>
-                <li>• 在新視窗開啟 ECPay 付款頁面</li>
-                <li>• 使用 ECPay 測試環境 (payment-stage.ecpay.com.tw)</li>
-              </ul>
-            </div>
-
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setSelectedPlan(null)}
-                className={`flex-1 px-6 py-3 border rounded-lg transition-colors ${themeClasses.buttonSecondary}`}
-              >
-                {t('billing.cancel')}
-              </button>
-              <button
-                onClick={handleConfirmChange}
-                className="flex-1 px-6 py-3 rounded-lg transition-colors font-semibold bg-dashboard-accent text-white hover:bg-opacity-90"
-              >
-                {t('billing.confirmUpgrade')}
-              </button>
-            </div>
-          </div>
+          <p className={`text-lg ${themeClasses.textSecondary}`}>
+            選擇最適合您需求的方案（數據來源：資料庫）
+          </p>
         </div>
-      )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="p-6 text-left font-semibold">功能項目</th>
+                {availablePlans
+                  .filter(plan => plan.is_active)
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                  .map((plan) => (
+                  <th key={plan.id} className="p-6 text-center font-semibold">
+                    {plan.display_name}
+                    {plan.id === 'PRO' && (
+                      <div className="text-xs text-dashboard-accent mt-1">推薦</div>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <td className="p-6 font-medium">每月會談數</td>
+                {availablePlans
+                  .filter(plan => plan.is_active)
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                  .map((plan) => (
+                  <td key={plan.id} className="p-6 text-center">
+                    {plan.limits.max_sessions === -1 ? '無限制' : plan.limits.max_sessions}
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <td className="p-6 font-medium">每月轉錄數</td>
+                {availablePlans
+                  .filter(plan => plan.is_active)
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                  .map((plan) => (
+                  <td key={plan.id} className="p-6 text-center">
+                    {plan.limits.max_transcriptions === -1 ? '無限制' : plan.limits.max_transcriptions}
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <td className="p-6 font-medium">每月轉錄分鐘數</td>
+                {availablePlans
+                  .filter(plan => plan.is_active)
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                  .map((plan) => (
+                  <td key={plan.id} className="p-6 text-center">
+                    {plan.limits.max_total_minutes === -1 ? '無限制' : `${plan.limits.max_total_minutes} 分鐘`}
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <td className="p-6 font-medium">檔案大小限制</td>
+                {availablePlans
+                  .filter(plan => plan.is_active)
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                  .map((plan) => (
+                  <td key={plan.id} className="p-6 text-center">
+                    {plan.limits.max_file_size_mb} MB
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Pricing Note */}
+      <div className="text-center space-y-4">
+        <p className={`text-sm ${themeClasses.textTertiary}`}>
+          * 所有價格以新台幣計算，包含稅金 | 數據直接來自資料庫
+        </p>
+        <div className="flex justify-center space-x-8 text-sm text-dashboard-accent">
+          <span>✓ 隨時升級或降級</span>
+          <span>✓ 隨時取消訂閱</span>
+          <span>✓ 安全付款保護</span>
+        </div>
+      </div>
     </div>
   )
 }

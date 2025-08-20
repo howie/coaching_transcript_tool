@@ -26,7 +26,7 @@ from .api import (
     plans,
     plan_limits,
 )
-from .api.v1 import subscriptions
+from .api.v1 import subscriptions, plans as plans_v1
 from .api.webhooks import ecpay
 from .middleware.logging import setup_api_logging
 from .middleware.error_handler import error_handler
@@ -95,6 +95,7 @@ app.include_router(usage.router, tags=["usage"])
 app.include_router(usage_history.router, prefix="/api/v1/usage", tags=["usage-history"])
 app.include_router(plans.router, tags=["plans"])
 app.include_router(plan_limits.router, tags=["plan-limits"])
+app.include_router(plans_v1.router, tags=["plans-v1"])
 app.include_router(subscriptions.router, tags=["subscriptions"])
 app.include_router(ecpay.router, tags=["webhooks"])
 app.include_router(admin.router, tags=["admin"])

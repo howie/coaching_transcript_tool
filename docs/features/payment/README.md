@@ -150,12 +150,33 @@ user-stories/
 - 失敗付款警報
 - 系統健康度檢查
 
----
+## 🚨 Current Status (2025-08-20)
 
-**Next Steps**: 開始實作 `US-SUB-001` (ECPay Credit Authorization) 建立 SaaS 訂閱的基礎架構。
+### ✅ Completed Components
+- Frontend subscription management UI
+- Backend API endpoints (`/api/v1/subscriptions/*`, `/api/v1/plans`)
+- Database schema and data models
+- Security compliance framework
+
+### 🔴 Critical Issue
+**ECPay CheckMacValue Error (10200073)** - 需要聯繫 ECPay 技術支援
+- 所有定期定額授權請求都失敗
+- 已修正所有已知參數問題
+- 可能是測試商店設定問題
+
+### 📋 Immediate Actions Required
+1. **聯繫 ECPay 技術支援** - 驗證測試商店 3002607 狀態
+2. **獲取詳細錯誤診斷** - 請求具體失敗原因
+3. **準備替代方案** - 考慮新測試商店或臨時支付方案
+
+詳細狀態請參考：`status-update-2025-08-20.md`
+
+---
 
 ## 🔗 Related Documentation
 
+- **Current Status**: `status-update-2025-08-20.md` - 最新進度和問題追蹤
 - **Technical Architecture**: `ecpay-saas-subscription.md`
+- **Troubleshooting**: `ecpay-troubleshooting-guide.md` - 包含 CheckMacValue 問題診斷
 - **Implementation Guide**: `user-stories/README-subscription.md`
 - **Future Expansion**: `stripe-secondary.md` (國際市場)
