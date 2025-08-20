@@ -12,6 +12,7 @@ import { UsageCard } from '@/components/billing/UsageCard'
 import { PaymentSettings } from '@/components/billing/PaymentSettings'
 import { ChangePlan } from '@/components/billing/ChangePlan'
 import { SubscriptionStatusBanner } from '@/components/billing/SubscriptionStatusBanner'
+import { SubscriptionDashboard } from '@/components/billing/SubscriptionDashboard'
 import { ECPayStatus } from '@/components/billing/ECPayStatus'
 import UsageHistory from '@/components/billing/UsageHistory'
 
@@ -56,7 +57,7 @@ export default function BillingPage() {
   }
 
   const handleUpgrade = () => {
-    window.location.href = '/dashboard/billing/change-plan'
+    setActiveTab('plans')
   }
 
   if (loading) {
@@ -86,8 +87,8 @@ export default function BillingPage() {
         <div className="flex space-x-1 mb-8 border-b border-gray-700">
           {[
             { id: 'overview', label: t('billing.overview'), icon: ChartBarIcon },
-            { id: 'payment', label: t('billing.paymentSettings'), icon: CreditCardIcon },
             { id: 'plans', label: t('billing.changePlan'), icon: ArrowPathIcon },
+            { id: 'payment', label: t('billing.paymentSettings'), icon: CreditCardIcon },
             { id: 'usage', label: t('billing.usageHistory'), icon: ClockIcon },
           ].map((tab) => (
             <button
@@ -314,7 +315,7 @@ export default function BillingPage() {
                       {currentPlan.planName !== 'business' && (
                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                           <button
-                            onClick={() => window.location.href = '/dashboard/billing/change-plan'}
+                            onClick={() => setActiveTab('plans')}
                             className="w-full text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-md transition-colors"
                           >
                             {t('billing.changePlan')}

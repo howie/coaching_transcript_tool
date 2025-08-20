@@ -12,7 +12,7 @@ from ...core.database import get_db
 from ...api.auth import get_current_user_dependency
 from ...core.services.ecpay_service import ECPaySubscriptionService
 from ...core.config import settings
-from ...models import User, SaasSubscription, ECPayCreditAuthorization
+from ...models import User, SaasSubscription, ECPayCreditAuthorization, SubscriptionPayment
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,28 @@ class CurrentSubscriptionResponse(BaseModel):
     subscription: Dict[str, Any] = None
     payment_method: Dict[str, Any] = None
     status: str = "no_subscription"
+
+
+class UpgradeRequest(BaseModel):
+    plan_id: str
+    billing_cycle: str
+
+
+class DowngradeRequest(BaseModel):
+    plan_id: str
+    billing_cycle: str
+
+
+class CancelRequest(BaseModel):
+    immediate: bool = False
+    reason: str = None
+
+
+class ProrationPreviewResponse(BaseModel):
+    current_plan_remaining_value: int
+    new_plan_prorated_cost: int
+    net_charge: int
+    effective_date: str
 
 
 @router.post("/authorize", response_model=AuthorizationResponse)
@@ -249,4 +271,315 @@ async def reactivate_subscription(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to reactivate subscription."
+        )
+
+
+@router.post("/preview-change", response_model=ProrationPreviewResponse)
+async def preview_plan_change(
+    request: UpgradeRequest,
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """Preview prorated billing for plan change."""
+    
+    try:
+        # Find current subscription
+        subscription = db.query(SaasSubscription).filter(
+            SaasSubscription.user_id == current_user.id,
+            SaasSubscription.status == "active"
+        ).first()
+        
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active subscription found."
+            )
+        
+        # Calculate proration
+        ecpay_service = ECPaySubscriptionService(db, settings)
+        proration = ecpay_service.calculate_prorated_charge(
+            subscription, request.plan_id, request.billing_cycle
+        )
+        
+        return ProrationPreviewResponse(**proration)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to preview plan change: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to calculate proration preview."
+        )
+
+
+@router.post("/upgrade")
+async def upgrade_subscription(
+    request: UpgradeRequest,
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """Upgrade subscription plan with immediate effect and prorated billing."""
+    
+    try:
+        # Validate request
+        if request.plan_id not in ["PRO", "ENTERPRISE"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid plan_id. Must be PRO or ENTERPRISE."
+            )
+        
+        # Find current subscription
+        subscription = db.query(SaasSubscription).filter(
+            SaasSubscription.user_id == current_user.id,
+            SaasSubscription.status == "active"
+        ).first()
+        
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active subscription found."
+            )
+        
+        # Check if it's actually an upgrade
+        plan_hierarchy = {"PRO": 1, "ENTERPRISE": 2}
+        current_level = plan_hierarchy.get(subscription.plan_id, 0)
+        new_level = plan_hierarchy.get(request.plan_id, 0)
+        
+        if new_level <= current_level:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Can only upgrade to higher tier plans."
+            )
+        
+        # Perform upgrade
+        ecpay_service = ECPaySubscriptionService(db, settings)
+        result = ecpay_service.upgrade_subscription(
+            subscription, request.plan_id, request.billing_cycle
+        )
+        
+        logger.info(f"Subscription {subscription.id} upgraded to {request.plan_id}")
+        
+        return {
+            "success": True,
+            "message": "Subscription upgraded successfully",
+            "prorated_charge": result.get("prorated_charge", 0),
+            "effective_date": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to upgrade subscription: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to upgrade subscription."
+        )
+
+
+@router.post("/downgrade")
+async def downgrade_subscription(
+    request: DowngradeRequest,
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """Downgrade subscription plan (effective at period end)."""
+    
+    try:
+        # Validate request
+        if request.plan_id not in ["FREE", "PRO", "ENTERPRISE"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid plan_id."
+            )
+        
+        # Find current subscription
+        subscription = db.query(SaasSubscription).filter(
+            SaasSubscription.user_id == current_user.id,
+            SaasSubscription.status == "active"
+        ).first()
+        
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active subscription found."
+            )
+        
+        # Check if it's actually a downgrade
+        plan_hierarchy = {"FREE": 0, "PRO": 1, "ENTERPRISE": 2}
+        current_level = plan_hierarchy.get(subscription.plan_id, 0)
+        new_level = plan_hierarchy.get(request.plan_id, 0)
+        
+        if new_level >= current_level:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Can only downgrade to lower tier plans."
+            )
+        
+        # Schedule downgrade for period end
+        ecpay_service = ECPaySubscriptionService(db, settings)
+        result = ecpay_service.schedule_downgrade(
+            subscription, request.plan_id, request.billing_cycle
+        )
+        
+        logger.info(f"Subscription {subscription.id} scheduled for downgrade to {request.plan_id}")
+        
+        return {
+            "success": True,
+            "message": "Downgrade scheduled for period end",
+            "effective_date": subscription.current_period_end.isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to downgrade subscription: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to schedule downgrade."
+        )
+
+
+@router.post("/cancel")
+async def cancel_subscription_new(
+    request: CancelRequest,
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """Cancel subscription with immediate or period-end options."""
+    
+    try:
+        # Find active subscription
+        subscription = db.query(SaasSubscription).filter(
+            SaasSubscription.user_id == current_user.id,
+            SaasSubscription.status == "active"
+        ).first()
+        
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active subscription found."
+            )
+        
+        # Perform cancellation
+        ecpay_service = ECPaySubscriptionService(db, settings)
+        result = ecpay_service.cancel_subscription(
+            subscription, request.immediate, request.reason
+        )
+        
+        logger.info(f"Subscription {subscription.id} cancelled ({'immediate' if request.immediate else 'period-end'})")
+        
+        return {
+            "success": True,
+            "message": "Subscription cancelled successfully",
+            "cancelled_at": datetime.now().isoformat(),
+            "effective_date": result["effective_date"],
+            "refund_amount": result.get("refund_amount", 0)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cancel subscription: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to cancel subscription."
+        )
+
+
+@router.post("/reactivate")
+async def reactivate_subscription_new(
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """Reactivate a cancelled subscription."""
+    
+    try:
+        # Find subscription scheduled for cancellation
+        subscription = db.query(SaasSubscription).filter(
+            SaasSubscription.user_id == current_user.id,
+            SaasSubscription.cancel_at_period_end == True,
+            SaasSubscription.status == "active"
+        ).first()
+        
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No subscription scheduled for cancellation found."
+            )
+        
+        # Reactivate subscription
+        subscription.cancel_at_period_end = False
+        subscription.cancellation_reason = None
+        
+        db.commit()
+        
+        logger.info(f"Subscription {subscription.id} reactivated")
+        
+        return {
+            "success": True,
+            "message": "Subscription reactivated successfully",
+            "subscription": {
+                "id": str(subscription.id),
+                "status": subscription.status,
+                "plan_id": subscription.plan_id
+            },
+            "next_payment_date": subscription.current_period_end.isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to reactivate subscription: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reactivate subscription."
+        )
+
+
+@router.get("/billing-history")
+async def get_billing_history(
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db),
+    limit: int = 20,
+    offset: int = 0
+):
+    """Get user's billing history."""
+    
+    try:
+        # Get all payments for user's subscriptions
+        payments = db.query(SubscriptionPayment).join(
+            SaasSubscription, SubscriptionPayment.subscription_id == SaasSubscription.id
+        ).filter(
+            SaasSubscription.user_id == current_user.id
+        ).order_by(
+            SubscriptionPayment.processed_at.desc()
+        ).offset(offset).limit(limit).all()
+        
+        payment_data = []
+        for payment in payments:
+            payment_data.append({
+                "id": str(payment.id),
+                "amount": payment.amount,
+                "currency": payment.currency,
+                "status": payment.status,
+                "period_start": payment.period_start.isoformat(),
+                "period_end": payment.period_end.isoformat(),
+                "processed_at": payment.processed_at.isoformat() if payment.processed_at else None,
+                "failure_reason": payment.failure_reason,
+                "retry_count": payment.retry_count
+            })
+        
+        return {
+            "payments": payment_data,
+            "total": len(payment_data),
+            "limit": limit,
+            "offset": offset
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get billing history: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve billing history."
         )

@@ -320,6 +320,9 @@ class ECPaySubscriptionService:
                 auth_record.next_pay_date = new_period_end
                 auth_record.exec_times += 1
                 
+                # Send success notifications
+                self._handle_payment_success_notifications(subscription, payment_record)
+                
                 logger.info(f"Payment successful: {gwsr}, subscription extended")
                 
             else:  # Payment failed
@@ -328,6 +331,9 @@ class ECPaySubscriptionService:
                 
                 # Handle failed payment (implement retry logic)
                 self._handle_failed_payment(subscription, payment_record)
+                
+                # Send failure notifications
+                self._handle_payment_failure_notifications(subscription, payment_record)
                 
                 logger.warning(f"Payment failed: {gwsr}, reason: {payment_record.failure_reason}")
             
@@ -489,3 +495,295 @@ class ECPaySubscriptionService:
             logger.error(f"Error cancelling authorization: {e}")
             self.db.rollback()
             return False
+    
+    def calculate_prorated_charge(
+        self,
+        subscription: SaasSubscription,
+        new_plan_id: str,
+        new_billing_cycle: str
+    ) -> Dict[str, Any]:
+        """Calculate prorated charge for plan upgrade."""
+        
+        # Get current date and subscription period info
+        today = date.today()
+        current_period_start = subscription.current_period_start
+        current_period_end = subscription.current_period_end
+        
+        # Calculate remaining days in current period
+        total_days = (current_period_end - current_period_start).days
+        remaining_days = (current_period_end - today).days
+        
+        if remaining_days <= 0:
+            remaining_days = 0
+        
+        # Calculate current plan remaining value
+        current_remaining_value = int(
+            (subscription.amount_twd * remaining_days) / total_days
+        ) if total_days > 0 else 0
+        
+        # Get new plan pricing
+        new_plan_pricing = self._get_plan_pricing(new_plan_id, new_billing_cycle)
+        if not new_plan_pricing:
+            raise ValueError(f"Invalid plan: {new_plan_id} with cycle: {new_billing_cycle}")
+        
+        # Calculate new plan prorated cost
+        new_plan_prorated_cost = int(
+            (new_plan_pricing["amount_twd"] * remaining_days) / total_days
+        ) if total_days > 0 else new_plan_pricing["amount_twd"]
+        
+        # Net charge (additional amount needed)
+        net_charge = max(0, new_plan_prorated_cost - current_remaining_value)
+        
+        return {
+            "current_plan_remaining_value": current_remaining_value,
+            "new_plan_prorated_cost": new_plan_prorated_cost,
+            "net_charge": net_charge,
+            "effective_date": datetime.now().isoformat()
+        }
+    
+    def upgrade_subscription(
+        self,
+        subscription: SaasSubscription,
+        new_plan_id: str,
+        new_billing_cycle: str
+    ) -> Dict[str, Any]:
+        """Upgrade subscription plan with prorated billing."""
+        
+        try:
+            # Calculate prorated charge
+            proration = self.calculate_prorated_charge(
+                subscription, new_plan_id, new_billing_cycle
+            )
+            
+            # Get new plan details
+            new_plan_pricing = self._get_plan_pricing(new_plan_id, new_billing_cycle)
+            
+            # TODO: If there's a net charge, process payment via ECPay
+            # For now, we'll assume payment is successful
+            if proration["net_charge"] > 0:
+                logger.info(f"Prorated charge required: {proration['net_charge']} cents")
+                # In production, this would trigger an ECPay payment request
+            
+            # Update subscription immediately
+            subscription.plan_id = new_plan_id
+            subscription.plan_name = new_plan_pricing["plan_name"]
+            subscription.billing_cycle = new_billing_cycle
+            subscription.amount_twd = new_plan_pricing["amount_twd"]
+            
+            # Update ECPay authorization amount if needed
+            if subscription.auth_record:
+                subscription.auth_record.period_amount = new_plan_pricing["amount_twd"]
+                subscription.auth_record.auth_amount = new_plan_pricing["amount_twd"]
+            
+            self.db.commit()
+            
+            logger.info(f"Subscription {subscription.id} upgraded to {new_plan_id}")
+            
+            return {
+                "subscription": subscription,
+                "prorated_charge": proration["net_charge"]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error upgrading subscription: {e}")
+            self.db.rollback()
+            raise
+    
+    def schedule_downgrade(
+        self,
+        subscription: SaasSubscription,
+        new_plan_id: str,
+        new_billing_cycle: str
+    ) -> Dict[str, Any]:
+        """Schedule subscription downgrade for period end."""
+        
+        try:
+            # Get new plan details
+            new_plan_pricing = self._get_plan_pricing(new_plan_id, new_billing_cycle)
+            if not new_plan_pricing:
+                raise ValueError(f"Invalid plan: {new_plan_id} with cycle: {new_billing_cycle}")
+            
+            # For simplicity, we'll use a custom field or create a pending changes table
+            # For now, we'll store the pending change in subscription metadata
+            subscription.cancellation_reason = f"DOWNGRADE_TO:{new_plan_id}:{new_billing_cycle}"
+            subscription.cancel_at_period_end = True
+            
+            self.db.commit()
+            
+            logger.info(f"Subscription {subscription.id} scheduled for downgrade to {new_plan_id}")
+            
+            return {
+                "effective_date": subscription.current_period_end.isoformat(),
+                "new_plan": new_plan_pricing
+            }
+            
+        except Exception as e:
+            logger.error(f"Error scheduling downgrade: {e}")
+            self.db.rollback()
+            raise
+    
+    def cancel_subscription(
+        self,
+        subscription: SaasSubscription,
+        immediate: bool = False,
+        reason: str = None
+    ) -> Dict[str, Any]:
+        """Cancel subscription with immediate or period-end options."""
+        
+        try:
+            if immediate:
+                # Immediate cancellation
+                subscription.status = SubscriptionStatus.CANCELLED.value
+                subscription.cancelled_at = datetime.now()
+                subscription.cancellation_reason = reason or "Immediate cancellation"
+                
+                # Cancel ECPay authorization
+                if subscription.auth_record:
+                    subscription.auth_record.auth_status = ECPayAuthStatus.CANCELLED.value
+                
+                # TODO: In production, call ECPay API to cancel authorization
+                # self._cancel_ecpay_authorization(subscription.auth_record.merchant_member_id)
+                
+                effective_date = datetime.now()
+                refund_amount = 0  # TODO: Calculate refund if applicable
+                
+            else:
+                # Period-end cancellation
+                subscription.cancel_at_period_end = True
+                subscription.cancellation_reason = reason or "Period-end cancellation"
+                
+                effective_date = subscription.current_period_end
+                refund_amount = 0
+            
+            self.db.commit()
+            
+            logger.info(f"Subscription {subscription.id} cancelled ({'immediate' if immediate else 'period-end'})")
+            
+            return {
+                "effective_date": effective_date.isoformat(),
+                "refund_amount": refund_amount
+            }
+            
+        except Exception as e:
+            logger.error(f"Error cancelling subscription: {e}")
+            self.db.rollback()
+            raise
+    
+    def send_payment_notification(
+        self, 
+        user_id: str, 
+        notification_type: str, 
+        subscription: SaasSubscription = None,
+        payment: SubscriptionPayment = None
+    ):
+        """Send payment-related notifications to users."""
+        
+        try:
+            # Get user
+            user = self.db.query(User).filter(User.id == user_id).first()
+            if not user:
+                logger.error(f"User not found for notification: {user_id}")
+                return
+            
+            # Prepare notification data
+            notification_data = {
+                "user_email": user.email,
+                "user_name": getattr(user, 'name', user.email.split('@')[0]),
+                "timestamp": datetime.now().isoformat(),
+                "notification_type": notification_type
+            }
+            
+            if subscription:
+                notification_data.update({
+                    "plan_name": subscription.plan_name,
+                    "billing_cycle": subscription.billing_cycle,
+                    "amount": f"NT${subscription.amount_twd / 100:,.0f}",
+                    "next_billing_date": subscription.current_period_end.isoformat() if subscription.current_period_end else None
+                })
+            
+            if payment:
+                notification_data.update({
+                    "payment_amount": f"NT${payment.amount / 100:,.0f}",
+                    "payment_date": payment.processed_at.isoformat() if payment.processed_at else None,
+                    "failure_reason": payment.failure_reason
+                })
+            
+            # Log notification (in production, this would send email/SMS)
+            logger.info(f"📧 Notification: {notification_type} for user {user.email}")
+            logger.info(f"📊 Notification data: {notification_data}")
+            
+            # TODO: Implement actual notification sending
+            # - Email via SendGrid/AWS SES
+            # - In-app notifications
+            # - SMS for critical alerts
+            
+        except Exception as e:
+            logger.error(f"Failed to send notification {notification_type} to user {user_id}: {e}")
+    
+    def _handle_payment_success_notifications(
+        self, 
+        subscription: SaasSubscription, 
+        payment: SubscriptionPayment
+    ):
+        """Handle notifications for successful payments."""
+        
+        try:
+            # Send payment success notification
+            self.send_payment_notification(
+                subscription.user_id,
+                "payment_success",
+                subscription=subscription,
+                payment=payment
+            )
+            
+            # Send subscription renewal notification
+            self.send_payment_notification(
+                subscription.user_id,
+                "subscription_renewed",
+                subscription=subscription,
+                payment=payment
+            )
+            
+            logger.info(f"✅ Payment success notifications sent for subscription {subscription.id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to send payment success notifications: {e}")
+    
+    def _handle_payment_failure_notifications(
+        self, 
+        subscription: SaasSubscription, 
+        payment: SubscriptionPayment
+    ):
+        """Handle notifications for failed payments."""
+        
+        try:
+            # Send payment failure notification
+            self.send_payment_notification(
+                subscription.user_id,
+                "payment_failed",
+                subscription=subscription,
+                payment=payment
+            )
+            
+            # Check if this triggers grace period
+            if payment.retry_count >= 3:
+                self.send_payment_notification(
+                    subscription.user_id,
+                    "subscription_past_due",
+                    subscription=subscription,
+                    payment=payment
+                )
+            
+            # Send retry notification if applicable
+            if payment.retry_count < 3:
+                self.send_payment_notification(
+                    subscription.user_id,
+                    "payment_retry_scheduled",
+                    subscription=subscription,
+                    payment=payment
+                )
+            
+            logger.info(f"❌ Payment failure notifications sent for subscription {subscription.id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to send payment failure notifications: {e}")

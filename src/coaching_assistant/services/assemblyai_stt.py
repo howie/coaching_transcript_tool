@@ -156,10 +156,10 @@ class AssemblyAIProvider(STTProvider):
                     credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON,
                 )
 
-                # Generate signed read URL (valid for 2 hours for transcription)
+                # Generate signed read URL (valid for 6 hours for transcription + retries)
                 signed_url = uploader.generate_signed_read_url(
                     blob_name=blob_name,
-                    expiration_minutes=120,  # 2 hours should be enough for transcription
+                    expiration_minutes=360,  # 6 hours to handle retries and long transcriptions
                 )
 
                 logger.info(
@@ -286,8 +286,26 @@ class AssemblyAIProvider(STTProvider):
                     logger.error(f"Error message: {error_msg}")
                     logger.error(f"Full error response: {result}")
                     
+                    # Check if it's a URL expiration/download error
+                    if ("download error" in error_msg.lower() and 
+                        "unable to download" in error_msg.lower() and 
+                        "x-goog-expires" in error_msg.lower()):
+                        logger.warning("=" * 80)
+                        logger.warning("SIGNED URL EXPIRATION DETECTED")
+                        logger.warning("=" * 80)
+                        logger.warning(f"The signed URL has expired and AssemblyAI cannot download the audio file.")
+                        logger.warning(f"Error: {error_msg}")
+                        logger.warning("This typically happens when:")
+                        logger.warning("1. The transcription task is retrying after a long delay")
+                        logger.warning("2. AssemblyAI queue processing took longer than expected")
+                        logger.warning("3. The audio file was uploaded hours ago")
+                        logger.warning("=" * 80)
+                        
+                        # This is a non-retryable error since the URL won't get refreshed
+                        error_msg = f"Signed URL expired - audio file no longer accessible: {error_msg}"
+                    
                     # Check if it's a server error that might be transient
-                    if "server error" in error_msg.lower() or "developers have been alerted" in error_msg.lower():
+                    elif "server error" in error_msg.lower() or "developers have been alerted" in error_msg.lower():
                         logger.warning("=" * 80)
                         logger.warning("AssemblyAI SERVICE ISSUE DETECTED")
                         logger.warning("=" * 80)

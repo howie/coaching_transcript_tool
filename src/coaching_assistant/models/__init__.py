@@ -26,10 +26,12 @@ from .ecpay_subscription import (
     SubscriptionPendingChange,
     PaymentRetryAttempt,
     GracePeriod,
+    WebhookLog,
     ECPayAuthStatus,
     SubscriptionStatus,
     PaymentStatus,
     PeriodType,
+    WebhookStatus,
 )
 
 __all__ = [
@@ -68,8 +70,10 @@ __all__ = [
     "SubscriptionPendingChange",
     "PaymentRetryAttempt",
     "GracePeriod",
+    "WebhookLog",
     "ECPayAuthStatus",
     "SubscriptionStatus", 
     "PaymentStatus",
     "PeriodType",
+    "WebhookStatus",
 ]
