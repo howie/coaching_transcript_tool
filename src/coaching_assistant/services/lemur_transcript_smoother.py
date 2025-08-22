@@ -75,7 +75,9 @@ class LeMURTranscriptSmoother:
         self,
         segments: List[Dict],
         context: SmoothingContext,
-        custom_prompts: Optional[Dict[str, str]] = None
+        custom_prompts: Optional[Dict[str, str]] = None,
+        speaker_identification_only: bool = False,
+        punctuation_optimization_only: bool = False
     ) -> LeMURSmoothedTranscript:
         """
         Smooth transcript using LeMUR for intelligent processing.
@@ -113,32 +115,61 @@ class LeMURTranscriptSmoother:
         try:
             # Convert segments to format suitable for LeMUR processing
             transcript_text = self._prepare_transcript_for_lemur(segments)
-            logger.info(f"📝 PREPARED TRANSCRIPT TEXT FOR LEMUR:")
+            logger.info("📝 PREPARED TRANSCRIPT TEXT FOR LEMUR:")
             logger.info(f"   Length: {len(transcript_text)} characters")
             logger.info(f"   First 500 chars: {transcript_text[:500]}...")
             logger.info("=" * 80)
             
-            # Step 1: Correct speaker identification
-            logger.info("🎭 Correcting speaker identification with LeMUR")
-            speaker_corrections = await self._correct_speakers_with_lemur(
-                transcript_text, context, custom_prompts
-            )
+            # Determine processing steps based on parameters
+            speaker_corrections = {}
+            improved_segments = []
+            improvements_made = []
+            processing_notes = ""
             
-            # Step 2: Add internal punctuation and improve structure (batch processing)
-            logger.info("🔤 Adding punctuation and improving structure with LeMUR (batch processing)")
-            improved_segments = await self._improve_punctuation_batch_with_lemur(
-                segments, context, speaker_corrections, custom_prompts
-            )
+            if speaker_identification_only:
+                # Only correct speaker identification
+                logger.info("🎭 Correcting speaker identification only with LeMUR")
+                speaker_corrections = await self._correct_speakers_with_lemur(
+                    transcript_text, context, custom_prompts
+                )
+                # Keep original text but apply speaker corrections
+                improved_segments = self._apply_speaker_corrections_only(segments, speaker_corrections)
+                improvements_made = ["Speaker identification corrected using LeMUR"]
+                processing_notes = f"Speaker identification only: Processed {len(segments)} segments"
+                
+            elif punctuation_optimization_only:
+                # Only optimize punctuation, keep original speakers
+                logger.info("🔤 Optimizing punctuation only with LeMUR (batch processing)")
+                # Use empty speaker corrections to keep original speakers
+                improved_segments = await self._improve_punctuation_batch_with_lemur(
+                    segments, context, {}, custom_prompts
+                )
+                improvements_made = ["Internal punctuation added within long segments", "Text structure improved"]
+                processing_notes = f"Punctuation optimization only: Processed {len(segments)} segments"
+                
+            else:
+                # Full processing: both speaker identification and punctuation optimization
+                logger.info("🎭 Correcting speaker identification with LeMUR")
+                speaker_corrections = await self._correct_speakers_with_lemur(
+                    transcript_text, context, custom_prompts
+                )
+                
+                logger.info("🔤 Adding punctuation and improving structure with LeMUR (batch processing)")
+                improved_segments = await self._improve_punctuation_batch_with_lemur(
+                    segments, context, speaker_corrections, custom_prompts
+                )
+                improvements_made = [
+                    "Speaker identification corrected using LeMUR",
+                    "Internal punctuation added within long segments", 
+                    "Text structure and readability improved"
+                ]
+                processing_notes = f"Full processing: Processed {len(segments)} segments using AssemblyAI LeMUR"
             
             result = LeMURSmoothedTranscript(
                 segments=improved_segments,
                 speaker_mapping=speaker_corrections,
-                improvements_made=[
-                    "Speaker identification corrected using LeMUR",
-                    "Internal punctuation added within long segments", 
-                    "Text structure and readability improved"
-                ],
-                processing_notes=f"Processed {len(segments)} segments using AssemblyAI LeMUR"
+                improvements_made=improvements_made,
+                processing_notes=processing_notes
             )
             
             # Debug: Log final results
@@ -541,6 +572,15 @@ Reply with improved transcript, maintaining the same format (Speaker: content)."
         estimated_output_size = max(1000, int(batch_chars * 1.3))  # 30% buffer
         
         try:
+            # Debug: Log the complete prompt being sent to LeMUR
+            logger.info("=" * 80)
+            logger.info(f"🔍 BATCH {batch_num} PUNCTUATION PROMPT SENT TO LeMUR:")
+            logger.info("=" * 80)
+            logger.info(prompt)
+            logger.info("=" * 80)
+            logger.info(f"📝 BATCH {batch_num} INPUT TEXT LENGTH: {len(batch_text)} characters")
+            logger.info("=" * 80)
+            
             # Process with LeMUR
             batch_start_time = time.time()
             result = await asyncio.to_thread(
@@ -894,12 +934,42 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         logger.info(f"📊 Parsed {len(improved_segments)} improved segments from LeMUR output")
         return improved_segments
 
+    def _apply_speaker_corrections_only(self, segments: List[Dict], speaker_corrections: Dict[str, str]) -> List[TranscriptSegment]:
+        """
+        Apply speaker corrections to segments without changing text content.
+        
+        Args:
+            segments: Original segments
+            speaker_corrections: Mapping from original to corrected speakers
+            
+        Returns:
+            List of segments with corrected speakers but original text
+        """
+        logger.info(f"🎭 Applying speaker corrections only: {speaker_corrections}")
+        
+        corrected_segments = []
+        for segment in segments:
+            original_speaker = segment.get('speaker', 'A')
+            corrected_speaker = speaker_corrections.get(original_speaker, original_speaker)
+            
+            corrected_segments.append(TranscriptSegment(
+                start=int(round(segment.get('start', 0))),
+                end=int(round(segment.get('end', 0))),
+                speaker=corrected_speaker,
+                text=segment.get('text', '')  # Keep original text unchanged
+            ))
+        
+        logger.info(f"📊 Applied speaker corrections to {len(corrected_segments)} segments")
+        return corrected_segments
+
 
 async def smooth_transcript_with_lemur(
     segments: List[Dict],
     session_language: str = "zh-TW",
     is_coaching_session: bool = True,
-    custom_prompts: Optional[Dict[str, str]] = None
+    custom_prompts: Optional[Dict[str, str]] = None,
+    speaker_identification_only: bool = False,
+    punctuation_optimization_only: bool = False
 ) -> LeMURSmoothedTranscript:
     """
     Convenience function to smooth transcript using LeMUR.
@@ -908,6 +978,9 @@ async def smooth_transcript_with_lemur(
         segments: Original transcript segments
         session_language: Language of the session  
         is_coaching_session: Whether this is a coaching session
+        custom_prompts: Optional custom prompts for LeMUR processing
+        speaker_identification_only: If True, only correct speaker identification
+        punctuation_optimization_only: If True, only optimize punctuation
         
     Returns:
         LeMURSmoothedTranscript with improved quality
@@ -918,4 +991,10 @@ async def smooth_transcript_with_lemur(
         is_coaching_session=is_coaching_session
     )
     
-    return await smoother.smooth_transcript(segments, context, custom_prompts)
+    return await smoother.smooth_transcript(
+        segments, 
+        context, 
+        custom_prompts,
+        speaker_identification_only=speaker_identification_only,
+        punctuation_optimization_only=punctuation_optimization_only
+    )

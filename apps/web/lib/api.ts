@@ -1504,6 +1504,124 @@ class ApiClient {
     }
   }
 
+  // LeMUR-based speaker identification only
+  async lemurSpeakerIdentification(transcript: any, language: string = 'auto', customPrompts?: { speakerPrompt?: string }) {
+    try {
+      const requestBody: any = {
+        transcript,
+        language
+      };
+      
+      if (customPrompts?.speakerPrompt) {
+        requestBody.custom_prompts = { speakerPrompt: customPrompts.speakerPrompt };
+      }
+      
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/lemur-speaker-identification`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorMessage = parseErrorMessage(errorData, 'LeMUR speaker identification failed', this.translateFn)
+        throw new Error(errorMessage)
+      }
+
+      return await response.json() as LeMURSmoothingResponse
+    } catch (error) {
+      console.error('LeMUR speaker identification error:', error)
+      throw error
+    }
+  }
+
+  // LeMUR-based punctuation optimization only  
+  async lemurPunctuationOptimization(transcript: any, language: string = 'auto', customPrompts?: { punctuationPrompt?: string }) {
+    try {
+      const requestBody: any = {
+        transcript,
+        language
+      };
+      
+      if (customPrompts?.punctuationPrompt) {
+        requestBody.custom_prompts = { punctuationPrompt: customPrompts.punctuationPrompt };
+      }
+      
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/lemur-punctuation-optimization`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorMessage = parseErrorMessage(errorData, 'LeMUR punctuation optimization failed', this.translateFn)
+        throw new Error(errorMessage)
+      }
+
+      return await response.json() as LeMURSmoothingResponse
+    } catch (error) {
+      console.error('LeMUR punctuation optimization error:', error)
+      throw error
+    }
+  }
+
+  // Database-based LeMUR speaker identification
+  async lemurSpeakerIdentificationFromDB(sessionId: string, customPrompts?: { speakerPrompt?: string }) {
+    try {
+      const requestBody: any = {};
+      
+      if (customPrompts?.speakerPrompt) {
+        requestBody.custom_prompts = { speakerPrompt: customPrompts.speakerPrompt };
+      }
+      
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/session/${sessionId}/lemur-speaker-identification`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorMessage = parseErrorMessage(errorData, 'DB-based speaker identification failed', this.translateFn)
+        throw new Error(errorMessage)
+      }
+
+      return await response.json() as LeMURSmoothingResponse
+    } catch (error) {
+      console.error('DB-based speaker identification error:', error)
+      throw error
+    }
+  }
+
+  // Database-based LeMUR punctuation optimization
+  async lemurPunctuationOptimizationFromDB(sessionId: string, customPrompts?: { punctuationPrompt?: string }) {
+    try {
+      const requestBody: any = {};
+      
+      if (customPrompts?.punctuationPrompt) {
+        requestBody.custom_prompts = { punctuationPrompt: customPrompts.punctuationPrompt };
+      }
+      
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/session/${sessionId}/lemur-punctuation-optimization`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorMessage = parseErrorMessage(errorData, 'DB-based punctuation optimization failed', this.translateFn)
+        throw new Error(errorMessage)
+      }
+
+      return await response.json() as LeMURSmoothingResponse
+    } catch (error) {
+      console.error('DB-based punctuation optimization error:', error)
+      throw error
+    }
+  }
+
   async getSmoothingDefaults(language: string = 'chinese') {
     try {
       const params = new URLSearchParams({ language })

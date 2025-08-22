@@ -1,8 +1,8 @@
 {
-  "version": "2.13.0",
-  "displayVersion": "v2.13.0",
-  "description": "Coachly transcription service - Enhanced Billing Dashboard with Unified ECPay Integration",
-  "releaseDate": "2025-08-20",
-  "releaseNotes": "Unified billing dashboard with comprehensive subscription management, enhanced ECPay integration with improved debugging, and streamlined plan change workflow.",
+  "version": "2.14.0",
+  "displayVersion": "v2.14.0",
+  "description": "Coachly transcription service - Enhanced LeMUR Optimization with Separate Processing Functions",
+  "releaseDate": "2025-08-22",
+  "releaseNotes": "Implemented separate LeMUR optimization functions for speaker identification and punctuation improvement, with comprehensive debugging and session ID resolution. Users can now apply optimizations independently with detailed progress tracking.",
   "author": "Coachly Team"
 }
