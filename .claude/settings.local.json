@@ -28,7 +28,9 @@
       "Bash(pytest:*)",
       "Bash(git add:*)",
       "Bash(git checkout:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "WebSearch",
+      "WebFetch(domain:www.assemblyai.com)"
     ],
     "deny": []
   }

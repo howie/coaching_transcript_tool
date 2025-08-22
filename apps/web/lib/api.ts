@@ -7,6 +7,58 @@ interface TranscriptOptions {
   convertToTraditional: boolean
 }
 
+// Transcript smoothing types
+interface ProcessedSegment {
+  speaker: string
+  start_ms: number
+  end_ms: number
+  text: string
+  source_utterance_indices: number[]
+  note?: string
+}
+
+interface HeuristicStats {
+  short_first_segment: number
+  filler_words: number
+  no_terminal_punct: number
+  echo_backfill: number
+}
+
+interface ProcessingStats {
+  moved_word_count: number
+  merged_segments: number
+  split_segments: number
+  heuristic_hits: HeuristicStats
+  language_detected: string
+  processor_used: string
+  processing_time_ms: number
+}
+
+interface SmoothingResponse {
+  segments: ProcessedSegment[]
+  stats: ProcessingStats
+  success: boolean
+}
+
+// LeMUR-based smoothing types
+interface LeMURSegment {
+  speaker: string
+  start_ms: number
+  end_ms: number
+  text: string
+}
+
+interface LeMURSmoothingResponse {
+  segments: LeMURSegment[]
+  speaker_mapping: { [key: string]: string }
+  improvements_made: string[]
+  processing_notes: string
+  processing_time_ms: number
+  success: boolean
+}
+
+export type { TranscriptOptions, ProcessedSegment, ProcessingStats, SmoothingResponse, LeMURSegment, LeMURSmoothingResponse }
+
 export class TranscriptNotAvailableError extends Error {
   constructor(message: string) {
     super(message)
@@ -1391,6 +1443,118 @@ class ApiClient {
       return await response.json()
     } catch (error) {
       console.error('Upload session transcript error:', error)
+      throw error
+    }
+  }
+
+  // Transcript smoothing methods
+  async smoothTranscript(transcript: any, language: string = 'auto', config?: any) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/smooth-and-punctuate`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify({
+          transcript,
+          language,
+          config
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorMessage = parseErrorMessage(errorData, 'Transcript smoothing failed', this.translateFn)
+        throw new Error(errorMessage)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Smooth transcript error:', error)
+      throw error
+    }
+  }
+
+  // LeMUR-based transcript smoothing  
+  async lemurSmoothTranscript(transcript: any, language: string = 'auto', customPrompts?: { speakerPrompt?: string, punctuationPrompt?: string }) {
+    try {
+      const requestBody: any = {
+        transcript,
+        language
+      };
+      
+      if (customPrompts) {
+        requestBody.custom_prompts = customPrompts;
+      }
+      
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/lemur-smooth`, {
+        method: 'POST',
+        headers: await this.getHeaders(),
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorMessage = parseErrorMessage(errorData, 'LeMUR transcript optimization failed', this.translateFn)
+        throw new Error(errorMessage)
+      }
+
+      return await response.json() as LeMURSmoothingResponse
+    } catch (error) {
+      console.error('LeMUR smooth transcript error:', error)
+      throw error
+    }
+  }
+
+  async getSmoothingDefaults(language: string = 'chinese') {
+    try {
+      const params = new URLSearchParams({ language })
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/smooth/config/defaults?${params}`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Get smoothing defaults failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get smoothing defaults error:', error)
+      throw error
+    }
+  }
+
+  async getSupportedLanguages() {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/smooth/languages`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Get supported languages failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get supported languages error:', error)
+      throw error
+    }
+  }
+
+  async getRawAssemblyAiData(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/session/${sessionId}/raw-data`, {
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail?.error || 'Get raw AssemblyAI data failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Get raw AssemblyAI data error:', error)
       throw error
     }
   }
