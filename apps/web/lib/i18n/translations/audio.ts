@@ -78,6 +78,14 @@ export const audioTranslations = {
     'audio.uploadFailed': '上傳失敗',
     'audio.preparingConversion': '準備開始轉檔...',
     'audio.estimatedTime': '約 15-30 分鐘',
+    'audio.preparingUpload': '準備上傳...',
+    'audio.creatingSession': '建立會話中...',
+    'audio.uploadingFile': '上傳檔案中...',
+    'audio.confirmingUpload': '確認上傳...',
+    'audio.startingTranscription': '開始轉錄...',
+    'audio.uploadComplete': '上傳完成',
+    'audio.minutesRemaining': '分鐘剩餘',
+    'audio.secondsRemaining': '秒剩餘',
   },
   en: {
     'audio.title': 'Audio Analysis',
@@ -157,5 +165,13 @@ export const audioTranslations = {
     'audio.uploadFailed': 'Upload failed',
     'audio.preparingConversion': 'Preparing conversion...',
     'audio.estimatedTime': 'About 15-30 minutes',
+    'audio.preparingUpload': 'Preparing upload...',
+    'audio.creatingSession': 'Creating session...',
+    'audio.uploadingFile': 'Uploading file...',
+    'audio.confirmingUpload': 'Confirming upload...',
+    'audio.startingTranscription': 'Starting transcription...',
+    'audio.uploadComplete': 'Upload complete',
+    'audio.minutesRemaining': 'minutes remaining',
+    'audio.secondsRemaining': 'seconds remaining',
   }
 }
