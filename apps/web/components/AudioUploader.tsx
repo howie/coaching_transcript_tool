@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { SpeakerWaveIcon, CloudArrowUpIcon, DocumentTextIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { usePlanLimits } from '@/hooks/usePlanLimits'
 import planService, { PlanConfig } from '@/lib/services/plan.service'
+import { cn } from '@/lib/theme-utils'
 
 interface UploadState {
   status: 'idle' | 'uploading' | 'pending' | 'processing' | 'completed' | 'failed'
@@ -18,6 +19,8 @@ interface UploadState {
   sessionId?: string
   fileName?: string
   taskId?: string
+  currentPhase?: 'preparing' | 'creating_session' | 'uploading_file' | 'confirming' | 'starting_transcription'
+  uploadSpeed?: string
 }
 
 interface AudioUploaderProps {
@@ -85,7 +88,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
     stopPolling,
     isPolling
   } = useTranscriptionStatus(currentSessionId, {
-    enablePolling: currentSessionId !== null && uploadState.status === 'processing' && !parentTranscriptionStatus
+    enablePolling: currentSessionId !== null && !parentTranscriptionStatus
   })
 
   // Use parent-provided status if available, otherwise use local
@@ -129,12 +132,20 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 
   // Handle polling based on transcription session status
   useEffect(() => {
-    if (currentSessionId && transcriptionSession?.status === 'processing' && !isPolling) {
-      startPolling()
-    } else if (transcriptionSession?.status === 'completed' || transcriptionSession?.status === 'failed') {
+    if (currentSessionId && !isPolling) {
+      // Start polling if session is processing or pending
+      if (transcriptionSession?.status === 'processing' || transcriptionSession?.status === 'pending') {
+        console.log('Starting polling for session:', currentSessionId, 'with status:', transcriptionSession?.status)
+        startPolling()
+      }
+    }
+    
+    // Stop polling if session is completed or failed
+    if (transcriptionSession?.status === 'completed' || transcriptionSession?.status === 'failed') {
+      console.log('Stopping polling for session:', currentSessionId, 'with status:', transcriptionSession?.status)
       stopPolling()
     }
-  }, [transcriptionSession?.status, currentSessionId, isPolling])
+  }, [transcriptionSession?.status, currentSessionId, isPolling, startPolling, stopPolling])
 
   // Use useCallback to stabilize the onUploadComplete function
   const stableOnUploadComplete = useCallback(onUploadComplete || (() => {}), [onUploadComplete])
@@ -241,13 +252,25 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
   const handleUpload = async () => {
     if (!selectedFile) return
 
+    // Immediately show uploading state when user clicks upload
+    setUploadState({ 
+      status: 'uploading', 
+      progress: 0,
+      estimatedTime: t('audio.preparingUpload')
+    })
+
     // Double-check limits before uploading
     await checkBeforeAction('create_session', async () => {
       await checkBeforeAction('transcribe', async () => {
-        setUploadState({ status: 'uploading', progress: 0 })
-
         try {
       // Step 1: Create transcription session
+      setUploadState(prev => ({ 
+        ...prev, 
+        currentPhase: 'creating_session',
+        progress: 5,
+        estimatedTime: t('audio.creatingSession')
+      }))
+
       const session = await apiClient.createTranscriptionSession({
         title: sessionTitle.trim(),
         language: language
@@ -256,7 +279,8 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       setUploadState(prev => ({ 
         ...prev, 
         sessionId: session.id,
-        progress: 10
+        progress: 10,
+        estimatedTime: t('audio.preparingUpload')
       }))
       setCurrentSessionId(session.id)
 
@@ -266,20 +290,45 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       
       setUploadState(prev => ({ 
         ...prev, 
-        progress: 20
+        currentPhase: 'uploading_file',
+        progress: 15,
+        estimatedTime: t('audio.uploadingFile')
       }))
 
       // Step 3: Upload file to GCS with progress tracking
+      const uploadStartTime = Date.now()
+      let lastProgressUpdate = Date.now()
+      
       await apiClient.uploadToGCS(uploadData.upload_url, selectedFile, (progress) => {
-        setUploadState(prev => ({ 
-          ...prev, 
-          progress: Math.round(20 + (progress * 0.6)) // 20% to 80% for upload progress
-        }))
+        const now = Date.now()
+        const elapsed = (now - uploadStartTime) / 1000 // seconds
+        const bytesUploaded = selectedFile.size * (progress / 100)
+        
+        // Calculate upload speed (only update every 500ms to avoid too frequent updates)
+        if (now - lastProgressUpdate > 500 && elapsed > 1) {
+          const uploadSpeed = (bytesUploaded / elapsed) / (1024 * 1024) // MB/s
+          const remainingBytes = selectedFile.size - bytesUploaded
+          const estimatedSeconds = remainingBytes / (bytesUploaded / elapsed)
+          
+          setUploadState(prev => ({ 
+            ...prev, 
+            currentPhase: 'uploading_file',
+            progress: Math.round(15 + (progress * 0.7)), // 15% to 85% for upload progress
+            uploadSpeed: uploadSpeed > 1 ? `${uploadSpeed.toFixed(1)} MB/s` : `${(uploadSpeed * 1024).toFixed(0)} KB/s`,
+            estimatedTime: estimatedSeconds > 60 
+              ? `${Math.ceil(estimatedSeconds / 60)} ${t('audio.minutesRemaining')}`
+              : `${Math.ceil(estimatedSeconds)} ${t('audio.secondsRemaining')}`
+          }))
+          
+          lastProgressUpdate = now
+        }
       })
 
       setUploadState(prev => ({ 
         ...prev, 
-        progress: 90
+        currentPhase: 'confirming',
+        progress: 90,
+        estimatedTime: t('audio.confirmingUpload')
       }))
 
       // Step 4: Confirm upload
@@ -291,15 +340,28 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 
       setUploadState(prev => ({ 
         ...prev, 
-        progress: 100
+        progress: 95,
+        estimatedTime: t('audio.uploadComplete')
       }))
 
       // Step 5: Immediately update state to processing before API calls
       // This provides instant feedback to user
       setUploadState(prev => ({ 
         ...prev, 
+        currentPhase: 'starting_transcription',
+        progress: 98,
+        estimatedTime: t('audio.startingTranscription')
+      }))
+      
+      // Brief delay to show the final step before switching to processing
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      setUploadState(prev => ({ 
+        ...prev, 
         status: 'processing',
         progress: 0,
+        currentPhase: undefined,
+        uploadSpeed: undefined,
         estimatedTime: t('audio.preparingConversion')
       }))
 
@@ -334,6 +396,10 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         estimatedTime: t('audio.estimatedTime'),
         taskId: transcriptionResult.task_id
       }))
+      
+      // Immediately start polling after transcription starts
+      console.log('Transcription started, beginning polling immediately')
+      startPolling()
 
         } catch (error: any) {
           console.error('Upload error:', error)
@@ -396,22 +462,48 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         {/* Progress Display */}
         {(uploadState.status === 'processing' || 
           transcriptionSession?.status === 'processing' ||
-          transcriptionSession?.status === 'pending') ? (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          transcriptionSession?.status === 'pending' ||
+          transcriptionSession?.status === 'completed') && (
+          <div className={cn(
+            "rounded-lg p-4 border",
+            transcriptionSession?.status === 'completed' 
+              ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+              : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
+          )}>
             <TranscriptionProgress
               progress={(() => {
-                const progressValue = Number(transcriptionStatus?.progress) || Number(uploadState.progress) || 0;
+                // Always ensure we have a valid progress value
+                let progressValue = 0;
+                
+                if (transcriptionSession?.status === 'completed') {
+                  // Show 100% for completed status
+                  progressValue = 100;
+                } else if (transcriptionStatus?.progress != null) {
+                  progressValue = Number(transcriptionStatus.progress);
+                } else if (uploadState.progress != null) {
+                  progressValue = Number(uploadState.progress);
+                }
+                
+                // For pending status, show a small progress to indicate activity
+                if (transcriptionSession?.status === 'pending' && progressValue === 0) {
+                  progressValue = 5;
+                }
+                
                 console.log('TranscriptionProgress debug:', {
                   transcriptionStatus: transcriptionStatus,
                   transcriptionSession: transcriptionSession,
                   uploadState: uploadState,
                   rawProgress: transcriptionStatus?.progress,
                   finalProgress: progressValue,
-                  currentSessionId: currentSessionId
+                  currentSessionId: currentSessionId,
+                  sessionStatus: transcriptionSession?.status
                 });
-                return progressValue;
+                
+                return Math.max(0, Math.min(100, progressValue));
               })()}
-              status={transcriptionSession?.status === 'pending' ? 'pending' : 'processing'}
+              status={transcriptionSession?.status === 'pending' ? 'pending' : 
+                      transcriptionSession?.status === 'failed' ? 'failed' :
+                      transcriptionSession?.status === 'completed' ? 'completed' : 'processing'}
               message={transcriptionStatus?.message || 
                 (transcriptionSession?.status === 'pending' ? t('audio.waitingToStart') : t('audio.processingAudio'))}
               estimatedTime={transcriptionStatus?.estimated_completion ? 
@@ -425,7 +517,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
               </div>
             )}
           </div>
-        ) : null}
+        )}
 
         {/* Error Display */}
         {uploadState.status === 'failed' && (
@@ -477,15 +569,47 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         {uploadState.status === 'uploading' ? (
           <div className="space-y-4">
             <SpeakerWaveIcon className="h-12 w-12 text-blue-500 mx-auto animate-pulse" />
-            <div>
-              <p className="text-content-primary font-medium">{t('audio.uploading')}</p>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadState.progress}%` }}
-                />
+            <div className="space-y-3">
+              <div className="text-center">
+                <p className="text-content-primary font-medium">{t('audio.uploading')}</p>
+                {uploadState.currentPhase && (
+                  <p className="text-sm text-content-secondary">
+                    {uploadState.currentPhase === 'creating_session' && t('audio.creatingSession')}
+                    {uploadState.currentPhase === 'uploading_file' && t('audio.uploadingFile')}
+                    {uploadState.currentPhase === 'confirming' && t('audio.confirmingUpload')}
+                    {uploadState.currentPhase === 'starting_transcription' && t('audio.startingTranscription')}
+                  </p>
+                )}
               </div>
-              <p className="text-sm text-content-secondary mt-1">{uploadState.progress}%</p>
+              
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300 flex items-center justify-end pr-2"
+                  style={{ width: `${Math.max(uploadState.progress, 2)}%` }}
+                >
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                </div>
+              </div>
+              
+              <div className="flex justify-between text-sm">
+                <span className="text-content-secondary">{uploadState.progress}%</span>
+                <div className="text-right text-content-secondary">
+                  {uploadState.uploadSpeed && (
+                    <div>{uploadState.uploadSpeed}</div>
+                  )}
+                  {uploadState.estimatedTime && (
+                    <div>{uploadState.estimatedTime}</div>
+                  )}
+                </div>
+              </div>
+              
+              {selectedFile && (
+                <div className="text-center">
+                  <p className="text-xs text-content-secondary">
+                    {selectedFile.name} • {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         ) : selectedFile ? (
