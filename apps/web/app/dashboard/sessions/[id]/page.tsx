@@ -13,6 +13,9 @@ import { TranscriptionProgress } from '@/components/ui/progress-bar';
 import { useTranscriptionStatus, formatTimeRemaining, formatDuration } from '@/hooks/useTranscriptionStatus';
 import { AudioUploader } from '@/components/AudioUploader';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
+import TranscriptSmoothingPanel from '@/components/transcript-smoothing/TranscriptSmoothingPanel';
+import TranscriptComparison from '@/components/transcript-smoothing/TranscriptComparison';
+import { type SmoothingResponse, type LeMURSmoothingResponse } from '@/lib/api';
 
 interface Session {
   id: string;
@@ -141,6 +144,17 @@ const SessionDetailPage = () => {
   const [previewSegments, setPreviewSegments] = useState<Array<{speaker_id: string, speaker_name: string, content: string, count: number}>>([]);
   const [convertToTraditional, setConvertToTraditional] = useState(false);
   const [canUseAudioAnalysis, setCanUseAudioAnalysis] = useState(true);
+  
+  // Transcript smoothing states
+  const [showSmoothingPanel, setShowSmoothingPanel] = useState(false);
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [originalAssemblyAiData, setOriginalAssemblyAiData] = useState<any>(null);
+  const [smoothingResult, setSmoothingResult] = useState<SmoothingResponse | null>(null);
+  const [smoothingInProgress, setSmoothingInProgress] = useState(false);
+  
+  // Dev-only prompt states
+  const [speakerPrompt, setSpeakerPrompt] = useState(getDefaultSpeakerPrompt());
+  const [punctuationPrompt, setPunctuationPrompt] = useState(getDefaultPunctuationPrompt());
   const [limitMessage, setLimitMessage] = useState<{
     type: string;
     current: number;
@@ -893,6 +907,208 @@ ${t('sessions.aiChatFollowUp')}`;
     );
   }
 
+  // Default prompt getters for dev mode
+  function getDefaultSpeakerPrompt(): string {
+    return `你是一個專業的教練對話分析師。請分析以下教練對話逐字稿，並識別說話者身份。
+
+這是一段教練(Coach)與客戶(Client)的對話。請判斷每個說話者是「教練」還是「客戶」。
+
+教練的特徵：
+- 會問開放性問題（如「你可以多說一點嗎？」「你覺得呢？」）
+- 會引導對話方向和深入探索
+- 會提供反饋、觀察和建議
+- 語調通常比較引導性和支持性
+- 會使用教練技巧如重述、澄清、挑戰
+
+客戶的特徵：
+- 主要分享自己的情況、感受和經歷
+- 回答教練的問題和探索
+- 尋求幫助、建議或解決方案
+- 語調比較敘述性和個人化
+- 會表達困惑、糾結或需要支持的狀況
+
+請回覆一個JSON格式的說話者對應表，將原始說話者標籤對應到正確的角色（使用繁體中文）：
+例如：{"A": "教練", "B": "客戶"} 或 {"Speaker A": "教練", "Speaker B": "客戶"}
+
+只回覆JSON，不要其他說明，請確保使用繁體中文。`;
+  }
+
+  function getDefaultPunctuationPrompt(): string {
+    return `你是一個專業的繁體中文文本編輯師。請改善以下教練對話逐字稿的標點符號和斷句。
+
+重要格式要求：
+1. 必須使用繁體中文字（Traditional Chinese）輸出
+2. 中文字之間不要加空格，保持中文連續書寫習慣
+3. 只在標點符號後面可以有空格（如果需要的話）
+4. 保持說話者標籤和對話結構不變
+5. 使用繁體中文全形標點符號（，。？！）
+
+標點符號改善任務：
+1. 在長段落內部添加適當的逗號、句號、問號、驚嘆號
+2. 每個完整的思想或意思單元要用逗號分隔
+3. 每個完整的句子要用句號結尾
+4. 疑問句要用問號結尾
+5. 感嘆或強調要用驚嘆號
+6. 轉折詞（但是、然後、所以、因為）前後要加逗號
+7. 列舉項目之間要用逗號分隔
+8. 將所有簡體中文轉換為繁體中文
+
+範例格式：
+教練: 好，Lisha你好，我是你今天的教練，那我待會錄音，並且會做一些筆記，你OK嗎？
+
+回覆改善後的逐字稿，嚴格保持相同格式（說話者: 內容），只改善標點符號，不要在中文字之間加空格，並確保使用繁體中文。`;
+  }
+
+  // AI Optimization handlers using LeMUR
+  const handleSmoothTranscript = async () => {
+    if (!transcript || !sessionId || smoothingInProgress) return;
+    
+    setSmoothingInProgress(true);
+    
+    try {
+      let assemblyAiData: any = null;
+      
+      // Try to get the raw AssemblyAI data first
+      try {
+        const rawDataResponse = await apiClient.getRawAssemblyAiData(sessionId);
+        if (rawDataResponse.success && rawDataResponse.raw_data) {
+          assemblyAiData = rawDataResponse.raw_data;
+        }
+      } catch (error) {
+        console.warn('Could not get raw AssemblyAI data, creating from current transcript:', error);
+      }
+      
+      // If no raw data, create from current transcript segments
+      if (!assemblyAiData) {
+        assemblyAiData = {
+          utterances: transcript.segments.map(segment => ({
+            speaker: String.fromCharCode(65 + segment.speaker_id - 1), // Convert 1,2 -> A,B
+            start: Math.round(segment.start_sec * 1000), // Convert to milliseconds
+            end: Math.round(segment.end_sec * 1000),
+            text: segment.content,
+            confidence: segment.confidence || 0.9
+          })),
+          language_code: transcript.language || 'zh'
+        };
+      }
+      
+      // Determine language for LeMUR processing
+      const language = transcript.language?.startsWith('zh') ? 'chinese' : 
+                     transcript.language?.startsWith('en') ? 'english' : 'auto';
+      
+      console.log('🧠 Sending transcript to LeMUR for AI optimization...');
+      console.log('Data to send:', { utterances: assemblyAiData.utterances?.length, language });
+      
+      // Prepare custom prompts for dev mode
+      const customPrompts = process.env.NODE_ENV === 'development' ? {
+        speakerPrompt: speakerPrompt.trim(),
+        punctuationPrompt: punctuationPrompt.trim()
+      } : undefined;
+      
+      console.log('Using custom prompts:', customPrompts ? 'Yes' : 'No');
+      
+      // Send to LeMUR for AI-powered optimization
+      const lemurResult = await apiClient.lemurSmoothTranscript(assemblyAiData, language, customPrompts);
+      
+      if (lemurResult.success && lemurResult.segments?.length > 0) {
+        // Apply the LeMUR optimized transcript directly
+        await applyLeMUROptimization(lemurResult);
+        
+        // Show success message
+        alert(`✅ AI 優化完成！\n\n改善項目：\n${lemurResult.improvements_made.join('\n')}\n\n說話者對應：${JSON.stringify(lemurResult.speaker_mapping, null, 2)}`);
+      } else {
+        throw new Error('LeMUR optimization returned no results');
+      }
+      
+    } catch (error) {
+      console.error('AI optimization failed:', error);
+      alert(`❌ AI 優化失敗：${error instanceof Error ? error.message : '未知錯誤'}`);
+    } finally {
+      setSmoothingInProgress(false);
+    }
+  };
+
+  // Apply LeMUR optimization results to current transcript
+  const applyLeMUROptimization = async (lemurResult: LeMURSmoothingResponse) => {
+    if (!transcript) return;
+    
+    // Convert LeMUR segments to our transcript format
+    const optimizedSegments = lemurResult.segments.map((segment, index: number) => ({
+      id: `lemur-${index}`,
+      speaker_id: segment.speaker === '教練' || segment.speaker === 'Coach' ? 1 : 2,
+      start_sec: segment.start_ms / 1000,
+      end_sec: segment.end_ms / 1000,
+      content: segment.text,
+      confidence: 0.98 // High confidence for AI-optimized content
+    }));
+    
+    // Create updated transcript
+    const optimizedTranscript: TranscriptData = {
+      ...transcript,
+      segments: optimizedSegments,
+      duration_sec: Math.max(...optimizedSegments.map(s => s.end_sec))
+    };
+    
+    // Update the state to show optimized transcript
+    setTranscript(optimizedTranscript);
+    
+    console.log('✅ Applied LeMUR optimization:', {
+      originalSegments: transcript.segments.length,
+      optimizedSegments: optimizedSegments.length,
+      speakerMapping: lemurResult.speaker_mapping,
+      improvements: lemurResult.improvements_made
+    });
+  };
+
+  const handleSmoothingComplete = (result: SmoothingResponse) => {
+    setSmoothingResult(result);
+    setShowSmoothingPanel(false);
+    
+    // For development, auto-accept the smoothing result
+    if (process.env.NODE_ENV === 'development') {
+      // Auto-accept for faster testing
+      handleAcceptSmoothedVersionInternal(result);
+      
+      // Show brief success message
+      alert('✅ 逐字稿已自動優化並應用！已加入適當的標點符號。');
+    } else {
+      setShowComparisonModal(true);
+    }
+  };
+
+  const handleAcceptSmoothedVersionInternal = (result: SmoothingResponse) => {
+    // Convert smoothed segments back to transcript format
+    const smoothedTranscript: TranscriptData = {
+      session_id: transcript?.session_id || '',
+      title: transcript?.title || 'Smoothed Transcript',
+      language: result.stats.language_detected,
+      duration_sec: Math.max(...result.segments.map(s => s.end_ms / 1000)),
+      segments: result.segments.map((segment, index) => ({
+        id: `smoothed-${index}`,
+        speaker_id: segment.speaker === 'A' ? 1 : 2, // Map speaker letters to numbers
+        start_sec: segment.start_ms / 1000,
+        end_sec: segment.end_ms / 1000,
+        content: segment.text,
+        confidence: 0.9 // Default confidence for smoothed content
+      })),
+      created_at: new Date().toISOString(),
+      role_assignments: transcript?.role_assignments
+    };
+    
+    setTranscript(smoothedTranscript);
+    setShowComparisonModal(false);
+    setSmoothingResult(null);
+    
+    // Recalculate stats with smoothed transcript
+    const stats = calculateSpeakingStats(smoothedTranscript.segments);
+    setSpeakingStats(stats);
+  };
+
+  const handleAcceptSmoothedVersion = () => {
+    if (!smoothingResult) return;
+    handleAcceptSmoothedVersionInternal(smoothingResult);
+  };
+
   const currentClient = clients.find(c => c.id === session.client_id);
   const isTranscribing = transcriptionSession?.status === 'processing' || transcriptionSession?.status === 'pending';
   const hasTranscript = transcript && transcript.segments && transcript.segments.length > 0;
@@ -1444,6 +1660,50 @@ ${t('sessions.aiChatFollowUp')}`;
                 </div>
               )}
               
+              {/* Auto-optimization Notice */}
+              {hasTranscript && transcript && (
+                (() => {
+                  // Check if auto-smoothing was applied
+                  const isAutoOptimized = transcript?.metadata?.auto_smoothing_applied || 
+                                         transcript?.provider_metadata?.auto_smoothing_applied;
+                  const smoothingStats = transcript?.metadata?.smoothing_stats || 
+                                       transcript?.provider_metadata?.smoothing_stats;
+                  
+                  if (isAutoOptimized) {
+                    return (
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0">
+                            <svg className="w-5 h-5 text-green-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-green-800 dark:text-green-200">
+                              🎯 逐字稿已自動優化
+                            </h4>
+                            <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                              系統已自動修正講者邊界錯誤並改善中文標點符號（如問號、感嘆號、句號），為您提供更準確的逐字稿。
+                            </p>
+                            {smoothingStats && (
+                              <div className="text-xs text-green-600 dark:text-green-400 mt-2 flex gap-4">
+                                {smoothingStats.moved_word_count > 0 && (
+                                  <span>移動了 {smoothingStats.moved_word_count} 個詞</span>
+                                )}
+                                {smoothingStats.merged_segments > 0 && (
+                                  <span>合併了 {smoothingStats.merged_segments} 個片段</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()
+              )}
+
               {/* Speaking Statistics - shown when transcript is available */}
               {speakingStats && hasTranscript && (
                 <div className="mt-6 space-y-4">
@@ -1539,6 +1799,66 @@ ${t('sessions.aiChatFollowUp')}`;
                     {t('sessions.processed').replace('{processed}', formatDuration(transcriptionStatus.duration_processed)).replace('{total}', formatDuration(transcriptionStatus.duration_total))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* AI Transcript Optimization - Dev Only with Editable Prompts */}
+            {hasTranscript && process.env.NODE_ENV === 'development' && (
+              <div className="bg-surface border border-border rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="font-medium text-content-primary mb-1">
+                      🧠 {t('sessions.ai_optimize_transcript')} (Dev Only)
+                    </h4>
+                    <p className="text-sm text-content-secondary">
+                      {t('sessions.ai_optimize_description')}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleSmoothTranscript}
+                    className="bg-dashboard-accent text-dashboard-bg hover:bg-dashboard-accent-hover"
+                    disabled={smoothingInProgress}
+                  >
+                    {smoothingInProgress ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        {t('sessions.optimizing')}
+                      </>
+                    ) : (
+                      <>
+                        <DocumentMagnifyingGlassIcon className="h-4 w-4 mr-2" />
+                        {t('sessions.optimize_with_ai')}
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                {/* System Prompt Editor */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-content-primary mb-2">
+                      說話者識別 System Prompt:
+                    </label>
+                    <textarea
+                      value={speakerPrompt}
+                      onChange={(e) => setSpeakerPrompt(e.target.value)}
+                      className="w-full h-32 px-3 py-2 border border-border rounded-md bg-surface text-content-primary text-sm font-mono"
+                      placeholder="輸入說話者識別的 system prompt..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-content-primary mb-2">
+                      標點符號優化 System Prompt:
+                    </label>
+                    <textarea
+                      value={punctuationPrompt}
+                      onChange={(e) => setPunctuationPrompt(e.target.value)}
+                      className="w-full h-32 px-3 py-2 border border-border rounded-md bg-surface text-content-primary text-sm font-mono"
+                      placeholder="輸入標點符號優化的 system prompt..."
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1819,6 +2139,23 @@ ${t('sessions.aiChatFollowUp')}`;
           </div>
         )}
       </div>
+
+      {/* Transcript Smoothing Modals */}
+      <TranscriptSmoothingPanel
+        assemblyAiTranscript={originalAssemblyAiData}
+        onSmoothingComplete={handleSmoothingComplete}
+        isVisible={showSmoothingPanel}
+        onClose={() => setShowSmoothingPanel(false)}
+      />
+
+      <TranscriptComparison
+        originalTranscript={originalAssemblyAiData}
+        smoothedSegments={smoothingResult?.segments || []}
+        processingStats={smoothingResult?.stats || {} as any}
+        isVisible={showComparisonModal}
+        onClose={() => setShowComparisonModal(false)}
+        onAccept={handleAcceptSmoothedVersion}
+      />
     </div>
   );
 };

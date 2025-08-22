@@ -353,16 +353,14 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         estimatedTime: t('audio.startingTranscription')
       }))
       
-      // Brief delay to show the final step before switching to processing
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
+      // Immediately switch to processing for better UX - no delay needed
       setUploadState(prev => ({ 
         ...prev, 
         status: 'processing',
-        progress: 0,
+        progress: 5, // Start with small progress for immediate visual feedback
         currentPhase: undefined,
         uploadSpeed: undefined,
-        estimatedTime: t('audio.preparingConversion')
+        estimatedTime: t('audio.estimatedTime15to30')
       }))
 
       // Step 6: Update coaching session with the transcription session ID
@@ -393,9 +391,17 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
       // Update with actual task ID and estimated time
       setUploadState(prev => ({ 
         ...prev, 
-        estimatedTime: t('audio.estimatedTime'),
-        taskId: transcriptionResult.task_id
+        estimatedTime: t('audio.estimatedTime15to30'),
+        taskId: transcriptionResult.task_id,
+        progress: 10 // Increase progress to show transcription started
       }))
+      
+      // Force immediate parent update for better UX
+      console.log('✅ Transcription started, beginning polling immediately')
+      if (onUploadComplete) {
+        // Small delay to ensure backend state is updated
+        setTimeout(() => onUploadComplete(session.id), 100)
+      }
       
       // Immediately start polling after transcription starts
       console.log('Transcription started, beginning polling immediately')
