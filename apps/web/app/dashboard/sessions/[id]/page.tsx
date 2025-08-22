@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { PencilIcon, TrashIcon, ArrowLeftIcon, DocumentArrowDownIcon, MicrophoneIcon, DocumentTextIcon, ChartBarIcon, ChatBubbleLeftRightIcon, DocumentMagnifyingGlassIcon, CloudArrowUpIcon, ExclamationTriangleIcon, ArrowUpIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, ArrowLeftIcon, DocumentArrowDownIcon, MicrophoneIcon, DocumentTextIcon, ChartBarIcon, ChatBubbleLeftRightIcon, DocumentMagnifyingGlassIcon, CloudArrowUpIcon, ExclamationTriangleIcon, ArrowUpIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -151,6 +151,10 @@ const SessionDetailPage = () => {
   const [originalAssemblyAiData, setOriginalAssemblyAiData] = useState<any>(null);
   const [smoothingResult, setSmoothingResult] = useState<SmoothingResponse | null>(null);
   const [smoothingInProgress, setSmoothingInProgress] = useState(false);
+  
+  // Separate processing states for individual functions
+  const [speakerIdentificationInProgress, setSpeakerIdentificationInProgress] = useState(false);
+  const [punctuationOptimizationInProgress, setPunctuationOptimizationInProgress] = useState(false);
   
   // Dev-only prompt states
   const [speakerPrompt, setSpeakerPrompt] = useState(getDefaultSpeakerPrompt());
@@ -1060,6 +1064,73 @@ ${t('sessions.aiChatFollowUp')}`;
     });
   };
 
+  // Handle speaker identification only
+  const handleSpeakerIdentification = async () => {
+    if (!transcript || !sessionId || speakerIdentificationInProgress) return;
+    
+    setSpeakerIdentificationInProgress(true);
+    
+    try {
+      // IMPORTANT: sessionId here could be either:
+      // 1. Coaching Session ID (from URL like /dashboard/sessions/{id})
+      // 2. Transcript Session ID (direct transcript processing)
+      // Backend API will automatically resolve the correct transcript session ID
+      const lemurResult = await apiClient.lemurSpeakerIdentificationFromDB(
+        sessionId, // Backend will resolve: coaching_session -> transcription_session_id
+        { speakerPrompt }
+      );
+
+      // Database has been updated - reload transcript from server
+      // Use transcript session ID for export API (fetchTranscript expects transcript session ID)
+      const transcriptSessionId = session?.transcription_session_id || sessionId;
+      await fetchTranscript(transcriptSessionId);
+      
+      console.log('✅ Applied speaker identification (DB updated):', {
+        speakerMapping: lemurResult.speaker_mapping,
+        improvementsMade: lemurResult.improvements_made,
+      });
+
+      alert('✅ 說話者識別已完成並應用！資料庫已更新。');
+    } catch (error) {
+      console.error('Speaker identification failed:', error);
+      alert(`❌ 說話者識別失敗：${error instanceof Error ? error.message : '未知錯誤'}`);
+    } finally {
+      setSpeakerIdentificationInProgress(false);
+    }
+  };
+
+  // Handle punctuation optimization only
+  const handlePunctuationOptimization = async () => {
+    if (!transcript || !sessionId || punctuationOptimizationInProgress) return;
+    
+    setPunctuationOptimizationInProgress(true);
+    
+    try {
+      // IMPORTANT: sessionId resolution handled by backend
+      // See docs/claude/session-id-mapping.md for details
+      const lemurResult = await apiClient.lemurPunctuationOptimizationFromDB(
+        sessionId, // Backend will resolve: coaching_session -> transcription_session_id
+        { punctuationPrompt }
+      );
+
+      // Database has been updated - reload transcript from server
+      // Use transcript session ID for export API (fetchTranscript expects transcript session ID)
+      const transcriptSessionId = session?.transcription_session_id || sessionId;
+      await fetchTranscript(transcriptSessionId);
+      
+      console.log('✅ Applied punctuation optimization (DB updated):', {
+        improvementsMade: lemurResult.improvements_made,
+      });
+
+      alert('✅ 標點符號優化已完成並應用！資料庫已更新。');
+    } catch (error) {
+      console.error('Punctuation optimization failed:', error);
+      alert(`❌ 標點符號優化失敗：${error instanceof Error ? error.message : '未知錯誤'}`);
+    } finally {
+      setPunctuationOptimizationInProgress(false);
+    }
+  };
+
   const handleSmoothingComplete = (result: SmoothingResponse) => {
     setSmoothingResult(result);
     setShowSmoothingPanel(false);
@@ -1805,8 +1876,8 @@ ${t('sessions.aiChatFollowUp')}`;
             {/* AI Transcript Optimization - Dev Only with Editable Prompts */}
             {hasTranscript && process.env.NODE_ENV === 'development' && (
               <div className="bg-surface border border-border rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
+                <div className="mb-4">
+                  <div className="mb-4">
                     <h4 className="font-medium text-content-primary mb-1">
                       🧠 {t('sessions.ai_optimize_transcript')} (Dev Only)
                     </h4>
@@ -1814,23 +1885,66 @@ ${t('sessions.aiChatFollowUp')}`;
                       {t('sessions.ai_optimize_description')}
                     </p>
                   </div>
-                  <Button
-                    onClick={handleSmoothTranscript}
-                    className="bg-dashboard-accent text-dashboard-bg hover:bg-dashboard-accent-hover"
-                    disabled={smoothingInProgress}
-                  >
-                    {smoothingInProgress ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        {t('sessions.optimizing')}
-                      </>
-                    ) : (
-                      <>
-                        <DocumentMagnifyingGlassIcon className="h-4 w-4 mr-2" />
-                        {t('sessions.optimize_with_ai')}
-                      </>
-                    )}
-                  </Button>
+                  
+                  {/* Separate optimization buttons */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Speaker Identification Button */}
+                    <Button
+                      onClick={handleSpeakerIdentification}
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                      disabled={speakerIdentificationInProgress || !transcript}
+                    >
+                      {speakerIdentificationInProgress ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          識別中...
+                        </>
+                      ) : (
+                        <>
+                          <UserGroupIcon className="h-4 w-4 mr-2" />
+                          說話者識別
+                        </>
+                      )}
+                    </Button>
+
+                    {/* Punctuation Optimization Button */}
+                    <Button
+                      onClick={handlePunctuationOptimization}
+                      className="bg-green-600 text-white hover:bg-green-700"
+                      disabled={punctuationOptimizationInProgress || !transcript}
+                    >
+                      {punctuationOptimizationInProgress ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          優化中...
+                        </>
+                      ) : (
+                        <>
+                          <PencilIcon className="h-4 w-4 mr-2" />
+                          標點符號優化
+                        </>
+                      )}
+                    </Button>
+
+                    {/* Combined Full Optimization Button */}
+                    <Button
+                      onClick={handleSmoothTranscript}
+                      className="bg-dashboard-accent text-dashboard-bg hover:bg-dashboard-accent-hover"
+                      disabled={smoothingInProgress || !transcript}
+                    >
+                      {smoothingInProgress ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          {t('sessions.optimizing')}
+                        </>
+                      ) : (
+                        <>
+                          <DocumentMagnifyingGlassIcon className="h-4 w-4 mr-2" />
+                          完整優化
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 
                 {/* System Prompt Editor */}

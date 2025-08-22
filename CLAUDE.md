@@ -472,6 +472,7 @@ For detailed information, reference these docs:
 - **i18n Guidelines**: `@docs/claude/i18n.md` - Internationalization implementation and best practices
 - **Configuration**: `@docs/claude/configuration.md` - Environment variables, providers
 - **STT Architecture**: `@docs/claude/architecture/stt.md` - Provider details, fallback
+- **Session ID Mapping**: `@docs/claude/session-id-mapping.md` - Critical guide for Coaching vs Transcript Session IDs
 - **Deployment**: `@docs/claude/deployment/*.md` - Platform-specific guides
 - **API Reference**: See `/docs/api/` or OpenAPI at `/docs`
 - **Changelog**: `@docs/claude/CHANGELOG.md` - Complete version history and releases
