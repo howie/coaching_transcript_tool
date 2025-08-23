@@ -178,5 +178,21 @@ user-stories/
 - **Current Status**: `status-update-2025-08-20.md` - 最新進度和問題追蹤
 - **Technical Architecture**: `ecpay-saas-subscription.md`
 - **Troubleshooting**: `ecpay-troubleshooting-guide.md` - 包含 CheckMacValue 問題診斷
+- **Testing Guide**: `testing-guide.md` - 測試工具和腳本使用指南
 - **Implementation Guide**: `user-stories/README-subscription.md`
 - **Future Expansion**: `stripe-secondary.md` (國際市場)
+
+## 🧪 Testing Resources
+
+### Test Files
+- **Integration Test**: `@tests/integration/test_ecpay_basic.py` - ECPay 基本連線和檢驗工具
+- **Testing Guide**: `testing-guide.md` - 完整測試流程和故障排除
+
+### Quick Test Commands
+```bash
+# 執行 ECPay 基本連線測試
+cd tests/integration
+python test_ecpay_basic.py
+```
+
+詳細測試說明請參考：`testing-guide.md`
