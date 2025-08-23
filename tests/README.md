@@ -95,9 +95,9 @@ cd tests/e2e && python test_lemur_database_processing.py --list-sessions --auth-
 
 ## Test Data Management
 
-- **Temporary files**: Use `@tmp/` directory (gets cleaned up)
+- **Temporary files**: Use `tmp/` directory (gets cleaned up)
 - **Test fixtures**: Store in respective `tests/*/fixtures/` directories
-- **Generated results**: Output to `@tmp/` by default, use `--output` flag for permanent storage
+- **Generated results**: Output to `tmp/` by default, use `--output` flag for permanent storage
 
 ## Best Practices
 

@@ -128,7 +128,7 @@ coaching_transcript_tool/
 │   │   ├── test_lemur_*.py   # LeMUR optimization testing scripts
 │   │   └── lemur_examples/   # Example scripts and usage patterns
 │   └── performance/          # Performance benchmarks
-├── @tmp/                     # Temporary files and debug outputs (gitignored)
+├── tmp/                     # Temporary files and debug outputs (gitignored)
 │   ├── debug_*.py           # Debug scripts (auto-cleanup)
 │   └── *_results.json       # Temporary output files
 ├── alembic/                  # Database migrations (SQLAlchemy)
@@ -426,8 +426,8 @@ python test_lemur_full_pipeline.py --audio-file /path/to/audio.mp3 --auth-token 
 
 #### File Organization
 - **Reusable tests**: Store in `tests/` directory structure
-- **Temporary debug scripts**: Store in `@tmp/` directory (auto-cleanup)
-- **Debug outputs**: Store in `@tmp/` with descriptive names (e.g., `evaluation_database_results.json`)
+- **Temporary debug scripts**: Store in `tmp/` directory (auto-cleanup)
+- **Debug outputs**: Store in `tmp/` with descriptive names (e.g., `evaluation_database_results.json`)
 
 ## Environment Configuration
 
@@ -577,7 +577,7 @@ For comprehensive frontend testing strategies and best practices, see `@docs/cla
 - Follow the monorepo architecture with clear separation of concerns
 - Prioritize security: never commit secrets, use environment variables
 - **Session ID Types**: Be aware of Coaching Session ID vs Transcript Session ID distinction (see `@docs/claude/session-id-mapping.md`)
-- **File Organization**: Store temporary debug files in `@tmp/`, reusable tests in `tests/` directory
+- **File Organization**: Store temporary debug files in `tmp/`, reusable tests in `tests/` directory
 - **Update changelog** - When making major changes, update `docs/claude/CHANGELOG.md`
 
 ## Deployment
