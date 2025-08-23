@@ -232,3 +232,4 @@ terraform.rc
 
 #tmp
 logs/
+tmp/

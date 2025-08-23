@@ -140,8 +140,35 @@ should_smooth = (
 - [技術規格](./technical/)
 - [測試案例](./test-cases.md)
 
+## 🧪 測試資源
+
+### 測試腳本位置
+- **整合測試**：`@tests/integration/test_lemur_integration.py` - 完整 LeMUR 功能驗證
+- **單元測試**：`@tests/unit/test_lemur_simple.py` - 簡單 LeMUR 標點測試
+- **端到端測試**：`@tests/e2e/test_lemur_*.py` - 完整流程驗證
+- **測試指南**：`testing-guide.md` - 詳細測試流程和使用說明
+
+### 快速測試指令
+```bash
+# 執行 LeMUR 整合測試
+export ASSEMBLYAI_API_KEY="your_api_key"
+cd tests/integration
+python test_lemur_integration.py
+
+# 執行簡單功能測試
+cd tests/unit
+python test_lemur_simple.py
+
+# 執行完整流程測試
+cd tests/e2e
+python test_lemur_full_pipeline.py --audio-file /path/to/audio.mp3 --auth-token $TOKEN
+```
+
+詳細測試說明請參考：`testing-guide.md`
+
 ## 相關資源
 
+- **測試指南**：`testing-guide.md` - 完整測試工具和腳本使用指南
 - [AssemblyAI API 文檔](https://www.assemblyai.com/docs/)
 - [中文標點規範](https://www.moe.gov.tw/cp-1-language/)
 - [現有 STT 架構](../../architecture/stt.md)

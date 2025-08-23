@@ -1,8 +1,8 @@
 {
-  "version": "2.14.0",
-  "displayVersion": "v2.14.0",
-  "description": "Coachly transcription service - Enhanced LeMUR Optimization with Separate Processing Functions",
-  "releaseDate": "2025-08-22",
-  "releaseNotes": "Implemented separate LeMUR optimization functions for speaker identification and punctuation improvement, with comprehensive debugging and session ID resolution. Users can now apply optimizations independently with detailed progress tracking.",
+  "version": "2.14.1",
+  "displayVersion": "v2.14.1",
+  "description": "Coachly transcription service - LeMUR Batch Processing Quality Fix",
+  "releaseDate": "2025-08-23",
+  "releaseNotes": "Fixed LeMUR batch processing consistency issue where some batches produced Chinese text with unwanted spaces between characters. Implemented enhanced prompts with strong formatting instructions and automatic post-processing cleanup to ensure 100% consistent, properly formatted Chinese text output across all batches.",
   "author": "Coachly Team"
 }

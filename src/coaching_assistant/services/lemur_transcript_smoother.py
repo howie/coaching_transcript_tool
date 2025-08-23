@@ -533,11 +533,20 @@ Respond with JSON only, no other explanation.
 {batch_text}"""
         elif context.session_language.startswith('zh'):
             # Use simplified Chinese prompt for batch processing
-            prompt = f"""你是一個專業的繁體中文文本編輯師。請改善以下教練對話逐字稿的標點符號和斷句。
+            prompt = f"""🚨 重要提醒：絕對不要在中文字之間加空格！中文應該連續書寫！
 
-重要格式要求：
+正確範例：「你好，我是教練。」
+錯誤範例：「你 好 ， 我 是 教 練 。」← 這樣是錯誤的！
+
+你是一個專業的繁體中文文本編輯師。請改善以下教練對話逐字稿的標點符號和斷句。
+
+🔥 絕對禁止事項：
+❌ 絕對不可以在中文字之間加任何空格
+❌ 絕對不可以將連續的中文拆散
+
+✅ 必須遵守的格式要求：
 1. 必須使用繁體中文字（Traditional Chinese）輸出
-2. 中文字之間不要加空格，保持中文連續書寫習慣
+2. 中文字必須連續書寫，字與字之間絕對不加空格
 3. 保持說話者標籤和對話結構不變
 4. 使用繁體中文全形標點符號（，。？！）
 
@@ -553,7 +562,7 @@ Respond with JSON only, no other explanation.
 請改善以下逐字稿：
 {batch_text}
 
-回覆改善後的逐字稿，嚴格保持相同格式（說話者: 內容），只改善標點符號，不要在中文字之間加空格。"""
+⚠️ 最後提醒：回覆改善後的逐字稿時，嚴格保持相同格式（說話者: 內容），只改善標點符號，中文字之間絕對不可以有空格！"""
         else:
             # English version
             prompt = f"""You are a professional English text editor. Please improve the punctuation of the following coaching transcript.
@@ -628,6 +637,26 @@ Reply with improved transcript, maintaining the same format (Speaker: content)."
         
         return '\n\n'.join(text_parts)
     
+    def _clean_chinese_text_spacing(self, text: str) -> str:
+        """Clean unwanted spaces between Chinese characters."""
+        import re
+        
+        # Iteratively remove spaces between Chinese characters until no more changes
+        # This handles cases like "這 是 測 試" → "這是測試"
+        prev_text = ""
+        while prev_text != text:
+            prev_text = text
+            # Remove spaces between Chinese characters (CJK Unified Ideographs)
+            text = re.sub(r'([\u4e00-\u9fff])\s+([\u4e00-\u9fff])', r'\1\2', text)
+        
+        # Remove spaces around Chinese punctuation
+        text = re.sub(r'\s*([，。？！；：「」『』（）【】〔〕])\s*', r'\1', text)
+        
+        # Clean up multiple spaces but preserve single spaces between non-Chinese words
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        return text
+    
     def _parse_batch_response_to_segments(
         self, 
         improved_text: str, 
@@ -651,6 +680,9 @@ Reply with improved transcript, maintaining the same format (Speaker: content)."
                 if len(parts) == 2:
                     speaker = parts[0].strip()
                     text = parts[1].strip()
+                    
+                    # Post-processing cleanup: Remove unwanted spaces in Chinese text
+                    text = self._clean_chinese_text_spacing(text)
                     
                     # Get timing from original segment if available
                     if segment_index < len(original_batch):

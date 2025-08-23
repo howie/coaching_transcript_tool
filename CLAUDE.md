@@ -117,12 +117,20 @@ coaching_transcript_tool/
 │       ├── tasks/            # Celery background tasks
 │       └── utils/            # Common utilities and helpers
 ├── tests/                    # Test suite (separate from src)
+│   ├── README.md             # Testing overview and structure
 │   ├── conftest.py           # pytest configuration
 │   ├── fixtures/             # Test data and mocks
 │   ├── unit/                 # Fast, isolated unit tests
 │   ├── integration/          # Service integration tests
+│   ├── api/                  # API endpoint tests
 │   ├── e2e/                  # End-to-end workflow tests
+│   │   ├── requirements.txt  # Python dependencies for E2E tests
+│   │   ├── test_lemur_*.py   # LeMUR optimization testing scripts
+│   │   └── lemur_examples/   # Example scripts and usage patterns
 │   └── performance/          # Performance benchmarks
+├── @tmp/                     # Temporary files and debug outputs (gitignored)
+│   ├── debug_*.py           # Debug scripts (auto-cleanup)
+│   └── *_results.json       # Temporary output files
 ├── alembic/                  # Database migrations (SQLAlchemy)
 ├── logs/                     # Application log files
 ├── examples/                 # Usage examples and tutorials
@@ -371,9 +379,14 @@ pre-commit install         # Set up automated checks
 ### Test Organization
 ```
 tests/
+├── README.md              # Testing overview and structure
 ├── unit/                  # Fast, isolated tests
-├── integration/           # Service integration tests  
+├── integration/           # Service integration tests
+├── api/                   # API endpoint tests
 ├── e2e/                   # End-to-end workflow tests
+│   ├── requirements.txt   # Python dependencies for E2E tests
+│   ├── test_lemur_*.py   # LeMUR optimization testing scripts
+│   └── lemur_examples/   # Example scripts and usage patterns
 ├── fixtures/              # Test data and mocks
 └── performance/           # Performance benchmarks
 ```
@@ -384,6 +397,37 @@ tests/
 - **Use fixtures** for common test data setup
 - **Include performance tests** for critical paths
 - **Test error conditions** and recovery scenarios
+
+### LeMUR Testing & Optimization
+
+The platform includes comprehensive LeMUR (Large Language Model) testing tools for transcript optimization:
+
+#### E2E LeMUR Tests
+- **`test_lemur_full_pipeline.py`** - Complete audio upload → transcription → LeMUR optimization
+- **`test_lemur_database_processing.py`** - Test LeMUR on existing transcript data
+
+#### Custom Prompt Examples
+- **`lemur_examples/sample_custom_prompts.py`** - Prompt engineering examples for:
+  - Speaker identification (教練 vs 客戶)
+  - Punctuation optimization (中文標點符號改善)
+  - Multi-language and specialized prompts
+
+#### Usage
+```bash
+cd tests/e2e
+pip install -r requirements.txt
+
+# Test existing database sessions
+python test_lemur_database_processing.py --list-sessions --auth-token $TOKEN
+
+# Test complete pipeline with audio file
+python test_lemur_full_pipeline.py --audio-file /path/to/audio.mp3 --auth-token $TOKEN
+```
+
+#### File Organization
+- **Reusable tests**: Store in `tests/` directory structure
+- **Temporary debug scripts**: Store in `@tmp/` directory (auto-cleanup)
+- **Debug outputs**: Store in `@tmp/` with descriptive names (e.g., `evaluation_database_results.json`)
 
 ## Environment Configuration
 
@@ -433,6 +477,12 @@ POST /sessions/{id}/upload-url - Get signed upload URL
 POST /sessions/{id}/start-transcription - Start processing
 GET /sessions/{id}/transcript - Download transcript
 PATCH /sessions/{id}/speaker-roles - Update speaker assignments
+
+LeMUR Optimization:
+POST /lemur-speaker-identification - Optimize speaker identification
+POST /lemur-punctuation-optimization - Optimize punctuation
+POST /session/{session_id}/lemur-speaker-identification - Database-based speaker optimization
+POST /session/{session_id}/lemur-punctuation-optimization - Database-based punctuation optimization
 
 Coaching Management:
 GET /api/v1/clients - List clients
@@ -526,6 +576,8 @@ For comprehensive frontend testing strategies and best practices, see `@docs/cla
 - All database migrations use consistent foreign key naming: `{referenced_table}_id`
 - Follow the monorepo architecture with clear separation of concerns
 - Prioritize security: never commit secrets, use environment variables
+- **Session ID Types**: Be aware of Coaching Session ID vs Transcript Session ID distinction (see `@docs/claude/session-id-mapping.md`)
+- **File Organization**: Store temporary debug files in `@tmp/`, reusable tests in `tests/` directory
 - **Update changelog** - When making major changes, update `docs/claude/CHANGELOG.md`
 
 ## Deployment
