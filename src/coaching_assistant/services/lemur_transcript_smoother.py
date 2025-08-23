@@ -578,7 +578,11 @@ Improve the following transcript:
 Reply with improved transcript, maintaining the same format (Speaker: content)."""
         
         # Calculate output size for this batch
-        estimated_output_size = max(1000, int(batch_chars * 1.3))  # 30% buffer
+        # Chinese punctuation improvement may significantly expand text due to:
+        # 1. Detailed formatting instructions in our enhanced prompt
+        # 2. Potential LeMUR explanations or formatting
+        # 3. Traditional Chinese conversion
+        estimated_output_size = max(2000, int(batch_chars * 2.5))  # 150% buffer for safety
         
         try:
             # Debug: Log the complete prompt being sent to LeMUR
@@ -602,7 +606,12 @@ Reply with improved transcript, maintaining the same format (Speaker: content)."
             batch_end_time = time.time()
             
             logger.info(f"⏱️ BATCH {batch_num} PROCESSING TIME: {batch_end_time - batch_start_time:.2f} seconds")
-            logger.debug(f"📥 BATCH {batch_num} RESPONSE: {result.response[:200]}...")
+            logger.info(f"📏 BATCH {batch_num} RESPONSE LENGTH: {len(result.response)} characters")
+            logger.info(f"📥 BATCH {batch_num} RESPONSE PREVIEW: {result.response[:300]}...")
+            
+            # Check if response might have been truncated
+            if len(result.response) >= estimated_output_size * 0.95:
+                logger.warning(f"⚠️ BATCH {batch_num} RESPONSE MIGHT BE TRUNCATED! Response length ({len(result.response)}) is close to max_output_size ({estimated_output_size})")
             
             # Parse response and create segments
             improved_text = result.response.strip()
