@@ -1,8 +1,8 @@
 {
-  "version": "2.14.1",
-  "displayVersion": "v2.14.1",
-  "description": "Coachly transcription service - LeMUR Batch Processing Quality Fix",
-  "releaseDate": "2025-08-23",
-  "releaseNotes": "Fixed LeMUR batch processing consistency issue where some batches produced Chinese text with unwanted spaces between characters. Implemented enhanced prompts with strong formatting instructions and automatic post-processing cleanup to ensure 100% consistent, properly formatted Chinese text output across all batches.",
+  "version": "2.15.0",
+  "displayVersion": "v2.15.0",
+  "description": "Coachly transcription service - Claude Agent Cleanup",
+  "releaseDate": "2025-08-24",
+  "releaseNotes": "Removed complex Claude API endpoints and services. Kept only local Claude Code subagent for direct database queries. Simplified system monitoring to essential local functionality only.",
   "author": "Coachly Team"
 }
