@@ -13,8 +13,6 @@ import os
 from .api import (
     admin,
     admin_reports,
-    system_status,
-    claude_query,
     health,
     format_routes,
     user,
@@ -105,8 +103,6 @@ app.include_router(subscriptions.router, tags=["subscriptions"])
 app.include_router(ecpay.router, tags=["webhooks"])
 app.include_router(admin.router, tags=["admin"])
 app.include_router(admin_reports.router, tags=["admin-reports"])
-app.include_router(system_status.router, tags=["system-status"])
-app.include_router(claude_query.router, tags=["claude-assistant"])
 
 # 僅在開發環境中載入偵錯路由
 if settings.ENVIRONMENT == "development":
