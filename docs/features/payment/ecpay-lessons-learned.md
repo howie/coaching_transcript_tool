@@ -40,9 +40,16 @@
 - **修正**: 建立訂單時只傳 `MerchantTradeNo`，`TradeNo` 由 ECPay 生成
 
 ### 7. CheckMacValue Error (10200073)
-**問題**: 參數格式不一致導致簽章驗證失敗
-- **根因**: 後端用 integer，前端轉 string，造成簽章不匹配
-- **修正**: 後端直接生成 string 格式的數值欄位
+**問題**: CheckMacValue 計算方法不符合 ECPay 官方規範
+- **根因**: 缺少 .NET 風格字元替換（第 7 步）
+- **修正**: 實作完整的官方 8 步計算流程
+- **詳細說明**: 參見 `ecpay-checkmacvalue-fix.md`
+
+### 8. TypeError: Invalid URL (2025-08-28)
+**問題**: ECPay POST 請求到 `/subscription/result` 導致 Next.js 內部 URL 錯誤
+- **根因**: ECPay OrderResultURL 指向 React 頁面元件，無法處理 POST 請求
+- **症狀**: `TypeError: Invalid URL` 錯誤，輸入值為 'null'
+- **修正**: 建立 `/api/subscription/result` API 路由處理 POST 請求並重定向到頁面
 
 ## 核心經驗教訓
 
@@ -109,7 +116,37 @@ auth_data = {
 }
 ```
 
-### 4. 🐛 **除錯方法論**
+### 4. 🌐 **前端 API 路由設計**
+
+**問題**: Next.js 頁面元件無法處理 POST 請求
+
+**2025-08-28 新發現**:
+- ECPay OrderResultURL 會發送 POST 請求傳送回調資料
+- Next.js 頁面元件 (`page.tsx`) 只能處理 GET 請求
+- POST 到頁面路由會導致內部 URL 處理錯誤
+
+**解決方案**:
+```typescript
+// ✅ 建立 API 路由處理 POST 請求
+// /app/api/subscription/result/route.ts
+export async function POST(request: NextRequest) {
+  const formData = await request.formData()
+  const params = new URLSearchParams()
+  
+  // 轉換 POST 資料為查詢參數
+  params.set('RtnCode', formData.get('RtnCode') as string)
+  
+  // 重定向到頁面顯示結果
+  return NextResponse.redirect(`/subscription/result?${params}`)
+}
+```
+
+**架構原則**:
+- **API 路由**: 處理第三方 POST 回調
+- **頁面元件**: 處理用戶介面和查詢參數
+- **清晰分離**: 避免混淆不同類型的請求處理
+
+### 5. 🐛 **除錯方法論**
 
 **有效的除錯策略**:
 
@@ -131,7 +168,7 @@ auth_data = {
    - 對比成功案例的參數格式
    - 檢查每個欄位的資料型別
 
-### 5. 🏗️ **架構設計考量**
+### 6. 🏗️ **架構設計考量**
 
 **前後端分離的挑戰**:
 - 簽章計算在後端，表單提交在前端
@@ -205,17 +242,20 @@ function submitECPayForm(data) {
 
 ## 結論
 
-這次 ECPay 整合遇到的 7 個錯誤，每一個都揭示了第三方 API 整合的重要面向：
+這次 ECPay 整合遇到的 8 個錯誤，每一個都揭示了第三方 API 整合的重要面向：
 
 1. **參數格式的嚴格性** - API 對格式要求非常精確
 2. **版本差異的複雜性** - 不同版本可能有不同要求  
 3. **前後端整合的挑戰** - 資料在傳輸過程中可能變化
-4. **測試策略的完整性** - 需要真正的端到端測試
-5. **文檔理解的深度** - 需要深入理解而非表面閱讀
+4. **Next.js 架構理解** - 頁面元件與 API 路由的適用場景
+5. **第三方回調處理** - 需要正確設計 POST 請求處理流程
+6. **測試策略的完整性** - 需要真正的端到端測試
+7. **文檔理解的深度** - 需要深入理解而非表面閱讀
 
 通過系統性地解決這些問題，我們不僅修復了 ECPay 整合，更建立了一套可複用的第三方 API 整合方法論。這些經驗將對未來的 API 整合工作具有重要指導意義。
 
 ---
 
-*文檔更新日期: 2025-08-18*
-*相關問題解決狀態: ✅ 全部解決*
+*文檔更新日期: 2025-08-28*  
+*最新問題: TypeError Invalid URL - 已解決*  
+*相關問題解決狀態: ✅ 全部解決 (8/8)*

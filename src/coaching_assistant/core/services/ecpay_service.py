@@ -82,7 +82,7 @@ class ECPaySubscriptionService:
                 # Note: ECPay V5 API does not have ProductDesc field, only TradeDesc and ItemName
                 
                 # URLs for callbacks
-                "OrderResultURL": f"{self.settings.FRONTEND_URL}/subscription/result",
+                "OrderResultURL": f"{self.settings.FRONTEND_URL}/api/subscription/result",
                 "ReturnURL": f"{self.settings.API_BASE_URL}/api/webhooks/ecpay-auth", 
                 "ClientBackURL": f"{self.settings.FRONTEND_URL}/billing",
                 
@@ -147,10 +147,11 @@ class ECPaySubscriptionService:
                     value = auth_data[field]
                     logger.info(f"   {field}: '{value}' (type: {type(value).__name__}, len: {len(str(value))})")
             
-            # CheckMacValue 計算結果
-            logger.info(f"🔐 CheckMacValue 計算結果:")
+            # CheckMacValue 計算結果（使用修正後的官方規範方法）
+            logger.info(f"🔐 CheckMacValue 計算結果 (官方8步法):")
             logger.info(f"   計算出的值: {calculated_mac}")
             logger.info(f"   值長度: {len(calculated_mac)}")
+            logger.info(f"   ✅ 使用嚴格官方規範: A-Z排序 → URL編碼 → 小寫 → .NET替換 → SHA256大寫")
             
             # 輸出完整 JSON 供比較
             import json
@@ -427,31 +428,58 @@ class ECPaySubscriptionService:
         return amount_mapping.get(amount_cents, {"plan_id": "PRO", "plan_name": "專業方案"})
     
     def _generate_check_mac_value(self, data: Dict[str, str]) -> str:
-        """Generate ECPay CheckMacValue for security verification."""
+        """
+        Generate ECPay CheckMacValue following official specification exactly.
         
-        # Remove CheckMacValue if present
-        data = {k: v for k, v in data.items() if k != "CheckMacValue"}
+        Official 8-step process:
+        1. Remove CheckMacValue parameter
+        2. Sort parameters A-Z 
+        3. Create key=value query string
+        4. Add HashKey and HashIV: HashKey={key}&{query}&HashIV={iv}
+        5. URL encode entire string
+        6. Convert to lowercase
+        7. .NET style replacements
+        8. SHA256 hash and convert to uppercase
+        """
         
-        # Sort parameters by key
-        sorted_data = sorted(data.items())
+        # Step 1: Remove CheckMacValue if present
+        clean_data = {k: v for k, v in data.items() if k != "CheckMacValue"}
         
-        # URL encode values
-        encoded_params = []
-        for key, value in sorted_data:
-            encoded_value = urllib.parse.quote_plus(str(value))
-            encoded_params.append(f"{key}={encoded_value}")
+        # Step 2: Sort parameters by key (A-Z)
+        sorted_items = sorted(clean_data.items())
         
-        # Create query string
-        query_string = "&".join(encoded_params)
+        # Step 3: Create key=value query string
+        param_strings = []
+        for key, value in sorted_items:
+            param_strings.append(f"{key}={value}")
+        query_string = "&".join(param_strings)
         
-        # Add HashKey and HashIV
+        # Step 4: Add HashKey and HashIV
         raw_string = f"HashKey={self.hash_key}&{query_string}&HashIV={self.hash_iv}"
         
-        # URL encode entire string
-        encoded_string = urllib.parse.quote_plus(raw_string).lower()
+        # Step 5: URL encode entire string
+        encoded_string = urllib.parse.quote_plus(raw_string)
         
-        # Generate SHA256 hash
-        return hashlib.sha256(encoded_string.encode('utf-8')).hexdigest().upper()
+        # Step 6: Convert to lowercase
+        encoded_lower = encoded_string.lower()
+        
+        # Step 7: .NET style replacements
+        replacements = {
+            '%2d': '-',
+            '%5f': '_',
+            '%2e': '.',
+            '%21': '!',
+            '%2a': '*',
+            '%28': '(',
+            '%29': ')'
+        }
+        
+        final_string = encoded_lower
+        for old, new in replacements.items():
+            final_string = final_string.replace(old, new)
+        
+        # Step 8: SHA256 hash and convert to uppercase
+        return hashlib.sha256(final_string.encode('utf-8')).hexdigest().upper()
     
     def _verify_callback(self, callback_data: Dict[str, str]) -> bool:
         """Verify ECPay callback CheckMacValue."""

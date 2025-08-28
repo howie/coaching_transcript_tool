@@ -1,8 +1,8 @@
 {
-  "version": "2.15.0",
-  "displayVersion": "v2.15.0",
-  "description": "Coachly transcription service - Claude Agent Cleanup",
-  "releaseDate": "2025-08-24",
-  "releaseNotes": "Removed complex Claude API endpoints and services. Kept only local Claude Code subagent for direct database queries. Simplified system monitoring to essential local functionality only.",
+  "version": "2.15.1",
+  "displayVersion": "v2.15.1",
+  "description": "ECPay Invalid URL Error Fix",
+  "releaseDate": "2025-08-28",
+  "releaseNotes": "Fixed TypeError: Invalid URL error in ECPay subscription result handling. Created API route /api/subscription/result to properly handle ECPay POST callbacks and redirect to result page. Updated ECPay service configuration and improved URL validation with fallbacks.",
   "author": "Coachly Team"
 }
