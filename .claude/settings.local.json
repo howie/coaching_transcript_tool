@@ -31,7 +31,14 @@
       "Bash(mkdir:*)",
       "WebSearch",
       "WebFetch(domain:www.assemblyai.com)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(brew services:*)",
+      "Bash(DATABASE_URL=\"postgresql://coachly_user:HF4i0B96t917omlr3HMa1jkv9uh5rEsv@dpg-d27igr7diees73cla8og-a.singapore-postgres.render.com/coachly\" python scripts/claude_subagent_db_query.py query_user_growth --period=30)",
+      "Bash(DATABASE_URL=\"postgresql://coachly_user:HF4i0B96t917omlr3HMa1jkv9uh5rEsv@dpg-d27igr7diees73cla8og-a.singapore-postgres.render.com/coachly\" python scripts/claude_subagent_db_query.py query_recent_activity)",
+      "Bash(DATABASE_URL=\"postgresql://coachly_user:HF4i0B96t917omlr3HMa1jkv9uh5rEsv@dpg-d27igr7diees73cla8og-a.singapore-postgres.render.com/coachly\" python scripts/claude_subagent_db_query.py check_system_health)",
+      "Bash(DATABASE_URL=\"postgresql://coachly_user:HF4i0B96t917omlr3HMa1jkv9uh5rEsv@dpg-d27igr7diees73cla8og-a.singapore-postgres.render.com/coachly\" python scripts/claude_subagent_db_query.py query_user_growth --period=90)",
+      "Bash(DATABASE_URL:*)",
+      "WebFetch(domain:developers.ecpay.com.tw)"
     ],
     "deny": []
   }

@@ -121,7 +121,7 @@ export function ChangePlan() {
     form.submit()
     document.body.removeChild(form)
     
-    console.log('🚀 ECPay 付款表單已送出')
+    console.log('🚀 ECPay 付款表單已送出 (CheckMacValue 使用官方8步規範)')
     alert('ECPay 付款視窗已開啟，請在新視窗中完成付款')
   }
 

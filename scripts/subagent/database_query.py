@@ -362,23 +362,41 @@ def check_system_health() -> str:
 
 
 if __name__ == "__main__":
-    """
-    直接運行此腳本會進行簡單的功能演示
-    """
-    print("🤖 Claude Code Database Query Agent")
-    print("=" * 50)
+    import argparse
     
-    print("\n1. 系統狀況總覽:")
-    print(query_system_status())
+    parser = argparse.ArgumentParser(description="Claude Code Database Query Agent")
+    parser.add_argument("command", choices=[
+        "query_system_status", 
+        "query_recent_activity", 
+        "query_user_growth", 
+        "check_system_health"
+    ], help="要執行的查詢命令")
+    parser.add_argument("--period", type=int, default=7, help="分析期間（天數）")
     
-    print("\n2. 最近活動:")
-    print(query_recent_activity())
+    args = parser.parse_args()
     
-    print("\n3. 用戶增長分析:")
-    print(query_user_growth()) 
-    
-    print("\n4. 系統健康檢查:")
-    print(check_system_health())
-    
-    print("\n" + "=" * 50)
-    print("🎯 Claude Code 可以調用以上函數來幫您分析系統狀況！")
+    if args.command == "query_system_status":
+        print(query_system_status())
+    elif args.command == "query_recent_activity":
+        print(query_recent_activity())
+    elif args.command == "query_user_growth":
+        if args.period != 7:
+            # Support custom period for user growth
+            growth_data = db_agent.get_user_growth_trend(args.period)
+            if "error" in growth_data:
+                print(f"❌ {growth_data['error']}")
+            else:
+                report = f"""📈 **用戶增長分析** (過去{args.period}天)
+
+• 總用戶數: {growth_data['total_users']}
+• 新增用戶: {growth_data['new_users']}
+• 增長率: {growth_data['growth_rate']}%
+• 平均每日: {growth_data['avg_per_day']} 位新用戶
+
+💡 **增長趨勢**: {'📈 快速增長' if growth_data['growth_rate'] > 10 else '📊 穩定增長' if growth_data['growth_rate'] > 0 else '📉 需要關注'}
+"""
+                print(report)
+        else:
+            print(query_user_growth())
+    elif args.command == "check_system_health":
+        print(check_system_health())
