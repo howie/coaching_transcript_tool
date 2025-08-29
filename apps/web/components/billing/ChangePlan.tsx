@@ -67,39 +67,115 @@ export function ChangePlan() {
     }
     
     try {
-      console.log(`🔄 開始升級流程: ${ecpayPlanId} (${billingCycle})`)
+      console.log(`🔄 開始方案變更流程: ${ecpayPlanId} (${billingCycle})`)
       
-      // Call ECPay subscription API using apiClient
-      const data = await apiClient.post('/api/v1/subscriptions/authorize', {
-        plan_id: ecpayPlanId,
-        billing_cycle: billingCycle
-      })
+      // Determine if this is a new subscription or plan change
+      const hasExistingSubscription = subscriptionData?.subscription && subscriptionData.status !== 'no_subscription'
+      const currentPlanId = subscriptionData?.subscription?.plan_id
       
-      console.log('✅ API 回應成功:', data)
+      let data
+      
+      if (hasExistingSubscription && currentPlanId) {
+        // User has existing subscription - use upgrade/downgrade flow
+        const planChangeType = subscriptionService.getPlanChangeType(currentPlanId, ecpayPlanId)
         
-      // Show confirmation before redirecting to ECPay
-      const confirmed = window.confirm(
-        `即將跳轉至 ECPay 付款頁面\n\n` +
-        `方案: ${planId.toUpperCase()}\n` +
-        `計費週期: ${billingCycle}\n` +
-        `付款網址: ${data.action_url}\n\n` +
-        `確認要繼續嗎？`
-      )
-      
-      if (!confirmed) {
-        console.log('❌ 用戶取消付款流程')
-        return
+        console.log(`📊 方案變更類型: ${planChangeType} (${currentPlanId} → ${ecpayPlanId})`)
+        
+        if (planChangeType === 'upgrade') {
+          // Preview the upgrade cost first
+          try {
+            const preview = await subscriptionService.previewPlanChange(ecpayPlanId, billingCycle)
+            console.log('💰 升級費用預覽:', preview)
+            
+            // Show upgrade confirmation
+            const confirmed = window.confirm(
+              `確認升級方案？\n\n` +
+              `目前方案: ${currentPlanId}\n` +
+              `升級至: ${ecpayPlanId}\n` +
+              `額外費用: NT$${(preview.net_charge || 0) / 100}\n` +
+              `立即生效`
+            )
+            
+            if (!confirmed) return
+            
+            // Proceed with upgrade
+            data = await subscriptionService.upgradeSubscription(ecpayPlanId, billingCycle)
+          } catch (previewError) {
+            console.error('升級預覽失敗:', previewError)
+            // Fallback to direct upgrade
+            data = await subscriptionService.upgradeSubscription(ecpayPlanId, billingCycle)
+          }
+        } else if (planChangeType === 'downgrade') {
+          // Show downgrade confirmation
+          const confirmed = window.confirm(
+            `確認降級方案？\n\n` +
+            `目前方案: ${currentPlanId}\n` +
+            `降級至: ${ecpayPlanId}\n` +
+            `將於帳單週期結束時生效`
+          )
+          
+          if (!confirmed) return
+          
+          data = await subscriptionService.downgradeSubscription(ecpayPlanId, billingCycle)
+        } else {
+          console.log('相同方案，無需變更')
+          return
+        }
+        
+        // Handle upgrade/downgrade response
+        if (data.success) {
+          alert(`✅ 方案變更成功！\n${data.message}`)
+          // Reload subscription data
+          await loadSubscriptionData()
+        } else {
+          throw new Error(data.message || '方案變更失敗')
+        }
+        
+      } else {
+        // User has no subscription - create new authorization
+        console.log('🆕 創建新訂閱授權')
+        
+        data = await apiClient.post('/api/v1/subscriptions/authorize', {
+          plan_id: ecpayPlanId,
+          billing_cycle: billingCycle
+        })
+        
+        console.log('✅ 授權 API 回應成功:', data)
+        
+        // Show confirmation before redirecting to ECPay
+        const confirmed = window.confirm(
+          `即將跳轉至 ECPay 付款頁面\n\n` +
+          `方案: ${ecpayPlanId}\n` +
+          `週期: ${billingCycle === 'monthly' ? '月付' : '年付'}\n` +
+          `確認繼續?`
+        )
+        
+        if (confirmed && data.action_url && data.form_data) {
+          // Create form and submit to ECPay
+          const form = document.createElement('form')
+          form.method = 'POST'
+          form.action = data.action_url
+          
+          // Add form fields
+          Object.entries(data.form_data).forEach(([key, value]) => {
+            const input = document.createElement('input')
+            input.type = 'hidden'
+            input.name = key
+            input.value = String(value)
+            form.appendChild(input)
+          })
+          
+          document.body.appendChild(form)
+          form.submit();
+        }
       }
-      
-      // Submit ECPay form
-      await submitECPayForm(data)
       
     } catch (error) {
       console.error('💥 升級流程錯誤:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
       alert(`升級過程中發生錯誤: ${errorMessage}`)
     }
-  }
+  };
 
   const submitECPayForm = async (data: any) => {
     // Create and submit form to ECPay
@@ -485,3 +561,5 @@ function DatabasePricingDisplay({
     </div>
   )
 }
+
+export default ChangePlan

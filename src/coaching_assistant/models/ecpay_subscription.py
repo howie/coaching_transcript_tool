@@ -118,6 +118,11 @@ class SaasSubscription(BaseModel):
     trial_start = Column(Date, nullable=True)
     trial_end = Column(Date, nullable=True)
     
+    # Grace period and downgrade tracking
+    grace_period_ends_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    downgraded_at = Column(DateTime(timezone=True), nullable=True)
+    downgrade_reason = Column(String(50), nullable=True)  # payment_failure, user_request, etc.
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -167,6 +172,11 @@ class SubscriptionPayment(BaseModel):
     status = Column(String(20), nullable=False, index=True)  # success, failed, pending
     failure_reason = Column(Text, nullable=True)
     retry_count = Column(Integer, default=0, nullable=False)
+    
+    # Retry management
+    next_retry_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    max_retries = Column(Integer, default=3, nullable=True)
+    last_retry_at = Column(DateTime(timezone=True), nullable=True)
     
     # Period information
     period_start = Column(Date, nullable=False, index=True)

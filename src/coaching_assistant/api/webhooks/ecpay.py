@@ -2,7 +2,7 @@
 
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, Form, HTTPException, status, Request
@@ -11,7 +11,14 @@ from sqlalchemy.orm import Session
 from ...core.database import get_db
 from ...core.services.ecpay_service import ECPaySubscriptionService
 from ...core.config import settings
-from ...models import WebhookLog, WebhookStatus
+from ...models import (
+    WebhookLog, 
+    WebhookStatus, 
+    ECPayCreditAuthorization,
+    SaasSubscription,
+    SubscriptionPayment,
+    User
+)
 
 logger = logging.getLogger(__name__)
 
@@ -307,6 +314,217 @@ async def webhook_health_check(db: Session = Depends(get_db)):
             "service": "ecpay-webhooks",
             "error": str(e)
         }
+
+
+@router.post("/ecpay-manual-retry")
+async def handle_manual_payment_retry(
+    request: Request,
+    payment_id: str = Form(...),
+    admin_token: str = Form(...),  # Simple admin authentication
+    db: Session = Depends(get_db)
+):
+    """
+    Manual webhook endpoint for triggering payment retries.
+    This is for administrative use when automatic retries fail.
+    """
+    
+    start_time = time.time()
+    
+    try:
+        # Simple admin token validation
+        if admin_token != settings.ADMIN_WEBHOOK_TOKEN:
+            logger.warning(f"🚨 Unauthorized manual retry attempt from {_get_client_ip(request)}")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info(f"🔧 Manual payment retry requested for payment {payment_id}")
+        
+        # Get payment record
+        payment = db.query(SubscriptionPayment).filter(
+            SubscriptionPayment.id == payment_id
+        ).first()
+        
+        if not payment:
+            raise HTTPException(status_code=404, detail="Payment not found")
+        
+        # Get related subscription
+        subscription = db.query(SaasSubscription).filter(
+            SaasSubscription.id == payment.subscription_id
+        ).first()
+        
+        if not subscription:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+        
+        # Create ECPay service
+        ecpay_service = ECPaySubscriptionService(db, settings)
+        
+        # Attempt manual retry
+        success = ecpay_service.retry_failed_payments()
+        
+        if success:
+            processing_time = round((time.time() - start_time) * 1000, 2)
+            logger.info(f"✅ Manual payment retry completed successfully ({processing_time}ms)")
+            
+            return {
+                "status": "success",
+                "payment_id": payment_id,
+                "processing_time_ms": processing_time,
+                "message": "Payment retry processed successfully"
+            }
+        else:
+            logger.error(f"❌ Manual payment retry failed for {payment_id}")
+            raise HTTPException(status_code=500, detail="Retry processing failed")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"💥 Manual retry endpoint error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/subscription-status/{user_id}")
+async def get_subscription_webhook_status(
+    user_id: str,
+    admin_token: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get subscription webhook processing status for a specific user.
+    Useful for debugging webhook processing issues.
+    """
+    
+    try:
+        # Simple admin token validation
+        if admin_token != settings.ADMIN_WEBHOOK_TOKEN:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        # Get user's subscription
+        subscription = db.query(SaasSubscription).filter(
+            SaasSubscription.user_id == user_id
+        ).first()
+        
+        if not subscription:
+            return {
+                "user_id": user_id,
+                "subscription_found": False,
+                "message": "No subscription found for user"
+            }
+        
+        # Get recent webhook activity
+        recent_webhooks = db.query(WebhookLog).filter(
+            WebhookLog.user_id == user_id,
+            WebhookLog.received_at >= datetime.utcnow() - timedelta(days=30)
+        ).order_by(WebhookLog.received_at.desc()).limit(10).all()
+        
+        # Get recent payments
+        recent_payments = db.query(SubscriptionPayment).filter(
+            SubscriptionPayment.subscription_id == subscription.id
+        ).order_by(SubscriptionPayment.created_at.desc()).limit(5).all()
+        
+        # Prepare webhook summary
+        webhook_summary = []
+        for webhook in recent_webhooks:
+            webhook_summary.append({
+                "id": str(webhook.id),
+                "type": webhook.webhook_type,
+                "status": webhook.status,
+                "received_at": webhook.received_at.isoformat(),
+                "processing_time_ms": webhook.processing_time_ms,
+                "check_mac_verified": webhook.check_mac_value_verified
+            })
+        
+        # Prepare payment summary
+        payment_summary = []
+        for payment in recent_payments:
+            payment_summary.append({
+                "id": str(payment.id),
+                "status": payment.status,
+                "amount_twd": payment.amount / 100,  # Convert from cents
+                "retry_count": payment.retry_count,
+                "next_retry_at": payment.next_retry_at.isoformat() if payment.next_retry_at else None,
+                "created_at": payment.created_at.isoformat()
+            })
+        
+        return {
+            "user_id": user_id,
+            "subscription_found": True,
+            "subscription": {
+                "id": str(subscription.id),
+                "plan_id": subscription.plan_id,
+                "status": subscription.status,
+                "current_period_end": subscription.current_period_end.isoformat(),
+                "grace_period_ends_at": subscription.grace_period_ends_at.isoformat() if subscription.grace_period_ends_at else None,
+                "downgrade_reason": subscription.downgrade_reason
+            },
+            "recent_webhooks": webhook_summary,
+            "recent_payments": payment_summary,
+            "summary": {
+                "total_webhooks_30d": len(webhook_summary),
+                "total_payments": len(payment_summary),
+                "failed_payments": len([p for p in payment_summary if p["status"] == "failed"]),
+                "pending_retries": len([p for p in payment_summary if p["next_retry_at"] is not None])
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"💥 Subscription status endpoint error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/trigger-maintenance")
+async def trigger_subscription_maintenance(
+    admin_token: str = Form(...),
+    force: bool = Form(False),
+    db: Session = Depends(get_db)
+):
+    """
+    Manually trigger subscription maintenance tasks.
+    Useful for testing and emergency maintenance.
+    """
+    
+    try:
+        # Simple admin token validation
+        if admin_token != settings.ADMIN_WEBHOOK_TOKEN:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info("🔧 Manual subscription maintenance triggered")
+        
+        ecpay_service = ECPaySubscriptionService(db, settings)
+        
+        # Run maintenance tasks
+        expired_processed = ecpay_service.check_and_handle_expired_subscriptions()
+        retries_processed = ecpay_service.retry_failed_payments()
+        
+        # Get current stats
+        active_subs = db.query(SaasSubscription).filter(
+            SaasSubscription.status == "active"
+        ).count()
+        
+        past_due_subs = db.query(SaasSubscription).filter(
+            SaasSubscription.status == "past_due"
+        ).count()
+        
+        result = {
+            "status": "completed",
+            "maintenance_run_at": datetime.utcnow().isoformat(),
+            "results": {
+                "expired_subscriptions_processed": expired_processed or 0,
+                "payment_retries_processed": retries_processed or 0,
+                "current_active_subscriptions": active_subs,
+                "current_past_due_subscriptions": past_due_subs
+            }
+        }
+        
+        logger.info(f"✅ Manual maintenance completed: {result['results']}")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"💥 Manual maintenance trigger error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/webhook-stats")
