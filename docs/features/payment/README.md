@@ -181,6 +181,8 @@ user-stories/
 - **Testing Guide**: `testing-guide.md` - 測試工具和腳本使用指南
 - **Implementation Guide**: `user-stories/README-subscription.md`
 - **Future Expansion**: `stripe-secondary.md` (國際市場)
+- **Admin Token Guide**: `webhook-admin-token-guide.md` - 管理員令牌使用指南 🆕
+- **Webhook Processing**: `webhook-processing-summary.md` - 增強 Webhook 處理實作總結 🆕
 
 ## 🧪 Testing Resources
 

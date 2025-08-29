@@ -53,8 +53,11 @@ export function PaymentSettings() {
     try {
       const data = await apiClient.get('/api/v1/subscriptions/current')
       setSubscriptionData(data)
+      console.log('Subscription data loaded:', data) // Debug log
     } catch (error) {
       console.error('Failed to load subscription data:', error)
+      // Set empty state on error to show "no subscription" message
+      setSubscriptionData({ status: 'no_subscription' })
     } finally {
       setLoading(false)
     }

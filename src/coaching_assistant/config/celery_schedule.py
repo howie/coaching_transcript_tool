@@ -1,4 +1,4 @@
-"""Celery beat schedule configuration for admin reports."""
+"""Celery beat schedule configuration for admin reports and subscription maintenance."""
 
 from celery.schedules import crontab
 
@@ -48,6 +48,48 @@ CELERYBEAT_SCHEDULE = {
             'expires': 1800,  # Expire after 30 minutes
             'enabled': False,  # Disabled by default - enable if needed
         }
+    },
+    
+    # Subscription maintenance - runs every 6 hours
+    'subscription-maintenance': {
+        'task': 'coaching_assistant.tasks.subscription_maintenance_tasks.process_subscription_maintenance',
+        'schedule': crontab(minute=0, hour='*/6'),  # Every 6 hours at the top of the hour
+        'options': {
+            'expires': 3600,  # Expire after 1 hour
+            'retry': True,
+            'retry_policy': {
+                'max_retries': 3,
+                'interval_start': 300,  # Start with 5 minutes
+                'interval_step': 300,   # Increase by 5 minutes each retry
+                'interval_max': 1800,   # Max 30 minutes
+            }
+        }
+    },
+    
+    # Webhook log cleanup - runs daily at 2:00 AM UTC
+    'webhook-log-cleanup': {
+        'task': 'coaching_assistant.tasks.subscription_maintenance_tasks.cleanup_old_webhook_logs',
+        'schedule': crontab(hour=2, minute=0),  # 2:00 AM UTC daily
+        'options': {
+            'expires': 1800,  # Expire after 30 minutes
+            'retry': False,   # Don't retry cleanup tasks
+        }
+    },
+    
+    # Failed payment retry processing - runs every 2 hours
+    'failed-payment-processing': {
+        'task': 'coaching_assistant.tasks.subscription_maintenance_tasks.process_subscription_maintenance',
+        'schedule': crontab(minute=30, hour='*/2'),  # Every 2 hours at 30 minutes past the hour
+        'options': {
+            'expires': 1800,  # Expire after 30 minutes
+            'retry': True,
+            'retry_policy': {
+                'max_retries': 2,
+                'interval_start': 300,  # 5 minutes
+                'interval_step': 300,   # 5 minutes
+                'interval_max': 900,    # 15 minutes max
+            }
+        }
     }
 }
 
@@ -59,7 +101,7 @@ CELERYBEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'  # If u
 # For pure Celery without Django:
 # CELERYBEAT_SCHEDULER = 'celery.beat:PersistentScheduler'
 
-# Additional Celery configurations for admin reports
+# Additional Celery configurations for admin reports and subscription tasks
 CELERY_TASK_ROUTES = {
     'coaching_assistant.tasks.admin_report_tasks.generate_and_send_daily_report': {
         'queue': 'admin_reports',
@@ -70,6 +112,26 @@ CELERY_TASK_ROUTES = {
         'queue': 'admin_reports', 
         'routing_key': 'admin_reports',
         'priority': 7,  # High priority
+    },
+    'coaching_assistant.tasks.subscription_maintenance_tasks.process_subscription_maintenance': {
+        'queue': 'subscription_maintenance',
+        'routing_key': 'subscription_maintenance',
+        'priority': 9,  # Very high priority for critical subscription processing
+    },
+    'coaching_assistant.tasks.subscription_maintenance_tasks.process_failed_payment_retry': {
+        'queue': 'payment_retry',
+        'routing_key': 'payment_retry',
+        'priority': 8,  # High priority
+    },
+    'coaching_assistant.tasks.subscription_maintenance_tasks.send_payment_failure_notifications': {
+        'queue': 'notifications',
+        'routing_key': 'notifications',
+        'priority': 6,  # Medium-high priority
+    },
+    'coaching_assistant.tasks.subscription_maintenance_tasks.cleanup_old_webhook_logs': {
+        'queue': 'maintenance',
+        'routing_key': 'maintenance',
+        'priority': 3,  # Low priority
     }
 }
 

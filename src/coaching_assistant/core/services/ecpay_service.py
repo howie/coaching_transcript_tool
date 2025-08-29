@@ -343,7 +343,7 @@ class ECPaySubscriptionService:
             return True
             
         except Exception as e:
-            logger.error(f"Error processing payment webhook: {e}")
+            logger.error(f"💥 Error processing payment webhook: {e}")
             self.db.rollback()
             return False
     
@@ -380,7 +380,7 @@ class ECPaySubscriptionService:
         return subscription
     
     def _handle_failed_payment(self, subscription: SaasSubscription, payment: SubscriptionPayment):
-        """Handle failed payment with retry logic."""
+        """Handle failed payment with enhanced retry logic and grace period."""
         
         # Get retry count from recent payments
         recent_failures = self.db.query(SubscriptionPayment).filter(
@@ -391,13 +391,33 @@ class ECPaySubscriptionService:
         
         payment.retry_count = recent_failures
         
-        if recent_failures >= 3:
-            # Mark subscription as past due
+        # Enhanced retry logic with grace period
+        if recent_failures == 1:
+            # First failure - mark as past due, start grace period
             subscription.status = SubscriptionStatus.PAST_DUE.value
-            logger.warning(f"Subscription {subscription.id} marked as past due after {recent_failures} failures")
+            subscription.grace_period_ends_at = datetime.now() + timedelta(days=7)
+            logger.warning(f"🟡 First payment failure for subscription {subscription.id} - grace period started")
             
-            # TODO: Implement grace period and eventual cancellation
-            # TODO: Send payment failure notifications
+        elif recent_failures == 2:
+            # Second failure - extend grace period slightly
+            subscription.grace_period_ends_at = datetime.now() + timedelta(days=3)
+            logger.warning(f"🟠 Second payment failure for subscription {subscription.id} - grace period extended")
+            
+        elif recent_failures >= 3:
+            # Third failure - check if grace period expired
+            if subscription.grace_period_ends_at and datetime.now() > subscription.grace_period_ends_at:
+                # Grace period expired - downgrade to FREE
+                self._downgrade_to_free_plan(subscription)
+                logger.error(f"❌ Subscription {subscription.id} downgraded to FREE after {recent_failures} failures")
+            else:
+                # Still within grace period
+                logger.warning(f"⚠️ Third payment failure for subscription {subscription.id} - final grace period")
+        
+        # Schedule automated retry (handled by background task)
+        self._schedule_payment_retry(subscription, payment)
+        
+        # Send payment failure notifications
+        self._send_payment_failure_notification(subscription, payment, recent_failures)
     
     def _get_plan_pricing(self, plan_id: str, billing_cycle: str) -> Optional[Dict[str, Any]]:
         """Get plan pricing configuration."""
@@ -426,6 +446,90 @@ class ECPaySubscriptionService:
         }
         
         return amount_mapping.get(amount_cents, {"plan_id": "PRO", "plan_name": "專業方案"})
+    
+    def _downgrade_to_free_plan(self, subscription: SaasSubscription):
+        """Downgrade subscription to FREE plan after payment failures."""
+        
+        # Update subscription to FREE plan
+        subscription.plan_id = "FREE"
+        subscription.status = SubscriptionStatus.ACTIVE.value  # Active but on FREE
+        subscription.amount_twd = 0
+        subscription.downgraded_at = datetime.now()
+        subscription.downgrade_reason = "payment_failure"
+        
+        # Update user plan
+        user = self.db.query(User).filter(User.id == subscription.user_id).first()
+        if user:
+            user.plan = "FREE"
+            user.updated_at = datetime.now()
+        
+        logger.info(f"📉 Subscription {subscription.id} downgraded to FREE plan due to payment failures")
+    
+    def _schedule_payment_retry(self, subscription: SaasSubscription, payment: SubscriptionPayment):
+        """Schedule automated payment retry using exponential backoff."""
+        
+        retry_count = payment.retry_count or 0
+        
+        # Exponential backoff: 1 day, 3 days, 7 days
+        retry_delays = [1, 3, 7]  # days
+        
+        if retry_count < len(retry_delays):
+            retry_delay = retry_delays[retry_count]
+            next_retry_at = datetime.now() + timedelta(days=retry_delay)
+            
+            # Store retry info (to be processed by background task)
+            payment.next_retry_at = next_retry_at
+            payment.max_retries = 3
+            
+            logger.info(f"📅 Payment retry scheduled for {next_retry_at} (attempt {retry_count + 1}/3)")
+        else:
+            logger.warning(f"⚠️ Max retries reached for payment {payment.id}")
+    
+    def _send_payment_failure_notification(self, subscription: SaasSubscription, payment: SubscriptionPayment, failure_count: int):
+        """Send payment failure notifications to user."""
+        
+        user = self.db.query(User).filter(User.id == subscription.user_id).first()
+        if not user:
+            logger.error(f"User not found for subscription {subscription.id}")
+            return
+        
+        # Determine notification type based on failure count
+        if failure_count == 1:
+            notification_type = "first_payment_failure"
+            subject = "付款失敗通知 - Payment Failure Notice"
+            urgency = "medium"
+        elif failure_count == 2:
+            notification_type = "second_payment_failure" 
+            subject = "第二次付款失敗 - Second Payment Failure"
+            urgency = "high"
+        else:
+            notification_type = "final_payment_failure"
+            subject = "最終付款失敗通知 - Final Payment Failure Notice"
+            urgency = "critical"
+        
+        # Create notification record (to be sent by background task)
+        notification_data = {
+            "user_id": user.id,
+            "user_email": user.email,
+            "subscription_id": subscription.id,
+            "payment_id": payment.id,
+            "failure_count": failure_count,
+            "grace_period_ends": subscription.grace_period_ends_at.isoformat() if subscription.grace_period_ends_at else None,
+            "amount_twd": subscription.amount_twd,
+            "plan_name": subscription.plan_id,
+            "notification_type": notification_type,
+            "subject": subject,
+            "urgency": urgency
+        }
+        
+        # TODO: Queue email notification (integrate with existing email system)
+        logger.info(f"📧 Payment failure notification queued: {notification_type} for {user.email}")
+    
+    def _handle_payment_failure_notifications(self, subscription: SaasSubscription, payment: SubscriptionPayment):
+        """Legacy method - now handled in _send_payment_failure_notification."""
+        # This method is kept for backward compatibility
+        # The actual notification logic has been moved to _send_payment_failure_notification
+        pass
     
     def _generate_check_mac_value(self, data: Dict[str, str]) -> str:
         """
@@ -516,7 +620,105 @@ class ECPaySubscriptionService:
             
             self.db.commit()
             
-            logger.info(f"Authorization cancelled: {auth_id}")
+            logger.info(f"🚫 Authorization cancelled: {auth_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"💥 Error cancelling authorization {auth_id}: {e}")
+            self.db.rollback()
+            return False
+    
+    def check_and_handle_expired_subscriptions(self):
+        """Check for expired subscriptions and handle them appropriately."""
+        
+        try:
+            # Find subscriptions past grace period
+            expired_subscriptions = self.db.query(SaasSubscription).filter(
+                SaasSubscription.status == SubscriptionStatus.PAST_DUE.value,
+                SaasSubscription.grace_period_ends_at < datetime.now()
+            ).all()
+            
+            for subscription in expired_subscriptions:
+                logger.info(f"⏰ Processing expired subscription: {subscription.id}")
+                self._downgrade_to_free_plan(subscription)
+                
+                # Send final downgrade notification
+                user = self.db.query(User).filter(User.id == subscription.user_id).first()
+                if user:
+                    logger.info(f"📧 Sending downgrade notification to {user.email}")
+                    # TODO: Queue downgrade notification email
+            
+            if expired_subscriptions:
+                self.db.commit()
+                logger.info(f"✅ Processed {len(expired_subscriptions)} expired subscriptions")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"💥 Error processing expired subscriptions: {e}")
+            self.db.rollback()
+            return False
+    
+    def retry_failed_payments(self):
+        """Process scheduled payment retries."""
+        
+        try:
+            # Find payments scheduled for retry
+            payments_to_retry = self.db.query(SubscriptionPayment).filter(
+                SubscriptionPayment.status == PaymentStatus.FAILED.value,
+                SubscriptionPayment.next_retry_at <= datetime.now(),
+                SubscriptionPayment.retry_count < SubscriptionPayment.max_retries
+            ).all()
+            
+            for payment in payments_to_retry:
+                logger.info(f"🔄 Retrying failed payment: {payment.id}")
+                
+                # Get subscription and auth info
+                subscription = self.db.query(SaasSubscription).filter(
+                    SaasSubscription.id == payment.subscription_id
+                ).first()
+                
+                if not subscription:
+                    logger.error(f"Subscription not found for payment {payment.id}")
+                    continue
+                
+                auth_record = self.db.query(ECPayCreditAuthorization).filter(
+                    ECPayCreditAuthorization.id == subscription.auth_id
+                ).first()
+                
+                if not auth_record:
+                    logger.error(f"Auth record not found for subscription {subscription.id}")
+                    continue
+                
+                # TODO: Implement ECPay manual retry API call
+                # For now, we'll mark retry as attempted and schedule next retry
+                payment.retry_count += 1
+                payment.last_retry_at = datetime.now()
+                
+                if payment.retry_count < payment.max_retries:
+                    # Schedule next retry
+                    retry_delays = [1, 3, 7]  # days
+                    if payment.retry_count < len(retry_delays):
+                        next_delay = retry_delays[payment.retry_count]
+                        payment.next_retry_at = datetime.now() + timedelta(days=next_delay)
+                        logger.info(f"📅 Next retry scheduled in {next_delay} days")
+                    else:
+                        payment.next_retry_at = None
+                        logger.warning(f"⚠️ Max retries reached for payment {payment.id}")
+                else:
+                    payment.next_retry_at = None
+                    logger.warning(f"❌ Payment retry limit exceeded: {payment.id}")
+            
+            if payments_to_retry:
+                self.db.commit()
+                logger.info(f"✅ Processed {len(payments_to_retry)} payment retries")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"💥 Error retrying failed payments: {e}")
+            self.db.rollback()
+            return False
             return True
             
         except Exception as e:

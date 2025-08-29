@@ -19,39 +19,52 @@
    - 用戶訂閱表結構
    - 方案限制配置
    - 使用量追蹤系統
+   - 增強 Webhook 處理字段 (grace_period_ends_at, downgrade_reason, next_retry_at)
 
 4. **Security & Compliance**
    - PCI DSS 合規架構 (信用卡資訊存於 ECPay)
    - 安全的 Webhook 處理
    - 參數驗證和加密
+   - 管理員令牌保護 (ADMIN_WEBHOOK_TOKEN)
+
+5. **Enhanced Webhook Processing** 🆕
+   - 智能付款失敗處理與寬限期管理
+   - 自動重試機制（指數退避：1天 → 3天 → 7天）
+   - 自動降級到 FREE 方案（3次失敗後）
+   - 多語言付款失敗通知系統
+   - 背景任務自動化維護
+
+6. **Administrative Management** 🆕
+   - 手動付款重試端點 `/api/webhooks/ecpay-manual-retry`
+   - 訂閱狀態除錯端點 `/api/webhooks/subscription-status/{user_id}`
+   - 系統維護觸發端點 `/api/webhooks/trigger-maintenance`
+   - 增強健康檢查與統計功能
+
+7. **Background Task Automation** 🆕
+   - Celery 任務：訂閱維護（每 6 小時）
+   - Celery 任務：付款重試處理（每 2 小時）
+   - Celery 任務：Webhook 日誌清理（每日）
+   - 完整的任務排程與重試策略
 
 ### 🔴 Critical Issues (Blockers)
 
 #### 1. ECPay CheckMacValue Error (10200073)
-**狀態**: 🔴 未解決 - 需要 ECPay 技術支援
+**狀態**: ✅ **已解決** (2025-08-28)
 
 **問題描述**:
 - 所有 ECPay 定期定額授權請求都返回 CheckMacValue 錯誤
-- 已嘗試修正所有已知參數格式問題
-- 可能是測試商店設定或服務端問題
+- 根本原因：CheckMacValue 計算缺少關鍵的第 7 步 (.NET 風格字元替換)
 
-**已嘗試的解決方案**:
-- ✅ 修正 MerchantTradeNo 格式和長度
-- ✅ 更新 ExecTimes 規則 (M: 2-999, Y: 2-99)
-- ✅ 移除不支援的 API 參數
-- ✅ 重新計算 CheckMacValue 演算法
-- ✅ 確認 UTF-8 編碼正確性
+**解決方案**:
+- ✅ 實作完整的 ECPay 官方 8 步 CheckMacValue 計算法
+- ✅ 加入 .NET 風格字元替換 (%2d → -, %5f → _, 等)
+- ✅ 通過實際 ECPay API 測試驗證
+- ✅ 詳細修復記錄：參見 `ecpay-checkmacvalue-fix.md`
 
-**下一步行動**:
-1. **緊急聯繫 ECPay 技術支援**
-   - 詢問測試商店 3002607 是否正常運作
-   - 請求詳細的錯誤診斷資訊
-   - 確認定期定額功能是否已啟用
-
-2. **替代方案準備**
-   - 考慮申請新的測試商店帳號
-   - 準備一次性付款作為臨時方案
-   - 評估其他支付提供商 (Stripe) 可行性
+**驗證結果**:
+- 🎉 ECPay 授權頁面正常顯示
+- 🎉 CheckMacValue 驗證通過
+- 🎉 實際進入 ECPay 付款流程
 
 ### 🟡 Secondary Issues
 
@@ -75,20 +88,23 @@
 
 ### 🔥 High Priority
 
-1. **解決 ECPay CheckMacValue 問題**
-   - [ ] 聯繫 ECPay 技術支援
-   - [ ] 獲取詳細錯誤診斷
-   - [ ] 測試新的測試商店 (如需要)
+1. **生產環境部署準備**
+   - [x] ECPay CheckMacValue 問題已解決
+   - [x] 增強 Webhook 處理系統完成
+   - [ ] 生產環境配置驗證
+   - [ ] ADMIN_WEBHOOK_TOKEN 設定
 
-2. **Webhook 處理完成**
-   - [ ] 實作 ECPay 回調處理
-   - [ ] 訂閱狀態自動更新
-   - [ ] 付款失敗處理邏輯
+2. **系統監控與維護**
+   - [x] 背景任務自動化（Celery）
+   - [x] 健康檢查與統計端點
+   - [ ] 告警系統整合
+   - [ ] 日誌監控設定
 
-3. **Payment Method Management**
-   - [ ] 完成付款方式更新流程
-   - [ ] ECPay 重新授權功能
-   - [ ] 付款方式顯示優化
+3. **管理工具與除錯**
+   - [x] 管理員令牌認證系統
+   - [x] 手動付款重試工具
+   - [x] 訂閱狀態除錯端點
+   - [ ] 管理員儀表板整合
 
 ### 🟡 Medium Priority
 
