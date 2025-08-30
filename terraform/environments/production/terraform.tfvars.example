@@ -55,3 +55,12 @@ sentry_dsn      = "https://your-sentry-dsn@sentry.io/project-id"
 # Feature Flags
 enable_flower_monitoring = false
 flower_auth             = "admin:secure-password"
+
+# ECPay Configuration
+ecpay_merchant_id  = "your-ecpay-merchant-id"
+ecpay_hash_key     = "your-ecpay-hash-key"
+ecpay_hash_iv      = "your-ecpay-hash-iv"
+ecpay_environment  = "production"  # or "sandbox" for testing
+
+# Admin Security
+admin_webhook_token = "strong-random-token-32-chars-minimum"

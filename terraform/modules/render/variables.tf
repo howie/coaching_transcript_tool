@@ -443,3 +443,41 @@ variable "sentry_dsn" {
   default     = ""
   sensitive   = true
 }
+
+# ECPay Configuration
+variable "ecpay_merchant_id" {
+  description = "ECPay merchant ID"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "ecpay_hash_key" {
+  description = "ECPay hash key"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "ecpay_hash_iv" {
+  description = "ECPay hash IV"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "ecpay_environment" {
+  description = "ECPay environment (sandbox, production)"
+  type        = string
+  default     = "sandbox"
+  validation {
+    condition     = contains(["sandbox", "production"], var.ecpay_environment)
+    error_message = "ECPay environment must be sandbox or production."
+  }
+}
+
+variable "admin_webhook_token" {
+  description = "Admin webhook token for secure management endpoints"
+  type        = string
+  sensitive   = true
+}
