@@ -29,30 +29,27 @@ Core analytics and reporting
 
 | Story | Title | Priority | Backend | Frontend | Status |
 |-------|-------|----------|---------|----------|--------|
-| US015 | User Usage Dashboard | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-| US016 | Billing Analytics & Insights | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-| US017 | System Performance Metrics | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-| US018 | Revenue Analytics Dashboard | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
+| US027 | Admin Dashboard Integration | Critical | ❌ TODO | ❌ TODO | 📋 **Documented** |
+| US028 | Revenue Analytics Implementation | High | ❌ TODO | ❌ TODO | 📋 **Documented** |
+| US029 | Real-time Monitoring & Alerting | Critical | ❌ TODO | ❌ TODO | 📋 **Documented** |
 
-### 👥 User Management (Phase 2)
-Administrative user management
-
-| Story | Title | Priority | Backend | Frontend | Status |
-|-------|-------|----------|---------|----------|--------|
-| US019 | Admin Management Interface | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-| US020 | User Account Management | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-| US021 | Subscription Management | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-| US022 | Support Tools & User Assistance | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-
-### 🔧 System Operations (Phase 3)
-Operational tools and monitoring
+### 🔧 System Operations (Phase 2)
+Operational tools and infrastructure
 
 | Story | Title | Priority | Backend | Frontend | Status |
 |-------|-------|----------|---------|----------|--------|
-| US023 | Data Retention Policies | P2 | ❌ TODO | ❌ TODO | 📝 Ready |
-| US024 | System Health Monitoring | P3 | ❌ TODO | ❌ TODO | 📝 Ready |
-| US025 | Audit Trail Management | P3 | ❌ TODO | ❌ TODO | 📝 Ready |
-| US026 | Backup & Recovery Tools | P3 | ❌ TODO | ❌ TODO | 📝 Ready |
+| US030 | CI/CD Integration & Deployment | Critical | ❌ TODO | ❌ TODO | 📋 **Documented** |
+| US031 | Production Operations Management | High | ❌ TODO | ❌ TODO | 📋 **Documented** |
+
+### 👥 User Management (Phase 3)
+Administrative user management (Future)
+
+| Story | Title | Priority | Backend | Frontend | Status |
+|-------|-------|----------|---------|----------|--------|
+| US032 | User Account Management | Medium | ❌ TODO | ❌ TODO | 📝 Ready |
+| US033 | Advanced Support Tools | Medium | ❌ TODO | ❌ TODO | 📝 Ready |
+| US034 | Audit Trail Management | Low | ❌ TODO | ❌ TODO | 📝 Ready |
+| US035 | Data Retention Policies | Low | ❌ TODO | ❌ TODO | 📝 Ready |
 
 ## 🏗️ Technical Architecture
 
