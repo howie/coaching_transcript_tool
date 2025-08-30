@@ -182,24 +182,87 @@ docker-run-cli:
 # Backward compatibility
 docker-run: docker-run-cli
 
-# Run tests
+# Run standalone tests (unit + database integration tests that don't need API server)
 test: dev-setup
 	@mkdir -p logs
-	@echo "Running tests..."
+	@echo "Running standalone tests (unit + database integration)..."
 	@echo "Test logs will be saved to logs/test.log (with colors preserved)"
-	pytest tests/ -v --color=yes 2>&1 | tee logs/test.log
+	@echo ""
+	@echo "🧪 Unit Tests - Fast, isolated tests"
+	@echo "🗄️  Database Integration Tests - Tests with SQLite in-memory DB"
+	@echo "⚠️  Excluding: E2E tests, API tests, frontend tests (use 'make test-server' for those)"
+	@echo ""
+	pytest tests/unit/ tests/integration/database/ \
+		tests/integration/test_database_models.py \
+		tests/integration/test_transcript_smoother_integration.py \
+		-v --color=yes 2>&1 | tee logs/test.log
 
-# Run tests with coverage report
+# Run unit tests only (fastest)
+test-unit: dev-setup
+	@mkdir -p logs
+	@echo "Running unit tests only..."
+	@echo "🧪 Fast, isolated unit tests"
+	pytest tests/unit/ -v --color=yes 2>&1 | tee logs/test-unit.log
+
+# Run database integration tests only
+test-db: dev-setup
+	@mkdir -p logs
+	@echo "Running database integration tests..."
+	@echo "🗄️  Tests using SQLite in-memory database"
+	pytest tests/integration/database/ \
+		tests/integration/test_database_models.py \
+		tests/integration/test_transcript_smoother_integration.py \
+		-v --color=yes 2>&1 | tee logs/test-db.log
+
+# Run server-dependent tests (requires API server to be running)
+test-server: dev-setup
+	@mkdir -p logs
+	@echo "Running server-dependent tests..."
+	@echo "⚠️  These tests require the API server to be running at localhost:8000"
+	@echo "   Start server with: make run-api (in another terminal)"
+	@echo ""
+	@echo "🌐 API Integration Tests"
+	@echo "🔗 ECPay Integration Tests"  
+	@echo "🎭 E2E Tests"
+	@echo "🖥️  Frontend Tests"
+	pytest tests/integration/api/ \
+		tests/integration/test_ecpay_*.py \
+		tests/integration/test_lemur_integration.py \
+		tests/integration/test_webhook_retry_scenarios.py \
+		tests/e2e/ \
+		tests/frontend/ \
+		tests/compatibility/ \
+		-v --color=yes 2>&1 | tee logs/test-server.log
+
+# Run payment system tests (requires API server and authentication)
+test-payment: dev-setup
+	@mkdir -p logs
+	@echo "Running payment system tests..."
+	@echo "⚠️  These tests require API server and authentication setup"
+	@echo "   See: tests/AUTHENTICATION_SETUP.md for setup instructions"
+	@echo ""
+	python tests/run_payment_qa_tests.py --suite all 2>&1 | tee logs/test-payment.log
+
+# Run all tests (standalone + server-dependent)
+test-all: dev-setup
+	@mkdir -p logs
+	@echo "Running all tests (standalone + server-dependent)..."
+	@echo "⚠️  Server-dependent tests will fail if API server is not running"
+	pytest tests/ -v --color=yes 2>&1 | tee logs/test-all.log
+
+# Run standalone tests with coverage report
 coverage: dev-setup
 	@mkdir -p logs htmlcov
-	@echo "Running tests with coverage analysis..."
+	@echo "Running standalone tests with coverage analysis..."
 	@echo "============================================"
 	@echo "Coverage report will be saved to:"
 	@echo "  - Terminal output: logs/coverage.log"
 	@echo "  - HTML report: htmlcov/index.html"
 	@echo "============================================"
 	@$(PIP) install pytest-cov --break-system-packages 2>/dev/null || true
-	@pytest tests/ \
+	@pytest tests/unit/ tests/integration/database/ \
+		tests/integration/test_database_models.py \
+		tests/integration/test_transcript_smoother_integration.py \
 		--cov=src/coaching_assistant \
 		--cov-report=term-missing \
 		--cov-report=html \
@@ -210,6 +273,24 @@ coverage: dev-setup
 	@echo "============================================"
 	@echo "Coverage Summary:"
 	@grep "^TOTAL" logs/coverage.log || echo "Coverage calculation complete"
+	@echo "============================================"
+	@echo "📊 View detailed HTML report: open htmlcov/index.html"
+
+# Run all tests with coverage report (requires API server)
+coverage-all: dev-setup
+	@mkdir -p logs htmlcov
+	@echo "Running all tests with coverage analysis..."
+	@echo "⚠️  Server-dependent tests require API server at localhost:8000"
+	@echo "============================================"
+	@$(PIP) install pytest-cov --break-system-packages 2>/dev/null || true
+	@pytest tests/ \
+		--cov=src/coaching_assistant \
+		--cov-report=term-missing \
+		--cov-report=html \
+		--cov-report=term:skip-covered \
+		--color=yes \
+		-v 2>&1 | tee logs/coverage-all.log
+	@echo ""
 	@echo "============================================"
 	@echo "📊 View detailed HTML report: open htmlcov/index.html"
 
@@ -250,8 +331,14 @@ help:
 	@echo "  run-celery     : Start Celery worker (logs via Python logging to logs/celery.log)"
 	@echo "  run-celery-debug : Start Celery worker with debug logging (logs to logs/celery-debug.log)"
 	@echo "  dev-setup      : Install development dependencies"
-	@echo "  test           : Run tests (logs to logs/test.log)"
-	@echo "  coverage       : Run tests with coverage report (HTML report in htmlcov/)"
+	@echo "  test           : Run standalone tests (unit + database integration)"
+	@echo "  test-unit      : Run unit tests only (fastest)"
+	@echo "  test-db        : Run database integration tests only"  
+	@echo "  test-server    : Run server-dependent tests (requires API server)"
+	@echo "  test-payment   : Run payment system tests (requires API + auth)"
+	@echo "  test-all       : Run all tests (standalone + server-dependent)"
+	@echo "  coverage       : Run standalone tests with coverage report"
+	@echo "  coverage-all   : Run all tests with coverage (requires API server)"
 	@echo "  lint           : Run linting (logs to logs/lint.log)"
 	@echo ""
 	@echo "Frontend (Node.js):"
