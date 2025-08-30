@@ -1,0 +1,405 @@
+name: Infrastructure CI/CD
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      action:
+        description: 'Terraform action'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+env:
+  TF_VERSION: '1.5.0'
+  TG_VERSION: '0.50.0'
+  
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  terraform-validate:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+        
+    - name: Terraform Format Check
+      run: |
+        cd terraform
+        terraform fmt -check -recursive
+        
+    - name: Terraform Validate
+      run: |
+        cd terraform
+        for env in development staging production; do
+          echo "🔍 Validating $env environment..."
+          cd environments/$env
+          terraform init -backend=false
+          terraform validate
+          cd ../..
+        done
+        
+    - name: Validate Scripts
+      run: |
+        cd terraform/scripts
+        for script in *.sh; do
+          if [ -f "$script" ]; then
+            echo "🔍 Validating script: $script"
+            bash -n "$script"
+          fi
+        done
+
+  terraform-security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Run Checkov
+      id: checkov
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: terraform/
+        framework: terraform
+        soft_fail: true
+        output_format: sarif
+        output_file_path: reports/results.sarif
+        
+    - name: Upload Checkov Results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: reports/results.sarif
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'plan')
+    strategy:
+      matrix:
+        environment: [staging, production]
+    environment: ${{ matrix.environment }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+        terraform_wrapper: false
+        
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}'
+        
+    - name: Setup GCP CLI
+      uses: google-github-actions/setup-gcloud@v1
+      
+    - name: Terraform Init
+      env:
+        TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        TF_VAR_render_api_key: ${{ secrets.RENDER_API_KEY }}
+      run: |
+        cd terraform/environments/${{ matrix.environment }}
+        terraform init \
+          -backend-config="bucket=coaching-assistant-terraform-state" \
+          -backend-config="prefix=${{ matrix.environment }}"
+          
+    - name: Terraform Plan
+      env:
+        TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        TF_VAR_render_api_key: ${{ secrets.RENDER_API_KEY }}
+        TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_github_owner: ${{ github.repository_owner }}
+        TF_VAR_github_repo: ${{ github.event.repository.name }}
+        TF_VAR_github_repo_url: ${{ github.event.repository.html_url }}
+        TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
+        TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+        TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        TF_VAR_recaptcha_site_key: ${{ secrets.RECAPTCHA_SITE_KEY }}
+        TF_VAR_recaptcha_secret: ${{ secrets.RECAPTCHA_SECRET }}
+        TF_VAR_assemblyai_api_key: ${{ secrets.ASSEMBLYAI_API_KEY }}
+        TF_VAR_monitoring_email: ${{ secrets.MONITORING_EMAIL }}
+        TF_VAR_ecpay_merchant_id: ${{ secrets.ECPAY_MERCHANT_ID }}
+        TF_VAR_ecpay_hash_key: ${{ secrets.ECPAY_HASH_KEY }}
+        TF_VAR_ecpay_hash_iv: ${{ secrets.ECPAY_HASH_IV }}
+        TF_VAR_admin_webhook_token: ${{ secrets.ADMIN_WEBHOOK_TOKEN }}
+      run: |
+        cd terraform/environments/${{ matrix.environment }}
+        terraform plan -detailed-exitcode -out=tfplan-${{ matrix.environment }} \
+          -var="app_version=${{ github.sha }}" \
+          -var="build_id=${{ github.run_number }}" \
+          -var="commit_sha=${{ github.sha }}"
+          
+    - name: Save Plan
+      uses: actions/upload-artifact@v3
+      with:
+        name: tfplan-${{ matrix.environment }}
+        path: terraform/environments/${{ matrix.environment }}/tfplan-${{ matrix.environment }}
+        retention-days: 5
+        
+    - name: Comment Plan on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const { execSync } = require('child_process');
+          
+          // Get plan output
+          const planOutput = execSync('cd terraform/environments/${{ matrix.environment }} && terraform show -no-color tfplan-${{ matrix.environment }}', { encoding: 'utf8' });
+          
+          const comment = `
+          ## 🏗️ Terraform Plan - ${{ matrix.environment }}
+          
+          <details>
+          <summary>Show Plan</summary>
+          
+          \`\`\`terraform
+          ${planOutput.length > 60000 ? planOutput.substring(0, 60000) + '\n... (truncated)' : planOutput}
+          \`\`\`
+          
+          </details>
+          `;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+    needs: [terraform-validate, terraform-security-scan]
+    strategy:
+      matrix:
+        environment: [staging]
+        include:
+          - environment: production
+            manual_approval: true
+    environment: ${{ matrix.environment }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+        terraform_wrapper: false
+        
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}'
+        
+    - name: Setup GCP CLI
+      uses: google-github-actions/setup-gcloud@v1
+      
+    - name: Create State Backup
+      run: |
+        mkdir -p backups/${{ matrix.environment }}
+        gsutil cp gs://coaching-assistant-terraform-state/${{ matrix.environment }}/default.tfstate \
+          backups/${{ matrix.environment }}/backup-$(date +%Y%m%d-%H%M%S).tfstate || true
+          
+    - name: Terraform Init
+      env:
+        TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        TF_VAR_render_api_key: ${{ secrets.RENDER_API_KEY }}
+      run: |
+        cd terraform/environments/${{ matrix.environment }}
+        terraform init \
+          -backend-config="bucket=coaching-assistant-terraform-state" \
+          -backend-config="prefix=${{ matrix.environment }}"
+          
+    - name: Terraform Apply
+      env:
+        TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        TF_VAR_render_api_key: ${{ secrets.RENDER_API_KEY }}
+        TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_github_owner: ${{ github.repository_owner }}
+        TF_VAR_github_repo: ${{ github.event.repository.name }}
+        TF_VAR_github_repo_url: ${{ github.event.repository.html_url }}
+        TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
+        TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+        TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        TF_VAR_recaptcha_site_key: ${{ secrets.RECAPTCHA_SITE_KEY }}
+        TF_VAR_recaptcha_secret: ${{ secrets.RECAPTCHA_SECRET }}
+        TF_VAR_assemblyai_api_key: ${{ secrets.ASSEMBLYAI_API_KEY }}
+        TF_VAR_monitoring_email: ${{ secrets.MONITORING_EMAIL }}
+        TF_VAR_ecpay_merchant_id: ${{ secrets.ECPAY_MERCHANT_ID }}
+        TF_VAR_ecpay_hash_key: ${{ secrets.ECPAY_HASH_KEY }}
+        TF_VAR_ecpay_hash_iv: ${{ secrets.ECPAY_HASH_IV }}
+        TF_VAR_admin_webhook_token: ${{ secrets.ADMIN_WEBHOOK_TOKEN }}
+      run: |
+        cd terraform/environments/${{ matrix.environment }}
+        terraform apply -auto-approve \
+          -var="app_version=${{ github.sha }}" \
+          -var="build_id=${{ github.run_number }}" \
+          -var="commit_sha=${{ github.sha }}"
+          
+    - name: Post-deployment Health Check
+      run: |
+        cd terraform/environments/${{ matrix.environment }}
+        
+        # Get outputs
+        FRONTEND_URL=$(terraform output -raw frontend_url 2>/dev/null || echo "")
+        API_URL=$(terraform output -raw api_url 2>/dev/null || echo "")
+        
+        echo "🏥 Running health checks..."
+        
+        # Test frontend
+        if [ -n "$FRONTEND_URL" ]; then
+          echo "Testing frontend: $FRONTEND_URL"
+          curl -f --max-time 30 "$FRONTEND_URL" || echo "⚠️ Frontend check failed"
+        fi
+        
+        # Test API health
+        if [ -n "$API_URL" ]; then
+          echo "Testing API: $API_URL/api/health"
+          curl -f --max-time 30 "$API_URL/api/health" || echo "⚠️ API health check failed"
+        fi
+        
+    - name: Generate Deployment Report
+      run: |
+        cd terraform/environments/${{ matrix.environment }}
+        
+        cat > deployment-report.md << 'EOF'
+        # 🚀 Deployment Report
+        
+        **Environment**: ${{ matrix.environment }}
+        **Date**: $(date -u)
+        **Version**: ${{ github.sha }}
+        **Trigger**: ${{ github.event_name }}
+        
+        ## Resources Applied
+        ```
+        $(terraform state list | wc -l) resources managed
+        ```
+        
+        ## Service URLs
+        $(terraform output 2>/dev/null || echo "No outputs available")
+        
+        ## Health Status
+        - Frontend: $(curl -s -o /dev/null -w "%{http_code}" "$(terraform output -raw frontend_url 2>/dev/null)" 2>/dev/null || echo "N/A")
+        - API: $(curl -s -o /dev/null -w "%{http_code}" "$(terraform output -raw api_url)/api/health" 2>/dev/null || echo "N/A")
+        EOF
+        
+    - name: Upload Deployment Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-report-${{ matrix.environment }}
+        path: terraform/environments/${{ matrix.environment }}/deployment-report.md
+
+  terraform-destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+        terraform_wrapper: false
+        
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}'
+        
+    - name: Create Destruction Backup
+      run: |
+        mkdir -p backups/${{ github.event.inputs.environment }}
+        gsutil cp gs://coaching-assistant-terraform-state/${{ github.event.inputs.environment }}/default.tfstate \
+          backups/${{ github.event.inputs.environment }}/pre-destroy-$(date +%Y%m%d-%H%M%S).tfstate
+          
+    - name: Terraform Init
+      env:
+        TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        TF_VAR_render_api_key: ${{ secrets.RENDER_API_KEY }}
+      run: |
+        cd terraform/environments/${{ github.event.inputs.environment }}
+        terraform init \
+          -backend-config="bucket=coaching-assistant-terraform-state" \
+          -backend-config="prefix=${{ github.event.inputs.environment }}"
+          
+    - name: Terraform Destroy
+      env:
+        TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        TF_VAR_render_api_key: ${{ secrets.RENDER_API_KEY }}
+        TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_github_owner: ${{ github.repository_owner }}
+        TF_VAR_github_repo: ${{ github.event.repository.name }}
+        TF_VAR_github_repo_url: ${{ github.event.repository.html_url }}
+        TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
+        TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+        TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        TF_VAR_recaptcha_site_key: ${{ secrets.RECAPTCHA_SITE_KEY }}
+        TF_VAR_recaptcha_secret: ${{ secrets.RECAPTCHA_SECRET }}
+        TF_VAR_assemblyai_api_key: ${{ secrets.ASSEMBLYAI_API_KEY }}
+        TF_VAR_monitoring_email: ${{ secrets.MONITORING_EMAIL }}
+        TF_VAR_ecpay_merchant_id: ${{ secrets.ECPAY_MERCHANT_ID }}
+        TF_VAR_ecpay_hash_key: ${{ secrets.ECPAY_HASH_KEY }}
+        TF_VAR_ecpay_hash_iv: ${{ secrets.ECPAY_HASH_IV }}
+        TF_VAR_admin_webhook_token: ${{ secrets.ADMIN_WEBHOOK_TOKEN }}
+      run: |
+        cd terraform/environments/${{ github.event.inputs.environment }}
+        terraform destroy -auto-approve
