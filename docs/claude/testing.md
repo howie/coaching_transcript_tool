@@ -30,14 +30,37 @@ tests/
 
 ## Running Tests
 
-### Backend Tests
+⚡ **For complete test command reference, see: [Make Test Organization](make-test-organization.md)**
+
+### Backend Tests (Standalone)
 ```bash
-# Run all tests
+# Run unit + database integration tests (no server required)
 make test
 
-# Run with coverage
-pytest --cov=src --cov-report=html
+# Run only unit tests (fastest)
+make test-unit
 
+# Run only database integration tests
+make test-db
+
+# Run with coverage
+make coverage
+```
+
+### Backend Tests (Server-Dependent)
+```bash
+# Run API/E2E tests (requires API server)
+make test-server
+
+# Run payment system tests (requires server + auth)
+make test-payment
+
+# Run all tests
+make test-all
+```
+
+### Legacy pytest Commands
+```bash
 # Run specific test file
 pytest tests/unit/test_transcription.py
 

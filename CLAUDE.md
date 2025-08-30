@@ -28,7 +28,8 @@ make run-api        # Backend at http://localhost:8000
 make dev-frontend   # Frontend at http://localhost:3000
 
 # Run tests
-make test          # Backend tests
+make test          # Backend tests (unit + db integration)
+make test-server   # API/E2E tests (requires API server)
 cd apps/web && npm test  # Frontend tests
 ```
 
@@ -71,7 +72,8 @@ See `@docs/claude/subagents.md` for detailed capabilities and usage patterns.
 ### Backend (Python/FastAPI)
 - `make dev-setup` - Install Python dependencies
 - `make run-api` - Start API server
-- `make test` - Run pytest suite
+- `make test` - Run standalone tests (unit + db integration)
+- `make test-server` - Run server-dependent tests (API/E2E)
 - `make lint` - Run code linting
 
 ### Frontend (Next.js)
