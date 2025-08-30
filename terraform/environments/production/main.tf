@@ -178,6 +178,15 @@ module "render" {
   recaptcha_secret    = var.recaptcha_secret
   recaptcha_min_score = "0.5"
   
+  # ECPay Configuration
+  ecpay_merchant_id  = var.ecpay_merchant_id
+  ecpay_hash_key     = var.ecpay_hash_key
+  ecpay_hash_iv      = var.ecpay_hash_iv
+  ecpay_environment  = var.ecpay_environment
+  
+  # Admin Security
+  admin_webhook_token = var.admin_webhook_token
+  
   # File Upload Configuration
   max_file_size      = "500"  # 500MB for production
   max_audio_duration = "120"   # 2 hours
