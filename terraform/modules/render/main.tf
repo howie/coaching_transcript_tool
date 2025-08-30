@@ -38,6 +38,15 @@ locals {
       RECAPTCHA_SECRET    = var.recaptcha_secret
       RECAPTCHA_MIN_SCORE = var.recaptcha_min_score
       
+      # ECPay Configuration
+      ECPAY_MERCHANT_ID  = var.ecpay_merchant_id
+      ECPAY_HASH_KEY     = var.ecpay_hash_key
+      ECPAY_HASH_IV      = var.ecpay_hash_iv
+      ECPAY_ENVIRONMENT  = var.ecpay_environment
+      
+      # Admin Security
+      ADMIN_WEBHOOK_TOKEN = var.admin_webhook_token
+      
       # File upload limits
       MAX_FILE_SIZE      = var.max_file_size
       MAX_AUDIO_DURATION = var.max_audio_duration
