@@ -156,6 +156,116 @@ export function SubscriptionDashboard() {
     }
   }
 
+  const handleDownloadReceipt = async (paymentId: string) => {
+    try {
+      const response = await apiClient.get(`/api/v1/subscriptions/payment/${paymentId}/receipt`)
+      
+      if (response.status === 'success' && response.receipt) {
+        // Create receipt content (HTML format for printing)
+        const receiptData = response.receipt
+        const receiptContent = `
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>付款收據 - ${receiptData.receipt_id}</title>
+    <style>
+        body { font-family: Arial, 'Microsoft JhengHei', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+        .company-name { font-size: 24px; font-weight: bold; color: #2563eb; margin-bottom: 10px; }
+        .receipt-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+        .receipt-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .section { margin-bottom: 25px; }
+        .section h3 { font-size: 16px; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 15px; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .info-label { font-weight: bold; color: #555; }
+        .amount { font-size: 18px; font-weight: bold; color: #2563eb; }
+        .footer { border-top: 1px solid #ccc; padding-top: 20px; margin-top: 30px; text-align: center; color: #666; }
+        @media print { body { margin: 0; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">${receiptData.company.name}</div>
+        <div class="receipt-title">付款收據</div>
+        <div class="receipt-info">
+            <div><strong>收據編號:</strong> ${receiptData.receipt_id}</div>
+            <div><strong>開立日期:</strong> ${receiptData.issue_date}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>客戶資訊</h3>
+        <div class="info-row">
+            <span class="info-label">姓名:</span>
+            <span>${receiptData.customer.name}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">電子郵件:</span>
+            <span>${receiptData.customer.email}</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>訂閱資訊</h3>
+        <div class="info-row">
+            <span class="info-label">方案名稱:</span>
+            <span>${receiptData.subscription.plan_name}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">計費週期:</span>
+            <span>${receiptData.subscription.billing_cycle === 'monthly' ? '月繳' : '年繳'}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">服務期間:</span>
+            <span>${receiptData.subscription.period_start} 至 ${receiptData.subscription.period_end}</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>付款資訊</h3>
+        <div class="info-row">
+            <span class="info-label">付款金額:</span>
+            <span class="amount">NT$${receiptData.payment.amount.toLocaleString()}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">付款方式:</span>
+            <span>${receiptData.payment.payment_method}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">付款時間:</span>
+            <span>${receiptData.payment.payment_date || '處理中'}</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div><strong>${receiptData.company.name}</strong></div>
+        <div>${receiptData.company.address}</div>
+        <div>統一編號: ${receiptData.company.tax_id}</div>
+        <div>${receiptData.company.website}</div>
+    </div>
+</body>
+</html>
+        `
+        
+        // Create blob and download
+        const blob = new Blob([receiptContent], { type: 'text/html;charset=utf-8' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `收據_${receiptData.receipt_id}_${receiptData.issue_date}.html`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }
+    } catch (error) {
+      console.error('Failed to download receipt:', error)
+      alert('下載收據失敗，請稍後再試')
+    }
+  }
+
   const formatTWD = (amount: number) => {
     return `NT$${(amount / 100).toLocaleString()}`
   }
@@ -439,7 +549,10 @@ export function SubscriptionDashboard() {
                     </td>
                     <td className="py-3 px-4">
                       {payment.status === 'success' && (
-                        <button className="text-sm text-dashboard-accent hover:underline">
+                        <button 
+                          onClick={() => handleDownloadReceipt(payment.id)}
+                          className="text-sm text-dashboard-accent hover:underline focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:ring-opacity-50 rounded"
+                        >
                           下載收據
                         </button>
                       )}
