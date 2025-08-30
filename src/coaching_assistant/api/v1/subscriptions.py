@@ -2,7 +2,7 @@
 
 import logging
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -13,6 +13,7 @@ from ...api.auth import get_current_user_dependency
 from ...core.services.ecpay_service import ECPaySubscriptionService
 from ...core.config import settings
 from ...models import User, SaasSubscription, ECPayCreditAuthorization, SubscriptionPayment
+from ...models.ecpay_subscription import PaymentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +159,7 @@ async def get_current_subscription(
             "plan_id": subscription.plan_id,
             "plan_name": subscription.plan_name,
             "billing_cycle": subscription.billing_cycle,
-            "amount": subscription.amount_twd,
+            "amount_twd": subscription.amount_twd,
             "currency": subscription.currency,
             "status": subscription.status,
             "current_period_start": subscription.current_period_start.isoformat(),
@@ -582,4 +583,88 @@ async def get_billing_history(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve billing history."
+        )
+
+
+@router.get("/payment/{payment_id}/receipt")
+async def generate_payment_receipt(
+    payment_id: str,
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """Generate and download receipt for a specific payment."""
+    
+    try:
+        # Find the payment
+        payment = db.query(SubscriptionPayment).filter(
+            SubscriptionPayment.id == payment_id
+        ).first()
+        
+        if not payment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Payment not found."
+            )
+        
+        # Find the associated subscription to verify ownership
+        subscription = db.query(SaasSubscription).filter(
+            SaasSubscription.id == payment.subscription_id,
+            SaasSubscription.user_id == current_user.id
+        ).first()
+        
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Payment does not belong to current user."
+            )
+        
+        # Only generate receipts for successful payments
+        if payment.status != PaymentStatus.SUCCESS.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Receipt can only be generated for successful payments."
+            )
+        
+        # Generate receipt data
+        receipt_data = {
+            "receipt_id": f"RCP-{str(payment.id)[:8].upper()}",
+            "payment_id": str(payment.id),
+            "issue_date": payment.processed_at.strftime("%Y-%m-%d") if payment.processed_at else date.today().strftime("%Y-%m-%d"),
+            "customer": {
+                "name": current_user.name or current_user.email.split('@')[0],
+                "email": current_user.email,
+                "user_id": str(current_user.id)
+            },
+            "subscription": {
+                "plan_name": subscription.plan_name,
+                "billing_cycle": subscription.billing_cycle,
+                "period_start": payment.period_start.strftime("%Y-%m-%d"),
+                "period_end": payment.period_end.strftime("%Y-%m-%d")
+            },
+            "payment": {
+                "amount": payment.amount / 100,  # Convert from cents
+                "currency": payment.currency,
+                "payment_date": payment.processed_at.strftime("%Y-%m-%d %H:%M:%S") if payment.processed_at else None,
+                "payment_method": "信用卡 (ECPay)"
+            },
+            "company": {
+                "name": "Coaching Transcript Tool",
+                "address": "台灣",
+                "tax_id": "統一編號待補",
+                "website": "https://coaching-transcript-tool.com"
+            }
+        }
+        
+        return {
+            "receipt": receipt_data,
+            "status": "success"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate receipt for payment {payment_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate receipt."
         )

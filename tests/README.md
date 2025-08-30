@@ -91,7 +91,64 @@ pytest tests/api/
 
 # Run E2E LeMUR tests
 cd tests/e2e && python test_lemur_database_processing.py --list-sessions --auth-token $AUTH_TOKEN
+
+# Run receipt download tests
+python tests/run_receipt_tests.py --type all --verbose
 ```
+
+## Receipt Download Tests 🧾
+
+Comprehensive test suite for the receipt download functionality covering API integration, business logic, and frontend integration.
+
+### Test Categories
+
+**Unit Tests** (`tests/unit/api/test_receipt_generation.py`):
+- Receipt data structure validation
+- Receipt ID generation and format consistency
+- Amount conversion (cents to TWD)
+- Date formatting and localization
+- User name fallback logic
+- Business rule validation
+- Security considerations
+
+**API Integration Tests** (`tests/api/test_receipt_download.py`):
+- Successful receipt generation for valid payments
+- Error handling (payment not found, unauthorized access)
+- Failed payment rejection (only successful payments get receipts)
+- Receipt format and content validation
+- Amount conversion accuracy testing
+
+**End-to-End Tests** (`tests/e2e/test_receipt_download_e2e.py`):
+- Complete receipt download flow simulation
+- Multi-plan testing (PRO monthly, Enterprise annual)
+- HTML generation and formatting validation
+- Frontend integration simulation
+- Accessibility and print-friendly formatting
+
+### Running Receipt Tests
+
+```bash
+# Run all receipt tests
+python tests/run_receipt_tests.py --type all
+
+# Run specific test types
+python tests/run_receipt_tests.py --type unit --verbose
+python tests/run_receipt_tests.py --type api
+python tests/run_receipt_tests.py --type e2e
+
+# Get test information
+python tests/run_receipt_tests.py --info
+```
+
+### Test Coverage
+
+The receipt tests achieve comprehensive coverage of:
+- ✅ **API Endpoint**: `/api/v1/subscriptions/payment/{payment_id}/receipt`
+- ✅ **Business Logic**: Receipt generation, validation, formatting
+- ✅ **Security**: Authorization, data sanitization, access control
+- ✅ **Frontend Integration**: HTML generation, download simulation
+- ✅ **Error Handling**: Invalid requests, failed payments, unauthorized access
+- ✅ **Localization**: Taiwan-specific formatting, Traditional Chinese
 
 ## Test Data Management
 
