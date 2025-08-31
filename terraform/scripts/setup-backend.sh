@@ -166,6 +166,13 @@ log_info "Testing state locking mechanism..."
 mkdir -p /tmp/tf-lock-test
 cd /tmp/tf-lock-test
 
+# Get script directory and copy .tool-versions if it exists to avoid asdf warnings
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+if [ -f "$PROJECT_ROOT/.tool-versions" ]; then
+    cp "$PROJECT_ROOT/.tool-versions" .
+fi
+
 cat > main.tf << EOF
 terraform {
   required_version = ">= 1.0"
