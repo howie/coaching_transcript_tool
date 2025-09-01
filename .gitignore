@@ -232,5 +232,6 @@ terraform.rc
 
 #tmp
 logs/
+tmp/
 # Claude Code settings with sensitive data
 .claude/settings.local.json
