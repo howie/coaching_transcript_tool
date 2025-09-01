@@ -1,11 +1,6 @@
-# Configure Terraform backend
+# Configure Terraform requirements
 terraform {
   required_version = ">= 1.0"
-  
-  backend "gcs" {
-    bucket = "coaching-assistant-terraform-state"
-    prefix = "production"
-  }
   
   required_providers {
     cloudflare = {

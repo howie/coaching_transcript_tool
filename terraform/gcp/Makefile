@@ -1,6 +1,6 @@
 # Makefile for GCP Terraform operations
 
-.PHONY: init plan apply destroy validate format check clean install help
+.PHONY: init plan apply destroy validate format check clean install help config-check
 
 # Default target
 help: ## Show this help message
@@ -173,3 +173,24 @@ vars: ## Show current variable values
 		echo "No custom variables file (terraform.tfvars)"; \
 		echo "Copy terraform.tfvars.example to terraform.tfvars to customize"; \
 	fi
+
+# Configuration checking operations
+config-check: ## Run comprehensive configuration check
+	@echo "Running comprehensive configuration check..."
+	@cd ../.. && ./terraform/scripts/check-config.sh comprehensive
+
+config-check-security: ## Run security audit on configuration
+	@echo "Running security audit..."
+	@cd ../.. && ./terraform/scripts/check-config.sh security-audit
+
+config-check-terraform: ## Validate Terraform configuration consistency
+	@echo "Checking Terraform consistency..."
+	@cd ../.. && ./terraform/scripts/check-config.sh terraform-check production
+
+config-discover: ## Discover all configuration files
+	@echo "Discovering configuration files..."
+	@../scripts/check-config.sh discover
+
+config-report: ## Generate detailed configuration report
+	@echo "Generating configuration report..."
+	@cd ../.. && terraform/scripts/check-config.sh report
