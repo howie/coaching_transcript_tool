@@ -125,7 +125,7 @@ const SessionDetailPage = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'transcript' | 'analysis'>('overview');
   const [transcript, setTranscript] = useState<TranscriptData | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'vtt' | 'srt' | 'txt' | 'json' | 'xlsx'>('vtt');
+  const [exportFormat, setExportFormat] = useState<'txt' | 'xlsx'>('xlsx');
   const [speakingStats, setSpeakingStats] = useState<SpeakingStats | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
@@ -1555,11 +1555,8 @@ ${t('sessions.aiChatFollowUp')}`;
                       onChange={(e) => setExportFormat(e.target.value as any)}
                       className="px-3 py-1 border border-border rounded-md bg-surface text-content-primary"
                     >
-                      <option value="vtt">WebVTT (.vtt)</option>
-                      <option value="srt">SubRip (.srt)</option>
-                      <option value="txt">{t('sessions.exportTxt')}</option>
-                      <option value="json">JSON (.json)</option>
                       <option value="xlsx">Excel (.xlsx)</option>
+                      <option value="txt">{t('sessions.exportTxt')}</option>
                     </select>
                   </div>
                   <Button
