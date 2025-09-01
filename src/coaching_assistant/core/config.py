@@ -139,6 +139,12 @@ class Settings(BaseSettings):
     RETENTION_DAYS: int = 1
     SIGNED_URL_EXPIRY_MINUTES: int = 30
 
+    # Cloudflare 設定
+    CLOUDFLARE_API_TOKEN: str = ""
+    CLOUDFLARE_ZONE_ID: str = ""
+    CLOUDFLARE_ACCOUNT_ID: str = ""
+    DOMAIN: str = ""
+
     class Config:
         # 只在非 production 環境載入 .env 檔案，避免覆蓋 Render.com 環境變數
         env_file = ".env" if os.getenv("ENVIRONMENT") != "production" else None
