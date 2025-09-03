@@ -44,7 +44,7 @@ resource "cloudflare_record" "mx" {
 # Cloudflare Pages Project
 resource "cloudflare_pages_project" "frontend" {
   account_id        = var.account_id
-  name             = "${var.project_name}-frontend-${var.environment}"
+  name             = "${lower(var.project_name)}-frontend-${var.environment}"
   production_branch = var.production_branch
   
   source {
@@ -140,27 +140,27 @@ resource "cloudflare_zone_settings_override" "security" {
   }
 }
 
-# Firewall Rules (if enabled)
-resource "cloudflare_filter" "api_rate_limit" {
-  count = var.enable_firewall_rules ? 1 : 0
-  
-  zone_id     = var.zone_id
-  description = "API Rate Limiting Filter"
-  expression  = "(http.request.uri.path matches \"^/api/.*\" and http.request.method eq \"POST\")"
-}
+# Firewall Rules (temporarily disabled - deprecated cloudflare_filter needs migration to cloudflare_ruleset)
+# resource "cloudflare_filter" "api_rate_limit" {
+#   count = var.enable_firewall_rules ? 1 : 0
+#   
+#   zone_id     = var.zone_id
+#   description = "API Rate Limiting Filter"
+#   expression  = "(http.request.uri.path matches \"^/api/.*\" and http.request.method eq \"POST\")"
+# }
 
-resource "cloudflare_firewall_rule" "api_rate_limit" {
-  count = var.enable_firewall_rules ? 1 : 0
-  
-  zone_id     = var.zone_id
-  description = "Rate limit API endpoints"
-  filter_id   = cloudflare_filter.api_rate_limit[0].id
-  action      = "block"
-  priority    = 1
-  
-  # action_parameters removed - not supported in current provider version
-  # Rate limiting now handled via ruleset
-}
+# resource "cloudflare_firewall_rule" "api_rate_limit" {
+#   count = var.enable_firewall_rules ? 1 : 0
+#   
+#   zone_id     = var.zone_id
+#   description = "Rate limit API endpoints"
+#   filter_id   = cloudflare_filter.api_rate_limit[0].id
+#   action      = "block"
+#   priority    = 1
+#   
+#   # action_parameters removed - not supported in current provider version
+#   # Rate limiting now handled via ruleset
+# }
 
 # WAF Custom Rules
 resource "cloudflare_ruleset" "waf" {
@@ -221,7 +221,7 @@ resource "cloudflare_page_rule" "frontend_security" {
   priority = 3
   
   actions {
-    cache_level      = "standard"
+    cache_level      = "basic"
     ssl              = "strict"
     always_use_https = true
     
@@ -250,7 +250,6 @@ resource "cloudflare_web_analytics_site" "frontend" {
   count = var.web_analytics_tag != "" ? 1 : 0
   
   account_id = var.account_id
-  zone_tag   = var.zone_id
   host       = "${cloudflare_record.frontend.name}.${var.domain}"
   
   auto_install = true
