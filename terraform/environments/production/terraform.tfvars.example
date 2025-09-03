@@ -64,3 +64,10 @@ ecpay_environment  = "production"  # or "sandbox" for testing
 
 # Admin Security
 admin_webhook_token = "strong-random-token-32-chars-minimum"
+
+# API Server Configuration
+database_url = "postgresql://user:password@host:port/database"
+redis_url = "redis://host:port/db"
+audio_storage_bucket = "coaching-audio-prod"
+transcript_storage_bucket = "coaching-transcript-prod"
+google_application_credentials_json = "base64-encoded-service-account-json"

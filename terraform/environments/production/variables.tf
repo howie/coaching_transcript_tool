@@ -11,6 +11,11 @@ variable "render_api_key" {
   sensitive   = true
 }
 
+variable "render_owner_id" {
+  description = "Render owner ID (username)"
+  type        = string
+}
+
 # Cloudflare Configuration
 variable "cloudflare_zone_id" {
   description = "Cloudflare Zone ID"
@@ -250,6 +255,35 @@ variable "ecpay_environment" {
 
 variable "admin_webhook_token" {
   description = "Admin webhook token for secure management endpoints"
+  type        = string
+  sensitive   = true
+}
+
+# API Server Configuration
+variable "database_url" {
+  description = "PostgreSQL database URL"
+  type        = string
+  sensitive   = true
+}
+
+variable "redis_url" {
+  description = "Redis connection URL"
+  type        = string
+  sensitive   = true
+}
+
+variable "audio_storage_bucket" {
+  description = "GCS bucket for audio file storage"
+  type        = string
+}
+
+variable "transcript_storage_bucket" {
+  description = "GCS bucket for transcript storage"
+  type        = string
+}
+
+variable "google_application_credentials_json" {
+  description = "Google Cloud service account credentials in JSON format (base64 encoded)"
   type        = string
   sensitive   = true
 }
