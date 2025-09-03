@@ -143,7 +143,7 @@ resource "google_monitoring_alert_policy" "speech_quota_alert" {
     condition_threshold {
       filter          = "resource.type=\"consumer_quota\" AND metric.type=\"serviceruntime.googleapis.com/quota/allocation/usage\" AND resource.label.service=\"speech.googleapis.com\""
       duration        = "300s"
-      comparison      = "COMPARISON_GREATER_THAN"
+      comparison      = "COMPARISON_GT"
       threshold_value = 0.8  # Alert at 80% quota usage
       
       aggregations {
@@ -175,7 +175,7 @@ resource "google_monitoring_alert_policy" "speech_error_alert" {
     condition_threshold {
       filter          = "resource.type=\"consumed_api\" AND metric.type=\"serviceruntime.googleapis.com/api/request_count\" AND resource.label.service=\"speech.googleapis.com\" AND metric.label.response_code!=\"200\""
       duration        = "300s"
-      comparison      = "COMPARISON_GREATER_THAN"
+      comparison      = "COMPARISON_GT"
       threshold_value = 5  # Alert if more than 5 errors in 5 minutes
       
       aggregations {

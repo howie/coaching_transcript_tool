@@ -41,7 +41,8 @@ class EnvToTerraformConverter:
         'GITHUB_REPO_URL': 'github_repo_url',
         
         # GCP Configuration
-        'GCP_PROJECT_ID': 'gcp_project_id',
+        'GOOGLE_PROJECT_ID': 'gcp_project_id',  # 修正：從 .env.prod 實際變數名
+        'GCP_PROJECT_ID': 'gcp_project_id',     # 保留原有作為備用
         'GCP_REGION': 'gcp_region',
         
         # Render Configuration
@@ -49,6 +50,7 @@ class EnvToTerraformConverter:
         
         # Application Secrets
         'API_SECRET_KEY': 'api_secret_key',
+        'SECRET_KEY': 'api_secret_key',  # 從 .env.prod 實際變數名映射到同樣的 terraform 變數
         'DATABASE_PASSWORD': 'database_password',
         
         # Google OAuth
@@ -87,6 +89,13 @@ class EnvToTerraformConverter:
         
         # Admin Security
         'ADMIN_WEBHOOK_TOKEN': 'admin_webhook_token',
+        
+        # Additional API Server Variables
+        'DATABASE_URL': 'database_url',
+        'REDIS_URL': 'redis_url',
+        'AUDIO_STORAGE_BUCKET': 'audio_storage_bucket',
+        'TRANSCRIPT_STORAGE_BUCKET': 'transcript_storage_bucket',
+        'GOOGLE_APPLICATION_CREDENTIALS_JSON': 'google_application_credentials_json',
     }
     
     # 需要布林值轉換的變數

@@ -1,29 +1,30 @@
-# Service IDs
-output "api_service_id" {
-  description = "API service ID"
-  value       = render_web_service.api.id
-}
+# Service IDs - commented out since services are disabled
+# output "api_service_id" {
+#   description = "API service ID"
+#   value       = render_web_service.api.id
+# }
 
-output "worker_service_id" {
-  description = "Worker service ID"
-  value       = render_background_worker.celery.id
-}
+# output "worker_service_id" {
+#   description = "Worker service ID"
+#   value       = render_background_worker.celery.id
+# }
 
-output "flower_service_id" {
-  description = "Flower service ID"
-  value       = var.enable_flower_monitoring ? render_background_worker.flower[0].id : ""
-}
+# Flower service disabled - commented out
+# output "flower_service_id" {
+#   description = "Flower service ID"
+#   value       = var.enable_flower_monitoring ? render_background_worker.flower[0].id : ""
+# }
 
-# Service URLs
+# Service URLs - placeholder since API service is disabled
 output "api_service_url" {
-  description = "API service URL"
-  value       = render_web_service.api.service_url
+  description = "API service URL placeholder"
+  value       = "https://coachly-api-server.onrender.com"  # Existing API service URL
 }
 
-output "api_internal_url" {
-  description = "API internal URL"
-  value       = render_web_service.api.internal_url
-}
+# output "api_internal_url" {
+#   description = "API internal URL"
+#   value       = render_web_service.api.internal_url
+# }
 
 # Database Information
 output "database_id" {
@@ -33,24 +34,25 @@ output "database_id" {
 
 output "database_connection_string" {
   description = "Database connection string"
-  value       = render_postgres.main.connection_string
+  value       = "postgresql://${render_postgres.main.database_user}:****@${render_postgres.main.id}.singapore-postgres.render.com:5432/${render_postgres.main.database_name}"
   sensitive   = true
 }
 
-output "database_internal_connection_string" {
-  description = "Database internal connection string"
-  value       = render_postgres.main.internal_connection_string
-  sensitive   = true
-}
+# Internal connection string not available in current provider
+# output "database_internal_connection_string" {
+#   description = "Database internal connection string"
+#   value       = render_postgres.main.internal_connection_string
+#   sensitive   = true
+# }
 
 output "database_host" {
   description = "Database host"
-  value       = render_postgres.main.host
+  value       = "${render_postgres.main.id}.singapore-postgres.render.com"
 }
 
 output "database_port" {
   description = "Database port"
-  value       = render_postgres.main.port
+  value       = 5432  # Standard PostgreSQL port
 }
 
 output "database_name" {
@@ -63,17 +65,17 @@ output "database_user" {
   value       = render_postgres.main.database_user
 }
 
-# Read Replica Information (if enabled)
-output "database_replica_id" {
-  description = "Database replica ID"
-  value       = var.environment == "production" && var.enable_read_replica ? render_postgres_read_replica.main_replica[0].id : ""
-}
+# Read Replica disabled - commented out
+# output "database_replica_id" {
+#   description = "Database replica ID"
+#   value       = var.environment == "production" && var.enable_read_replica ? render_postgres_read_replica.main_replica[0].id : ""
+# }
 
-output "database_replica_connection_string" {
-  description = "Database replica connection string"
-  value       = var.environment == "production" && var.enable_read_replica ? render_postgres_read_replica.main_replica[0].connection_string : ""
-  sensitive   = true
-}
+# output "database_replica_connection_string" {
+#   description = "Database replica connection string"
+#   value       = var.environment == "production" && var.enable_read_replica ? render_postgres_read_replica.main_replica[0].connection_string : ""
+#   sensitive   = true
+# }
 
 # Redis Information
 output "redis_id" {
@@ -83,31 +85,32 @@ output "redis_id" {
 
 output "redis_connection_string" {
   description = "Redis connection string"
-  value       = render_redis.main.connection_string
+  value       = "redis://****@${render_redis.main.name}:6379"
   sensitive   = true
 }
 
-output "redis_internal_connection_string" {
-  description = "Redis internal connection string"
-  value       = render_redis.main.internal_connection_string
-  sensitive   = true
-}
+# Internal connection string not available in current provider
+# output "redis_internal_connection_string" {
+#   description = "Redis internal connection string"
+#   value       = render_redis.main.internal_connection_string
+#   sensitive   = true
+# }
 
 output "redis_host" {
   description = "Redis host"
-  value       = render_redis.main.host
+  value       = render_redis.main.name  # Using available attribute
 }
 
 output "redis_port" {
   description = "Redis port"
-  value       = render_redis.main.port
+  value       = 6379  # Standard Redis port
 }
 
-# Custom Domains
-output "api_custom_domains" {
-  description = "API custom domains"
-  value       = render_web_service.api.custom_domains
-}
+# Custom domains not available in current provider
+# output "api_custom_domains" {
+#   description = "API custom domains"
+#   value       = render_web_service.api.custom_domains
+# }
 
 # Auto-scaling Information
 output "api_auto_scaling_enabled" {
@@ -180,23 +183,23 @@ output "backup_retention_days" {
   value       = var.backup_retention_days
 }
 
-# Service Status Information
-output "api_service_status" {
-  description = "API service status"
-  value       = render_web_service.api.status
-}
+# Service status not available in current provider
+# output "api_service_status" {
+#   description = "API service status"
+#   value       = render_web_service.api.status
+# }
 
-output "worker_service_status" {
-  description = "Worker service status"
-  value       = render_background_worker.celery.status
-}
+# output "worker_service_status" {
+#   description = "Worker service status"
+#   value       = render_background_worker.celery.status
+# }
 
-output "database_status" {
-  description = "Database status"
-  value       = render_postgres.main.status
-}
+# output "database_status" {
+#   description = "Database status"
+#   value       = render_postgres.main.status
+# }
 
-output "redis_status" {
-  description = "Redis status"
-  value       = render_redis.main.status
-}
+# output "redis_status" {
+#   description = "Redis status"
+#   value       = render_redis.main.status
+# }
