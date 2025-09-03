@@ -20,27 +20,31 @@
 
 ## DNS 記錄管理
 
-### 1. 基礎 DNS 配置
+## ⚠️ 重要：域名管理範圍 (2025-09-02 更新)
+
+**Coaching Assistant Terraform 模組只管理以下記錄：**
+- ✅ `coachly.doxa.com.tw` → Cloudflare Pages/Worker (coaching assistant 平台)
+- ✅ `api.doxa.com.tw` → Render API 服務
+
+**不管理的記錄（避免衝突）：**
+- ❌ `doxa.com.tw` (根域名) → 由其他配置管理
+- ❌ `www.doxa.com.tw` → doxa-offical-web (官方網站)
+
+**架構說明：**
+```
+doxa.com.tw 域名分工：
+├── coachly.doxa.com.tw/* → Worker: coachly-doxa-com-tw (本專案管理)
+├── api.doxa.com.tw → Render API Service (本專案管理)  
+├── www.doxa.com.tw/* → doxa-offical-web (外部管理)
+└── @ (根域名) → 外部管理
+```
+
+### 1. 正確的 DNS 配置
 
 ```hcl
-# DNS 記錄配置
-resource "cloudflare_record" "root" {
-  zone_id = var.zone_id
-  name    = "@"
-  value   = "185.199.108.153"  # GitHub Pages IP
-  type    = "A"
-  proxied = true
-  
-  tags = ["terraform", "coaching-assistant"]
-}
-
-resource "cloudflare_record" "www" {
-  zone_id = var.zone_id
-  name    = "www"
-  value   = "doxa.com.tw"
-  type    = "CNAME"
-  proxied = true
-}
+# 移除 root 和 www 記錄 - 這些由其他配置管理
+# resource "cloudflare_record" "root" { ... }   # 已移除
+# resource "cloudflare_record" "www" { ... }    # 已移除
 
 # 前端域名
 resource "cloudflare_record" "frontend" {

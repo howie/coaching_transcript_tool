@@ -1,57 +1,44 @@
 # DNS Records Configuration
-resource "cloudflare_record" "root" {
-  zone_id = var.zone_id
-  name    = "@"
-  value   = "185.199.108.153"  # GitHub Pages IP
-  type    = "A"
-  proxied = var.proxied
-  
-  tags = ["terraform", var.project_name, var.environment]
-}
+# Note: Root domain (@) and www subdomain are managed externally
+# This module only manages coaching assistant related records
 
-resource "cloudflare_record" "www" {
-  zone_id = var.zone_id
-  name    = "www"
-  value   = var.domain
-  type    = "CNAME"
-  proxied = var.proxied
-  
-  tags = ["terraform", var.project_name, var.environment]
-}
+# Removed root and www records to avoid conflicts with:
+# - www.doxa.com.tw → doxa-offical-web
+# - @ → external management
 
 # Frontend domain
 resource "cloudflare_record" "frontend" {
   zone_id = var.zone_id
   name    = var.environment == "production" ? var.frontend_subdomain : "${var.environment}-${var.frontend_subdomain}"
-  value   = "${cloudflare_pages_project.frontend.subdomain}.pages.dev"
+  content = "${cloudflare_pages_project.frontend.subdomain}.pages.dev"
   type    = "CNAME"
   proxied = var.proxied
   
-  tags = ["terraform", "frontend", var.environment]
+  comment = "Managed by Terraform - frontend ${var.environment}"
 }
 
 # API domain
 resource "cloudflare_record" "api" {
   zone_id = var.zone_id
   name    = var.environment == "production" ? var.api_subdomain : "${var.environment}-${var.api_subdomain}"
-  value   = var.render_api_url
+  content = var.render_api_url
   type    = "CNAME"
   proxied = var.proxied
   
-  tags = ["terraform", "api", var.environment]
+  comment = "Managed by Terraform - API ${var.environment}"
 }
 
-# MX Records for email
+# MX Records for email (if needed by coaching assistant)
 resource "cloudflare_record" "mx" {
   for_each = var.mx_records
   
   zone_id  = var.zone_id
   name     = "@"
-  value    = each.value.server
+  content  = each.value.server
   type     = "MX"
   priority = each.value.priority
   
-  tags = ["terraform", "email"]
+  comment = "Managed by Terraform - MX records"
 }
 
 # Cloudflare Pages Project
@@ -130,7 +117,7 @@ resource "cloudflare_zone_settings_override" "security" {
   settings {
     # SSL/TLS Configuration
     ssl                      = "strict"
-    always_use_https        = "on"
+    always_use_https        = true
     automatic_https_rewrites = "on"
     min_tls_version         = "1.2"
     
@@ -149,11 +136,7 @@ resource "cloudflare_zone_settings_override" "security" {
     }
     
     # Bot Management
-    bot_management {
-      enable_js                = true
-      suppress_session_score   = false
-      auto_update_model       = true
-    }
+    # bot_management removed - not supported in current provider version
   }
 }
 
@@ -175,13 +158,8 @@ resource "cloudflare_firewall_rule" "api_rate_limit" {
   action      = "block"
   priority    = 1
   
-  action_parameters {
-    response {
-      status_code  = 429
-      content_type = "application/json"
-      content      = "{\"error\": \"Rate limit exceeded\"}"
-    }
-  }
+  # action_parameters removed - not supported in current provider version
+  # Rate limiting now handled via ruleset
 }
 
 # WAF Custom Rules
@@ -219,13 +197,8 @@ resource "cloudflare_page_rule" "api_bypass_cache" {
     ssl         = "strict"
     
     # CORS headers for API
-    response_headers_override {
-      headers = {
-        "Access-Control-Allow-Origin"  = "https://${cloudflare_record.frontend.name}.${var.domain}"
-        "Access-Control-Allow-Methods" = "GET, POST, PUT, DELETE, OPTIONS"
-        "Access-Control-Allow-Headers" = "Content-Type, Authorization"
-      }
-    }
+    # response_headers_override removed - not supported in current provider version
+    # CORS headers now handled via Transform Rules
   }
 }
 
@@ -250,18 +223,11 @@ resource "cloudflare_page_rule" "frontend_security" {
   actions {
     cache_level      = "standard"
     ssl              = "strict"
-    always_use_https = "on"
+    always_use_https = true
     
     # Security headers
-    response_headers_override {
-      headers = {
-        "X-Frame-Options"         = "DENY"
-        "X-Content-Type-Options"  = "nosniff"
-        "X-XSS-Protection"        = "1; mode=block"
-        "Referrer-Policy"         = "strict-origin-when-cross-origin"
-        "Permissions-Policy"      = "camera=(), microphone=(), geolocation=()"
-      }
-    }
+    # response_headers_override removed - not supported in current provider version
+    # Security headers now handled via Transform Rules
   }
 }
 

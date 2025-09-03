@@ -31,9 +31,14 @@ module "speech" {
   enable_speech_v2 = var.enable_speech_v2
 }
 
+# Local values to handle sensitive for_each limitation
+locals {
+  secret_keys = keys(var.secrets)
+}
+
 # Secret Manager for sensitive data
 resource "google_secret_manager_secret" "api_secrets" {
-  for_each = var.secrets
+  for_each = toset(local.secret_keys)
   
   project   = var.project_id
   secret_id = each.key
@@ -49,10 +54,10 @@ resource "google_secret_manager_secret" "api_secrets" {
 }
 
 resource "google_secret_manager_secret_version" "api_secrets" {
-  for_each = var.secrets
+  for_each = toset(local.secret_keys)
   
   secret      = google_secret_manager_secret.api_secrets[each.key].id
-  secret_data = each.value
+  secret_data = var.secrets[each.key]
 }
 
 # Enable required APIs
@@ -142,7 +147,7 @@ resource "google_monitoring_alert_policy" "storage_errors" {
     condition_threshold {
       filter          = "resource.type=\"gcs_bucket\" AND metric.type=\"storage.googleapis.com/api/request_count\""
       duration        = "300s"
-      comparison      = "COMPARISON_GREATER_THAN"
+      comparison      = "COMPARISON_GT"
       threshold_value = 10
       
       aggregations {
@@ -169,7 +174,7 @@ resource "google_monitoring_alert_policy" "speech_quota" {
     condition_threshold {
       filter          = "resource.type=\"consumed_api\" AND metric.type=\"serviceruntime.googleapis.com/quota/allocation/usage\""
       duration        = "300s"
-      comparison      = "COMPARISON_GREATER_THAN"
+      comparison      = "COMPARISON_GT"
       threshold_value = 0.8  # 80% of quota
       
       aggregations {
