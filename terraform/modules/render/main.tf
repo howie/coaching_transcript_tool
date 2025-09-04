@@ -7,58 +7,58 @@ locals {
       APP_VERSION = var.app_version
       BUILD_ID    = var.build_id
       COMMIT_SHA  = var.commit_sha
-      
+
       # Monitoring
       SENTRY_DSN = var.sentry_dsn
-      
+
       # Feature flags
       ENABLE_SPEAKER_DIARIZATION = var.enable_speaker_diarization
-      ENABLE_PUNCTUATION        = var.enable_punctuation
-      
+      ENABLE_PUNCTUATION         = var.enable_punctuation
+
       # Storage configuration
-      AUDIO_STORAGE_BUCKET     = var.audio_storage_bucket
+      AUDIO_STORAGE_BUCKET      = var.audio_storage_bucket
       TRANSCRIPT_STORAGE_BUCKET = var.transcript_storage_bucket
-      
+
       # STT configuration
       STT_PROVIDER        = var.stt_provider
       GOOGLE_STT_MODEL    = var.google_stt_model
       GOOGLE_STT_LOCATION = var.google_stt_location
       ASSEMBLYAI_API_KEY  = var.assemblyai_api_key
-      
+
       # GCP configuration
-      GCP_PROJECT_ID                     = var.gcp_project_id
+      GCP_PROJECT_ID                      = var.gcp_project_id
       GOOGLE_APPLICATION_CREDENTIALS_JSON = var.gcp_service_account_json
-      
+
       # Authentication
       GOOGLE_CLIENT_ID     = var.google_client_id
       GOOGLE_CLIENT_SECRET = var.google_client_secret
-      
+
       # reCAPTCHA
       RECAPTCHA_ENABLED   = var.recaptcha_enabled
       RECAPTCHA_SECRET    = var.recaptcha_secret
       RECAPTCHA_MIN_SCORE = var.recaptcha_min_score
-      
+
       # ECPay Configuration
-      ECPAY_MERCHANT_ID  = var.ecpay_merchant_id
-      ECPAY_HASH_KEY     = var.ecpay_hash_key
-      ECPAY_HASH_IV      = var.ecpay_hash_iv
-      ECPAY_ENVIRONMENT  = var.ecpay_environment
-      
+      ECPAY_MERCHANT_ID = var.ecpay_merchant_id
+      ECPAY_HASH_KEY    = var.ecpay_hash_key
+      ECPAY_HASH_IV     = var.ecpay_hash_iv
+      ECPAY_ENVIRONMENT = var.ecpay_environment
+
       # Admin Security
       ADMIN_WEBHOOK_TOKEN = var.admin_webhook_token
-      
+
       # File upload limits
       MAX_FILE_SIZE      = var.max_file_size
       MAX_AUDIO_DURATION = var.max_audio_duration
-      
+
       # Database configuration
-      DATABASE_URL = render_postgres.main.connection_string
-      REDIS_URL    = render_redis.main.connection_string
-      
+      DATABASE_URL = render_postgres.main.connection_info.external_connection_string
+      REDIS_URL    = render_redis.main.connection_info.external_connection_string
+
       # Celery configuration
-      CELERY_BROKER_URL    = render_redis.main.connection_string
-      CELERY_RESULT_BACKEND = render_redis.main.connection_string
-      
+      CELERY_BROKER_URL     = render_redis.main.connection_info.external_connection_string
+      CELERY_RESULT_BACKEND = render_redis.main.connection_info.external_connection_string
+
       # Logging
       LOG_LEVEL  = var.log_level
       LOG_FORMAT = "json"
@@ -68,23 +68,23 @@ locals {
 
 # PostgreSQL Database
 resource "render_postgres" "main" {
-  name                = "${var.project_name}-db-${var.environment}"
-  plan               = var.database_plan
-  region             = var.region
-  version            = var.postgres_version
-  
+  name    = "${var.project_name}-db-${var.environment}"
+  plan    = var.database_plan
+  region  = var.region
+  version = var.postgres_version
+
   # Removed unsupported arguments:
   # - high_availability (not supported in current provider)
   # - backup_enabled (not supported in current provider)
   # - backup_retention_days (not supported in current provider)
-  
+
   # Database configuration
   database_name = var.database_name
   database_user = var.database_user
-  
+
   # Maintenance window
   # maintenance_window removed - not supported in current provider version
-  
+
   # Removed unsupported arguments:
   # - shared_preload_libraries (not supported)
   # - tags (not supported)
@@ -128,7 +128,7 @@ resource "render_redis" "main" {
   name              = "${var.project_name}-redis-${var.environment}"
   plan              = var.redis_plan
   region            = var.region
-  max_memory_policy = "allkeys_lru"  # Correct value with underscore
+  max_memory_policy = "allkeys_lru" # Correct value with underscore
 }
 
 # API Web Service
@@ -136,19 +136,21 @@ resource "render_web_service" "api" {
   name           = "${var.project_name}-api-${var.environment}"
   plan           = var.api_plan
   region         = var.region
-  repo           = var.github_repo_url
-  branch         = var.branch
-  
-  # Service configuration
-  service_details {
-    env              = var.environment
-    start_command    = "cd apps/api-server && bash start.sh"
-    build_command    = "pip install -r requirements.txt"
-    root_directory   = "."
-    
-    # Environment variables
-    environment_variables = local.common_env_vars
+  start_command  = "cd apps/api-server && bash start.sh"
+  root_directory = "."
+
+  # Runtime source configuration
+  runtime_source = {
+    native_runtime = {
+      repo_url      = var.github_repo_url
+      branch        = var.branch
+      runtime       = "python"
+      build_command = "pip install -r requirements.txt"
+    }
   }
+
+  # Environment variables
+  env_vars = local.common_env_vars
 }
 
 # Celery Worker Service
@@ -156,19 +158,21 @@ resource "render_background_worker" "celery" {
   name           = "${var.project_name}-worker-${var.environment}"
   plan           = var.worker_plan
   region         = var.region
-  repo           = var.github_repo_url
-  branch         = var.branch
-  
-  # Service configuration
-  service_details {
-    env           = var.environment
-    start_command = "cd apps/worker && celery -A coaching_assistant.core.celery_app worker --loglevel=info"
-    build_command = "pip install -r requirements.txt"
-    root_directory = "."
-    
-    # Environment variables
-    environment_variables = local.common_env_vars
+  start_command  = "cd apps/worker && celery -A coaching_assistant.core.celery_app worker --loglevel=info"
+  root_directory = "."
+
+  # Runtime source configuration
+  runtime_source = {
+    native_runtime = {
+      repo_url      = var.github_repo_url
+      branch        = var.branch
+      runtime       = "python"
+      build_command = "pip install -r requirements.txt"
+    }
   }
+
+  # Environment variables
+  env_vars = local.common_env_vars
 }
 
 # Flower Monitoring (Optional)

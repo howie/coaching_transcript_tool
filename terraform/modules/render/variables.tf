@@ -261,7 +261,7 @@ variable "worker_env_vars" {
 # Secrets
 variable "secret_files" {
   description = "Secret files to mount"
-  type        = list(object({
+  type = list(object({
     name    = string
     content = string
   }))

@@ -18,7 +18,7 @@ output "worker_service_id" {
 # Service URLs
 output "api_service_url" {
   description = "API service URL"
-  value       = render_web_service.api.service_url
+  value       = render_web_service.api.url
 }
 
 # output "api_internal_url" {
@@ -52,7 +52,7 @@ output "database_host" {
 
 output "database_port" {
   description = "Database port"
-  value       = 5432  # Standard PostgreSQL port
+  value       = 5432 # Standard PostgreSQL port
 }
 
 output "database_name" {
@@ -98,12 +98,12 @@ output "redis_connection_string" {
 
 output "redis_host" {
   description = "Redis host"
-  value       = render_redis.main.name  # Using available attribute
+  value       = render_redis.main.name # Using available attribute
 }
 
 output "redis_port" {
   description = "Redis port"
-  value       = 6379  # Standard Redis port
+  value       = 6379 # Standard Redis port
 }
 
 # Custom domains not available in current provider
