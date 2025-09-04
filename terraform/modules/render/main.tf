@@ -26,7 +26,8 @@ locals {
       ASSEMBLYAI_API_KEY  = var.assemblyai_api_key
 
       # GCP configuration
-      GCP_PROJECT_ID                      = var.gcp_project_id
+      GOOGLE_PROJECT_ID                   = var.gcp_project_id
+      GCP_PROJECT_ID                      = var.gcp_project_id  # Keep legacy for compatibility
       GOOGLE_APPLICATION_CREDENTIALS_JSON = var.gcp_service_account_json
 
       # Authentication

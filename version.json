@@ -1,8 +1,8 @@
 {
-  "version": "2.15.6",
-  "displayVersion": "v2.15.6",
-  "description": "Complete Environment Variable Configuration",
+  "version": "2.15.7",
+  "displayVersion": "v2.15.7",
+  "description": "Fix GOOGLE_PROJECT_ID Environment Variable",
   "releaseDate": "2025-09-04",
-  "releaseNotes": "Fixed missing environment variables blocking production startup: Added SECRET_KEY, GOOGLE_APPLICATION_CREDENTIALS_JSON, and proper service-specific environment variable merging. API service now receives all required configuration including authentication secrets, debug settings, and GCP credentials. All environment validation errors resolved.",
+  "releaseNotes": "Fixed final missing environment variable blocking production startup: Added GOOGLE_PROJECT_ID (in addition to existing GCP_PROJECT_ID for compatibility). Application was expecting GOOGLE_PROJECT_ID but Terraform was only providing GCP_PROJECT_ID. Now both services receive the correct Google Cloud project identifier. All environment validation should now pass.",
   "author": "Coachly Team"
 }
