@@ -1,6 +1,6 @@
 # Local values for common environment variables
 locals {
-  common_env_vars = merge(
+  common_env_vars_raw = merge(
     var.common_env_vars,
     {
       # Version info
@@ -64,6 +64,13 @@ locals {
       LOG_FORMAT = "json"
     }
   )
+
+  # Convert string values to Render provider format
+  common_env_vars = {
+    for key, value in local.common_env_vars_raw : key => {
+      value = value
+    }
+  }
 }
 
 # PostgreSQL Database
@@ -73,62 +80,18 @@ resource "render_postgres" "main" {
   region  = var.region
   version = var.postgres_version
 
-  # Removed unsupported arguments:
-  # - high_availability (not supported in current provider)
-  # - backup_enabled (not supported in current provider)
-  # - backup_retention_days (not supported in current provider)
-
   # Database configuration
   database_name = var.database_name
   database_user = var.database_user
-
-  # Maintenance window
-  # maintenance_window removed - not supported in current provider version
-
-  # Removed unsupported arguments:
-  # - shared_preload_libraries (not supported)
-  # - tags (not supported)
 }
 
-# Database read replica (Production only) - removed (not supported)
-# resource "render_postgres_read_replica" "main_replica" {
-#   count = var.environment == "production" && var.enable_read_replica ? 1 : 0
-#   
-#   name               = "${var.project_name}-db-replica-${var.environment}"
-#   primary_postgres_id = render_postgres.main.id
-#   region             = var.replica_region
-#   
-#   tags = [
-#     "terraform",
-#     var.project_name,
-#     "database-replica",
-#     var.environment
-#   ]
-# }
-
-# Database backup policy - removed (not supported)
-# resource "render_postgres_backup_policy" "main" {
-#   count = var.backup_enabled ? 1 : 0
-#   
-#   postgres_id = render_postgres.main.id
-#   
-#   retention_days = var.backup_retention_days
-#   
-#   schedule {
-#     hour   = var.backup_hour
-#     minute = var.backup_minute
-#   }
-#   
-#   # Point-in-time recovery (Enterprise only)
-#   point_in_time_recovery_enabled = var.environment == "production" ? true : false
-# }
 
 # Redis Instance
 resource "render_redis" "main" {
   name              = "${var.project_name}-redis-${var.environment}"
   plan              = var.redis_plan
   region            = var.region
-  max_memory_policy = "allkeys_lru" # Correct value with underscore
+  max_memory_policy = "allkeys_lru"
 }
 
 # API Web Service
@@ -175,151 +138,5 @@ resource "render_background_worker" "celery" {
   env_vars = local.common_env_vars
 }
 
-# Flower Monitoring (Optional)
-# Flower monitoring service - completely commented out for simplification
-# resource "render_background_worker" "flower" {
-#   count = var.enable_flower_monitoring ? 1 : 0
-#   
-#   name               = "${var.project_name}-flower-${var.environment}"
-#   runtime           = "docker"
-#   repo              = var.github_repo_url
-#   branch            = var.branch
-#   root_directory    = "apps/worker"
-#   dockerfile_path   = "Dockerfile.flower"
-#   
-#   service_details {
-#     env              = var.environment
-#     plan             = "starter"  # Smaller plan for monitoring
-#     region           = var.region
-#     
-#     start_command    = "celery -A coaching_assistant.core.celery_app flower --port=5555"
-#     
-#     environment_variables = {
-#       REDIS_URL           = render_redis.main.connection_string
-#       FLOWER_BASIC_AUTH   = var.flower_auth
-#       FLOWER_PORT         = "5555"
-#     }
-#   }
-#   
-#   tags = ["terraform", "monitoring", var.environment]
-# }
 
-# Environment Variable Groups - removed (not supported in current provider)
-# resource "render_env_var_group" "development" {
-#   count = var.environment == "development" ? 1 : 0
-#   
-#   name = "${var.project_name}-dev"
-#   
-#   environment_variables = {
-#     DEBUG           = "true"
-#     LOG_LEVEL      = "DEBUG"
-#     RECAPTCHA_ENABLED = "false"
-#     MAX_FILE_SIZE   = "50"  # Smaller limits for dev
-#   }
-# }
 
-# resource "render_env_var_group" "production" {
-#   count = var.environment == "production" ? 1 : 0
-#   
-#   name = "${var.project_name}-prod"
-#   
-#   environment_variables = {
-#     DEBUG           = "false"
-#     LOG_LEVEL      = "INFO"
-#     RECAPTCHA_ENABLED = "true"
-#     MAX_FILE_SIZE   = "500"  # Full limits for prod
-#   }
-# }
-
-# Service Monitoring - removed (not supported in current provider)
-# resource "render_service_monitoring" "api" {
-#   count = var.monitoring_email != "" ? 1 : 0
-#   
-#   service_id = render_web_service.api.id
-#   
-#   # Health check configuration
-#   health_check_enabled = true
-#   health_check_path    = "/api/health"
-#   health_check_interval = 30  # seconds
-#   
-#   # Alert configuration
-#   alerts = [
-#     {
-#       type = "response_time"
-#       threshold = 5000  # 5 seconds
-#       notification_email = var.monitoring_email
-#     },
-#     {
-#       type = "error_rate"
-#       threshold = 5  # 5%
-#       notification_email = var.monitoring_email
-#     },
-#     {
-#       type = "cpu_usage"
-#       threshold = 80  # 80%
-#       notification_email = var.monitoring_email
-#     },
-#     {
-#       type = "memory_usage"
-#       threshold = 85  # 85%
-#       notification_email = var.monitoring_email
-#     }
-#   ]
-# }
-
-# resource "render_service_monitoring" "worker" {
-#   count = var.monitoring_email != "" ? 1 : 0
-#   
-#   service_id = render_background_worker.celery.id
-#   
-#   alerts = [
-#     {
-#       type = "cpu_usage"
-#       threshold = 80
-#       notification_email = var.monitoring_email
-#     },
-#     {
-#       type = "memory_usage"
-#       threshold = 85
-#       notification_email = var.monitoring_email
-#     }
-#   ]
-# }
-
-# Database Monitoring - removed (not supported in current provider)
-# resource "render_postgres_monitoring" "main" {
-#   count = var.monitoring_email != "" ? 1 : 0
-#   
-#   postgres_id = render_postgres.main.id
-#   
-#   alerts = [
-#     {
-#       type = "connection_count"
-#       threshold = 80  # 80% of max connections
-#       notification_email = var.monitoring_email
-#     },
-#     {
-#       type = "storage_usage"
-#       threshold = 85  # 85% of disk space
-#       notification_email = var.monitoring_email
-#     },
-#     {
-#       type = "query_duration"
-#       threshold = 10000  # 10 seconds
-#       notification_email = var.monitoring_email
-#     }
-#   ]
-# }
-
-# Redis Monitoring - removed (not supported in current provider)
-# resource "render_redis_monitoring" "main" {
-#   count = var.monitoring_email != "" ? 1 : 0
-#   
-#   redis_id = render_redis.main.id
-#   
-#   # Alert thresholds
-#   memory_usage_threshold = 80  # Alert at 80% memory usage
-#   cpu_usage_threshold    = 70  # Alert at 70% CPU usage
-#   
-#   notification_email = var.monitoring_email
-# }

@@ -180,7 +180,11 @@ class ApiClient {
         // Last resort fallback
         this.fetcher = fetch
       }
-      this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      // Determine base URL with production-aware fallback
+      const defaultUrl = (typeof window !== 'undefined' && window.location.hostname.includes('doxa.com.tw')) 
+        ? 'https://api.doxa.com.tw' 
+        : 'http://localhost:8000'
+      this.baseUrl = process.env.NEXT_PUBLIC_API_URL || defaultUrl
     }
   }
 

@@ -4,56 +4,6 @@
 # Note: Speech-to-Text v2 doesn't require explicit recognizer resources for basic usage
 # The service account permissions are sufficient for most use cases
 
-# Optional: Create a Speech-to-Text v2 recognizer for custom configurations
-# Uncomment if you need custom recognition models or settings
-/*
-resource "google_speech_recognizer" "default" {
-  recognizer_id = "default-recognizer"
-  project       = var.gcp_project_id
-  location      = var.gcp_region
-  
-  display_name = "Default Coaching Assistant Recognizer"
-  
-  default_recognition_config {
-    language_codes = ["zh-TW", "en-US", "zh-CN"]
-    model         = "latest_long"
-    
-    features {
-      enable_automatic_punctuation = true
-      enable_word_time_offsets     = true
-      enable_word_confidence       = true
-      enable_spoken_punctuation    = false
-      enable_spoken_emojis         = false
-    }
-    
-    adaptation {
-      # Add custom phrase sets for coaching terminology
-      phrase_sets {
-        phrase_set = "coaching-terms"
-        phrases {
-          value = "coaching session"
-          boost = 10.0
-        }
-        phrases {
-          value = "action items"
-          boost = 10.0
-        }
-        phrases {
-          value = "goal setting"
-          boost = 10.0
-        }
-      }
-    }
-    
-    # Diarization for speaker separation
-    diarization_config {
-      enable_speaker_diarization = true
-      min_speaker_count         = 2
-      max_speaker_count         = 2
-    }
-  }
-}
-*/
 
 # Monitoring and logging configuration
 resource "google_project_service" "logging" {
