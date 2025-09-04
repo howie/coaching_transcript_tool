@@ -10,8 +10,8 @@
 resource "cloudflare_record" "frontend" {
   zone_id = var.zone_id
   name    = var.environment == "production" ? var.frontend_subdomain : "${var.environment}-${var.frontend_subdomain}"
-  content = "192.0.2.1"  # Dummy IP for Workers (will be proxied)
-  type    = "A"  
+  content = "coachly-web"  # Match existing CNAME record
+  type    = "CNAME"  
   proxied = true  # Essential for Workers to work
   
   comment = "Managed by Terraform - frontend Workers ${var.environment}"
@@ -21,7 +21,7 @@ resource "cloudflare_record" "frontend" {
 resource "cloudflare_record" "api" {
   zone_id = var.zone_id
   name    = var.environment == "production" ? var.api_subdomain : "${var.environment}-${var.api_subdomain}"
-  content = var.render_api_url
+  content = "coaching-transcript-tool.onrender.com"  # Match existing CNAME
   type    = "CNAME"
   proxied = var.proxied
   
@@ -59,7 +59,7 @@ resource "cloudflare_zone_settings_override" "security" {
   settings {
     # SSL/TLS Configuration
     ssl                      = "strict"
-    always_use_https        = true
+    # always_use_https        = true  # Temporarily disabled - configuration issue
     automatic_https_rewrites = "on"
     min_tls_version         = "1.2"
     
@@ -71,11 +71,11 @@ resource "cloudflare_zone_settings_override" "security" {
     
     # Performance
     brotli                  = "on"
-    minify {
-      css  = "on"
-      html = "on"
-      js   = "on"
-    }
+    # minify {  # Temporarily disabled - configuration issue
+    #   css  = "on"
+    #   html = "on"
+    #   js   = "on"
+    # }
     
     # Bot Management
     # bot_management removed - not supported in current provider version
@@ -164,12 +164,12 @@ resource "cloudflare_page_rule" "www_redirect" {
   }
 }
 
-# Web Analytics for Workers
-resource "cloudflare_web_analytics_site" "frontend" {
-  count = var.web_analytics_tag != "" ? 1 : 0
-  
-  account_id = var.account_id
-  host       = "${cloudflare_record.frontend.name}.${var.domain}"
-  
-  auto_install = false  # Workers handle analytics integration manually
-}
+# Web Analytics for Workers (temporarily disabled due to permissions)
+# resource "cloudflare_web_analytics_site" "frontend" {
+#   count = var.web_analytics_tag != "" ? 1 : 0
+#   
+#   account_id = var.account_id
+#   host       = "${cloudflare_record.frontend.name}.${var.domain}"
+#   
+#   auto_install = false  # Workers handle analytics integration manually
+# }
