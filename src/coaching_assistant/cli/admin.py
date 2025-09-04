@@ -2,16 +2,16 @@
 
 import click
 import sys
-from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from ..models.user import User, UserRole
 from ..services.permissions import PermissionService
 from ..core.config import settings
+from ..core.database import create_database_engine
 
 
 def get_db_session() -> Session:
     """Create a database session for CLI operations."""
-    engine = create_engine(settings.DATABASE_URL)
+    engine = create_database_engine(settings.DATABASE_URL)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     return SessionLocal()
 

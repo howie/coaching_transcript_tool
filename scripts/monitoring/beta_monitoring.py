@@ -6,8 +6,8 @@ Run this periodically to ensure no cost escalation.
 
 from datetime import datetime, timedelta
 from coaching_assistant.core.config import Settings
-from coaching_assistant.core.database import get_db
-from sqlalchemy import create_engine, text
+from coaching_assistant.core.database import get_db, create_database_engine
+from sqlalchemy import text
 import json
 
 def check_daily_usage():
@@ -16,7 +16,7 @@ def check_daily_usage():
     print("=" * 60)
     
     settings = Settings()
-    engine = create_engine(settings.DATABASE_URL)
+    engine = create_database_engine(settings.DATABASE_URL)
     
     with engine.connect() as conn:
         # 1. User plan distribution
@@ -135,7 +135,7 @@ def check_system_health():
     print(f"\n🔧 System Health Check:")
     
     settings = Settings()
-    engine = create_engine(settings.DATABASE_URL)
+    engine = create_database_engine(settings.DATABASE_URL)
     
     with engine.connect() as conn:
         # Check for failed sessions

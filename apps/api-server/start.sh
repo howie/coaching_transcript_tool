@@ -16,7 +16,12 @@ if not database_url:
     print('Warning: DATABASE_URL not set, skipping database checks')
     exit(0)
 
-engine = create_engine(database_url)
+# Add SSL configuration for production databases (like Render PostgreSQL)
+engine_kwargs = {}
+if 'render.com' in database_url:
+    engine_kwargs['connect_args'] = {'sslmode': 'require'}
+
+engine = create_engine(database_url, **engine_kwargs)
 max_attempts = 30
 attempt = 0
 

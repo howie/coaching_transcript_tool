@@ -7,12 +7,13 @@ import uuid
 import json
 from datetime import datetime, UTC
 from coaching_assistant.core.config import Settings
-from sqlalchemy import create_engine, text
+from coaching_assistant.core.database import create_database_engine
+from sqlalchemy import text
 
 def seed_beta_plan_configs():
     """Seed conservative plan configurations for beta launch."""
     settings = Settings()
-    engine = create_engine(settings.DATABASE_URL)
+    engine = create_database_engine(settings.DATABASE_URL)
     
     # Conservative beta limits (more restrictive than final)
     plan_configs = [
