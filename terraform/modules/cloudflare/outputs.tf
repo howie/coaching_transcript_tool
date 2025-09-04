@@ -39,12 +39,12 @@ output "api_record_id" {
   value       = cloudflare_record.api.id
 }
 
-# Analytics
-output "web_analytics_site_tag" {
-  description = "Web Analytics site tag"
-  value       = var.web_analytics_tag != "" ? cloudflare_web_analytics_site.frontend[0].site_tag : ""
-  sensitive   = true
-}
+# Analytics (temporarily disabled)
+# output "web_analytics_site_tag" {
+#   description = "Web Analytics site tag"
+#   value       = var.web_analytics_tag != "" ? cloudflare_web_analytics_site.frontend[0].site_tag : ""
+#   sensitive   = true
+# }
 
 # Security Configuration
 output "firewall_rules_enabled" {
