@@ -55,22 +55,9 @@ module "cloudflare" {
   # Render Service URLs
   render_api_url = module.render.api_service_url
   
-  # Production Environment Variables for Pages
-  production_env_vars = {
-    NEXT_PUBLIC_API_URL                = "https://${var.api_subdomain}.${var.domain}"
-    NEXT_PUBLIC_ENVIRONMENT            = "production"
-    NEXT_PUBLIC_APP_VERSION            = var.app_version
-    NEXT_PUBLIC_RECAPTCHA_SITE_KEY     = var.recaptcha_site_key
-    NEXT_PUBLIC_GOOGLE_CLIENT_ID       = var.google_client_id
-  }
-  
-  preview_env_vars = {
-    NEXT_PUBLIC_API_URL                = "https://staging-${var.api_subdomain}.${var.domain}"
-    NEXT_PUBLIC_ENVIRONMENT            = "staging"
-    NEXT_PUBLIC_APP_VERSION            = var.app_version
-    NEXT_PUBLIC_RECAPTCHA_SITE_KEY     = var.recaptcha_site_key_staging
-    NEXT_PUBLIC_GOOGLE_CLIENT_ID       = var.google_client_id_staging
-  }
+  # Workers Environment Variables (managed through Cloudflare dashboard)
+  # Current Workers setup handles environment variables directly
+  # No need for Terraform-managed environment variables
   
   # Security Configuration
   recaptcha_site_key = var.recaptcha_site_key

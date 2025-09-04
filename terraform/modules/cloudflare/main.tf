@@ -6,15 +6,15 @@
 # - www.doxa.com.tw → doxa-offical-web
 # - @ → external management
 
-# Frontend domain
+# Frontend domain (Workers)
 resource "cloudflare_record" "frontend" {
   zone_id = var.zone_id
   name    = var.environment == "production" ? var.frontend_subdomain : "${var.environment}-${var.frontend_subdomain}"
-  content = "${cloudflare_pages_project.frontend.subdomain}.pages.dev"
-  type    = "CNAME"
-  proxied = var.proxied
+  content = "192.0.2.1"  # Dummy IP for Workers (will be proxied)
+  type    = "A"  
+  proxied = true  # Essential for Workers to work
   
-  comment = "Managed by Terraform - frontend ${var.environment}"
+  comment = "Managed by Terraform - frontend Workers ${var.environment}"
 }
 
 # API domain
@@ -41,74 +41,16 @@ resource "cloudflare_record" "mx" {
   comment = "Managed by Terraform - MX records"
 }
 
-# Cloudflare Pages Project
-resource "cloudflare_pages_project" "frontend" {
-  account_id        = var.account_id
-  name             = "${lower(var.project_name)}-frontend-${var.environment}"
-  production_branch = var.production_branch
-  
-  source {
-    type = "github"
-    config {
-      owner                         = var.github_owner
-      repo_name                    = var.github_repo
-      production_branch            = var.production_branch
-      pr_comments_enabled          = true
-      deployments_enabled          = true
-      production_deployment_enabled = true
-      preview_deployment_setting   = "custom"
-      preview_branch_includes      = var.environment == "production" ? ["develop", "staging"] : ["feature/*", "develop"]
-    }
-  }
-  
-  build_config {
-    build_command       = "cd apps/web && npm ci && npm run build"
-    destination_dir     = "apps/web/out"
-    root_dir           = "/"
-    web_analytics_tag  = var.web_analytics_tag
-    web_analytics_token = var.web_analytics_token
-  }
-  
-  deployment_configs {
-    production {
-      environment_variables = merge(
-        {
-          NODE_VERSION            = "18"
-          NEXT_PUBLIC_ENVIRONMENT = var.environment
-          NEXT_PUBLIC_APP_VERSION = var.app_version
-        },
-        var.production_env_vars
-      )
-      
-      compatibility_date  = "2024-08-01"
-      compatibility_flags = ["nodejs_compat"]
-      
-      fail_open                     = false
-      always_use_latest_compatibility_date = false
-    }
-    
-    preview {
-      environment_variables = merge(
-        {
-          NODE_VERSION            = "18"
-          NEXT_PUBLIC_ENVIRONMENT = "${var.environment}-preview"
-          NEXT_PUBLIC_APP_VERSION = var.app_version
-        },
-        var.preview_env_vars
-      )
-      
-      compatibility_date  = "2024-08-01"
-      compatibility_flags = ["nodejs_compat"]
-    }
-  }
-}
+# Workers Routes (managed externally via Cloudflare dashboard)
+# Current Workers setup:
+# - coachly.doxa.com.tw/* -> coachly-doxa-com-tw script
+# - www.doxa.com.tw/* -> doxa-offical-web script
+# 
+# Workers scripts and routes are managed through the Cloudflare dashboard
+# This Terraform configuration focuses on DNS records and zone settings
 
-# Custom domain for Pages project
-resource "cloudflare_pages_domain" "frontend" {
-  account_id   = var.account_id
-  project_name = cloudflare_pages_project.frontend.name
-  domain      = "${cloudflare_record.frontend.name}.${var.domain}"
-}
+# Workers custom domains are managed through the Cloudflare dashboard
+# Current setup handles custom domains automatically through DNS records
 
 # Zone Security Settings
 resource "cloudflare_zone_settings_override" "security" {
@@ -202,34 +144,11 @@ resource "cloudflare_page_rule" "api_bypass_cache" {
   }
 }
 
-resource "cloudflare_page_rule" "static_cache" {
-  zone_id  = var.zone_id
-  target   = "${cloudflare_record.frontend.name}.${var.domain}/_next/static/*"
-  priority = 2
-  
-  actions {
-    cache_level       = "cache_everything"
-    edge_cache_ttl    = 31536000  # 1 year
-    browser_cache_ttl = 31536000
-    ssl               = "strict"
-  }
-}
+# Static caching for Workers is handled through Workers KV or Cache API
+# No page rules needed for Workers static assets
 
-resource "cloudflare_page_rule" "frontend_security" {
-  zone_id  = var.zone_id
-  target   = "${cloudflare_record.frontend.name}.${var.domain}/*"
-  priority = 3
-  
-  actions {
-    cache_level      = "basic"
-    ssl              = "strict"
-    always_use_https = true
-    
-    # Security headers
-    # response_headers_override removed - not supported in current provider version
-    # Security headers now handled via Transform Rules
-  }
-}
+# Security headers for Workers are handled within the Worker script itself
+# SSL and HTTPS redirects are configured at the zone level
 
 # WWW redirect rule
 resource "cloudflare_page_rule" "www_redirect" {
@@ -245,12 +164,12 @@ resource "cloudflare_page_rule" "www_redirect" {
   }
 }
 
-# Web Analytics Site
+# Web Analytics for Workers
 resource "cloudflare_web_analytics_site" "frontend" {
   count = var.web_analytics_tag != "" ? 1 : 0
   
   account_id = var.account_id
   host       = "${cloudflare_record.frontend.name}.${var.domain}"
   
-  auto_install = true
+  auto_install = false  # Workers handle analytics integration manually
 }

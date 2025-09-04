@@ -4,21 +4,8 @@ output "zone_id" {
   value       = var.zone_id
 }
 
-# Pages Project Information
-output "pages_project_name" {
-  description = "Cloudflare Pages project name"
-  value       = cloudflare_pages_project.frontend.name
-}
-
-output "pages_project_id" {
-  description = "Cloudflare Pages project ID"
-  value       = cloudflare_pages_project.frontend.id
-}
-
-output "pages_subdomain" {
-  description = "Cloudflare Pages subdomain"
-  value       = cloudflare_pages_project.frontend.subdomain
-}
+# Workers Information (managed externally)
+# Workers routes and scripts are managed through Cloudflare dashboard
 
 # URLs
 output "frontend_url" {
