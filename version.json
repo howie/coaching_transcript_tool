@@ -1,8 +1,8 @@
 {
-  "version": "2.15.2",
-  "displayVersion": "v2.15.2",
-  "description": "Infrastructure Deployment and Terraform Configuration Fix",
+  "version": "2.15.3",
+  "displayVersion": "v2.15.3",
+  "description": "Render Internal Database URL Optimization",
   "releaseDate": "2025-09-04",
-  "releaseNotes": "Fixed Render provider owner ID configuration enabling successful infrastructure deployment. Resolved invalid owner ID error and deployed API service and background worker. Updated Cloudflare DNS records, cleaned up Terraform comments, and configured production HTTPS endpoints.",
+  "releaseNotes": "Optimized Render production deployment by switching from external to internal database and Redis URLs. This improves performance, reduces latency, and eliminates external bandwidth costs for all database connections including PostgreSQL, Redis, and Celery broker configurations.",
   "author": "Coachly Team"
 }
