@@ -145,7 +145,7 @@ module "render" {
 
   # GCP Configuration
   gcp_project_id            = var.gcp_project_id
-  gcp_service_account_json  = ""
+  gcp_service_account_json  = var.google_application_credentials_json
   audio_storage_bucket      = "${var.gcp_project_id}-audio-production"
   transcript_storage_bucket = "${var.gcp_project_id}-transcripts-production"
 

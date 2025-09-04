@@ -71,6 +71,20 @@ locals {
       value = value
     }
   }
+
+  # API-specific environment variables (merge common + api-specific)
+  api_env_vars = {
+    for key, value in merge(local.common_env_vars_raw, var.api_env_vars) : key => {
+      value = value
+    }
+  }
+
+  # Worker-specific environment variables (merge common + worker-specific)  
+  worker_env_vars = {
+    for key, value in merge(local.common_env_vars_raw, var.worker_env_vars) : key => {
+      value = value
+    }
+  }
 }
 
 # PostgreSQL Database
@@ -111,8 +125,8 @@ resource "render_web_service" "api" {
     }
   }
 
-  # Environment variables
-  env_vars = local.common_env_vars
+  # Environment variables - Use API-specific env vars (includes common + API-specific)
+  env_vars = local.api_env_vars
 }
 
 # Celery Worker Service
@@ -133,8 +147,8 @@ resource "render_background_worker" "celery" {
     }
   }
 
-  # Environment variables
-  env_vars = local.common_env_vars
+  # Environment variables - Use worker-specific env vars (includes common + worker-specific)
+  env_vars = local.worker_env_vars
 }
 
 
