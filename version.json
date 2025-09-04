@@ -1,8 +1,8 @@
 {
-  "version": "2.15.7",
-  "displayVersion": "v2.15.7",
-  "description": "Fix GOOGLE_PROJECT_ID Environment Variable",
+  "version": "2.15.8",
+  "displayVersion": "v2.15.8",
+  "description": "Fix Mixed Content HTTPS/HTTP Issue",
   "releaseDate": "2025-09-04",
-  "releaseNotes": "Fixed final missing environment variable blocking production startup: Added GOOGLE_PROJECT_ID (in addition to existing GCP_PROJECT_ID for compatibility). Application was expecting GOOGLE_PROJECT_ID but Terraform was only providing GCP_PROJECT_ID. Now both services receive the correct Google Cloud project identifier. All environment validation should now pass.",
+  "releaseNotes": "Fixed Mixed Content error where frontend was requesting HTTP API endpoints from an HTTPS page. Updated built environment files to use https://api.doxa.com.tw instead of http://localhost:8000. Frontend health checks and API calls should now work correctly without browser blocking insecure requests.",
   "author": "Coachly Team"
 }
