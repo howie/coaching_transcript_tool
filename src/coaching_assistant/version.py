@@ -44,15 +44,15 @@ def get_version_info():
 
         # Fallback if no version.json found
         return {
-            "version": "2.3.1",
-            "displayVersion": "v2.3.1",
+            "version": "2.8.1",
+            "displayVersion": "v2.8.1",
             "description": "Coaching Transcript Tool",
         }
     except Exception:
         # Fallback for any errors
         return {
-            "version": "2.3.1",
-            "displayVersion": "v2.3.1",
+            "version": "2.8.1",
+            "displayVersion": "v2.8.1",
             "description": "Coaching Transcript Tool",
         }
 

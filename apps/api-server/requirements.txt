@@ -15,6 +15,9 @@ google-cloud-speech>=2.30.0
 google-cloud-storage>=2.14.0
 google-auth>=2.23.0
 
+# AssemblyAI SDK for LeMUR
+assemblyai>=0.28.0
+
 # Core dependencies for worker functionality
 fastapi>=0.104.0
 python-multipart>=0.0.6
