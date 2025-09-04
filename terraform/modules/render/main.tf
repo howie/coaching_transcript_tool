@@ -120,15 +120,16 @@ resource "render_background_worker" "celery" {
   name           = "${var.project_name}-worker-${var.environment}"
   plan           = var.worker_plan
   region         = var.region
+  start_command  = "celery -A coaching_assistant.core.celery_app worker --loglevel=info"
+  root_directory = "."
 
-  # Runtime source configuration - Use Docker for consistent environment
+  # Runtime source configuration - Background workers use native runtime
   runtime_source = {
-    docker = {
-      repo_url           = var.github_repo_url
-      branch             = var.branch
-      dockerfile_path    = "apps/worker/Dockerfile"
-      docker_context     = "."
-      docker_build_args  = {}
+    native_runtime = {
+      repo_url      = var.github_repo_url
+      branch        = var.branch
+      runtime       = "python"
+      build_command = "pip install -r requirements.txt"
     }
   }
 

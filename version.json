@@ -1,8 +1,8 @@
 {
-  "version": "2.15.4",
-  "displayVersion": "v2.15.4",
-  "description": "Switch Render Deployment to Docker Runtime",
+  "version": "2.15.5",
+  "displayVersion": "v2.15.5",
+  "description": "Fix Render Deployment Runtime Configuration",
   "releaseDate": "2025-09-04",
-  "releaseNotes": "Fixed deployment path issues by switching from native Python runtime to Docker deployment on Render. The start.sh script was designed for Docker containers (/app paths) but Render was using native runtime where /app doesn't exist. Now using Dockerfile.api and worker Dockerfile for consistent containerized deployment environment.",
+  "releaseNotes": "Successfully deployed infrastructure fixes: API service now uses Docker runtime (resolving /app directory issues), worker service uses native runtime (Docker not supported for background workers), and all services use internal database URLs for optimal performance. Deployment path errors are now resolved.",
   "author": "Coachly Team"
 }
