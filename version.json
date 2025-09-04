@@ -1,8 +1,8 @@
 {
-  "version": "2.15.8",
-  "displayVersion": "v2.15.8",
-  "description": "Fix Mixed Content HTTPS/HTTP Issue",
+  "version": "2.15.9",
+  "displayVersion": "v2.15.9",
+  "description": "Resolve Production Build HTTPS Configuration",
   "releaseDate": "2025-09-04",
-  "releaseNotes": "Fixed Mixed Content error where frontend was requesting HTTP API endpoints from an HTTPS page. Updated built environment files to use https://api.doxa.com.tw instead of http://localhost:8000. Frontend health checks and API calls should now work correctly without browser blocking insecure requests.",
+  "releaseNotes": "Completely resolved Mixed Content HTTPS/HTTP issue by fixing environment variable priority. Removed conflicting .env.local file and ensured NEXT_PUBLIC_API_URL=https://api.doxa.com.tw is used in production builds. Rebuilt and redeployed frontend with correct HTTPS API URL. Browser should no longer block API requests due to mixed content violations.",
   "author": "Coachly Team"
 }
