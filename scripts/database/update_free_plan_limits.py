@@ -6,12 +6,13 @@ Update free plan limits to new values.
 import json
 from datetime import datetime, UTC
 from coaching_assistant.core.config import Settings
-from sqlalchemy import create_engine, text
+from coaching_assistant.core.database import create_database_engine
+from sqlalchemy import text
 
 def update_free_plan_limits():
     """Update free plan limits to new configuration."""
     settings = Settings()
-    engine = create_engine(settings.DATABASE_URL)
+    engine = create_database_engine(settings.DATABASE_URL)
     
     # New free plan limits
     new_limits = {

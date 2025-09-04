@@ -7,12 +7,28 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from .config import settings
 
-# Create the SQLAlchemy engine
-engine = create_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    # Add other engine options if needed
-)
+
+def create_database_engine(database_url: str, **kwargs):
+    """
+    Create a database engine with appropriate SSL configuration.
+    
+    This helper ensures consistent SSL configuration across all database connections.
+    """
+    engine_kwargs = {
+        "pool_pre_ping": True,
+        **kwargs
+    }
+    
+    # For production environments using SSL (like Render), add SSL configuration
+    if database_url and "render.com" in database_url:
+        connect_args = engine_kwargs.get("connect_args", {})
+        connect_args["sslmode"] = "require"
+        engine_kwargs["connect_args"] = connect_args
+    
+    return create_engine(database_url, **engine_kwargs)
+
+# Create the SQLAlchemy engine using the helper function
+engine = create_database_engine(settings.DATABASE_URL)
 
 # Create a configured "Session" class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
