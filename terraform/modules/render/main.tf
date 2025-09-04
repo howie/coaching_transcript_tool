@@ -51,6 +51,14 @@ locals {
       MAX_FILE_SIZE      = var.max_file_size
       MAX_AUDIO_DURATION = var.max_audio_duration
       
+      # Database configuration
+      DATABASE_URL = render_postgres.main.connection_string
+      REDIS_URL    = render_redis.main.connection_string
+      
+      # Celery configuration
+      CELERY_BROKER_URL    = render_redis.main.connection_string
+      CELERY_RESULT_BACKEND = render_redis.main.connection_string
+      
       # Logging
       LOG_LEVEL  = var.log_level
       LOG_FORMAT = "json"
@@ -123,25 +131,45 @@ resource "render_redis" "main" {
   max_memory_policy = "allkeys_lru"  # Correct value with underscore
 }
 
-# API Web Service - temporarily commented out due to schema issues
-# resource "render_web_service" "api" {
-#   name           = "${var.project_name}-api-${var.environment}"
-#   plan           = var.api_plan
-#   region         = var.region
-#   repo           = var.github_repo_url
-#   branch         = var.branch
-#   runtime_source = "repo"  # Using string value
-# }
+# API Web Service
+resource "render_web_service" "api" {
+  name           = "${var.project_name}-api-${var.environment}"
+  plan           = var.api_plan
+  region         = var.region
+  repo           = var.github_repo_url
+  branch         = var.branch
+  
+  # Service configuration
+  service_details {
+    env              = var.environment
+    start_command    = "cd apps/api-server && bash start.sh"
+    build_command    = "pip install -r requirements.txt"
+    root_directory   = "."
+    
+    # Environment variables
+    environment_variables = local.common_env_vars
+  }
+}
 
-# Celery Worker Service - temporarily commented out due to schema issues
-# resource "render_background_worker" "celery" {
-#   name           = "${var.project_name}-worker-${var.environment}"
-#   plan           = var.worker_plan
-#   region         = var.region
-#   repo           = var.github_repo_url
-#   branch         = var.branch
-#   runtime_source = "repo"  # Using string value
-# }
+# Celery Worker Service
+resource "render_background_worker" "celery" {
+  name           = "${var.project_name}-worker-${var.environment}"
+  plan           = var.worker_plan
+  region         = var.region
+  repo           = var.github_repo_url
+  branch         = var.branch
+  
+  # Service configuration
+  service_details {
+    env           = var.environment
+    start_command = "cd apps/worker && celery -A coaching_assistant.core.celery_app worker --loglevel=info"
+    build_command = "pip install -r requirements.txt"
+    root_directory = "."
+    
+    # Environment variables
+    environment_variables = local.common_env_vars
+  }
+}
 
 # Flower Monitoring (Optional)
 # Flower monitoring service - completely commented out for simplification

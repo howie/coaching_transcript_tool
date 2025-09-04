@@ -16,13 +16,32 @@ def create_database_engine(database_url: str, **kwargs):
     """
     engine_kwargs = {
         "pool_pre_ping": True,
+        "pool_recycle": 3600,  # Recycle connections every hour
+        "pool_timeout": 20,    # Timeout for getting connection from pool
+        "connect_args": {},
         **kwargs
     }
     
     # For production environments using SSL (like Render), add SSL configuration
-    if database_url and "render.com" in database_url:
+    if database_url and ("render.com" in database_url or "dpg-" in database_url):
         connect_args = engine_kwargs.get("connect_args", {})
-        connect_args["sslmode"] = "require"
+        
+        # Different SSL configuration for internal vs external Render connections
+        if ".singapore-postgres.render.com" in database_url:
+            # External connection - requires SSL
+            connect_args.update({
+                "sslmode": "require",
+                "connect_timeout": 30,
+                "application_name": "coaching-assistant-api",
+            })
+        else:
+            # Internal connection (dpg-xxx format) - SSL may not be required/available
+            connect_args.update({
+                "sslmode": "disable",  # Internal connections may not support SSL
+                "connect_timeout": 30,
+                "application_name": "coaching-assistant-api",
+            })
+        
         engine_kwargs["connect_args"] = connect_args
     
     return create_engine(database_url, **engine_kwargs)
