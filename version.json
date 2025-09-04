@@ -1,8 +1,8 @@
 {
-  "version": "2.15.9",
-  "displayVersion": "v2.15.9",
-  "description": "Resolve Production Build HTTPS Configuration",
+  "version": "2.15.10",
+  "displayVersion": "v2.15.10",
+  "description": "Complete Production Deployment Fixes",
   "releaseDate": "2025-09-04",
-  "releaseNotes": "Completely resolved Mixed Content HTTPS/HTTP issue by fixing environment variable priority. Removed conflicting .env.local file and ensured NEXT_PUBLIC_API_URL=https://api.doxa.com.tw is used in production builds. Rebuilt and redeployed frontend with correct HTTPS API URL. Browser should no longer block API requests due to mixed content violations.",
+  "releaseNotes": "Fixed both frontend HTTPS and backend Celery Worker issues: 1) Resolved Mixed Content violations by ensuring NEXT_PUBLIC_API_URL uses HTTPS in production builds. 2) Fixed Celery Worker ModuleNotFoundError by updating build command to install project package (pip install -e .). All services now deploy and start successfully.",
   "author": "Coachly Team"
 }

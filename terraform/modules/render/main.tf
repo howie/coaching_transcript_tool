@@ -144,7 +144,7 @@ resource "render_background_worker" "celery" {
       repo_url      = var.github_repo_url
       branch        = var.branch
       runtime       = "python"
-      build_command = "pip install -r requirements.txt"
+      build_command = "pip install -r requirements.txt && pip install -e ."
     }
   }
 
