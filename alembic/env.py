@@ -19,6 +19,14 @@ from src.coaching_assistant.models.transcript import TranscriptSegment, SessionR
 from src.coaching_assistant.models.client import Client
 from src.coaching_assistant.models.coaching_session import CoachingSession, SessionSource
 from src.coaching_assistant.models.coach_profile import CoachProfile, CoachingPlan
+from src.coaching_assistant.models.ecpay_subscription import (
+    ECPayCreditAuthorization, 
+    SaasSubscription, 
+    SubscriptionPayment, 
+    SubscriptionPendingChange, 
+    PaymentRetryAttempt, 
+    GracePeriod
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

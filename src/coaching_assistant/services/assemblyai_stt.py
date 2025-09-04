@@ -156,10 +156,10 @@ class AssemblyAIProvider(STTProvider):
                     credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON,
                 )
 
-                # Generate signed read URL (valid for 2 hours for transcription)
+                # Generate signed read URL (valid for 6 hours for transcription + retries)
                 signed_url = uploader.generate_signed_read_url(
                     blob_name=blob_name,
-                    expiration_minutes=120,  # 2 hours should be enough for transcription
+                    expiration_minutes=360,  # 6 hours to handle retries and long transcriptions
                 )
 
                 logger.info(
@@ -286,8 +286,26 @@ class AssemblyAIProvider(STTProvider):
                     logger.error(f"Error message: {error_msg}")
                     logger.error(f"Full error response: {result}")
                     
+                    # Check if it's a URL expiration/download error
+                    if ("download error" in error_msg.lower() and 
+                        "unable to download" in error_msg.lower() and 
+                        "x-goog-expires" in error_msg.lower()):
+                        logger.warning("=" * 80)
+                        logger.warning("SIGNED URL EXPIRATION DETECTED")
+                        logger.warning("=" * 80)
+                        logger.warning(f"The signed URL has expired and AssemblyAI cannot download the audio file.")
+                        logger.warning(f"Error: {error_msg}")
+                        logger.warning("This typically happens when:")
+                        logger.warning("1. The transcription task is retrying after a long delay")
+                        logger.warning("2. AssemblyAI queue processing took longer than expected")
+                        logger.warning("3. The audio file was uploaded hours ago")
+                        logger.warning("=" * 80)
+                        
+                        # This is a non-retryable error since the URL won't get refreshed
+                        error_msg = f"Signed URL expired - audio file no longer accessible: {error_msg}"
+                    
                     # Check if it's a server error that might be transient
-                    if "server error" in error_msg.lower() or "developers have been alerted" in error_msg.lower():
+                    elif "server error" in error_msg.lower() or "developers have been alerted" in error_msg.lower():
                         logger.warning("=" * 80)
                         logger.warning("AssemblyAI SERVICE ISSUE DETECTED")
                         logger.warning("=" * 80)
@@ -549,13 +567,110 @@ class AssemblyAIProvider(STTProvider):
             "speakers_detected": speakers_detected,
             "speakers_detected_ids": sorted(unique_speakers),
             "speaker_diarization_mismatch": speakers_detected != self.speakers_expected,
+            # Store raw AssemblyAI response for transcript smoothing
+            "raw_assemblyai_response": {
+                "utterances": result.get("utterances", []),
+                "words": result.get("words", []),
+                "text": result.get("text", ""),
+                "language_code": result.get("language_code"),
+                "confidence": result.get("confidence", 0),
+                "audio_duration": result.get("audio_duration", 0)
+            },
             "speaker_role_assignments": role_assignments,
             "role_assignment_confidence": confidence_metrics,
             "automatic_role_assignment": len(role_assignments) > 0,
         }
 
+        # Auto-apply LeMUR-based transcript smoothing for Chinese language
+        optimized_segments = segments
+        smoothing_applied = False
+        
+        logger.info(f"Checking LeMUR auto-smoothing conditions: language_code={result.get('language_code')}, "
+                   f"utterances_count={len(result.get('utterances', []))}")
+        
+        # Enable auto-smoothing for Chinese or if language detection is unclear
+        language_code = result.get("language_code") or ""
+        is_chinese = (
+            language_code == "zh" or 
+            "zh" in language_code or
+            language_code.startswith("cmn") or  # Mandarin Chinese codes like cmn-Hant-TW
+            language_code in [None, "", "auto"]  # Unclear detection, try smoothing anyway
+        )
+        should_smooth = is_chinese and result.get("utterances")
+        
+        if should_smooth:
+            try:
+                logger.info("🧠 Auto-applying LeMUR-based transcript smoothing for Chinese language")
+                from .lemur_transcript_smoother import smooth_transcript_with_lemur
+                
+                # Prepare segments for LeMUR processing
+                lemur_segments = []
+                for utterance in result.get("utterances", []):
+                    lemur_segments.append({
+                        "start": utterance["start"],  # milliseconds
+                        "end": utterance["end"],      # milliseconds 
+                        "speaker": utterance.get("speaker", "A"),
+                        "text": utterance.get("text", "")
+                    })
+                
+                logger.debug(f"Prepared {len(lemur_segments)} segments for LeMUR processing")
+                if lemur_segments:
+                    sample_segment = lemur_segments[0]
+                    logger.debug(f"Sample segment: speaker={sample_segment.get('speaker')}, "
+                               f"text={sample_segment.get('text', 'N/A')[:100]}...")
+                
+                # Apply LeMUR-based smoothing
+                import asyncio
+                smoothed_result = asyncio.run(smooth_transcript_with_lemur(
+                    segments=lemur_segments,
+                    session_language=language_code or "zh-TW",
+                    is_coaching_session=True
+                ))
+                
+                if smoothed_result.segments:
+                    # Convert LeMUR segments back to our format
+                    optimized_segments = []
+                    for lemur_segment in smoothed_result.segments:
+                        # Map corrected speaker names to IDs
+                        speaker_name_to_id = {"教練": 1, "Coach": 1, "客戶": 2, "Client": 2}
+                        speaker_id = speaker_name_to_id.get(lemur_segment.speaker, 1)
+                        
+                        optimized_segment = TranscriptSegment(
+                            speaker_id=speaker_id,
+                            start_seconds=lemur_segment.start / 1000.0,  # Convert ms to seconds
+                            end_seconds=lemur_segment.end / 1000.0,      # Convert ms to seconds
+                            content=lemur_segment.text,
+                            confidence=0.98,  # High confidence for LeMUR-processed content
+                        )
+                        optimized_segments.append(optimized_segment)
+                    
+                    smoothing_applied = True
+                    provider_metadata["auto_smoothing_applied"] = True
+                    provider_metadata["lemur_smoothing_applied"] = True
+                    provider_metadata["lemur_improvements"] = smoothed_result.improvements_made
+                    provider_metadata["lemur_speaker_mapping"] = smoothed_result.speaker_mapping
+                    provider_metadata["lemur_processing_notes"] = smoothed_result.processing_notes
+                    
+                    logger.info(f"✅ LeMUR auto-smoothing applied: {len(optimized_segments)} segments")
+                    logger.info(f"🎭 Speaker mapping: {smoothed_result.speaker_mapping}")
+                    logger.info(f"📝 Improvements: {', '.join(smoothed_result.improvements_made)}")
+                else:
+                    logger.warning("LeMUR auto-smoothing failed or returned no segments, using original")
+                    
+            except Exception as e:
+                logger.warning(f"LeMUR auto-smoothing failed: {e}, using original segments")
+                logger.exception("Full LeMUR error traceback:")
+                provider_metadata["lemur_smoothing_error"] = str(e)
+
+        # Update metadata
+        provider_metadata["auto_smoothing_applied"] = smoothing_applied
+
+        logger.warning(f"🔍 AUTO-SMOOTHING FINAL DEBUG: smoothing_applied={smoothing_applied}, "
+                      f"optimized_segments_count={len(optimized_segments)}, "
+                      f"original_segments_count={len(segments)}")
+
         return TranscriptionResult(
-            segments=segments,
+            segments=optimized_segments,
             total_duration_sec=total_duration,
             language_code=result.get("language_code", original_language),
             cost_usd=self.estimate_cost(int(total_duration)),

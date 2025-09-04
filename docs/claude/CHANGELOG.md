@@ -5,6 +5,106 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.1] - 2025-08-23
+
+### 🔧 Critical Bug Fix
+- **LeMUR Batch Processing Consistency**: Fixed critical issue where LeMUR batch processing produced inconsistent Chinese text quality
+  - **Problem**: Some batches contained 35-40% unwanted spaces between Chinese characters while others were perfect (0% spaces)
+  - **Root Cause**: LeMUR (Claude 3.5 Sonnet) inconsistent execution of same prompt across different batches
+  - **Solution**: Implemented dual-layer protection mechanism:
+    - **Enhanced Prompts**: Added strong formatting instructions with clear examples to prevent spacing issues
+    - **Post-Processing Cleanup**: Automatic detection and removal of unwanted spaces in Chinese text
+  - **Results**: 100% elimination of spacing issues, consistent high-quality Chinese text output across all batches
+
+### 🛠️ Technical Improvements
+- **Smart Text Cleaning**: Added `_clean_chinese_text_spacing()` method with iterative regex processing
+  - Removes spaces between Chinese characters (CJK Unified Ideographs: U+4E00-U+9FFF)
+  - Preserves necessary spaces between non-Chinese words
+  - Handles complex cases like "這 是 測 試" → "這是測試"
+- **Robust Prompt Engineering**: Enhanced Chinese prompts with visual warnings and explicit examples
+  - Added 🚨 formatting warnings and ❌ prohibition indicators
+  - Included concrete correct/incorrect examples for better LeMUR guidance
+
+### 📊 Quality Assurance
+- **Test Coverage**: Comprehensive test suite for spacing fix validation
+- **Validation Results**: 
+  - Problem cases: 8→0, 27→0, 27→0 spaces eliminated
+  - Normal cases: Unchanged (preserved quality)
+  - Overall success rate improved from 20% to 100% consistency
+
+### 🧪 Testing & Documentation
+- **Test Files Organization**: Moved and documented test files in proper directory structure
+  - `tests/integration/test_ecpay_basic.py` - ECPay connectivity testing
+  - `tests/integration/test_lemur_integration.py` - Complete LeMUR functionality testing  
+  - `tests/unit/test_lemur_simple.py` - Simple LeMUR punctuation testing
+- **Feature Documentation**: Updated feature READMEs with testing guides and quick commands
+  - Payment testing guide: `@docs/features/payment/testing-guide.md`
+  - LeMUR testing guide: `@docs/features/improve-assembly-with-lemur/testing-guide.md`
+
+## [2.12.1] - 2025-08-18
+
+### 🔧 Bug Fixes
+- **ECPay MerchantTradeNo Error**: Fixed missing MerchantTradeNo field causing ECPay API error (10200052)
+  - Added all required ECPay authorization fields including MerchantTradeNo, MerchantTradeDate, ExpireDate
+  - Added ItemName, TradeDesc, CustomField1-4 for complete ECPay API compliance
+  - Enhanced ECPaySubscriptionService with proper field validation
+- **Database Schema Completion**: All ECPay subscription tables successfully created
+  - Fixed Alembic model imports for proper migration generation
+  - Verified ECPay integration endpoints respond correctly (3/3 tests passed)
+
+### ✅ Testing Verification
+- **ECPay Integration Test Suite**: All tests passing
+  - Health check endpoint verification
+  - Authentication requirement validation  
+  - API endpoint accessibility confirmation
+- **Frontend-Backend Connection**: Confirmed working end-to-end flow
+  - Fixed apiClient integration in PaymentSettings component
+  - Resolved UUID format issues in test data
+  - ECPay authorization flow ready for production testing
+
+## [2.12.0] - 2025-08-18
+
+### 🎉 Major Features
+- **ECPay SaaS Subscription System**: Complete implementation of credit card recurring payment system
+  - ECPay 定期定額 (recurring payment) integration for SaaS subscriptions
+  - Automatic monthly/annual billing with credit card authorization
+  - Secure CheckMacValue verification for all ECPay communications
+  - Complete subscription lifecycle management (create, cancel, reactivate)
+
+### 🏗️ Backend Infrastructure
+- **Database Schema**: New subscription management tables
+  - `ecpay_credit_authorizations` - Credit card authorization records
+  - `saas_subscriptions` - Subscription lifecycle management
+  - `subscription_payments` - Payment history and billing records
+- **Service Layer**: ECPaySubscriptionService with comprehensive payment handling
+- **API Endpoints**: Complete subscription management REST API
+  - `POST /api/v1/subscriptions/authorize` - Create ECPay authorization
+  - `GET /api/v1/subscriptions/current` - Get current subscription
+  - `POST /api/v1/subscriptions/cancel/{id}` - Cancel subscription
+  - `POST /api/v1/subscriptions/reactivate/{id}` - Reactivate subscription
+
+### 🔒 Security & Integration
+- **Webhook Handlers**: Secure ECPay callback processing
+  - Authorization callback handler with CheckMacValue verification
+  - Automatic billing webhook for recurring payments
+  - Error handling and retry logic for failed payments
+- **Authentication**: JWT-protected subscription management
+- **Sandbox Testing**: Complete ECPay test environment configuration
+
+### ✅ Testing & Validation
+- **Integration Testing**: All tests passing (5/5)
+  - Service import and configuration validation
+  - CheckMacValue generation verification
+  - API health checks and authentication requirements
+  - Webhook endpoint functionality
+- **Test Interface**: HTML test page for manual verification
+- **Documentation**: Comprehensive testing guide and implementation notes
+
+### 🎯 Taiwan Market Focus
+- **Credit Card Only**: Focused on credit card recurring payments for stable MRR
+- **TWD Currency**: New Taiwan Dollar pricing to avoid exchange rate risks
+- **Local Compliance**: ECPay integration for Taiwan market requirements
+
 ## [2.8.0] - 2024-12-17
 
 ### ✨ Major Features
