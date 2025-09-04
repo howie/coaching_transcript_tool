@@ -18,8 +18,23 @@ if not database_url:
 
 # Add SSL configuration for production databases (like Render PostgreSQL)
 engine_kwargs = {}
-if 'render.com' in database_url:
-    engine_kwargs['connect_args'] = {'sslmode': 'require'}
+if 'render.com' in database_url or 'dpg-' in database_url:
+    # Different SSL configuration for internal vs external Render connections
+    if '.singapore-postgres.render.com' in database_url:
+        # External connection - requires SSL
+        ssl_mode = 'require'
+    else:
+        # Internal connection (dpg-xxx format) - SSL may not be required/available
+        ssl_mode = 'disable'
+    
+    engine_kwargs['connect_args'] = {
+        'sslmode': ssl_mode,
+        'connect_timeout': 30,
+        'application_name': 'coaching-assistant-startup',
+    }
+    engine_kwargs['pool_pre_ping'] = True
+    engine_kwargs['pool_recycle'] = 3600
+    engine_kwargs['pool_timeout'] = 20
 
 engine = create_engine(database_url, **engine_kwargs)
 max_attempts = 30

@@ -1,13 +1,13 @@
-# Service IDs - commented out since services are disabled
-# output "api_service_id" {
-#   description = "API service ID"
-#   value       = render_web_service.api.id
-# }
+# Service IDs
+output "api_service_id" {
+  description = "API service ID"
+  value       = render_web_service.api.id
+}
 
-# output "worker_service_id" {
-#   description = "Worker service ID"
-#   value       = render_background_worker.celery.id
-# }
+output "worker_service_id" {
+  description = "Worker service ID"
+  value       = render_background_worker.celery.id
+}
 
 # Flower service disabled - commented out
 # output "flower_service_id" {
@@ -15,10 +15,10 @@
 #   value       = var.enable_flower_monitoring ? render_background_worker.flower[0].id : ""
 # }
 
-# Service URLs - placeholder since API service is disabled
+# Service URLs
 output "api_service_url" {
-  description = "API service URL placeholder"
-  value       = "https://coachly-api-server.onrender.com"  # Existing API service URL
+  description = "API service URL"
+  value       = render_web_service.api.service_url
 }
 
 # output "api_internal_url" {
