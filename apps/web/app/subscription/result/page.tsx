@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '@/contexts/auth-context'
@@ -9,7 +9,7 @@ import { useThemeClasses } from '@/lib/theme-utils'
 
 type PaymentResult = 'success' | 'failed' | 'pending' | 'processing'
 
-export default function SubscriptionResultPage() {
+function SubscriptionResultContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useI18n()
@@ -153,5 +153,28 @@ export default function SubscriptionResultPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-dashboard-bg py-12">
+      <div className="max-w-2xl mx-auto px-4">
+        <div className="bg-dashboard-card rounded-lg p-8 border border-dashboard-accent border-opacity-20 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-dashboard-accent mx-auto"></div>
+          <h1 className="text-3xl font-bold mt-6 mb-4 text-dashboard-text-primary">
+            Loading...
+          </h1>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function SubscriptionResultPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SubscriptionResultContent />
+    </Suspense>
   )
 }

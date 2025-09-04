@@ -52,6 +52,14 @@ interface TranscriptData {
   created_at: string;
   role_assignments?: { [speakerId: number]: 'coach' | 'client' };
   segment_roles?: { [segmentId: string]: 'coach' | 'client' };
+  metadata?: {
+    auto_smoothing_applied?: boolean;
+    smoothing_stats?: any;
+  };
+  provider_metadata?: {
+    auto_smoothing_applied?: boolean;
+    smoothing_stats?: any;
+  };
 }
 
 interface SpeakingStats {
@@ -418,9 +426,7 @@ const SessionDetailPage = () => {
       } else {
         // Fallback for string response
         let contentType = 'text/plain';
-        if (exportFormat === 'json') {
-          contentType = 'application/json';
-        } else if (exportFormat === 'xlsx') {
+        if (exportFormat === 'xlsx') {
           contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
         }
         blob = new Blob([response], { type: contentType });
