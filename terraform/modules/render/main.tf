@@ -99,16 +99,15 @@ resource "render_web_service" "api" {
   name           = "${var.project_name}-api-${var.environment}"
   plan           = var.api_plan
   region         = var.region
-  start_command  = "cd apps/api-server && bash start.sh"
-  root_directory = "."
 
-  # Runtime source configuration
+  # Runtime source configuration - Use Docker for consistent environment
   runtime_source = {
-    native_runtime = {
-      repo_url      = var.github_repo_url
-      branch        = var.branch
-      runtime       = "python"
-      build_command = "pip install -r requirements.txt"
+    docker = {
+      repo_url           = var.github_repo_url
+      branch             = var.branch
+      dockerfile_path    = "apps/api-server/Dockerfile.api"
+      docker_context     = "."
+      docker_build_args  = {}
     }
   }
 
@@ -121,16 +120,15 @@ resource "render_background_worker" "celery" {
   name           = "${var.project_name}-worker-${var.environment}"
   plan           = var.worker_plan
   region         = var.region
-  start_command  = "cd apps/worker && celery -A coaching_assistant.core.celery_app worker --loglevel=info"
-  root_directory = "."
 
-  # Runtime source configuration
+  # Runtime source configuration - Use Docker for consistent environment
   runtime_source = {
-    native_runtime = {
-      repo_url      = var.github_repo_url
-      branch        = var.branch
-      runtime       = "python"
-      build_command = "pip install -r requirements.txt"
+    docker = {
+      repo_url           = var.github_repo_url
+      branch             = var.branch
+      dockerfile_path    = "apps/worker/Dockerfile"
+      docker_context     = "."
+      docker_build_args  = {}
     }
   }
 
