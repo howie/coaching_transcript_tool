@@ -1,8 +1,8 @@
 {
-  "version": "2.15.5",
-  "displayVersion": "v2.15.5",
-  "description": "Fix Render Deployment Runtime Configuration",
+  "version": "2.15.6",
+  "displayVersion": "v2.15.6",
+  "description": "Complete Environment Variable Configuration",
   "releaseDate": "2025-09-04",
-  "releaseNotes": "Successfully deployed infrastructure fixes: API service now uses Docker runtime (resolving /app directory issues), worker service uses native runtime (Docker not supported for background workers), and all services use internal database URLs for optimal performance. Deployment path errors are now resolved.",
+  "releaseNotes": "Fixed missing environment variables blocking production startup: Added SECRET_KEY, GOOGLE_APPLICATION_CREDENTIALS_JSON, and proper service-specific environment variable merging. API service now receives all required configuration including authentication secrets, debug settings, and GCP credentials. All environment validation errors resolved.",
   "author": "Coachly Team"
 }
