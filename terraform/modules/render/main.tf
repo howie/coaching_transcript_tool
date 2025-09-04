@@ -51,13 +51,13 @@ locals {
       MAX_FILE_SIZE      = var.max_file_size
       MAX_AUDIO_DURATION = var.max_audio_duration
 
-      # Database configuration
-      DATABASE_URL = render_postgres.main.connection_info.external_connection_string
-      REDIS_URL    = render_redis.main.connection_info.external_connection_string
+      # Database configuration - Use internal URLs for production efficiency
+      DATABASE_URL = render_postgres.main.connection_info.internal_connection_string
+      REDIS_URL    = render_redis.main.connection_info.internal_connection_string
 
-      # Celery configuration
-      CELERY_BROKER_URL     = render_redis.main.connection_info.external_connection_string
-      CELERY_RESULT_BACKEND = render_redis.main.connection_info.external_connection_string
+      # Celery configuration - Use internal URLs for production efficiency
+      CELERY_BROKER_URL     = render_redis.main.connection_info.internal_connection_string
+      CELERY_RESULT_BACKEND = render_redis.main.connection_info.internal_connection_string
 
       # Logging
       LOG_LEVEL  = var.log_level
