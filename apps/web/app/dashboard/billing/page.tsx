@@ -11,6 +11,9 @@ import planService, { UsageStatus, PlanConfig, SubscriptionInfo } from '@/lib/se
 import { UsageCard } from '@/components/billing/UsageCard'
 import { PaymentSettings } from '@/components/billing/PaymentSettings'
 import { ChangePlan } from '@/components/billing/ChangePlan'
+import { SubscriptionStatusBanner } from '@/components/billing/SubscriptionStatusBanner'
+import { SubscriptionDashboard } from '@/components/billing/SubscriptionDashboard'
+import { ECPayStatus } from '@/components/billing/ECPayStatus'
 import UsageHistory from '@/components/billing/UsageHistory'
 
 export default function BillingPage() {
@@ -22,6 +25,15 @@ export default function BillingPage() {
   const [currentPlan, setCurrentPlan] = useState<PlanConfig | null>(null)
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'usage' | 'payment' | 'plans'>('overview')
+
+  // Check for tab parameter in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const tabParam = urlParams.get('tab')
+    if (tabParam && ['overview', 'usage', 'payment', 'plans'].includes(tabParam)) {
+      setActiveTab(tabParam as 'overview' | 'usage' | 'payment' | 'plans')
+    }
+  }, [])
 
   useEffect(() => {
     loadPlanData()
@@ -45,7 +57,7 @@ export default function BillingPage() {
   }
 
   const handleUpgrade = () => {
-    window.location.href = '/dashboard/billing/change-plan'
+    setActiveTab('plans')
   }
 
   if (loading) {
@@ -60,17 +72,23 @@ export default function BillingPage() {
     <div className={`min-h-screen ${themeClasses.dashboardBg} py-12`}>
       <div className="max-w-7xl mx-auto px-4">
         {/* Page Header */}
-        <div className="flex items-center space-x-3 mb-8">
-          <CreditCardIcon className="h-8 w-8 text-dashboard-accent" />
-          <h1 className={`text-3xl font-bold ${themeClasses.textPrimary}`}>{t('billing.title')}</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-3">
+            <CreditCardIcon className="h-8 w-8 text-dashboard-accent" />
+            <h1 className={`text-3xl font-bold ${themeClasses.textPrimary}`}>{t('billing.title')}</h1>
+          </div>
+          <ECPayStatus />
         </div>
+
+        {/* Subscription Status Banner */}
+        <SubscriptionStatusBanner />
 
         {/* Tabs */}
         <div className="flex space-x-1 mb-8 border-b border-gray-700">
           {[
             { id: 'overview', label: t('billing.overview'), icon: ChartBarIcon },
-            { id: 'payment', label: t('billing.paymentSettings'), icon: CreditCardIcon },
             { id: 'plans', label: t('billing.changePlan'), icon: ArrowPathIcon },
+            { id: 'payment', label: t('billing.paymentSettings'), icon: CreditCardIcon },
             { id: 'usage', label: t('billing.usageHistory'), icon: ClockIcon },
           ].map((tab) => (
             <button
@@ -297,7 +315,7 @@ export default function BillingPage() {
                       {currentPlan.planName !== 'business' && (
                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                           <button
-                            onClick={() => window.location.href = '/dashboard/billing/change-plan'}
+                            onClick={() => setActiveTab('plans')}
                             className="w-full text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-md transition-colors"
                           >
                             {t('billing.changePlan')}

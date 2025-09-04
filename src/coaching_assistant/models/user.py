@@ -108,6 +108,20 @@ class User(BaseModel):
         cascade="all, delete-orphan",
         lazy="dynamic",
     )
+    
+    # ECPay subscription relationships
+    ecpay_authorizations = relationship(
+        "ECPayCreditAuthorization",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
+    )
+    saas_subscriptions = relationship(
+        "SaasSubscription",
+        back_populates="user",
+        cascade="all, delete-orphan", 
+        lazy="dynamic",
+    )
 
     def __repr__(self):
         return f"<User(email={self.email}, plan={self.plan.value})>"

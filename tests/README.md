@@ -1,250 +1,173 @@
-# Test Directory Structure
+# Testing Structure
 
-This directory contains the complete test suite for the Coaching Assistant Platform, organized by test type for optimal maintainability and performance.
+This directory contains all reusable test scripts and suites for the Coaching Assistant Platform.
 
-## 📁 Directory Structure
+## Directory Structure
 
 ```
 tests/
-├── unit/                    # Unit tests (fast, isolated)
-│   ├── services/           # Service layer tests
-│   ├── models/             # Database model tests
-│   ├── providers/          # STT provider tests
-│   └── utils/              # Utility function tests
-├── integration/             # Integration tests (service combinations)
-│   ├── api/                # API endpoint integration tests
-│   └── database/           # Database integration tests
-├── e2e/                     # End-to-end tests (complete workflows)
-├── performance/             # Performance and load tests
-├── data/                    # Test data files
-├── conftest.py             # Pytest configuration and fixtures
-└── run_tests.py            # Test runner script
+├── README.md              # This file - testing overview
+├── unit/                  # Unit tests (fast, isolated)
+├── integration/           # Service integration tests  
+├── api/                   # API endpoint tests
+└── e2e/                   # End-to-end workflow tests
+    ├── requirements.txt   # Python dependencies for E2E tests
+    ├── test_lemur_*.py   # LeMUR optimization testing scripts
+    └── lemur_examples/    # Example scripts and usage patterns
 ```
 
-## 🧪 Test Categories
+## Testing Categories
 
-### **Unit Tests** (`tests/unit/`)
-Fast, isolated tests that test individual components in isolation.
+### Unit Tests (`unit/`)
+- Fast, isolated tests
+- Mock external dependencies
+- Test individual functions/methods
+- Run with: `pytest tests/unit/`
 
-**Characteristics:**
-- Run in < 1 second each
-- No external dependencies (database, APIs, files)
-- Use mocks for dependencies
-- Test single functions or classes
+### Integration Tests (`integration/`)
+- Test service interactions
+- Database connections
+- External API integrations
+- Run with: `pytest tests/integration/`
 
-**Examples:**
-- `unit/services/test_usage_tracking.py` - Usage tracking service logic
-- `unit/models/test_user.py` - User model validation
-- `unit/providers/test_assemblyai_provider.py` - AssemblyAI provider logic
+### API Tests (`api/`)
+- HTTP endpoint testing
+- Request/response validation
+- Authentication testing
+- Run with: `pytest tests/api/`
 
-### **Integration Tests** (`tests/integration/`)
-Tests that verify how multiple components work together.
+### End-to-End Tests (`e2e/`)
+- Complete workflow validation
+- Real system interactions
+- User journey testing
+- LeMUR optimization validation
 
-**Characteristics:**
-- May use test database
-- Test component interactions
-- Verify API contracts
-- Run in < 5 seconds each
+## LeMUR Testing
 
-**Examples:**
-- `integration/api/test_plan_limits.py` - Plan limit API endpoints
-- `integration/database/test_database_models.py` - Database model relationships
+The E2E directory contains comprehensive LeMUR (Large Language Model) testing tools:
 
-### **End-to-End Tests** (`tests/e2e/`)
-Complete user journey tests that verify entire workflows.
+### Scripts
+- `test_lemur_full_pipeline.py` - Complete audio upload → transcription → LeMUR optimization
+- `test_lemur_database_processing.py` - Test LeMUR on existing transcript data
 
-**Characteristics:**
-- Test complete user scenarios
-- May take several seconds
-- Use real or near-real environments
-- Verify business logic end-to-end
+### Examples
+- `lemur_examples/run_*.sh` - Shell script wrappers for easy execution
+- `lemur_examples/sample_custom_prompts.py` - Prompt engineering examples
 
-**Examples:**
-- `e2e/test_beta_limits.py` - Complete plan limit enforcement testing
-- `e2e/test_plan_upgrade_e2e.py` - Plan upgrade user journey
-
-### **Performance Tests** (`tests/performance/`)
-Tests that verify system performance under load.
-
-**Examples:**
-- `performance/test_billing_performance.py` - Billing system performance
-
-## 🚀 Running Tests
-
-### Run All Tests
+### Usage
 ```bash
-python tests/run_tests.py
+cd tests/e2e
+pip install -r requirements.txt
+
+# Test existing database sessions
+python test_lemur_database_processing.py --list-sessions --auth-token $TOKEN
+
+# Test complete pipeline with audio file
+python test_lemur_full_pipeline.py --audio-file /path/to/audio.mp3 --auth-token $TOKEN
 ```
 
-### Run by Category
+## Running Tests
+
+### Prerequisites
 ```bash
-# Unit tests only (fastest)
-pytest tests/unit/ -v
+# Install Python dependencies
+cd tests/e2e && pip install -r requirements.txt
 
-# Integration tests
-pytest tests/integration/ -v
-
-# E2E tests (slowest)
-pytest tests/e2e/ -v
-
-# Performance tests
-pytest tests/performance/ -v
+# Set environment variables
+export AUTH_TOKEN="your_auth_token"
+export API_URL="http://localhost:8000"
 ```
 
-### Run Specific Test Files
+### Quick Commands
 ```bash
-# Single test file
-pytest tests/unit/services/test_usage_tracking.py -v
+# Run all unit tests
+make test
 
-# With coverage
-pytest tests/unit/ --cov=src/coaching_assistant --cov-report=html
+# Run integration tests
+pytest tests/integration/
+
+# Run API tests
+pytest tests/api/
+
+# Run E2E LeMUR tests
+cd tests/e2e && python test_lemur_database_processing.py --list-sessions --auth-token $AUTH_TOKEN
+
+# Run receipt download tests
+python tests/run_receipt_tests.py --type all --verbose
 ```
 
-### Run Tests for Specific Features
+## Receipt Download Tests 🧾
+
+Comprehensive test suite for the receipt download functionality covering API integration, business logic, and frontend integration.
+
+### Test Categories
+
+**Unit Tests** (`tests/unit/api/test_receipt_generation.py`):
+- Receipt data structure validation
+- Receipt ID generation and format consistency
+- Amount conversion (cents to TWD)
+- Date formatting and localization
+- User name fallback logic
+- Business rule validation
+- Security considerations
+
+**API Integration Tests** (`tests/api/test_receipt_download.py`):
+- Successful receipt generation for valid payments
+- Error handling (payment not found, unauthorized access)
+- Failed payment rejection (only successful payments get receipts)
+- Receipt format and content validation
+- Amount conversion accuracy testing
+
+**End-to-End Tests** (`tests/e2e/test_receipt_download_e2e.py`):
+- Complete receipt download flow simulation
+- Multi-plan testing (PRO monthly, Enterprise annual)
+- HTML generation and formatting validation
+- Frontend integration simulation
+- Accessibility and print-friendly formatting
+
+### Running Receipt Tests
+
 ```bash
-# Plan limitation tests
-pytest tests/ -k "plan" -v
+# Run all receipt tests
+python tests/run_receipt_tests.py --type all
 
-# Usage tracking tests
-pytest tests/ -k "usage" -v
+# Run specific test types
+python tests/run_receipt_tests.py --type unit --verbose
+python tests/run_receipt_tests.py --type api
+python tests/run_receipt_tests.py --type e2e
 
-# API tests
-pytest tests/integration/api/ -v
+# Get test information
+python tests/run_receipt_tests.py --info
 ```
 
-## 🛠️ Test Configuration
+### Test Coverage
 
-### Fixtures (`conftest.py`)
-Common test fixtures are defined in `conftest.py`:
-- Database setup/teardown
-- User fixtures
-- Session fixtures
-- Authentication helpers
+The receipt tests achieve comprehensive coverage of:
+- ✅ **API Endpoint**: `/api/v1/subscriptions/payment/{payment_id}/receipt`
+- ✅ **Business Logic**: Receipt generation, validation, formatting
+- ✅ **Security**: Authorization, data sanitization, access control
+- ✅ **Frontend Integration**: HTML generation, download simulation
+- ✅ **Error Handling**: Invalid requests, failed payments, unauthorized access
+- ✅ **Localization**: Taiwan-specific formatting, Traditional Chinese
 
-### Environment Variables
-Tests use these environment variables:
-```bash
-# Test database
-DATABASE_URL=postgresql://test:test@localhost/coaching_test
+## Test Data Management
 
-# Test mode
-TESTING=true
+- **Temporary files**: Use `tmp/` directory (gets cleaned up)
+- **Test fixtures**: Store in respective `tests/*/fixtures/` directories
+- **Generated results**: Output to `tmp/` by default, use `--output` flag for permanent storage
 
-# Debug mode for verbose output
-TEST_DEBUG=true
-```
+## Best Practices
 
-## 📊 Test Quality Standards
+1. **Keep tests isolated**: Each test should be independent
+2. **Use meaningful names**: Test names should describe the expected behavior
+3. **Mock external services**: Don't rely on external systems in unit tests
+4. **Clean up resources**: Ensure tests clean up after themselves
+5. **Document test purposes**: Include clear docstrings explaining what each test validates
 
-### Coverage Requirements
-- **Unit tests**: 95% line coverage minimum
-- **Integration tests**: 85% feature coverage minimum
-- **E2E tests**: 100% critical path coverage
+## Adding New Tests
 
-### Performance Requirements
-- **Unit tests**: < 1 second per test
-- **Integration tests**: < 5 seconds per test
-- **E2E tests**: < 30 seconds per test
-- **Full test suite**: < 5 minutes total
-
-### Quality Criteria
-- All tests must be deterministic (no flaky tests)
-- Tests must clean up after themselves
-- Use descriptive test names that explain behavior
-- Include both happy path and error case testing
-
-## 🔍 Test Data
-
-### Test Data Files (`tests/data/`)
-- `sample_1.vtt` - Sample VTT transcript file
-- `sample_2.vtt` - Another sample VTT file
-
-### Test Fixtures
-- Use `tests/conftest.py` for shared fixtures
-- Create specific fixtures in test files when needed
-- Always clean up test data after tests complete
-
-## 🐛 Debugging Tests
-
-### Verbose Output
-```bash
-pytest tests/ -v -s
-```
-
-### Debug Single Test
-```bash
-pytest tests/unit/services/test_usage_tracking.py::TestUsageTracking::test_increment_usage -v -s
-```
-
-### Profile Test Performance
-```bash
-pytest tests/ --durations=10
-```
-
-## 📝 Writing New Tests
-
-### Test Naming Convention
-- File names: `test_<component_name>.py`
-- Class names: `Test<ComponentName>`
-- Method names: `test_<behavior_description>`
-
-### Example Unit Test
-```python
-"""Unit tests for usage tracking service."""
-
-import pytest
-from unittest.mock import Mock, patch
-from coaching_assistant.services.usage_tracking import UsageTrackingService
-
-class TestUsageTracking:
-    """Test usage tracking service."""
-    
-    def test_increment_session_count_success(self):
-        """Should increment user session count correctly."""
-        # Arrange
-        mock_db = Mock()
-        service = UsageTrackingService(mock_db)
-        user = Mock(session_count=5)
-        
-        # Act
-        service.increment_session_count(user)
-        
-        # Assert
-        assert user.session_count == 6
-        mock_db.commit.assert_called_once()
-```
-
-### Example Integration Test
-```python
-"""Integration tests for plan limits API."""
-
-def test_create_session_with_limits(client, test_user, db_session):
-    """Should block session creation when limit exceeded."""
-    # Set user to have max sessions
-    test_user.session_count = 3  # FREE plan limit
-    db_session.commit()
-    
-    # Try to create session
-    response = client.post("/api/sessions", json={"title": "Test"})
-    
-    # Should be blocked
-    assert response.status_code == 403
-    assert "session_limit_exceeded" in response.json()["detail"]
-```
-
-## 🔄 Continuous Integration
-
-The test suite runs automatically on:
-- Pull request creation
-- Push to main branch
-- Nightly schedule for full suite
-
-### CI Pipeline
-1. **Fast feedback**: Unit tests run first
-2. **Integration validation**: Integration tests run second
-3. **End-to-end verification**: E2E tests run last
-4. **Performance check**: Performance tests run nightly
-
----
-
-**Keep tests fast, reliable, and maintainable!** 🧪✨
+1. Choose the appropriate category (unit/integration/api/e2e)
+2. Follow existing naming conventions
+3. Include proper documentation
+4. Add to CI/CD pipeline if applicable
+5. Update this README if adding new test types

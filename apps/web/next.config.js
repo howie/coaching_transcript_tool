@@ -76,6 +76,7 @@ const nextConfig = {
     // Fallback to package version + timestamp for local builds
     return `v${require('./package.json').version}-${Date.now()}`
   },
+  // CSP headers are now managed by middleware.ts for dynamic nonce support
   // OpenNext Cloudflare configuration
   output: 'standalone',
 }

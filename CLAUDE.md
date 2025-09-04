@@ -28,7 +28,8 @@ make run-api        # Backend at http://localhost:8000
 make dev-frontend   # Frontend at http://localhost:3000
 
 # Run tests
-make test          # Backend tests
+make test          # Backend tests (unit + db integration)
+make test-server   # API/E2E tests (requires API server)
 cd apps/web && npm test  # Frontend tests
 ```
 
@@ -48,6 +49,12 @@ Delegate specialized tasks to appropriate subagents:
 - **Background job implementation** → `celery-task-designer`
 - **Performance issues** → `performance-optimizer`
 
+### Feature Development & Planning
+- **Breaking down complex features** → `feature-analyst`
+- **Creating user stories from requirements** → `user-story-designer`
+- **Epic planning and roadmap creation** → `product-planner`
+- **Requirements analysis and documentation** → `requirements-analyst`
+
 ### DevOps & Maintenance
 - **Before deployment** → `security-auditor`
 - **Container setup** → `docker-builder`
@@ -65,7 +72,8 @@ See `@docs/claude/subagents.md` for detailed capabilities and usage patterns.
 ### Backend (Python/FastAPI)
 - `make dev-setup` - Install Python dependencies
 - `make run-api` - Start API server
-- `make test` - Run pytest suite
+- `make test` - Run standalone tests (unit + db integration)
+- `make test-server` - Run server-dependent tests (API/E2E)
 - `make lint` - Run code linting
 
 ### Frontend (Next.js)
@@ -111,12 +119,20 @@ coaching_transcript_tool/
 │       ├── tasks/            # Celery background tasks
 │       └── utils/            # Common utilities and helpers
 ├── tests/                    # Test suite (separate from src)
+│   ├── README.md             # Testing overview and structure
 │   ├── conftest.py           # pytest configuration
 │   ├── fixtures/             # Test data and mocks
 │   ├── unit/                 # Fast, isolated unit tests
 │   ├── integration/          # Service integration tests
+│   ├── api/                  # API endpoint tests
 │   ├── e2e/                  # End-to-end workflow tests
+│   │   ├── requirements.txt  # Python dependencies for E2E tests
+│   │   ├── test_lemur_*.py   # LeMUR optimization testing scripts
+│   │   └── lemur_examples/   # Example scripts and usage patterns
 │   └── performance/          # Performance benchmarks
+├── tmp/                     # Temporary files and debug outputs (gitignored)
+│   ├── debug_*.py           # Debug scripts (auto-cleanup)
+│   └── *_results.json       # Temporary output files
 ├── alembic/                  # Database migrations (SQLAlchemy)
 ├── logs/                     # Application log files
 ├── examples/                 # Usage examples and tutorials
@@ -365,9 +381,14 @@ pre-commit install         # Set up automated checks
 ### Test Organization
 ```
 tests/
+├── README.md              # Testing overview and structure
 ├── unit/                  # Fast, isolated tests
-├── integration/           # Service integration tests  
+├── integration/           # Service integration tests
+├── api/                   # API endpoint tests
 ├── e2e/                   # End-to-end workflow tests
+│   ├── requirements.txt   # Python dependencies for E2E tests
+│   ├── test_lemur_*.py   # LeMUR optimization testing scripts
+│   └── lemur_examples/   # Example scripts and usage patterns
 ├── fixtures/              # Test data and mocks
 └── performance/           # Performance benchmarks
 ```
@@ -378,6 +399,37 @@ tests/
 - **Use fixtures** for common test data setup
 - **Include performance tests** for critical paths
 - **Test error conditions** and recovery scenarios
+
+### LeMUR Testing & Optimization
+
+The platform includes comprehensive LeMUR (Large Language Model) testing tools for transcript optimization:
+
+#### E2E LeMUR Tests
+- **`test_lemur_full_pipeline.py`** - Complete audio upload → transcription → LeMUR optimization
+- **`test_lemur_database_processing.py`** - Test LeMUR on existing transcript data
+
+#### Custom Prompt Examples
+- **`lemur_examples/sample_custom_prompts.py`** - Prompt engineering examples for:
+  - Speaker identification (教練 vs 客戶)
+  - Punctuation optimization (中文標點符號改善)
+  - Multi-language and specialized prompts
+
+#### Usage
+```bash
+cd tests/e2e
+pip install -r requirements.txt
+
+# Test existing database sessions
+python test_lemur_database_processing.py --list-sessions --auth-token $TOKEN
+
+# Test complete pipeline with audio file
+python test_lemur_full_pipeline.py --audio-file /path/to/audio.mp3 --auth-token $TOKEN
+```
+
+#### File Organization
+- **Reusable tests**: Store in `tests/` directory structure
+- **Temporary debug scripts**: Store in `tmp/` directory (auto-cleanup)
+- **Debug outputs**: Store in `tmp/` with descriptive names (e.g., `evaluation_database_results.json`)
 
 ## Environment Configuration
 
@@ -428,6 +480,12 @@ POST /sessions/{id}/start-transcription - Start processing
 GET /sessions/{id}/transcript - Download transcript
 PATCH /sessions/{id}/speaker-roles - Update speaker assignments
 
+LeMUR Optimization:
+POST /lemur-speaker-identification - Optimize speaker identification
+POST /lemur-punctuation-optimization - Optimize punctuation
+POST /session/{session_id}/lemur-speaker-identification - Database-based speaker optimization
+POST /session/{session_id}/lemur-punctuation-optimization - Database-based punctuation optimization
+
 Coaching Management:
 GET /api/v1/clients - List clients
 POST /api/v1/clients - Create client
@@ -466,6 +524,7 @@ For detailed information, reference these docs:
 - **i18n Guidelines**: `@docs/claude/i18n.md` - Internationalization implementation and best practices
 - **Configuration**: `@docs/claude/configuration.md` - Environment variables, providers
 - **STT Architecture**: `@docs/claude/architecture/stt.md` - Provider details, fallback
+- **Session ID Mapping**: `@docs/claude/session-id-mapping.md` - Critical guide for Coaching vs Transcript Session IDs
 - **Deployment**: `@docs/claude/deployment/*.md` - Platform-specific guides
 - **API Reference**: See `/docs/api/` or OpenAPI at `/docs`
 - **Changelog**: `@docs/claude/CHANGELOG.md` - Complete version history and releases
@@ -519,6 +578,8 @@ For comprehensive frontend testing strategies and best practices, see `@docs/cla
 - All database migrations use consistent foreign key naming: `{referenced_table}_id`
 - Follow the monorepo architecture with clear separation of concerns
 - Prioritize security: never commit secrets, use environment variables
+- **Session ID Types**: Be aware of Coaching Session ID vs Transcript Session ID distinction (see `@docs/claude/session-id-mapping.md`)
+- **File Organization**: Store temporary debug files in `tmp/`, reusable tests in `tests/` directory
 - **Update changelog** - When making major changes, update `docs/claude/CHANGELOG.md`
 
 ## Deployment
@@ -529,3 +590,149 @@ For comprehensive frontend testing strategies and best practices, see `@docs/cla
 - **Monitoring**: Render Metrics + custom logging
 
 For detailed technical documentation, see `/docs/` directory.
+
+## Task Breakdown Methodology 
+
+### Breaking Down Complex Features into User Stories
+
+When working with complex features or requirements, follow this structured approach to create clear, testable user stories:
+
+#### 1. Feature Analysis Process
+```
+Requirements/Feature Request
+    ↓
+Epic Identification (group related stories)
+    ↓
+User Story Creation (individual deliverable value)
+    ↓
+Acceptance Criteria Definition (testable conditions)
+    ↓
+UI/UX Specification (demonstrable interface)
+    ↓
+Technical Implementation Planning
+```
+
+#### 2. User Story Template Structure
+Use this template for consistent user story documentation:
+
+```markdown
+# User Story X.Y: [Feature Name]
+
+## Story Overview
+**Epic**: [Epic Name]
+**Story ID**: US-X.Y
+**Priority**: High/Medium/Low (Phase X)
+**Effort**: [Story Points]
+
+## User Story
+**As a [user type], I want [functionality] so that [business value].**
+
+## Business Value
+- [Quantified impact on users/business]
+- [Revenue/cost implications]
+- [Strategic importance]
+
+## Acceptance Criteria
+### ✅ Primary Criteria
+- [ ] **AC-X.Y.1**: [Testable condition]
+- [ ] **AC-X.Y.2**: [User interaction requirement]
+
+### 🔧 Technical Criteria  
+- [ ] **AC-X.Y.6**: [Performance requirement]
+- [ ] **AC-X.Y.7**: [Integration requirement]
+
+### 📊 Quality Criteria
+- [ ] **AC-X.Y.10**: [Accuracy/success metrics]
+
+## UI/UX Requirements
+[ASCII mockups and component specifications]
+
+## Technical Implementation
+[API endpoints, database schema, algorithms]
+
+## Success Metrics
+[Quantitative KPIs and qualitative indicators]
+```
+
+#### 3. Epic Organization Structure
+Organize features into logical epics with clear progression:
+
+```
+docs/features/[feature-name]/
+├── README.md                    # Navigation and overview
+├── user-stories.md             # Consolidated user stories
+├── implementation-roadmap.md   # Phased development plan
+├── epics/
+│   ├── epic1-[name]/
+│   │   ├── README.md           # Epic overview
+│   │   ├── user-story-1.1-[name].md
+│   │   └── user-story-1.2-[name].md
+│   └── epic2-[name]/
+│       └── [similar structure]
+└── technical/
+    ├── workflows/              # Technical specifications
+    └── [architecture docs]
+```
+
+#### 4. Quality Gates for User Stories
+
+Before considering a user story complete, ensure:
+
+**✅ User Value**
+- Delivers end-to-end value demonstrable through UI
+- Can be tested independently 
+- Provides measurable business impact
+
+**✅ Acceptance Criteria**
+- All criteria are testable (not subjective)
+- Include UI interactions and user workflows
+- Cover happy path, edge cases, and error conditions
+
+**✅ Implementation Clarity**
+- Technical requirements clearly specified
+- API contracts and database changes defined
+- Dependencies and risks identified
+
+**✅ Success Measurement**
+- Quantitative success metrics defined
+- User satisfaction indicators specified
+- Business impact trackable
+
+#### 5. Subagent Delegation Guidelines
+
+When delegating user story creation to subagents:
+
+**For feature-analyst subagent:**
+```
+Please analyze [requirement/feature] and break it down into:
+1. Logical epics with clear business value
+2. Individual user stories within each epic
+3. Epic dependency relationships
+4. Implementation priority recommendations
+
+Focus on user value delivery and ensure each story is independently testable.
+```
+
+**For user-story-designer subagent:**
+```
+Create detailed user story documentation for [epic/feature] including:
+1. Complete acceptance criteria (primary, technical, quality)
+2. UI/UX mockups with ASCII diagrams
+3. Technical implementation specifications
+4. Success metrics and testing scenarios
+
+Follow the standard user story template and ensure all stories deliver end-to-end user value.
+```
+
+**For product-planner subagent:**
+```
+Create an implementation roadmap for [feature set] including:
+1. Phase-by-phase development plan with timelines
+2. Resource allocation and team requirements
+3. Risk assessment and mitigation strategies
+4. Business impact projections and success metrics
+
+Consider technical dependencies and business priorities.
+```
+
+This methodology ensures consistent, high-quality feature breakdown that delivers measurable user value while maintaining technical excellence.

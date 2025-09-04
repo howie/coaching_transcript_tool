@@ -171,8 +171,12 @@ def test_user(db_session):
 @pytest.fixture
 def auth_headers(test_user):
     """Create authentication headers for testing."""
-    # In a real app, this would generate a proper JWT token
-    # For testing, we'll mock the authentication
+    # Check for real JWT token from environment
+    test_jwt_token = os.getenv("TEST_JWT_TOKEN")
+    if test_jwt_token:
+        return {"Authorization": f"Bearer {test_jwt_token}"}
+    
+    # Fallback to mock token for tests that don't require real auth
     return {"Authorization": f"Bearer test-token-{test_user.id}"}
 
 
@@ -201,4 +205,9 @@ def admin_user(db_session):
 @pytest.fixture
 def admin_headers(admin_user):
     """Create authentication headers for admin user."""
+    # Check for real JWT token from environment
+    test_jwt_token = os.getenv("TEST_JWT_TOKEN")
+    if test_jwt_token:
+        return {"Authorization": f"Bearer {test_jwt_token}"}
+    
     return {"Authorization": f"Bearer admin-token-{admin_user.id}"}

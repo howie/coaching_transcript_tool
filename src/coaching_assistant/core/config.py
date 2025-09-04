@@ -111,6 +111,25 @@ class Settings(BaseSettings):
     # 其他STT功能
     ENABLE_PUNCTUATION: bool = True
 
+    # ECPay 金流設定
+    ECPAY_MERCHANT_ID: str = ""  # 商店代號
+    ECPAY_HASH_KEY: str = ""  # HashKey
+    ECPAY_HASH_IV: str = ""  # HashIV
+    ECPAY_ENVIRONMENT: str = "sandbox"  # "sandbox" or "production"
+    
+    # Frontend/Backend URLs for ECPay callbacks
+    FRONTEND_URL: str = "http://localhost:3000"
+    API_BASE_URL: str = "http://localhost:8000"
+    
+    # Admin webhook token for manual operations
+    ADMIN_WEBHOOK_TOKEN: str = "change-me-in-production"
+    
+    # Email Configuration (for payment notifications)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+
     # Worker 設定
     WORKER_CONCURRENCY: int = 4
     TASK_TIME_LIMIT: int = 7200  # seconds
@@ -119,6 +138,12 @@ class Settings(BaseSettings):
     STORAGE_BUCKET: str = "coaching-audio-{env}"
     RETENTION_DAYS: int = 1
     SIGNED_URL_EXPIRY_MINUTES: int = 30
+
+    # Cloudflare 設定
+    CLOUDFLARE_API_TOKEN: str = ""
+    CLOUDFLARE_ZONE_ID: str = ""
+    CLOUDFLARE_ACCOUNT_ID: str = ""
+    DOMAIN: str = ""
 
     class Config:
         # 只在非 production 環境載入 .env 檔案，避免覆蓋 Render.com 環境變數

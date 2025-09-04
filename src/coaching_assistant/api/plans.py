@@ -10,6 +10,7 @@ from ..core.database import get_db
 from ..api.auth import get_current_user_dependency
 from ..models.user import User, UserPlan
 from ..models.plan_configuration import PlanConfiguration
+from ..models.ecpay_subscription import SaasSubscription, ECPayCreditAuthorization
 from ..services.usage_tracking import PlanLimits
 
 logger = logging.getLogger(__name__)
@@ -292,13 +293,40 @@ async def get_current_plan_status(
             "tagline": suggested_config["tagline"]
         }
     
-    # Build subscription info
+    # Build subscription info from actual subscription data
     subscription_info = {
         "startDate": current_user.created_at.isoformat() if current_user.created_at else None,
-        "endDate": None,  # Would come from subscription system
-        "active": True,
-        "stripeSubscriptionId": None  # Would come from Stripe integration
+        "endDate": None,
+        "active": current_user.plan != UserPlan.FREE,  # More accurate active status
+        "stripeSubscriptionId": None
     }
+    
+    # Get actual subscription data if user has paid plan
+    if current_user.plan != UserPlan.FREE:
+        active_subscription = db.query(SaasSubscription).filter(
+            SaasSubscription.user_id == current_user.id,
+            SaasSubscription.status.in_(["active", "past_due"])
+        ).first()
+        
+        if active_subscription:
+            subscription_info.update({
+                "active": active_subscription.status == "active",
+                "startDate": active_subscription.current_period_start.isoformat(),
+                "endDate": active_subscription.current_period_end.isoformat(),
+                "subscriptionId": str(active_subscription.id),
+                "planId": active_subscription.plan_id,
+                "billingCycle": active_subscription.billing_cycle,
+                "status": active_subscription.status,
+                "nextPaymentDate": None
+            })
+            
+            # Get next payment date from authorization record
+            if active_subscription.auth_record and active_subscription.auth_record.next_pay_date:
+                subscription_info["nextPaymentDate"] = active_subscription.auth_record.next_pay_date.isoformat()
+        else:
+            # User has paid plan in database but no active subscription
+            subscription_info["active"] = False
+            logger.warning(f"User {current_user.id} has plan {current_user.plan} but no active subscription")
     
     return {
         "currentPlan": plan_config,

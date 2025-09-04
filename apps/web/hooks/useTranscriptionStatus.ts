@@ -31,7 +31,7 @@ export interface TranscriptionSession {
 }
 
 interface UseTranscriptionStatusOptions {
-  pollInterval?: number // milliseconds, default 5000 (5 seconds)
+  pollInterval?: number // milliseconds, default 3000 (3 seconds for faster updates)
   maxPollingTime?: number // milliseconds, default 2 hours
   enablePolling?: boolean // default true
 }
@@ -52,7 +52,7 @@ export const useTranscriptionStatus = (
   options: UseTranscriptionStatusOptions = {}
 ): UseTranscriptionStatusReturn => {
   const {
-    pollInterval = 5000,
+    pollInterval = 3000, // Reduced from 5s to 3s for faster UI updates
     maxPollingTime = 2 * 60 * 60 * 1000, // 2 hours
     enablePolling = true
   } = options
@@ -164,8 +164,10 @@ export const useTranscriptionStatus = (
         startTimeRef.current = null
       } else {
         console.log('Continuing initial polling for sessionId:', sessionId)
-        // Continue polling
-        pollingIntervalRef.current = setTimeout(poll, pollInterval)
+        // Use faster polling for initial state transitions (first 30 seconds)
+        const elapsedTime = Date.now() - (startTimeRef.current || Date.now())
+        const interval = elapsedTime < 30000 ? 1500 : pollInterval // 1.5s for first 30s, then normal
+        pollingIntervalRef.current = setTimeout(poll, interval)
       }
     }
 
@@ -255,7 +257,10 @@ export const useTranscriptionStatus = (
                 startTimeRef.current = null
               } else {
                 console.log('Continuing polling for sessionId:', sessionId)
-                pollingIntervalRef.current = setTimeout(poll, pollInterval)
+                // Use faster polling for initial state transitions (first 30 seconds)
+                const elapsedTime = Date.now() - (startTimeRef.current || Date.now())
+                const interval = elapsedTime < 30000 ? 1500 : pollInterval // 1.5s for first 30s
+                pollingIntervalRef.current = setTimeout(poll, interval)
               }
             } catch (err: any) {
               console.error('Error fetching transcription status:', err)
