@@ -143,9 +143,9 @@ module "render" {
     TASK_TIME_LIMIT    = "3600"
   }
 
-  # GCP Configuration (using variables directly since GCP module is disabled)
+  # GCP Configuration
   gcp_project_id            = var.gcp_project_id
-  gcp_service_account_json  = ""  # Empty since GCP module disabled
+  gcp_service_account_json  = ""
   audio_storage_bucket      = "${var.gcp_project_id}-audio-production"
   transcript_storage_bucket = "${var.gcp_project_id}-transcripts-production"
 

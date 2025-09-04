@@ -21,7 +21,7 @@ resource "cloudflare_record" "frontend" {
 resource "cloudflare_record" "api" {
   zone_id = var.zone_id
   name    = var.environment == "production" ? var.api_subdomain : "${var.environment}-${var.api_subdomain}"
-  content = "coaching-transcript-tool.onrender.com"  # Match existing CNAME
+  content = replace(replace(var.render_api_url, "https://", ""), "http://", "")  # Extract hostname from URL
   type    = "CNAME"
   proxied = var.proxied
   
@@ -59,7 +59,7 @@ resource "cloudflare_zone_settings_override" "security" {
   settings {
     # SSL/TLS Configuration
     ssl                      = "strict"
-    # always_use_https        = true  # Temporarily disabled - configuration issue
+    always_use_https        = "on"  # Enable HTTPS redirects for all traffic
     automatic_https_rewrites = "on"
     min_tls_version         = "1.2"
     
@@ -71,7 +71,7 @@ resource "cloudflare_zone_settings_override" "security" {
     
     # Performance
     brotli                  = "on"
-    # minify {  # Temporarily disabled - configuration issue
+    # minify {  # Disabled - not supported in current account/plan
     #   css  = "on"
     #   html = "on"
     #   js   = "on"
