@@ -218,6 +218,7 @@ repomix-output.xml
 *.tfstate.*
 *.tfvars
 *.tfvars.json
+*.tfvars.backup*
 .terraform.lock.hcl
 terraform.tfstate
 terraform.tfstate.backup
