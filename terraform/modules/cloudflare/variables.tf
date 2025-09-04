@@ -90,18 +90,9 @@ variable "web_analytics_token" {
   sensitive   = true
 }
 
-# Environment Variables for Pages
-variable "production_env_vars" {
-  description = "Production environment variables for Pages"
-  type        = map(string)
-  default     = {}
-}
-
-variable "preview_env_vars" {
-  description = "Preview environment variables for Pages"
-  type        = map(string)
-  default     = {}
-}
+# Workers Configuration (managed externally)
+# Workers environment variables and routes are managed through Cloudflare dashboard
+# This module focuses on DNS records and zone-level settings
 
 # Security Configuration
 variable "recaptcha_site_key" {
