@@ -18,6 +18,12 @@ variable "environment" {
   default     = "prod"
 }
 
+variable "frontend_url" {
+  description = "Frontend URL for OAuth redirects"
+  type        = string
+  default     = "https://coachly.doxa.com.tw"
+}
+
 variable "required_apis" {
   description = "List of required Google Cloud APIs"
   type        = list(string)
