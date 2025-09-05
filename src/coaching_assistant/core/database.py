@@ -26,21 +26,19 @@ def create_database_engine(database_url: str, **kwargs):
     if database_url and ("render.com" in database_url or "dpg-" in database_url):
         connect_args = engine_kwargs.get("connect_args", {})
         
-        # Different SSL configuration for internal vs external Render connections
-        if ".singapore-postgres.render.com" in database_url:
-            # External connection - requires SSL
-            connect_args.update({
-                "sslmode": "require",
-                "connect_timeout": 30,
-                "application_name": "coaching-assistant-api",
-            })
-        else:
-            # Internal connection (dpg-xxx format) - SSL may not be required/available
-            connect_args.update({
-                "sslmode": "disable",  # Internal connections may not support SSL
-                "connect_timeout": 30,
-                "application_name": "coaching-assistant-api",
-            })
+        # Render PostgreSQL SSL configuration
+        connect_args.update({
+            "connect_timeout": 30,
+            "application_name": "coaching-assistant-api",
+        })
+        
+        # Render database SSL configuration - require SSL but disable certificate verification
+        connect_args.update({
+            "sslmode": "require",
+            "sslcert": "",  # No client certificate
+            "sslkey": "",   # No client key
+            "sslrootcert": "",  # Don't verify server certificate
+        })
         
         engine_kwargs["connect_args"] = connect_args
     
