@@ -1,8 +1,8 @@
 {
-  "version": "2.15.11",
-  "displayVersion": "v2.15.11",
-  "description": "Mixed Content Error Resolution",
+  "version": "2.15.13",
+  "displayVersion": "v2.15.13",
+  "description": "OAuth Redirect Configuration Complete",
   "releaseDate": "2025-09-05",
-  "releaseNotes": "Fixed persistent Mixed Content errors by enforcing HTTPS API URLs in production environments. Updated API client to automatically convert HTTP URLs to HTTPS when running in secure contexts. Added runtime HTTPS enforcement and improved environment variable handling to prevent cache-related issues.",
+  "releaseNotes": "Comprehensive OAuth redirect fix with environment variable configuration. Added FRONTEND_URL to both backend settings and terraform infrastructure. Fixed frontend API URL configuration. Added debug logging for OAuth troubleshooting. Ensures proper OAuth redirects in both local development and production environments.",
   "author": "Coachly Team"
 }
