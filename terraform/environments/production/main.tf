@@ -158,6 +158,7 @@ module "render" {
   # Authentication
   google_client_id     = var.google_client_id
   google_client_secret = var.google_client_secret
+  frontend_url         = module.cloudflare.frontend_url
 
   # reCAPTCHA
   recaptcha_enabled   = "true"

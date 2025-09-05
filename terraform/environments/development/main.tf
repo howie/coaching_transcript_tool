@@ -156,6 +156,7 @@ module "render" {
   # Authentication
   google_client_id     = var.google_client_id
   google_client_secret = var.google_client_secret
+  frontend_url         = "https://dev-${var.frontend_subdomain}.${var.domain}"
   
   # reCAPTCHA (Disabled for development)
   recaptcha_enabled   = "false"
