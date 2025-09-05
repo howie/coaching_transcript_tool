@@ -237,3 +237,5 @@ terraform.rc
 #tmp
 logs/
 tmp/
+
+uv.lock
