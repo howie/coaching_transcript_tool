@@ -1,8 +1,8 @@
 {
-  "version": "2.15.10",
-  "displayVersion": "v2.15.10",
-  "description": "Complete Production Deployment Fixes",
-  "releaseDate": "2025-09-04",
-  "releaseNotes": "Fixed both frontend HTTPS and backend Celery Worker issues: 1) Resolved Mixed Content violations by ensuring NEXT_PUBLIC_API_URL uses HTTPS in production builds. 2) Fixed Celery Worker ModuleNotFoundError by updating build command to install project package (pip install -e .). All services now deploy and start successfully.",
+  "version": "2.15.11",
+  "displayVersion": "v2.15.11",
+  "description": "Mixed Content Error Resolution",
+  "releaseDate": "2025-09-05",
+  "releaseNotes": "Fixed persistent Mixed Content errors by enforcing HTTPS API URLs in production environments. Updated API client to automatically convert HTTP URLs to HTTPS when running in secure contexts. Added runtime HTTPS enforcement and improved environment variable handling to prevent cache-related issues.",
   "author": "Coachly Team"
 }

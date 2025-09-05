@@ -184,7 +184,16 @@ class ApiClient {
       const defaultUrl = (typeof window !== 'undefined' && window.location.hostname.includes('doxa.com.tw')) 
         ? 'https://api.doxa.com.tw' 
         : 'http://localhost:8000'
-      this.baseUrl = process.env.NEXT_PUBLIC_API_URL || defaultUrl
+        
+      // Ensure environment variable takes priority, with runtime HTTPS enforcement
+      let baseUrl = process.env.NEXT_PUBLIC_API_URL || defaultUrl
+      
+      // Force HTTPS in secure contexts to prevent Mixed Content errors
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:' && baseUrl.startsWith('http://')) {
+        baseUrl = baseUrl.replace('http://', 'https://')
+      }
+      
+      this.baseUrl = baseUrl
     }
   }
 
