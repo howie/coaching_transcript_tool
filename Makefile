@@ -86,7 +86,15 @@ apps/web/.next/BUILD_ID: apps/web/app/* apps/web/components/* apps/web/lib/* app
 	@mkdir -p logs
 	@echo "Building Next.js frontend..."
 	@echo "Build logs will be saved to logs/frontend-build.log (with colors preserved)"
-	cd apps/web && FORCE_COLOR=1 npm run build 2>&1 | tee ../../logs/frontend-build.log
+	@if [ -f apps/web/.env.local ]; then \
+		echo "  → Temporarily moving .env.local for production build"; \
+		mv apps/web/.env.local apps/web/.env.local.tmp; \
+	fi
+	cd apps/web && NODE_ENV=production NEXT_PUBLIC_API_URL=https://api.doxa.com.tw FORCE_COLOR=1 npm run build 2>&1 | tee ../../logs/frontend-build.log
+	@if [ -f apps/web/.env.local.tmp ]; then \
+		echo "  → Restoring .env.local"; \
+		mv apps/web/.env.local.tmp apps/web/.env.local; \
+	fi
 
 apps/web/.open-next/worker.js: apps/web/.next/BUILD_ID
 	@mkdir -p logs
@@ -119,7 +127,7 @@ deploy-frontend:
 		echo "  → Backing up .env.local to .env.local.bak"; \
 		mv apps/web/.env.local apps/web/.env.local.bak; \
 	fi
-	cd apps/web && npm run deploy
+	cd apps/web && NODE_ENV=production NEXT_PUBLIC_API_URL=https://api.doxa.com.tw npm run deploy
 	@if [ -f apps/web/.env.local.bak ]; then \
 		echo "  → Restoring .env.local from backup"; \
 		mv apps/web/.env.local.bak apps/web/.env.local; \

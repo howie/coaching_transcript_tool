@@ -191,6 +191,13 @@ class ApiClient {
       // Force HTTPS in secure contexts to prevent Mixed Content errors
       if (typeof window !== 'undefined' && window.location.protocol === 'https:' && baseUrl.startsWith('http://')) {
         baseUrl = baseUrl.replace('http://', 'https://')
+        debugLog('Forced HTTPS for secure context:', baseUrl)
+      }
+      
+      // Additional safety check: always use HTTPS for doxa.com.tw domain
+      if (baseUrl.includes('doxa.com.tw') && !baseUrl.startsWith('https://')) {
+        baseUrl = baseUrl.replace(/^http:\/\//, 'https://')
+        debugLog('Forced HTTPS for doxa.com.tw domain:', baseUrl)
       }
       
       this.baseUrl = baseUrl
@@ -342,20 +349,39 @@ class ApiClient {
   }
 
   async getUserProfile() {
-    try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/profile`, {
-        headers: await this.getHeaders(),
-      })
+    const maxRetries = 2
+    let lastError: Error | null = null
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await this.fetcher(`${this.baseUrl}/api/v1/user/profile`, {
+          headers: await this.getHeaders(),
+        })
 
-      if (!response.ok) {
-        throw new Error(`Get profile failed: ${response.statusText}`)
+        if (!response.ok) {
+          // If this is a 401 and not the last attempt, wait and retry
+          if (response.status === 401 && attempt < maxRetries) {
+            debugLog(`getUserProfile: 401 error on attempt ${attempt + 1}, retrying...`)
+            await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
+            continue
+          }
+          throw new Error(`Get profile failed: ${response.statusText}`)
+        }
+
+        return await response.json()
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        if (attempt < maxRetries) {
+          debugLog(`getUserProfile: Error on attempt ${attempt + 1}, retrying...`, error)
+          await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
+          continue
+        }
+        break
       }
-
-      return await response.json()
-    } catch (error) {
-      console.error('Get profile error:', error)
-      throw error
     }
+    
+    console.error('Get profile error after retries:', lastError)
+    throw lastError || new Error('Unknown error occurred')
   }
 
   async signup(name: string, email: string, password: string, recaptchaToken?: string) {

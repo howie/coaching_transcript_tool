@@ -87,6 +87,8 @@ const authStore = createStore<AuthState>((set, get) => ({
         set({ token })
         
         console.log('Calling getUserProfile API...')
+        // Add small delay to ensure localStorage is written
+        await new Promise(resolve => setTimeout(resolve, 100))
         const user = await apiClient.getUserProfile()
         console.log('User profile loaded:', user?.name || 'No name', user?.email || 'No email')
         
