@@ -343,6 +343,12 @@ variable "google_client_secret" {
   sensitive   = true
 }
 
+variable "frontend_url" {
+  description = "Frontend URL for OAuth redirects"
+  type        = string
+  default     = "http://localhost:3000"
+}
+
 # reCAPTCHA
 variable "recaptcha_enabled" {
   description = "Enable reCAPTCHA"

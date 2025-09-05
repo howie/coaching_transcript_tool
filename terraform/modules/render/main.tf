@@ -33,6 +33,7 @@ locals {
       # Authentication
       GOOGLE_CLIENT_ID     = var.google_client_id
       GOOGLE_CLIENT_SECRET = var.google_client_secret
+      FRONTEND_URL         = var.frontend_url
 
       # reCAPTCHA
       RECAPTCHA_ENABLED   = var.recaptcha_enabled
