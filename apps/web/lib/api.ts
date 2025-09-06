@@ -134,12 +134,53 @@ function parseErrorMessage(
 }
 
 class ApiClient {
-  private baseUrl: string
+  private _baseUrl: string | null = null
   private fetcher: typeof fetch
   private translateFn?: (key: string, params?: Record<string, any>) => string
 
   setTranslationFunction(t: (key: string, params?: Record<string, any>) => string) {
     this.translateFn = t
+  }
+
+  // Lazy initialization of baseUrl to ensure proper runtime context
+  public getBaseUrl(): string {
+    if (this._baseUrl === null) {
+      // CRITICAL: Force HTTPS for production domains BEFORE checking env vars
+      if (typeof window !== 'undefined') {
+        const isSecureContext = window.location.protocol === 'https:'
+        const isProductionDomain = window.location.hostname.includes('doxa.com.tw')
+        
+        if (isSecureContext || isProductionDomain) {
+          this._baseUrl = 'https://api.doxa.com.tw'
+          console.warn('🔒 FORCED HTTPS for production:', this._baseUrl)
+          debugLog('Production domain detected - forcing HTTPS API URL')
+          return this._baseUrl
+        }
+      }
+      
+      // Only use env var for non-production environments
+      const envUrl = process.env.NEXT_PUBLIC_API_URL
+      this._baseUrl = envUrl || 'http://localhost:8000'
+      console.log('📡 Using environment API URL:', this._baseUrl)
+    }
+    
+    // ADDITIONAL SAFETY: Always ensure HTTPS for doxa.com.tw domains
+    if (typeof window !== 'undefined' && 
+        window.location.protocol === 'https:' && 
+        this._baseUrl && 
+        this._baseUrl.includes('doxa.com.tw') && 
+        !this._baseUrl.startsWith('https://')) {
+      console.warn('🚨 SAFETY OVERRIDE: Clearing HTTP baseUrl cache and forcing HTTPS')
+      // Clear bad cache and force HTTPS
+      this._baseUrl = 'https://api.doxa.com.tw'
+    }
+    
+    return this._baseUrl
+  }
+
+  // Legacy getter for backward compatibility
+  get baseUrl(): string {
+    return this.getBaseUrl()
   }
 
   private handleUnauthorized() {
@@ -160,49 +201,73 @@ class ApiClient {
   }
 
   constructor() {
-    // In a Cloudflare Worker environment, a service binding `API_SERVICE` will be available.
-    // We use a robust check to see if it's a valid binding with a fetch method.
+    // Set up fetcher - simplified since baseUrl is now handled lazily
     if (typeof globalThis !== 'undefined' && 
         globalThis.API_SERVICE && 
         typeof globalThis.API_SERVICE.fetch === 'function') {
-      this.fetcher = globalThis.API_SERVICE.fetch.bind(globalThis.API_SERVICE)
-      this.baseUrl = '' // Base URL is handled by the binding
+      this.fetcher = this.createSecureFetcher(globalThis.API_SERVICE.fetch.bind(globalThis.API_SERVICE))
+    } else if (typeof window !== 'undefined' && window.fetch) {
+      // In browser environment, bind fetch to window
+      this.fetcher = this.createSecureFetcher(window.fetch.bind(window))
+    } else if (typeof globalThis !== 'undefined' && globalThis.fetch) {
+      // In other environments, bind to globalThis
+      this.fetcher = this.createSecureFetcher(globalThis.fetch.bind(globalThis))
     } else {
-      // Fallback for local development or other environments
-      // IMPORTANT: We need to bind fetch to the correct context for Safari compatibility
-      if (typeof window !== 'undefined' && window.fetch) {
-        // In browser environment, bind fetch to window
-        this.fetcher = window.fetch.bind(window)
-      } else if (typeof globalThis !== 'undefined' && globalThis.fetch) {
-        // In other environments, bind to globalThis
-        this.fetcher = globalThis.fetch.bind(globalThis)
-      } else {
-        // Last resort fallback
-        this.fetcher = fetch
+      // Last resort fallback
+      this.fetcher = this.createSecureFetcher(fetch)
+    }
+    // baseUrl is now initialized lazily via getBaseUrl()
+  }
+
+
+  // Create a secure fetch wrapper that enforces HTTPS for production
+  private createSecureFetcher(originalFetch: typeof fetch): typeof fetch {
+    return async (input: RequestInfo | URL, init?: RequestInit) => {
+      // Helper to extract URL string from various input types
+      const toUrlString = (x: RequestInfo | URL): string =>
+        x instanceof Request ? x.url : x instanceof URL ? x.toString() : String(x)
+
+      let url = toUrlString(input)
+      const isInsecureApi = url.startsWith('http://') && /:\/\/api\.doxa\.com\.tw\b/.test(url)
+
+      // In production: fail-fast to block insecure calls
+      if (isInsecureApi && process.env.NODE_ENV === 'production') {
+        console.error('🚨 BLOCKED: Insecure API call in production:', url)
+        throw new Error(`Blocked insecure API call: ${url}. Use /api/proxy/* or https://`)
       }
-      // Determine base URL with production-aware fallback
-      const defaultUrl = (typeof window !== 'undefined' && window.location.hostname.includes('doxa.com.tw')) 
-        ? 'https://api.doxa.com.tw' 
-        : 'http://localhost:8000'
-        
-      // Ensure environment variable takes priority, with runtime HTTPS enforcement
-      let baseUrl = process.env.NEXT_PUBLIC_API_URL || defaultUrl
-      
-      // Force HTTPS in secure contexts to prevent Mixed Content errors
-      if (typeof window !== 'undefined' && window.location.protocol === 'https:' && baseUrl.startsWith('http://')) {
-        baseUrl = baseUrl.replace('http://', 'https://')
-        debugLog('Forced HTTPS for secure context:', baseUrl)
+
+      // In development: upgrade and warn
+      if (isInsecureApi && process.env.NODE_ENV !== 'production') {
+        const upgraded = url.replace(/^http:/, 'https:')
+        console.warn('🛡️ SECURE FETCH (dev): upgraded to HTTPS', { original: url, upgraded })
+        url = upgraded
+      }
+
+      // Additional check for SSR/Node environments
+      if (typeof window === 'undefined' && url.includes('api.doxa.com.tw') && !url.startsWith('https://')) {
+        // Force HTTPS in SSR/Node environments
+        url = url.replace(/^https?:\/\//, 'https://')
+        console.warn('🛡️ SSR/Node: Forced HTTPS for API call')
+      }
+
+      // Handle Request objects properly to preserve method/headers/body
+      if (input instanceof Request) {
+        // Create new Request with updated URL while preserving all properties
+        const newRequest = new Request(url, input)
+        return originalFetch(newRequest, init)
       }
       
-      // Additional safety check: always use HTTPS for doxa.com.tw domain
-      if (baseUrl.includes('doxa.com.tw') && !baseUrl.startsWith('https://')) {
-        baseUrl = baseUrl.replace(/^http:\/\//, 'https://')
-        debugLog('Forced HTTPS for doxa.com.tw domain:', baseUrl)
+      // Handle URL objects
+      if (input instanceof URL) {
+        return originalFetch(new URL(url), init)
       }
       
-      this.baseUrl = baseUrl
+      // String URL
+      return originalFetch(url, init)
     }
   }
+
+  // Note: getBaseUrl() is now handled by the getter above
 
   private async getHeaders() {
     let token: string | null = null
@@ -278,7 +343,16 @@ class ApiClient {
 
   async healthCheck() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/health`)
+      const baseUrl = this.baseUrl
+      // Add trailing slash to prevent backend redirect from HTTPS to HTTP
+      const url = `${baseUrl}/api/health/`
+      console.log('🔍 HEALTH CHECK DEBUG:', {
+        baseUrl,
+        constructedUrl: url,
+        windowProtocol: typeof window !== 'undefined' ? window.location.protocol : 'N/A',
+        windowHostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A'
+      })
+      const response = await this.fetcher(url)
       
       if (!response.ok) {
         throw new Error(`Health check failed: ${response.statusText}`)

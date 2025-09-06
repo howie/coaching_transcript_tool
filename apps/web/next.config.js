@@ -38,6 +38,16 @@ function getVersionInfo() {
 const versionInfo = getVersionInfo()
 
 const nextConfig = {
+  async rewrites() {
+    return [
+      // Proxy API calls to backend server with HTTPS enforcement
+      // This solves Mixed Content issues by routing through Next.js server
+      {
+        source: '/api/proxy/:path*',
+        destination: 'https://api.doxa.com.tw/api/:path*',
+      },
+    ]
+  },
   experimental: {
     typedRoutes: true,
   },

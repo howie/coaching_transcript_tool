@@ -20,13 +20,30 @@ export function ECPayStatus() {
 
   const checkECPayStatus = async () => {
     try {
-      // Check if backend API is running
-      await apiClient.healthCheck()
-      setBackendHealth(true)
+      // Check if backend API is running through Next.js proxy
+      const healthResponse = await fetch('/api/proxy/health', {
+        method: 'GET',
+        cache: 'no-store', // Health check needs to be real-time
+      })
       
-      // Check if subscription endpoints are available
-      const subResponse = await apiClient.get('/api/webhooks/health')
-      setApiStatus('available')
+      if (healthResponse.ok) {
+        setBackendHealth(true)
+        
+        // Check if subscription endpoints are available through proxy
+        const subResponse = await fetch('/api/proxy/webhooks/health', {
+          method: 'GET',
+          cache: 'no-store', // Don't cache health checks
+        })
+        
+        if (subResponse.ok) {
+          setApiStatus('available')
+        } else {
+          setApiStatus('unavailable')
+        }
+      } else {
+        setBackendHealth(false)
+        setApiStatus('unavailable')
+      }
     } catch (error) {
       console.error('ECPay status check failed:', error)
       setBackendHealth(false)
