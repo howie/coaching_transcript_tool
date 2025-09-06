@@ -84,8 +84,11 @@ dev-frontend:
 # File-based targets for efficient building
 apps/web/.next/BUILD_ID: apps/web/app/* apps/web/components/* apps/web/lib/* apps/web/next.config.js apps/web/package.json
 	@mkdir -p logs
-	@echo "Building Next.js frontend..."
-	@echo "Build logs will be saved to logs/frontend-build.log (with colors preserved)"
+	@echo "🔨 Building Next.js frontend..."
+	@echo "📋 Production build configuration:"
+	@echo "  NODE_ENV=production"
+	@echo "  NEXT_PUBLIC_API_URL=https://api.doxa.com.tw"
+	@echo "📝 Build logs will be saved to logs/frontend-build.log (with colors preserved)"
 	@if [ -f apps/web/.env.local ]; then \
 		echo "  → Temporarily moving .env.local for production build"; \
 		mv apps/web/.env.local apps/web/.env.local.tmp; \
@@ -98,8 +101,11 @@ apps/web/.next/BUILD_ID: apps/web/app/* apps/web/components/* apps/web/lib/* app
 
 apps/web/.open-next/worker.js: apps/web/.next/BUILD_ID
 	@mkdir -p logs
-	@echo "Building frontend for Cloudflare Workers..."
-	@echo "Cloudflare Workers build logs will be saved to logs/frontend-cf-build.log"
+	@echo "☁️  Building frontend for Cloudflare Workers..."
+	@echo "📋 Cloudflare Workers build configuration:"
+	@echo "  NODE_ENV=production"
+	@echo "  NEXT_PUBLIC_API_URL=https://api.doxa.com.tw (inherited from Next.js build)"
+	@echo "📝 Cloudflare Workers build logs will be saved to logs/frontend-cf-build.log"
 	@if [ -f apps/web/.env.local ]; then \
 		echo "  → Temporarily moving .env.local for production build"; \
 		mv apps/web/.env.local apps/web/.env.local.tmp; \
@@ -121,21 +127,27 @@ install-frontend:
 
 # Cloudflare Workers Deployment
 deploy-frontend:
-	@echo "Deploying frontend to Cloudflare Workers..."
-	@echo "Preparing production environment..."
+	@echo "🚀 Deploying frontend to Cloudflare Workers..."
+	@echo "📋 Production environment configuration:"
+	@echo "  NODE_ENV=production"
+	@echo "  NEXT_PUBLIC_API_URL=https://api.doxa.com.tw"
+	@echo ""
+	@echo "📦 Preparing deployment environment..."
 	@if [ -f apps/web/.env.local ]; then \
 		echo "  → Backing up .env.local to .env.local.bak"; \
 		mv apps/web/.env.local apps/web/.env.local.bak; \
 	fi
+	@echo "🔧 Starting deployment process..."
 	cd apps/web && NODE_ENV=production NEXT_PUBLIC_API_URL=https://api.doxa.com.tw npm run deploy
 	@if [ -f apps/web/.env.local.bak ]; then \
 		echo "  → Restoring .env.local from backup"; \
 		mv apps/web/.env.local.bak apps/web/.env.local; \
 	fi
-	@echo "✅ Deployment complete!"
+	@echo "✅ Frontend deployment complete!"
 
 deploy-frontend-only: build-frontend-cf
-	@echo "Deploying frontend to Cloudflare Workers (without rebuild)..."
+	@echo "🚀 Deploying frontend to Cloudflare Workers (without rebuild)..."
+	@echo "📋 Using pre-built configuration with NEXT_PUBLIC_API_URL=https://api.doxa.com.tw"
 	cd apps/web && npm run deploy:only
 	@echo "✅ Deployment complete!"
 
@@ -354,7 +366,8 @@ help:
 	@echo "  build-frontend   : Build Next.js frontend only (logs to logs/frontend-build.log)"
 	@echo "  build-frontend-cf: Build frontend for Cloudflare Workers (logs to logs/frontend-cf-build.log)"
 	@echo "  install-frontend : Install frontend dependencies"
-	@echo "  deploy-frontend  : Deploy frontend to Cloudflare Workers"
+	@echo "  deploy-frontend  : Deploy frontend to Cloudflare Workers (shows API URL, auto-builds)"
+	@echo "  deploy-frontend-only : Deploy pre-built frontend (requires build-frontend-cf first)"
 	@echo "  preview-frontend : Start Cloudflare Workers preview (logs to logs/frontend-preview.log)"
 	@echo ""
 	@echo "Full-stack:"
