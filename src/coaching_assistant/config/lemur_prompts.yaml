@@ -1,0 +1,281 @@
+# LeMUR Prompts Configuration
+# Configuration file for AssemblyAI LeMUR prompts used in transcript processing
+
+# Model Configuration
+model_settings:
+  default_model: "claude_sonnet_4_20250514"  # Claude 4 Sonnet
+  fallback_model: "claude3_5_sonnet"         # Fallback to Claude 3.5 Sonnet
+  max_output_size: 4000
+  enable_combined_mode: true
+
+# Speaker Identification Prompts
+speaker_identification:
+  chinese:
+    default: |
+      你是一個專業的教練對話分析師。請分析以下教練對話逐字稿，並識別說話者身份。
+
+      這是一段教練(Coach)與客戶(Client)的對話。請判斷每個說話者是「教練」還是「客戶」。
+
+      教練的特徵：
+      - 會問開放性問題（如「你可以多說一點嗎？」「你覺得呢？」）
+      - 會引導對話方向和深入探索
+      - 會提供反饋、觀察和建議
+      - 語調通常比較引導性和支持性
+      - 會使用教練技巧如重述、澄清、挑戰
+
+      客戶的特徵：
+      - 主要分享自己的情況、感受和經歷
+      - 回答教練的問題和探索
+      - 尋求幫助、建議或解決方案
+      - 語調比較敘述性和個人化
+      - 會表達困惑、糾結或需要支持的狀況
+
+      逐字稿內容：
+      {transcript_text}
+
+      請回覆一個JSON格式的說話者對應表，將原始說話者標籤對應到正確的角色（使用繁體中文）：
+      例如：{"A": "教練", "B": "客戶"} 或 {"Speaker A": "教練", "Speaker B": "客戶"}
+
+      只回覆JSON，不要其他說明，請確保使用繁體中文。
+
+  english:
+    default: |
+      You are a professional coaching conversation analyst. Please analyze the following coaching transcript and identify the speakers.
+
+      This is a conversation between a Coach and a Client. Please determine which speaker is the "Coach" and which is the "Client".
+
+      Coach characteristics:
+      - Asks open-ended questions
+      - Guides conversation direction
+      - Provides feedback and suggestions
+      - Uses guiding tone
+      - Employs coaching techniques like reflecting, clarifying, challenging
+
+      Client characteristics:
+      - Shares personal situations and feelings
+      - Responds to coach's questions
+      - Seeks help or advice
+      - Uses descriptive tone
+      - Expresses confusion or need for support
+
+      Transcript:
+      {transcript_text}
+
+      Please respond with a JSON mapping of original speaker labels to correct roles:
+      Example: {"A": "Coach", "B": "Client"} or {"Speaker A": "Coach", "Speaker B": "Client"}
+
+      Respond with JSON only, no other explanation.
+
+# Punctuation Optimization Prompts
+punctuation_optimization:
+  chinese:
+    default: |
+      🚨 重要提醒：絕對不要在中文字之間加空格！中文應該連續書寫！
+
+      正確範例：「你好，我是教練。」
+      錯誤範例：「你 好 ， 我 是 教 練 。」← 這樣是錯誤的！
+
+      你是一個專業的繁體中文文本編輯師。請改善以下教練對話逐字稿的標點符號和斷句。
+
+      🔥 絕對禁止事項：
+      ❌ 絕對不可以在中文字之間加任何空格
+      ❌ 絕對不可以將連續的中文拆散
+
+      ✅ 必須遵守的格式要求：
+      1. 必須使用繁體中文字（Traditional Chinese）輸出
+      2. 中文字必須連續書寫，字與字之間絕對不加空格
+      3. 保持說話者標籤和對話結構不變
+      4. 使用繁體中文全形標點符號（，。？！）
+
+      標點符號改善任務：
+      1. 在長段落內部添加適當的逗號、句號、問號、驚嘆號
+      2. 每個完整的思想或意思單元要用逗號分隔
+      3. 每個完整的句子要用句號結尾
+      4. 疑問句要用問號結尾
+      5. 轉折詞（但是、然後、所以、因為）前後要加逗號
+
+      說話者對應：{speaker_corrections}
+
+      請改善以下逐字稿：
+      {transcript_text}
+
+      ⚠️ 最後提醒：回覆改善後的逐字稿時，嚴格保持相同格式（說話者: 內容），只改善標點符號，中文字之間絕對不可以有空格！
+
+    enhanced: |
+      你是一個專業的繁體中文文本編輯師，專門改善教練對話的文本品質。
+
+      🎯 核心任務：改善標點符號，提升對話可讀性
+
+      📋 格式要求：
+      - 使用繁體中文（Traditional Chinese）
+      - 中文字連續書寫，不加空格
+      - 保持原有說話者標籤
+      - 使用全形標點（，。？！；：）
+
+      🔧 改善重點：
+      1. 句子結構：每個完整思想用句號結尾
+      2. 思想分段：用逗號分隔不同概念
+      3. 疑問語句：問句必須用問號
+      4. 語氣表達：驚嘆或強調用驚嘆號
+      5. 轉折連接：轉折詞前後加逗號
+      6. 列舉項目：用逗號分隔
+
+      說話者映射：{speaker_corrections}
+
+      原始逐字稿：
+      {transcript_text}
+
+      請輸出改善後的逐字稿，格式：說話者: 內容
+
+  english:
+    default: |
+      You are a professional English text editor. Please improve the punctuation of the following coaching transcript.
+
+      Format Requirements:
+      1. Maintain proper English spacing
+      2. Keep original speaker labels unchanged
+      3. Follow standard English punctuation rules
+
+      Punctuation Improvement Tasks:
+      1. Add appropriate punctuation within long paragraphs (periods, commas, question marks, exclamation marks)
+      2. Separate complete thoughts and ideas with commas
+      3. End complete sentences with periods
+      4. Use question marks for questions
+      5. Use exclamation marks for emphasis
+      6. Add commas before and after transition words (but, then, so, because)
+      7. Separate list items with commas
+
+      Speaker mapping: {speaker_corrections}
+
+      Please improve the following transcript:
+      {transcript_text}
+
+      Example format:
+      Coach: Good, Lisha hello, I am your coach today, so I will record later, and will take some notes, are you OK?
+
+      Reply with the improved transcript, maintaining the same format (Speaker: content), only improving punctuation.
+
+# Combined Processing Prompts (Speaker + Punctuation)
+combined_processing:
+  chinese:
+    default: |
+      你是一個專業的教練對話分析和文本編輯專家。請同時完成兩個任務：
+
+      任務一：識別說話者角色
+      這是教練與客戶的對話，請識別誰是「教練」誰是「客戶」：
+
+      教練特徵：問開放性問題、引導對話、提供反饋、使用教練技巧
+      客戶特徵：分享個人情況、回應問題、尋求幫助、表達困惑
+
+      任務二：改善標點符號
+      🚨 重要：中文字之間不加空格！使用繁體中文全形標點。
+
+      改善要求：
+      - 完整句子用句號結尾
+      - 思想單元用逗號分隔
+      - 問句用問號
+      - 轉折詞前後加逗號
+
+      原始逐字稿：
+      {transcript_text}
+
+      請回覆兩部分：
+
+      1. 說話者映射（JSON格式）：
+      {"原始標籤": "教練或客戶"}
+
+      2. 改善後的逐字稿：
+      教練: 改善後的內容...
+      客戶: 改善後的內容...
+
+      格式要求：保持「說話者: 內容」的格式，使用繁體中文，中文字連續書寫。
+
+    optimized: |
+      🎯 綜合任務：教練對話分析與文本優化
+
+      你是專業的對話分析師，請執行以下兩項任務：
+
+      📋 任務A：角色識別
+      判斷說話者是「教練」還是「客戶」：
+      • 教練：問開放性問題、引導探索、提供觀察反饋
+      • 客戶：分享經歷感受、回應探索、尋求支持協助
+
+      📋 任務B：標點優化
+      🔥 核心原則：中文字連續書寫，絕不加空格！
+      • 使用繁體中文全形標點（，。？！）
+      • 完整思想用句號，概念分隔用逗號
+      • 問句用問號，強調用驚嘆號
+
+      輸入內容：
+      {transcript_text}
+
+      輸出格式：
+      ```json
+      {"speaker_mapping": {"A": "教練", "B": "客戶"}}
+      ```
+
+      ```transcript
+      教練: 優化後的對話內容，標點完整。
+      客戶: 優化後的回應內容，標點準確。
+      ```
+
+  english:
+    default: |
+      You are a professional coaching conversation analyst and text editor. Please perform two tasks simultaneously:
+
+      Task 1: Speaker Role Identification
+      This is a conversation between a Coach and a Client. Identify which speaker is which:
+
+      Coach characteristics: Asks open questions, guides conversation, provides feedback, uses coaching techniques
+      Client characteristics: Shares personal situations, responds to questions, seeks help, expresses concerns
+
+      Task 2: Punctuation Improvement
+      Improve punctuation following standard English rules:
+      - End complete sentences with periods
+      - Separate thoughts with commas
+      - Use question marks for questions
+      - Add commas around transition words
+
+      Original transcript:
+      {transcript_text}
+
+      Please provide two parts:
+
+      1. Speaker mapping (JSON format):
+      {"original_label": "Coach or Client"}
+
+      2. Improved transcript:
+      Coach: Improved content with proper punctuation.
+      Client: Improved content with proper punctuation.
+
+      Format: Maintain "Speaker: content" format with proper English punctuation.
+
+# Custom Prompt Templates
+templates:
+  speaker_only:
+    placeholder_text: "Only perform speaker identification, keep original text unchanged."
+  punctuation_only:
+    placeholder_text: "Only improve punctuation, keep original speakers unchanged."
+  combined:
+    placeholder_text: "Perform both speaker identification and punctuation improvement."
+
+# Error Handling
+fallback_prompts:
+  speaker_identification_error: "Unable to identify speakers. Using original speaker assignments."
+  punctuation_error: "Unable to improve punctuation. Using original text."
+  combined_error: "Unable to perform combined processing. Falling back to original transcript."
+
+# Performance Settings
+performance:
+  batch_processing:
+    max_batch_chars: 3000
+    max_batch_size: 10
+    min_batch_size: 1
+  
+  adaptive_sizing:
+    large_transcript_threshold: 15000  # chars
+    medium_transcript_threshold: 8000  # chars
+    
+  concurrent_processing:
+    max_concurrent_batches: 3
+    enable_parallel_processing: true

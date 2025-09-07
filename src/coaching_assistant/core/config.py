@@ -97,6 +97,13 @@ class Settings(BaseSettings):
     ASSEMBLYAI_SPEAKERS_EXPECTED: int = 2  # Number of speakers expected for diarization
     ASSEMBLYAI_WEBHOOK_URL: str = ""  # Optional webhook URL for notifications
 
+    # LeMUR (Large Language Model) 設定
+    LEMUR_MODEL: str = "claude_sonnet_4_20250514"  # Claude 4 Sonnet as default
+    LEMUR_FALLBACK_MODEL: str = "claude3_5_sonnet"  # Fallback to Claude 3.5 Sonnet
+    LEMUR_MAX_OUTPUT_SIZE: int = 4000  # Maximum output size for LeMUR responses
+    LEMUR_COMBINED_MODE: bool = True  # Enable combined speaker + punctuation processing
+    LEMUR_PROMPTS_PATH: str = ""  # Custom path to prompts YAML file (optional)
+
     # Language-specific STT configurations (JSON format)
     # Example: {"zh-TW": {"location": "asia-southeast1", "model": "latest_long"}}
     STT_LANGUAGE_CONFIGS: str = ""
