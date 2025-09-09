@@ -1,8 +1,8 @@
 {
-  "version": "2.16.0",
-  "displayVersion": "v2.16.0", 
-  "description": "Speaker Format Normalization Fix",
+  "version": "2.17.0",
+  "displayVersion": "v2.17.0", 
+  "description": "A/B Speaker Format Consistency & Role Assignment Fix",
   "releaseDate": "2025-09-09",
-  "releaseNotes": "Critical fix for mixed speaker format issue in LeMUR transcript processing. Fixed bug where transcripts contained both Speaker_1/Speaker_2 AND A/B formats mixed together, causing incorrect role assignments. Implemented speaker format normalization pipeline that ensures consistent speaker formatting throughout the entire processing pipeline. Added bidirectional mapping to preserve original speaker formats while normalizing for LeMUR processing. Enhanced statistical role determination to work correctly with any speaker format. Updated comprehensive test coverage for normalization scenarios.",
+  "releaseNotes": "Comprehensive fix for speaker format consistency and role assignment issues. Resolved the mixed A/B and Speaker_1/Speaker_2 format problem by: (1) Maintaining consistent A/B format throughout the entire pipeline from AssemblyAI to database storage; (2) Updated LeMUR prompts to use A/B labels instead of Speaker_1/Speaker_2; (3) Fixed missing role assignment storage by converting LeMUR speaker mapping to database format; (4) Removed early role assignment to avoid conflicts with LeMUR statistical analysis; (5) Enhanced role determination with detailed logging, confidence assessment, and consistency checking between character count and speaking time metrics. Now provides transparent explanations of role assignment decisions and warnings for uncertain cases.",
   "author": "Coachly Team"
 }

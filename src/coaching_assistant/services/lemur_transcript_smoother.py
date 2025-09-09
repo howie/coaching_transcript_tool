@@ -1052,7 +1052,8 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         
         try:
             # Prepare transcript for LeMUR (raw, with spaces - LLM will clean them)
-            transcript_text, normalized_to_original_map = self._prepare_transcript_for_lemur(segments)
+            # Don't normalize speakers - preserve original A/B format from AssemblyAI
+            transcript_text, normalized_to_original_map = self._prepare_transcript_for_lemur(segments, normalize_speakers=False)
             logger.info(f"📝 PREPARED TRANSCRIPT LENGTH: {len(transcript_text)} characters")
             logger.info(f"🔄 Normalization mapping (A/B -> original): {normalized_to_original_map}")
             
@@ -1254,7 +1255,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             # Strategy 4: Skip automatic role inference (will use statistical method later)
             if '教練:' in transcript_content or '客戶:' in transcript_content:
                 logger.info("⚠️ LeMUR returned role labels (教練/客戶), but we'll ignore them and use statistical determination later")
-                # Don't infer mapping here - keep original Speaker_1/Speaker_2 labels
+                # Don't infer mapping here - keep original A/B labels
             
             # Parse transcript content to segments with mandatory cleanup
             improved_segments = self._parse_transcript_content_to_segments_with_cleanup(
@@ -1263,37 +1264,18 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             
             logger.info(f"✅ Parsed {len(improved_segments)} segments from combined response")
             
-            # Unified format post-processing: Fix mixed speaker formats
+            # Verify speaker format consistency - expect A/B format from LeMUR
             all_speakers = set(seg.speaker for seg in improved_segments)
-            has_ab = any(s in ['A', 'B'] for s in all_speakers)
-            has_speaker_n = any(s.startswith('Speaker_') for s in all_speakers)
+            logger.info(f"📊 Speaker formats in response: {all_speakers}")
             
-            if has_ab and has_speaker_n:
-                logger.warning(f"⚠️ Mixed speaker formats detected: {all_speakers}")
-                logger.info("🔄 Applying unified format conversion to fix mixed formats")
-                
-                # Count conversions for logging
-                conversions = 0
-                for seg in improved_segments:
-                    if seg.speaker in ['A', 'B']:
-                        original_speaker = seg.speaker
-                        # Try to map using normalized_to_original_map first
-                        if seg.speaker in normalized_to_original_map:
-                            seg.speaker = normalized_to_original_map[seg.speaker]
-                        else:
-                            # Fallback: map to default Speaker format
-                            seg.speaker = 'Speaker_1' if seg.speaker == 'A' else 'Speaker_2'
-                        
-                        logger.debug(f"🔄 Unified format conversion: {original_speaker} → {seg.speaker}")
-                        conversions += 1
-                
-                logger.info(f"✅ Fixed mixed formats: converted {conversions} segments to consistent format")
-                
-                # Verify no mixed formats remain
-                final_speakers = set(seg.speaker for seg in improved_segments)
-                logger.info(f"📊 Final speaker formats: {final_speakers}")
+            # With updated prompts, we should consistently get A/B format
+            # Only log if unexpected formats are found
+            unexpected_formats = [s for s in all_speakers if s not in ['A', 'B']]
+            if unexpected_formats:
+                logger.warning(f"⚠️ Unexpected speaker formats detected: {unexpected_formats}")
+                logger.info("ℹ️ Consider updating LeMUR prompts if this persists")
             else:
-                logger.info(f"✅ Consistent speaker format detected: {all_speakers}")
+                logger.info("✅ Consistent A/B speaker format maintained")
             
             return speaker_mapping, improved_segments
             
@@ -1454,7 +1436,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                         speaker = 'A' if len(improved_segments) % 2 == 0 else 'B'
                         logger.debug(f"🔄 Converted role label to alternating A/B: {parts[0].strip()} → {speaker}")
                     
-                    # Map normalized A/B back to original speaker format (Speaker_1, Speaker_2, etc.)
+                    # Map normalized A/B back to original speaker format if needed
                     if speaker in normalized_to_original_map:
                         original_speaker = normalized_to_original_map[speaker]
                         logger.debug(f"🔄 Mapped normalized speaker to original: {speaker} → {original_speaker}")
@@ -1649,22 +1631,61 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             logger.warning("⚠️ Less than 2 speakers found, cannot determine roles")
             return {}
         
-        # 按字數排序
+        logger.info("🔍 Analyzing role determination criteria...")
+        
+        # 按字數和時間排序
         sorted_by_chars = sorted(speaker_stats.items(), key=lambda x: x[1]['char_count'])
+        sorted_by_duration = sorted(speaker_stats.items(), key=lambda x: x[1]['duration_ms'])
         
-        # 基本判斷：講話少的是教練，多的是客戶
-        coach_speaker = sorted_by_chars[0][0]  # 字數最少
-        client_speaker = sorted_by_chars[-1][0]  # 字數最多
+        # 基於字數的判斷（主要標準）
+        coach_by_chars = sorted_by_chars[0][0]  # 字數最少
+        client_by_chars = sorted_by_chars[-1][0]  # 字數最多
         
-        # 確保有明顯差異（至少 20% 的差異）
+        # 基於時間的判斷（參考標準）
+        coach_by_time = sorted_by_duration[0][0]  # 時間最少
+        client_by_time = sorted_by_duration[-1][0]  # 時間最多
+        
+        logger.info(f"📝 Character-based assessment: {coach_by_chars} = coach, {client_by_chars} = client")
+        logger.info(f"⏱️ Time-based assessment: {coach_by_time} = coach, {client_by_time} = client")
+        
+        # 檢查一致性
+        chars_time_consistent = (coach_by_chars == coach_by_time and client_by_chars == client_by_time)
+        logger.info(f"🎯 Character/time consistency: {'✅ Consistent' if chars_time_consistent else '⚠️ Inconsistent'}")
+        
+        if not chars_time_consistent:
+            logger.warning("⚠️ Character count and speaking time suggest different role assignments!")
+            logger.warning("⚠️ Using CHARACTER COUNT as primary indicator (more reliable for coaching sessions)")
+            
+        # 使用字數作為主要判斷標準（更可靠）
+        coach_speaker = coach_by_chars
+        client_speaker = client_by_chars
+        
+        # 計算差異和信心度
         coach_chars = sorted_by_chars[0][1]['char_count']
         client_chars = sorted_by_chars[-1][1]['char_count']
+        coach_time = speaker_stats[coach_speaker]['duration_ms'] / 1000.0
+        client_time = speaker_stats[client_speaker]['duration_ms'] / 1000.0
         
-        if coach_chars > 0:
-            ratio = client_chars / coach_chars
-            if ratio < 1.2:
-                logger.warning(f"⚠️ Small difference in speech volume (ratio: {ratio:.2f}), "
-                             f"role assignment may be uncertain")
+        char_ratio = client_chars / max(coach_chars, 1)
+        time_ratio = client_time / max(coach_time, 1)
+        
+        # 信心度評估
+        confidence = "High"
+        if char_ratio < 1.2:
+            confidence = "Low (small difference)"
+        elif not chars_time_consistent:
+            confidence = "Medium (time/char inconsistency)"
+        elif char_ratio > 3.0:
+            confidence = "High (clear difference)"
+        else:
+            confidence = "Medium"
+        
+        logger.info(f"📊 Final ratios - Characters: {char_ratio:.2f}, Time: {time_ratio:.2f}")
+        logger.info(f"📊 Assignment confidence: {confidence}")
+        
+        if char_ratio < 1.2:
+            logger.warning(f"⚠️ Small character difference (ratio: {char_ratio:.2f}), "
+                         f"role assignment may be uncertain")
         
         role_mapping = {
             coach_speaker: "教練", 
@@ -1672,7 +1693,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         }
         
         logger.info(f"✅ Role determination result: {role_mapping}")
-        logger.info(f"📊 Speech ratio (client/coach): {client_chars/max(coach_chars,1):.2f}")
+        logger.info(f"📊 Speech ratio (client/coach): {char_ratio:.2f}")
         
         return role_mapping
     
