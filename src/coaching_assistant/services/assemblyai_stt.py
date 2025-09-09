@@ -126,6 +126,32 @@ class AssemblyAIProvider(STTProvider):
 
         return text
 
+    def _apply_fallback_preprocessing(self, segments: List[TranscriptSegment], result: Dict[str, Any], needs_conversion: bool) -> List[TranscriptSegment]:
+        """Apply fallback preprocessing to segments when LeMUR fails."""
+        logger.debug("🔄 Applying fallback preprocessing to segments")
+        processed_segments = []
+        
+        for segment in segments:
+            text = segment.content
+            
+            # Apply Chinese processing if needed
+            if (result.get("language_code") == "zh" or "zh" in (result.get("language_code") or "")):
+                text = self._process_chinese_text(text, needs_conversion)
+                logger.debug("Applied fallback preprocessing to segment")
+            
+            # Create new segment with processed text
+            processed_segment = TranscriptSegment(
+                speaker_id=segment.speaker_id,
+                start_seconds=segment.start_seconds,
+                end_seconds=segment.end_seconds,
+                content=text,
+                confidence=segment.confidence,
+            )
+            processed_segments.append(processed_segment)
+        
+        logger.info(f"✅ Fallback preprocessing applied to {len(processed_segments)} segments")
+        return processed_segments
+
     def _upload_audio(self, audio_uri: str) -> str:
         """Upload audio file to AssemblyAI or return URL if already accessible."""
         # If it's already an HTTP/HTTPS URL, return it directly
@@ -395,15 +421,26 @@ class AssemblyAIProvider(STTProvider):
         segments = []
         needs_conversion = self._needs_traditional_conversion(original_language)
 
+        # Check if we will use LeMUR optimization - if so, skip preprocessing to avoid duplication
+        language_code = result.get("language_code") or ""
+        will_use_lemur = (
+            (language_code == "zh" or "zh" in language_code or 
+             language_code.startswith("cmn") or language_code in [None, "", "auto"]) 
+            and result.get("utterances")
+        )
+        logger.debug(f"🔧 will_use_lemur: {will_use_lemur}, language_code: {language_code}, has_utterances: {bool(result.get('utterances'))}")
+
         # Check if we have utterances (speaker diarization enabled)
         if "utterances" in result and result["utterances"]:
             for utterance in result["utterances"]:
                 # Process text based on language
                 text = utterance["text"]
-                if result.get("language_code") == "zh" or "zh" in (
+                if (result.get("language_code") == "zh" or "zh" in (
                     result.get("language_code") or ""
-                ):
+                )) and not will_use_lemur:
+                    # Only preprocess if we won't use LeMUR (to avoid duplication)
                     text = self._process_chinese_text(text, needs_conversion)
+                    logger.debug("Applied local preprocessing (LeMUR not used)")
 
                 segment = TranscriptSegment(
                     speaker_id=self._convert_speaker_id(utterance.get("speaker", 0)),
@@ -443,10 +480,12 @@ class AssemblyAIProvider(STTProvider):
                     if should_break:
                         # Create segment
                         text = " ".join(current_sentence)
-                        if result.get("language_code") == "zh" or "zh" in (
+                        if (result.get("language_code") == "zh" or "zh" in (
                             result.get("language_code") or ""
-                        ):
+                        )) and not will_use_lemur:
+                            # Only preprocess if we won't use LeMUR (to avoid duplication)
                             text = self._process_chinese_text(text, needs_conversion)
+                            logger.debug("Applied local preprocessing (LeMUR not used)")
 
                         segment = TranscriptSegment(
                             speaker_id=current_speaker or 0,  # Already converted above
@@ -465,10 +504,12 @@ class AssemblyAIProvider(STTProvider):
                 # Handle remaining words
                 if current_sentence and current_start is not None:
                     text = " ".join(current_sentence)
-                    if result.get("language_code") == "zh" or "zh" in (
+                    if (result.get("language_code") == "zh" or "zh" in (
                         result.get("language_code") or ""
-                    ):
+                    )) and not will_use_lemur:
+                        # Only preprocess if we won't use LeMUR (to avoid duplication)
                         text = self._process_chinese_text(text, needs_conversion)
+                        logger.debug("Applied local preprocessing (LeMUR not used)")
 
                     segment = TranscriptSegment(
                         speaker_id=current_speaker or 0,  # Already converted above
@@ -484,8 +525,10 @@ class AssemblyAIProvider(STTProvider):
                 if text and (
                     result.get("language_code") == "zh"
                     or "zh" in (result.get("language_code") or "")
-                ):
+                ) and not will_use_lemur:
+                    # Only preprocess if we won't use LeMUR (to avoid duplication)
                     text = self._process_chinese_text(text, needs_conversion)
+                    logger.debug("Applied local preprocessing (LeMUR not used)")
 
                 if text:
                     segment = TranscriptSegment(
@@ -518,21 +561,11 @@ class AssemblyAIProvider(STTProvider):
                     f"expected {self.speakers_expected}, detected {speakers_detected}: {sorted(unique_speakers)}"
                 )
 
-            # Attempt role assignment regardless of speaker count
-            if speakers_detected >= 2:
-                try:
-                    role_assignments, confidence_metrics = assign_roles_simple(segments)
-                    logger.info(f"Simple role assignment: {role_assignments}")
-                    logger.info(
-                        f"Assignment confidence: {confidence_metrics.get('confidence', 0):.2%}"
-                    )
-                    if confidence_metrics.get("method"):
-                        logger.info(
-                            f"Assignment method: {confidence_metrics['method']}"
-                        )
-                except Exception as e:
-                    logger.warning(f"Failed to assign speaker roles automatically: {e}")
-            else:
+            # Skip early role assignment - will be done after LeMUR processing to avoid conflicts
+            # This preserves the original speaker format (A/B) for LeMUR processing
+            logger.info(f"Skipping early role assignment, preserving original speaker format for LeMUR")
+            
+            if speakers_detected < 2:
                 # Single speaker detected - log this situation
                 logger.warning(
                     f"Cannot assign coach/client roles: only {speakers_detected} speaker detected. "
@@ -601,7 +634,7 @@ class AssemblyAIProvider(STTProvider):
         if should_smooth:
             try:
                 logger.info("🧠 Auto-applying LeMUR-based transcript smoothing for Chinese language")
-                from .lemur_transcript_smoother import smooth_transcript_with_lemur
+                from .lemur_transcript_smoother import smooth_transcript_with_lemur, LeMURTranscriptSmoother
                 
                 # Prepare segments for LeMUR processing
                 lemur_segments = []
@@ -619,24 +652,53 @@ class AssemblyAIProvider(STTProvider):
                     logger.debug(f"Sample segment: speaker={sample_segment.get('speaker')}, "
                                f"text={sample_segment.get('text', 'N/A')[:100]}...")
                 
-                # Apply LeMUR-based smoothing
+                # STEP 1: Merge close segments to fix fragmentation issues
+                logger.info("🔗 Pre-processing: Merging fragmented segments")
+                smoother = LeMURTranscriptSmoother()
+                merged_segments = smoother._merge_close_segments(lemur_segments, max_gap_ms=500)
+                logger.info(f"🔀 Segment merging: {len(lemur_segments)} → {len(merged_segments)} segments")
+                
+                # Apply LeMUR-based smoothing with COMBINED PROCESSING MODE
                 import asyncio
+                logger.info("🔄 USING COMBINED PROCESSING MODE for auto-optimization")
                 smoothed_result = asyncio.run(smooth_transcript_with_lemur(
-                    segments=lemur_segments,
+                    segments=merged_segments,  # Use merged segments instead of original
                     session_language=language_code or "zh-TW",
-                    is_coaching_session=True
+                    is_coaching_session=True,
+                    use_combined_processing=True  # Force combined mode for comprehensive processing
                 ))
                 
                 if smoothed_result.segments:
                     # Convert LeMUR segments back to our format
                     optimized_segments = []
                     for lemur_segment in smoothed_result.segments:
-                        # Map corrected speaker names to IDs
-                        speaker_name_to_id = {"教練": 1, "Coach": 1, "客戶": 2, "Client": 2}
-                        speaker_id = speaker_name_to_id.get(lemur_segment.speaker, 1)
+                        # Keep speaker format as returned by LeMUR
+                        # If LeMUR returned role names, map them back to A/B format temporarily
+                        if lemur_segment.speaker in ["教練", "Coach", "客戶", "Client"]:
+                            # This shouldn't happen with updated prompts, but handle gracefully
+                            speaker_id = lemur_segment.speaker  # Keep the role name temporarily
+                        else:
+                            # LeMUR should return A/B format, convert to expected speaker_id if needed
+                            speaker_id = lemur_segment.speaker  # Should be "A" or "B"
+                        
+                        # Map final speaker format for database storage
+                        # LeMUR should return A/B or role names, we need to convert to appropriate format
+                        if speaker_id in ["A", "B"]:
+                            # Convert A/B to numeric IDs for database (A=1, B=2)
+                            final_speaker_id = ord(speaker_id) - ord("A") + 1
+                        elif speaker_id in ["教練", "Coach"]:
+                            # Map roles to numeric IDs (教練/Coach = 1)
+                            final_speaker_id = 1
+                        elif speaker_id in ["客戶", "Client"]:  
+                            # Map roles to numeric IDs (客戶/Client = 2)
+                            final_speaker_id = 2
+                        else:
+                            # Fallback for unexpected formats
+                            logger.warning(f"⚠️ Unexpected speaker format from LeMUR: {speaker_id}, defaulting to 1")
+                            final_speaker_id = 1
                         
                         optimized_segment = TranscriptSegment(
-                            speaker_id=speaker_id,
+                            speaker_id=final_speaker_id,
                             start_seconds=lemur_segment.start / 1000.0,  # Convert ms to seconds
                             end_seconds=lemur_segment.end / 1000.0,      # Convert ms to seconds
                             content=lemur_segment.text,
@@ -651,16 +713,50 @@ class AssemblyAIProvider(STTProvider):
                     provider_metadata["lemur_speaker_mapping"] = smoothed_result.speaker_mapping
                     provider_metadata["lemur_processing_notes"] = smoothed_result.processing_notes
                     
+                    # Convert LeMUR speaker mapping to database role assignments
+                    if smoothed_result.speaker_mapping:
+                        role_assignments = {}
+                        for speaker, role in smoothed_result.speaker_mapping.items():
+                            # Convert speaker A/B to numeric IDs for database
+                            if speaker in ["A", "B"]:
+                                speaker_id = ord(speaker) - ord("A") + 1
+                            else:
+                                logger.warning(f"⚠️ Unexpected speaker format in mapping: {speaker}")
+                                continue
+                            
+                            # Map role names to database format
+                            if role in ["教練", "Coach"]:
+                                role_assignments[speaker_id] = "coach"
+                            elif role in ["客戶", "Client"]:
+                                role_assignments[speaker_id] = "client"
+                            else:
+                                logger.warning(f"⚠️ Unexpected role format in mapping: {role}")
+                                continue
+                        
+                        if role_assignments:
+                            provider_metadata["speaker_role_assignments"] = role_assignments
+                            logger.info(f"📊 Role assignments for database: {role_assignments}")
+                        else:
+                            logger.warning("⚠️ Failed to create role assignments from LeMUR mapping")
+                    
                     logger.info(f"✅ LeMUR auto-smoothing applied: {len(optimized_segments)} segments")
                     logger.info(f"🎭 Speaker mapping: {smoothed_result.speaker_mapping}")
                     logger.info(f"📝 Improvements: {', '.join(smoothed_result.improvements_made)}")
                 else:
                     logger.warning("LeMUR auto-smoothing failed or returned no segments, using original")
+                    # If we skipped preprocessing because we expected LeMUR to work, apply it now
+                    if will_use_lemur:
+                        logger.info("🔄 Applying fallback preprocessing since LeMUR failed")
+                        optimized_segments = self._apply_fallback_preprocessing(segments, result, needs_conversion)
                     
             except Exception as e:
                 logger.warning(f"LeMUR auto-smoothing failed: {e}, using original segments")
                 logger.exception("Full LeMUR error traceback:")
                 provider_metadata["lemur_smoothing_error"] = str(e)
+                # If we skipped preprocessing because we expected LeMUR to work, apply it now
+                if will_use_lemur:
+                    logger.info("🔄 Applying fallback preprocessing since LeMUR failed")
+                    optimized_segments = self._apply_fallback_preprocessing(segments, result, needs_conversion)
 
         # Update metadata
         provider_metadata["auto_smoothing_applied"] = smoothing_applied
