@@ -5,6 +5,44 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.15.0] - 2025-09-09
+
+### 🔧 Critical Bug Fix - Speaker Format Normalization
+
+#### Problem Resolved
+- **Mixed Speaker Format Issue**: Fixed critical bug where transcripts contained mixed speaker formats in the same session
+  - **Symptoms**: Logs showed both `Speaker_1/Speaker_2` AND `A/B` formats mixed together: `📈 Speaker_1: +18 chars` followed by `📈 B: +56 chars`
+  - **Impact**: Incorrect role assignments like `{'B': '教練', 'Speaker_2': '客戶'}` mixing different speaker formats
+  - **User Report**: "為什麼又有 speaker_1, speaker_2 又有 A.B ?" - roles were inverted and format was inconsistent
+
+#### Root Cause Analysis
+1. **Input Format Inconsistency**: Original segments could arrive in various formats (`Speaker_1/2`, `A/B`, `Speaker A/B`) depending on STT provider
+2. **Prompt Format Mismatch**: LeMUR prompts explicitly expected A/B format, but received inconsistent input formats
+3. **Role Label Conversion Logic**: When LeMUR returned role labels (教練/客戶) despite A/B prompts, the system introduced new A/B speakers mixed with existing formats
+
+#### Technical Solution
+- **Speaker Format Normalization Pipeline**:
+  - **Input Normalization**: `_prepare_transcript_for_lemur()` now normalizes ALL speaker labels to A/B format before sending to LeMUR
+  - **Bidirectional Mapping**: Creates mapping like `{'A': 'Speaker_1', 'B': 'Speaker_2'}` to preserve original format
+  - **Format Preservation**: `_parse_combined_response()` maps normalized A/B speakers back to original format consistently
+  - **No Format Mixing**: Eliminates mixed formats within the same transcript
+
+#### Implementation Details
+- **Backwards Compatibility**: Added optional `normalize_speakers` parameter to maintain compatibility with legacy sequential processing
+- **Robust Error Handling**: When LeMUR returns unexpected role labels, converts them through A/B normalization back to original format
+- **Statistical Integration**: Statistical role determination works on consistent speaker format, producing clean mappings
+
+#### Results & Validation
+- ✅ **Format Consistency**: No more mixed speaker formats in same transcript
+- ✅ **Correct Role Assignment**: Speech volume-based role assignment works correctly (more text = client, less text = coach)  
+- ✅ **Clean Role Mappings**: Produces consistent mappings like `{'Speaker_1': '客戶', 'Speaker_2': '教練'}` instead of mixed format mappings
+- ✅ **Test Coverage**: Updated all tests to handle new normalization pipeline
+
+#### Quality Assurance
+- **Comprehensive Testing**: Updated test suite with normalization scenarios
+- **Format Validation**: Tests ensure consistent speaker format throughout processing pipeline
+- **Edge Case Handling**: Proper handling when LeMUR returns role labels despite A/B format prompts
+
 ## [2.14.1] - 2025-08-23
 
 ### 🔧 Critical Bug Fix
