@@ -1,8 +1,8 @@
 {
-  "version": "2.15.13",
-  "displayVersion": "v2.15.13",
-  "description": "OAuth Redirect Configuration Complete",
-  "releaseDate": "2025-09-05",
-  "releaseNotes": "Comprehensive OAuth redirect fix with environment variable configuration. Added FRONTEND_URL to both backend settings and terraform infrastructure. Fixed frontend API URL configuration. Added debug logging for OAuth troubleshooting. Ensures proper OAuth redirects in both local development and production environments.",
+  "version": "2.16.0",
+  "displayVersion": "v2.16.0", 
+  "description": "Speaker Format Normalization Fix",
+  "releaseDate": "2025-09-09",
+  "releaseNotes": "Critical fix for mixed speaker format issue in LeMUR transcript processing. Fixed bug where transcripts contained both Speaker_1/Speaker_2 AND A/B formats mixed together, causing incorrect role assignments. Implemented speaker format normalization pipeline that ensures consistent speaker formatting throughout the entire processing pipeline. Added bidirectional mapping to preserve original speaker formats while normalizing for LeMUR processing. Enhanced statistical role determination to work correctly with any speaker format. Updated comprehensive test coverage for normalization scenarios.",
   "author": "Coachly Team"
 }

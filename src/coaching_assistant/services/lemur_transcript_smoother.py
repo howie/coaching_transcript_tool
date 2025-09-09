@@ -127,8 +127,8 @@ class LeMURTranscriptSmoother:
         logger.info("=" * 80)
         
         try:
-            # Convert segments to format suitable for LeMUR processing
-            transcript_text = self._prepare_transcript_for_lemur(segments)
+            # Convert segments to format suitable for LeMUR processing (no normalization for legacy function)
+            transcript_text, normalized_to_original_map = self._prepare_transcript_for_lemur(segments, normalize_speakers=False)
             logger.info("📝 PREPARED TRANSCRIPT TEXT FOR LEMUR:")
             logger.info(f"   Length: {len(transcript_text)} characters")
             logger.info(f"   First 500 chars: {transcript_text[:500]}...")
@@ -233,17 +233,47 @@ class LeMURTranscriptSmoother:
             logger.exception("Full error traceback:")
             raise
     
-    def _prepare_transcript_for_lemur(self, segments: List[Dict]) -> str:
-        """Convert transcript segments to text format suitable for LeMUR."""
+    def _prepare_transcript_for_lemur(self, segments: List[Dict], normalize_speakers: bool = True) -> tuple[str, Dict[str, str]]:
+        """Convert transcript segments to text format suitable for LeMUR with optional speaker normalization."""
         text_parts = []
+        speaker_normalization_map = {}  # original -> normalized (A/B)
+        normalized_to_original_map = {}  # normalized (A/B) -> original
         
-        for segment in segments:
-            speaker = segment.get('speaker', 'Unknown')
-            text = segment.get('text', '').strip()
-            if text:
-                text_parts.append(f"{speaker}: {text}")
+        if normalize_speakers:
+            # Get unique speakers and normalize to A/B
+            unique_speakers = []
+            for segment in segments:
+                speaker = segment.get('speaker', 'Unknown')
+                if speaker not in unique_speakers:
+                    unique_speakers.append(speaker)
+            
+            # Create normalization mapping
+            if len(unique_speakers) >= 1:
+                speaker_normalization_map[unique_speakers[0]] = 'A'
+                normalized_to_original_map['A'] = unique_speakers[0]
+            if len(unique_speakers) >= 2:
+                speaker_normalization_map[unique_speakers[1]] = 'B'
+                normalized_to_original_map['B'] = unique_speakers[1]
+            
+            logger.info(f"📊 Speaker normalization mapping: {speaker_normalization_map}")
+            
+            # Build transcript with normalized speakers
+            for segment in segments:
+                original_speaker = segment.get('speaker', 'Unknown')
+                normalized_speaker = speaker_normalization_map.get(original_speaker, original_speaker)
+                text = segment.get('text', '').strip()
+                if text:
+                    text_parts.append(f"{normalized_speaker}: {text}")
+        else:
+            # Keep original speaker format (for backwards compatibility)
+            for segment in segments:
+                speaker = segment.get('speaker', 'Unknown')
+                text = segment.get('text', '').strip()
+                if text:
+                    text_parts.append(f"{speaker}: {text}")
         
-        return '\n\n'.join(text_parts)
+        transcript_text = '\n\n'.join(text_parts)
+        return transcript_text, normalized_to_original_map
     
     async def _correct_speakers_with_lemur(
         self, 
@@ -1021,9 +1051,16 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         logger.info(f"🎯 CUSTOM PROMPTS PROVIDED: {custom_prompts is not None}")
         
         try:
-            # Prepare transcript for LeMUR
-            transcript_text = self._prepare_transcript_for_lemur(segments)
+            # Prepare transcript for LeMUR (raw, with spaces - LLM will clean them)
+            transcript_text, normalized_to_original_map = self._prepare_transcript_for_lemur(segments)
             logger.info(f"📝 PREPARED TRANSCRIPT LENGTH: {len(transcript_text)} characters")
+            logger.info(f"🔄 Normalization mapping (A/B -> original): {normalized_to_original_map}")
+            
+            # Show sample of input text to verify spaced Chinese is being sent to LeMUR
+            sample_text = transcript_text[:200] + "..." if len(transcript_text) > 200 else transcript_text
+            logger.info(f"📝 RAW INPUT SAMPLE (with spaces): {sample_text}")
+            if "只是 想" in transcript_text or " 是 " in transcript_text:
+                logger.info("✅ CONFIRMED: Spaced Chinese text detected - LeMUR will handle space removal")
             
             # Get combined prompt from configuration
             language = "chinese" if context.session_language.startswith('zh') else "english"
@@ -1034,10 +1071,14 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             else:
                 prompt_template = get_combined_prompt(language=language, variant="default")
                 if prompt_template:
-                    logger.info(f"🎯 Using configured combined prompt for {language}")
+                    logger.info(f"🎯 USING COMBINED PROMPT: combined_processing.{language}.default")
+                    logger.info(f"📝 PROMPT INCLUDES: Space removal, Speaker ID, Traditional Chinese, Punctuation")
                     prompt = prompt_template.format(transcript_text=transcript_text)
+                    # Log sample of the actual prompt being sent
+                    prompt_preview = prompt[:500] + "..." if len(prompt) > 500 else prompt
+                    logger.info(f"🔍 COMBINED PROMPT PREVIEW: {prompt_preview}")
                 else:
-                    logger.warning(f"⚠️ No combined prompt found, falling back to sequential processing")
+                    logger.error(f"❌ CRITICAL ERROR: No combined prompt found for language '{language}' - this should not happen!")
                     return await self.smooth_transcript(segments, context, custom_prompts)
             
             # Calculate output size (larger for combined response)
@@ -1076,7 +1117,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             # Parse combined response
             combined_response = result.response.strip()
             speaker_mapping, improved_segments = self._parse_combined_response(
-                combined_response, segments, context
+                combined_response, segments, context, normalized_to_original_map
             )
             
             end_time = time.time()
@@ -1094,11 +1135,24 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                 processing_notes=f"Combined processing: Processed {len(segments)} segments in {processing_time:.2f}s using {self.config.default_model}"
             )
             
+            # Apply statistical role determination if speaker_mapping is empty
+            if not speaker_mapping and context.is_coaching_session and len(improved_segments) > 0:
+                logger.info("🔍 Applying statistical role determination (coaching session)")
+                statistical_role_mapping = self._determine_roles_by_statistics(improved_segments)
+                if statistical_role_mapping:
+                    improved_segments = self._apply_role_mapping_to_segments(improved_segments, statistical_role_mapping)
+                    # Update the result
+                    lemur_result.segments = improved_segments
+                    lemur_result.speaker_mapping = statistical_role_mapping
+                    logger.info(f"✅ Statistical role mapping applied: {statistical_role_mapping}")
+                else:
+                    logger.warning("⚠️ Statistical role determination returned empty mapping")
+            
             logger.info("=" * 80)
             logger.info("✅ COMBINED LEMUR PROCESSING COMPLETED")
             logger.info(f"⏰ END TIME: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))}")
             logger.info(f"⏱️ TOTAL PROCESSING TIME: {processing_time:.2f} seconds")
-            logger.info(f"📊 RESULTS: {len(improved_segments)} segments, speaker mapping: {speaker_mapping}")
+            logger.info(f"📊 RESULTS: {len(improved_segments)} segments, speaker mapping: {lemur_result.speaker_mapping}")
             logger.info("=" * 80)
             
             return lemur_result
@@ -1121,69 +1175,134 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         self, 
         response: str, 
         original_segments: List[Dict],
-        context: SmoothingContext
+        context: SmoothingContext,
+        normalized_to_original_map: Dict[str, str]
     ) -> Tuple[Dict[str, str], List[TranscriptSegment]]:
         """
-        Parse the combined LeMUR response to extract speaker mapping and improved segments.
+        Parse LeMUR response with flexible format handling.
         
-        Expected format:
-        ```json
-        {"speaker_mapping": {"A": "教練", "B": "客戶"}}
-        ```
-        
-        ```transcript
-        教練: Improved content with punctuation.
-        客戶: Improved response with punctuation.
-        ```
+        Handles multiple response formats:
+        1. JSON + transcript blocks
+        2. Pure text with speaker: content lines
+        3. Mixed format responses
+        4. Malformed responses
         """
+        import json
+        import re
+        
+        speaker_mapping = {}
+        transcript_content = ""
+        
         try:
-            # Split response into JSON and transcript parts
-            import json
-            import re
+            logger.info("📝 Parsing LeMUR combined response with flexible handling")
             
-            # Extract JSON speaker mapping
-            json_match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
-            speaker_mapping = {}
+            # Strategy 1: Try to extract JSON speaker mapping (if present)
+            json_patterns = [
+                r'```json\s*(\{.*?\})\s*```',  # Standard JSON blocks
+                r'\{[^}]*"speaker_mapping"[^}]*\}',  # Inline JSON with speaker_mapping
+                r'\{"[AB]":\s*"[^"]+"\s*,?\s*"[AB]":\s*"[^"]+"\}',  # Simple A/B mapping
+            ]
             
-            if json_match:
-                try:
-                    mapping_data = json.loads(json_match.group(1))
-                    speaker_mapping = mapping_data.get("speaker_mapping", mapping_data)
-                    logger.info(f"📊 Extracted speaker mapping: {speaker_mapping}")
-                except json.JSONDecodeError as e:
-                    logger.warning(f"⚠️ Failed to parse JSON speaker mapping: {e}")
+            for pattern in json_patterns:
+                json_match = re.search(pattern, response, re.DOTALL)
+                if json_match:
+                    try:
+                        json_text = json_match.group(1) if '```' in pattern else json_match.group(0)
+                        mapping_data = json.loads(json_text)
+                        speaker_mapping = mapping_data.get("speaker_mapping", mapping_data)
+                        logger.info(f"📊 Extracted speaker mapping: {speaker_mapping}")
+                        break
+                    except (json.JSONDecodeError, IndexError) as e:
+                        logger.debug(f"JSON pattern failed: {pattern}, error: {e}")
+                        continue
             
-            # Extract transcript content
-            transcript_match = re.search(r'```transcript\s*(.*?)\s*```', response, re.DOTALL)
+            # Strategy 2: Extract transcript content from various formats
+            transcript_patterns = [
+                r'```transcript\s*(.*?)\s*```',  # Standard transcript blocks
+                r'(?:教練:|客戶:|Coach:|Client:).*',  # Direct speaker lines
+            ]
+            
+            transcript_match = re.search(transcript_patterns[0], response, re.DOTALL)
             if transcript_match:
                 transcript_content = transcript_match.group(1)
-                logger.info("📝 Extracted transcript content from combined response")
+                logger.info("📝 Extracted transcript from structured block")
             else:
-                # Fallback: look for speaker: content lines
+                # Strategy 3: Extract all speaker: content lines
                 lines = response.split('\n')
                 transcript_lines = []
+                
                 for line in lines:
-                    if ':' in line and not line.strip().startswith('{'):
+                    line = line.strip()
+                    if not line:
+                        continue
+                        
+                    # Look for speaker: content patterns
+                    if ':' in line:
+                        # Skip JSON-like lines
+                        if line.startswith('{') or line.endswith('}') or '"' in line[:10]:
+                            continue
+                        # Skip markdown code blocks
+                        if line.startswith('```') or line.startswith('#'):
+                            continue
+                            
+                        # This looks like a transcript line
                         transcript_lines.append(line)
+                
                 transcript_content = '\n'.join(transcript_lines)
-                logger.info("📝 Extracted transcript content using fallback method")
+                logger.info(f"📝 Extracted {len(transcript_lines)} transcript lines using fallback method")
             
-            # Parse transcript content to segments
-            improved_segments = self._parse_transcript_content_to_segments(
-                transcript_content, original_segments, speaker_mapping
+            # Strategy 4: Skip automatic role inference (will use statistical method later)
+            if '教練:' in transcript_content or '客戶:' in transcript_content:
+                logger.info("⚠️ LeMUR returned role labels (教練/客戶), but we'll ignore them and use statistical determination later")
+                # Don't infer mapping here - keep original Speaker_1/Speaker_2 labels
+            
+            # Parse transcript content to segments with mandatory cleanup
+            improved_segments = self._parse_transcript_content_to_segments_with_cleanup(
+                transcript_content, original_segments, speaker_mapping, normalized_to_original_map
             )
+            
+            logger.info(f"✅ Parsed {len(improved_segments)} segments from combined response")
+            
+            # Unified format post-processing: Fix mixed speaker formats
+            all_speakers = set(seg.speaker for seg in improved_segments)
+            has_ab = any(s in ['A', 'B'] for s in all_speakers)
+            has_speaker_n = any(s.startswith('Speaker_') for s in all_speakers)
+            
+            if has_ab and has_speaker_n:
+                logger.warning(f"⚠️ Mixed speaker formats detected: {all_speakers}")
+                logger.info("🔄 Applying unified format conversion to fix mixed formats")
+                
+                # Count conversions for logging
+                conversions = 0
+                for seg in improved_segments:
+                    if seg.speaker in ['A', 'B']:
+                        original_speaker = seg.speaker
+                        # Try to map using normalized_to_original_map first
+                        if seg.speaker in normalized_to_original_map:
+                            seg.speaker = normalized_to_original_map[seg.speaker]
+                        else:
+                            # Fallback: map to default Speaker format
+                            seg.speaker = 'Speaker_1' if seg.speaker == 'A' else 'Speaker_2'
+                        
+                        logger.debug(f"🔄 Unified format conversion: {original_speaker} → {seg.speaker}")
+                        conversions += 1
+                
+                logger.info(f"✅ Fixed mixed formats: converted {conversions} segments to consistent format")
+                
+                # Verify no mixed formats remain
+                final_speakers = set(seg.speaker for seg in improved_segments)
+                logger.info(f"📊 Final speaker formats: {final_speakers}")
+            else:
+                logger.info(f"✅ Consistent speaker format detected: {all_speakers}")
             
             return speaker_mapping, improved_segments
             
         except Exception as e:
             logger.error(f"❌ Failed to parse combined response: {e}")
-            logger.info("🔄 Using fallback parsing method")
+            logger.exception("Full parsing error traceback:")
             
-            # Fallback: treat as regular transcript
-            improved_segments = self._parse_lemur_output_to_segments(
-                response, original_segments, {}
-            )
-            return {}, improved_segments
+            # Ultimate fallback: try to extract any usable content
+            return self._emergency_fallback_parsing(response, original_segments, context)
     
     def _parse_transcript_content_to_segments(
         self,
@@ -1245,6 +1364,384 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         
         logger.info(f"📊 Parsed {len(improved_segments)} segments from combined response")
         return improved_segments
+
+    def _infer_speaker_mapping_from_content(
+        self, 
+        transcript_content: str, 
+        original_segments: List[Dict]
+    ) -> Dict[str, str]:
+        """
+        Infer original speaker mapping by analyzing transcript content and original segments.
+        
+        Strategy: Look at which original speakers correspond to 教練/客戶 content.
+        """
+        mapping = {}
+        
+        try:
+            # Extract first few content lines for analysis
+            content_lines = []
+            for line in transcript_content.split('\n'):
+                line = line.strip()
+                if ':' in line:
+                    speaker, text = line.split(':', 1)
+                    speaker = speaker.strip()
+                    text = text.strip()
+                    
+                    if speaker in ['教練', '客戶', 'Coach', 'Client']:
+                        content_lines.append((speaker, text[:50]))  # First 50 chars
+                        
+                    if len(content_lines) >= 4:  # Analyze first 4 lines
+                        break
+            
+            if len(content_lines) < 2:
+                return {}
+            
+            # Simple heuristic: first speaker in transcript likely corresponds to first original speaker
+            # This assumes LeMUR preserved the general order
+            original_speakers = list(set(seg.get('speaker', 'A') for seg in original_segments[:4]))
+            original_speakers.sort()  # Consistent ordering
+            
+            if len(original_speakers) >= 2 and len(content_lines) >= 2:
+                first_lemur_speaker = content_lines[0][0]
+                second_lemur_speaker = content_lines[1][0] if content_lines[1][0] != first_lemur_speaker else (
+                    content_lines[2][0] if len(content_lines) > 2 else None
+                )
+                
+                if first_lemur_speaker and second_lemur_speaker:
+                    mapping[original_speakers[0]] = first_lemur_speaker
+                    mapping[original_speakers[1]] = second_lemur_speaker
+                    
+            logger.info(f"🔍 Inferred mapping logic: original_speakers={original_speakers}, "
+                       f"content_speakers={[c[0] for c in content_lines[:2]]}")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to infer speaker mapping: {e}")
+            
+        return mapping
+
+    def _parse_transcript_content_to_segments_with_cleanup(
+        self,
+        transcript_content: str,
+        original_segments: List[Dict],
+        speaker_mapping: Dict[str, str],
+        normalized_to_original_map: Dict[str, str]
+    ) -> List[TranscriptSegment]:
+        """
+        Parse transcript content with mandatory cleanup applied.
+        
+        Ensures all segments get space removal and Traditional Chinese conversion
+        regardless of what LeMUR did or didn't do.
+        """
+        lines = transcript_content.split('\n')
+        improved_segments = []
+        segment_index = 0
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            if ':' in line:
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    speaker = parts[0].strip()
+                    text = parts[1].strip()
+                    
+                    # Convert speakers back to original format
+                    if speaker in ['教練', '客戶', 'Coach', 'Client']:
+                        logger.warning(f"⚠️ LeMUR returned role labels despite A/B format prompts: {speaker}")
+                        # Convert back to A/B alternating pattern (will be mapped to original format below)
+                        speaker = 'A' if len(improved_segments) % 2 == 0 else 'B'
+                        logger.debug(f"🔄 Converted role label to alternating A/B: {parts[0].strip()} → {speaker}")
+                    
+                    # Map normalized A/B back to original speaker format (Speaker_1, Speaker_2, etc.)
+                    if speaker in normalized_to_original_map:
+                        original_speaker = normalized_to_original_map[speaker]
+                        logger.debug(f"🔄 Mapped normalized speaker to original: {speaker} → {original_speaker}")
+                        speaker = original_speaker
+                    
+                    # MANDATORY CLEANUP - Always applied regardless of LeMUR output
+                    text = self._apply_mandatory_cleanup(text, context_language="zh")
+                    
+                    # Get timing from original segment
+                    if segment_index < len(original_segments):
+                        original_segment = original_segments[segment_index]
+                        start_time = int(round(original_segment.get('start', 0)))
+                        end_time = int(round(original_segment.get('end', 0)))
+                    else:
+                        # 修復：當 LeMUR 返回更多 segments 時，使用合理的時間
+                        if improved_segments and len(improved_segments) > 0:
+                            # 使用最後一個 segment 的結束時間作為起點
+                            last_segment = improved_segments[-1]
+                            start_time = last_segment.end
+                            # 估計每個額外句子 2 秒（可調整）
+                            estimated_duration = 2000  # 2 seconds in ms
+                            end_time = start_time + estimated_duration
+                            logger.debug(f"📅 Extra segment timing: {start_time}-{end_time}ms (estimated)")
+                        elif original_segments:
+                            # 如果沒有已處理的 segment，使用最後原始 segment 的結束時間
+                            last_original = original_segments[-1]
+                            start_time = int(round(last_original.get('end', 0)))
+                            end_time = start_time + 2000  # 估計 2 秒
+                            logger.debug(f"📅 First extra segment timing: {start_time}-{end_time}ms (from last original)")
+                        else:
+                            # 真的沒有任何參考，從 0 開始（但這應該很少發生）
+                            start_time = 0
+                            end_time = 2000
+                            logger.warning("⚠️ No timing reference available, using default 0-2000ms")
+                    
+                    improved_segments.append(TranscriptSegment(
+                        start=start_time,
+                        end=end_time,
+                        speaker=speaker,
+                        text=text
+                    ))
+                    
+                    segment_index += 1
+        
+        # Fill in any missing segments
+        while segment_index < len(original_segments):
+            original_segment = original_segments[segment_index]
+            speaker_raw = original_segment.get('speaker', 'Unknown')
+            speaker_corrected = speaker_mapping.get(speaker_raw, speaker_raw)
+            
+            # Apply mandatory cleanup to original text too
+            original_text = original_segment.get('text', '')
+            cleaned_text = self._apply_mandatory_cleanup(original_text, context_language="zh")
+            
+            improved_segments.append(TranscriptSegment(
+                start=int(round(original_segment.get('start', 0))),
+                end=int(round(original_segment.get('end', 0))),
+                speaker=speaker_corrected,
+                text=cleaned_text
+            ))
+            segment_index += 1
+        
+        logger.info(f"📊 Parsed {len(improved_segments)} segments with mandatory cleanup applied")
+        return improved_segments
+
+    def _apply_mandatory_cleanup(self, text: str, context_language: str = "zh") -> str:
+        """
+        Apply mandatory text cleanup that should always happen.
+        
+        This runs regardless of what LeMUR did or didn't do to ensure basic quality.
+        """
+        if not text:
+            return text
+            
+        # 1. Convert to Traditional Chinese first (if available)
+        if context_language.startswith("zh"):
+            try:
+                from ..utils.chinese_converter import convert_to_traditional
+                text = convert_to_traditional(text)
+                logger.debug("✅ Applied Traditional Chinese conversion")
+            except ImportError:
+                logger.debug("⚠️ Chinese converter not available")
+            except Exception as e:
+                logger.warning(f"⚠️ Traditional Chinese conversion failed: {e}")
+        
+        # 2. Fix punctuation (半形轉全形)
+        if context_language.startswith("zh"):
+            text = self._fix_chinese_punctuation(text)
+            logger.debug("✅ Applied Chinese punctuation fixes")
+        
+        # 3. Remove spaces between Chinese characters (do this last)
+        cleaned_text = self._clean_chinese_text_spacing(text)
+        
+        return cleaned_text.strip()
+
+    def _fix_chinese_punctuation(self, text: str) -> str:
+        """
+        Convert half-width punctuation to full-width for Chinese text.
+        """
+        if not text:
+            return text
+            
+        # 半形轉全形標點符號映射
+        punctuation_replacements = {
+            ',': '，',    # comma
+            '.': '。',    # period
+            '?': '？',    # question mark
+            '!': '！',    # exclamation mark
+            ':': '：',    # colon
+            ';': '；',    # semicolon
+            '(': '（',    # left parenthesis
+            ')': '）',    # right parenthesis
+        }
+        
+        result = text
+        for half_width, full_width in punctuation_replacements.items():
+            result = result.replace(half_width, full_width)
+        
+        return result
+
+    def _emergency_fallback_parsing(
+        self,
+        response: str,
+        original_segments: List[Dict],
+        context: SmoothingContext
+    ) -> Tuple[Dict[str, str], List[TranscriptSegment]]:
+        """
+        Emergency fallback when all other parsing methods fail.
+        
+        Returns cleaned original segments with basic processing applied.
+        """
+        logger.warning("🚨 Using emergency fallback parsing")
+        
+        fallback_segments = []
+        for segment in original_segments:
+            # Apply basic cleanup to original text
+            original_text = segment.get('text', '')
+            cleaned_text = self._apply_mandatory_cleanup(original_text, context_language=context.session_language)
+            
+            fallback_segments.append(TranscriptSegment(
+                start=int(round(segment.get('start', 0))),
+                end=int(round(segment.get('end', 0))),
+                speaker=segment.get('speaker', 'A'),  # Keep original speaker
+                text=cleaned_text
+            ))
+        
+        logger.info(f"🔄 Emergency fallback: returned {len(fallback_segments)} cleaned segments")
+        return {}, fallback_segments
+
+    def _determine_roles_by_statistics(self, segments: List[TranscriptSegment]) -> Dict[str, str]:
+        """
+        基於統計判斷角色：講話多的是客戶，少的是教練。
+        
+        教練對話的一般模式：
+        - 客戶：分享經歷、描述問題，通常講話較多
+        - 教練：提問、引導、反饋，通常講話較少
+        """
+        logger.info("📊 Starting statistical role determination")
+        
+        # 統計每個 speaker 的字數和時長
+        speaker_stats = {}
+        for segment in segments:
+            speaker = segment.speaker
+            if speaker not in speaker_stats:
+                speaker_stats[speaker] = {
+                    'char_count': 0,
+                    'duration_ms': 0,
+                    'segment_count': 0
+                }
+            
+            # 計算中文字符數（更準確的衡量標準）
+            chinese_chars = len([c for c in segment.text if '\u4e00' <= c <= '\u9fff'])
+            total_chars = len(segment.text.strip())
+            
+            speaker_stats[speaker]['char_count'] += total_chars
+            speaker_stats[speaker]['duration_ms'] += (segment.end - segment.start)
+            speaker_stats[speaker]['segment_count'] += 1
+            
+            logger.debug(f"📈 {speaker}: +{total_chars} chars ({chinese_chars} chinese)")
+        
+        # 記錄統計結果
+        logger.info("📊 Speaker Statistics:")
+        for speaker, stats in speaker_stats.items():
+            avg_chars_per_segment = stats['char_count'] / max(stats['segment_count'], 1)
+            logger.info(f"  {speaker}: {stats['char_count']} chars, "
+                       f"{stats['duration_ms']/1000:.1f}s, "
+                       f"{stats['segment_count']} segments, "
+                       f"avg {avg_chars_per_segment:.1f} chars/segment")
+        
+        # 判斷角色：字數多的是客戶，少的是教練
+        if len(speaker_stats) < 2:
+            logger.warning("⚠️ Less than 2 speakers found, cannot determine roles")
+            return {}
+        
+        # 按字數排序
+        sorted_by_chars = sorted(speaker_stats.items(), key=lambda x: x[1]['char_count'])
+        
+        # 基本判斷：講話少的是教練，多的是客戶
+        coach_speaker = sorted_by_chars[0][0]  # 字數最少
+        client_speaker = sorted_by_chars[-1][0]  # 字數最多
+        
+        # 確保有明顯差異（至少 20% 的差異）
+        coach_chars = sorted_by_chars[0][1]['char_count']
+        client_chars = sorted_by_chars[-1][1]['char_count']
+        
+        if coach_chars > 0:
+            ratio = client_chars / coach_chars
+            if ratio < 1.2:
+                logger.warning(f"⚠️ Small difference in speech volume (ratio: {ratio:.2f}), "
+                             f"role assignment may be uncertain")
+        
+        role_mapping = {
+            coach_speaker: "教練", 
+            client_speaker: "客戶"
+        }
+        
+        logger.info(f"✅ Role determination result: {role_mapping}")
+        logger.info(f"📊 Speech ratio (client/coach): {client_chars/max(coach_chars,1):.2f}")
+        
+        return role_mapping
+    
+    def _apply_role_mapping_to_segments(
+        self, 
+        segments: List[TranscriptSegment], 
+        role_mapping: Dict[str, str]
+    ) -> List[TranscriptSegment]:
+        """
+        將角色映射應用到segments，替換speaker標籤。
+        """
+        if not role_mapping:
+            logger.info("📋 No role mapping provided, keeping original speaker labels")
+            return segments
+        
+        updated_segments = []
+        for segment in segments:
+            new_speaker = role_mapping.get(segment.speaker, segment.speaker)
+            
+            updated_segment = TranscriptSegment(
+                start=segment.start,
+                end=segment.end,
+                speaker=new_speaker,
+                text=segment.text
+            )
+            updated_segments.append(updated_segment)
+        
+        logger.info(f"📝 Applied role mapping to {len(updated_segments)} segments")
+        return updated_segments
+
+    def _merge_close_segments(self, segments: List[Dict], max_gap_ms: int = 500) -> List[Dict]:
+        """
+        Merge segments from same speaker with small time gaps.
+        
+        Args:
+            segments: List of segment dictionaries
+            max_gap_ms: Maximum gap in milliseconds to allow merging
+            
+        Returns:
+            List of merged segments
+        """
+        if not segments:
+            return segments
+        
+        merged = []
+        current = segments[0].copy()
+        
+        for next_seg in segments[1:]:
+            gap = next_seg['start'] - current['end']
+            
+            # Same speaker and gap is small enough - merge
+            if (current['speaker'] == next_seg['speaker'] and 
+                gap < max_gap_ms):
+                
+                # Combine text content
+                current['text'] = current['text'] + next_seg['text']
+                current['end'] = next_seg['end']
+                
+                logger.debug(f"🔗 Merged segments: gap={gap}ms, speaker={current['speaker']}")
+            else:
+                # Different speaker or gap too large - keep separate
+                merged.append(current)
+                current = next_seg.copy()
+        
+        # Don't forget the last segment
+        merged.append(current)
+        
+        logger.info(f"🔀 Segment merging: {len(segments)} → {len(merged)} segments")
+        return merged
 
 
 async def smooth_transcript_with_lemur(
