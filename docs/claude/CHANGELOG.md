@@ -5,6 +5,58 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.16.0] - 2025-09-10
+
+### 🎯 Customer Feedback UI Improvements
+
+#### Major UI/UX Enhancements
+- **Enhanced Transcript Editing**: Expanded role editing functionality to full transcript editing
+  - **Full Content Editing**: Users can now edit both speaker roles AND transcript content directly
+  - **Improved UX**: Changed button text from "編輯角色" to "編輯逐字稿" for clarity
+  - **State Management**: Added `tempSegmentContent` state for tracking content changes
+  - **Unified Save/Cancel**: Updated functions to handle both role and content modifications
+
+- **AI Optimization Tab**: Reorganized AI features into dedicated tab for better user experience
+  - **Dedicated Tab**: Created new "AI 優化" tab separate from transcript view
+  - **Feature Consolidation**: Moved speaker identification and punctuation optimization to AI tab
+  - **Better Organization**: Improved navigation and feature discoverability
+
+- **Session Overview Integration**: Moved session information to transcript page
+  - **Better Context**: Users can now see session details directly on transcript page
+  - **Streamlined Workflow**: Reduced tab switching for common operations
+  - **Maintained Editing**: Preserved all session editing functionality with edit button
+
+#### Critical Bug Fixes
+- **Fixed Total Duration Calculation Algorithm**
+  - **Root Cause**: Duration calculated incorrectly as `Math.max(end_times)` instead of actual time span
+  - **Solution**: Updated to calculate duration as `(lastEnd - firstStart)` for accurate time span
+  - **Impact**: Fixed all duration displays throughout the application
+  - **Silence Calculation**: Improved silence time accuracy with proper `totalDuration - speakingTime` calculation
+
+#### UI Cleanup
+- **Dashboard Menu Optimization**: Removed coming-soon features from navigation
+  - **Removed**: ICF Analysis and AI Supervisor menu items to reduce clutter
+  - **Focus**: Streamlined menu to show only available features
+- **Transcript Display Cleanup**: Removed confidence scores from transcript table for cleaner view
+- **Verified**: Beta label removal on transcript tabs (no specific beta labels found)
+
+#### Technical Improvements
+- **Enhanced Error Handling**: Better error messages and user feedback
+- **Code Organization**: Improved maintainability and code structure
+- **State Management**: More robust handling of complex editing scenarios
+- **Duration Consistency**: All duration calculations now use unified accurate algorithm
+
+#### Files Modified
+- `apps/web/app/dashboard/sessions/[id]/page.tsx` - Major UI improvements and bug fixes
+- `apps/web/components/layout/dashboard-sidebar.tsx` - Menu cleanup
+
+#### Customer Impact
+- ✅ **Improved Usability**: More intuitive transcript editing workflow
+- ✅ **Better Organization**: AI features properly grouped and accessible
+- ✅ **Accurate Data**: Fixed duration calculations provide correct session metrics
+- ✅ **Streamlined Interface**: Cleaner, more focused user experience
+- ✅ **Enhanced Workflow**: Session overview accessible where needed most
+
 ## [2.15.0] - 2025-09-09
 
 ### 🔧 Critical Bug Fix - Speaker Format Normalization

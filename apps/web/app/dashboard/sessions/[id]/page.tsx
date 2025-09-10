@@ -142,9 +142,10 @@ const SessionDetailPage = () => {
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
-  const [editingRoles, setEditingRoles] = useState(false);
+  const [editingTranscript, setEditingTranscript] = useState(false);
   const [tempRoleAssignments, setTempRoleAssignments] = useState<{ [speakerId: number]: 'coach' | 'client' }>({});
   const [tempSegmentRoles, setTempSegmentRoles] = useState<{ [segmentId: string]: 'coach' | 'client' }>({});
+  const [tempSegmentContent, setTempSegmentContent] = useState<{ [segmentId: string]: string }>({});
   const [uploadMode, setUploadMode] = useState<'audio' | 'transcript'>('audio');
   const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
   const [isUploadingTranscript, setIsUploadingTranscript] = useState(false);
@@ -515,16 +516,19 @@ const SessionDetailPage = () => {
     });
     
     const totalSpeaking = coachTime + clientTime;
-    const totalDuration = transcript?.duration_sec || 0;
     
-    // Important note: STT total duration is usually the maximum timestamp from segments,
-    // not the actual audio file duration. So silence time calculation may be inaccurate.
-    // Only calculate silence time if total duration is significantly larger than speaking time
-    let silenceTime = 0;
-    if (totalDuration > totalSpeaking && (totalDuration - totalSpeaking) > 10) {
-      // Only show silence time if there's at least 10 seconds difference
-      silenceTime = totalDuration - totalSpeaking;
+    // Improved duration calculation: use the actual time span from first to last segment
+    let totalDuration = 0;
+    if (segments.length > 0) {
+      const sortedSegments = segments.slice().sort((a, b) => a.start_sec - b.start_sec);
+      const firstStart = sortedSegments[0].start_sec;
+      const lastEnd = Math.max(...segments.map(s => s.end_sec));
+      totalDuration = lastEnd - firstStart;
     }
+    
+    // Calculate silence time more accurately
+    // Silence time = total duration - sum of actual speaking segments
+    let silenceTime = Math.max(0, totalDuration - totalSpeaking);
     
     return {
       coach_speaking_time: coachTime,
@@ -542,7 +546,7 @@ const SessionDetailPage = () => {
     setIsGeneratingAnalysis(true);
     try {
       // Mock AI analysis - in real implementation, this would call an AI service
-      const duration = formatDuration(transcript.duration_sec);
+      const duration = speakingStats ? formatDuration(speakingStats.total_speaking_time + speakingStats.silence_time) : formatDuration(transcript.duration_sec);
       const coachPct = speakingStats?.coach_percentage.toFixed(1) || '0';
       const clientPct = speakingStats?.client_percentage.toFixed(1) || '0';
       
@@ -605,21 +609,31 @@ ${t('sessions.aiChatFollowUp')}`;
     }, 1000);
   };
 
-  const saveRoleAssignments = async () => {
+  const saveTranscriptChanges = async () => {
     if (!transcriptionSessionId) return;
     
     try {
       // Save segment-level role assignments via API
       await apiClient.updateSegmentRoles(transcriptionSessionId, tempSegmentRoles);
       
-      // Update local transcript data to include segment roles
+      // TODO: Add API call to save content changes
+      // await apiClient.updateSegmentContent(transcriptionSessionId, tempSegmentContent);
+      
+      // Update local transcript data to include both roles and content changes
       setTranscript(prev => prev ? {
         ...prev,
         role_assignments: tempRoleAssignments,  // Keep speaker-level for compatibility
-        segment_roles: tempSegmentRoles  // Add segment-level roles
+        segment_roles: tempSegmentRoles,  // Add segment-level roles
+        segments: prev.segments.map(segment => {
+          const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+          return {
+            ...segment,
+            content: tempSegmentContent[segmentId] || segment.content
+          };
+        })
       } : null);
       
-      setEditingRoles(false);
+      setEditingTranscript(false);
       
       // Recalculate stats with new role assignments
       if (transcript) {
@@ -627,12 +641,12 @@ ${t('sessions.aiChatFollowUp')}`;
         setSpeakingStats(stats);
       }
     } catch (error) {
-      console.error('Failed to save role assignments:', error);
-      alert(t('sessions.saveRoleError'));
+      console.error('Failed to save transcript changes:', error);
+      alert(t('sessions.saveTranscriptError') || 'Failed to save transcript changes');
     }
   };
 
-  const cancelRoleEditing = () => {
+  const cancelTranscriptEditing = () => {
     // Reset to original assignments
     if (transcript?.role_assignments) {
       setTempRoleAssignments(transcript.role_assignments);
@@ -656,7 +670,10 @@ ${t('sessions.aiChatFollowUp')}`;
       setTempSegmentRoles(originalSegmentRoles);
     }
     
-    setEditingRoles(false);
+    // Reset content changes
+    setTempSegmentContent({});
+    
+    setEditingTranscript(false);
   };
 
   const handleTranscriptFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1053,10 +1070,19 @@ ${t('sessions.aiChatFollowUp')}`;
     }));
     
     // Create updated transcript
+    // Calculate correct duration for optimized transcript
+    let optimizedDuration = 0;
+    if (optimizedSegments.length > 0) {
+      const sortedSegments = optimizedSegments.slice().sort((a, b) => a.start_sec - b.start_sec);
+      const firstStart = sortedSegments[0].start_sec;
+      const lastEnd = Math.max(...optimizedSegments.map(s => s.end_sec));
+      optimizedDuration = lastEnd - firstStart;
+    }
+    
     const optimizedTranscript: TranscriptData = {
       ...transcript,
       segments: optimizedSegments,
-      duration_sec: Math.max(...optimizedSegments.map(s => s.end_sec))
+      duration_sec: optimizedDuration
     };
     
     // Update the state to show optimized transcript
@@ -1159,7 +1185,14 @@ ${t('sessions.aiChatFollowUp')}`;
       session_id: transcript?.session_id || '',
       title: transcript?.title || 'Smoothed Transcript',
       language: result.stats.language_detected,
-      duration_sec: Math.max(...result.segments.map(s => s.end_ms / 1000)),
+      duration_sec: (() => {
+        if (result.segments.length === 0) return 0;
+        const segments = result.segments.map(s => ({ start_sec: s.start_ms / 1000, end_sec: s.end_ms / 1000 }));
+        const sortedSegments = segments.slice().sort((a, b) => a.start_sec - b.start_sec);
+        const firstStart = sortedSegments[0].start_sec;
+        const lastEnd = Math.max(...segments.map(s => s.end_sec));
+        return lastEnd - firstStart;
+      })(),
       segments: result.segments.map((segment, index) => ({
         id: `smoothed-${index}`,
         speaker_id: segment.speaker === 'A' ? 1 : 2, // Map speaker letters to numbers
@@ -1836,7 +1869,9 @@ ${t('sessions.aiChatFollowUp')}`;
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-content-secondary">{t('sessions.totalDuration')}</span>
-                          <span className="text-content-primary font-medium">{formatDuration(transcript?.duration_sec || 0)}</span>
+                          <span className="text-content-primary font-medium">
+                            {speakingStats ? formatDuration(speakingStats.total_speaking_time + speakingStats.silence_time) : formatDuration(transcript?.duration_sec || 0)}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-content-secondary">{t('sessions.talkTime')}</span>
@@ -1869,6 +1904,181 @@ ${t('sessions.aiChatFollowUp')}`;
 
         {activeTab === 'transcript' && (
           <div className="space-y-4">
+            {/* Session Overview - moved from overview tab */}
+            <div className="bg-surface border border-border rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-content-primary flex items-center gap-2">
+                  <DocumentMagnifyingGlassIcon className="h-5 w-5" />
+                  {t('sessions.basicInfo')}
+                </h3>
+                {!editMode && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditMode(true)}
+                    className="flex items-center gap-2 text-sm px-3 py-1"
+                  >
+                    <PencilIcon className="h-3 w-3" />
+                    {t('common.edit')}
+                  </Button>
+                )}
+              </div>
+              
+              {editMode ? (
+                <form onSubmit={handleUpdate} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-content-primary mb-2">
+                      {t('sessions.sessionDate')} *
+                    </label>
+                    <Input
+                      type="date"
+                      required
+                      value={formData.session_date}
+                      onChange={(e) => setFormData({ ...formData, session_date: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-content-primary mb-2">
+                      {t('sessions.client')} *
+                    </label>
+                    <Select
+                      required
+                      value={formData.client_id}
+                      onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
+                    >
+                      <option value="" disabled>{t('sessions.selectClient')}</option>
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-content-primary mb-2">
+                      {t('sessions.durationMinutes')}
+                    </label>
+                    <Input
+                      type="number"
+                      min="1"
+                      required
+                      value={formData.duration_min}
+                      onChange={(e) => setFormData({ ...formData, duration_min: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-content-primary mb-2">
+                        {t('sessions.currency')}
+                      </label>
+                      <Select
+                        value={formData.fee_currency}
+                        onChange={(e) => setFormData({ ...formData, fee_currency: e.target.value })}
+                      >
+                        {currencies.map((currency) => (
+                          <option key={currency.value} value={currency.value}>
+                            {String(currency.label || currency.value)}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-content-primary mb-2">
+                        {t('sessions.amount')} *
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        required
+                        value={formData.fee_amount}
+                        onChange={(e) => setFormData({ ...formData, fee_amount: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-content-primary mb-2">
+                      {t('sessions.notes')}
+                    </label>
+                    <textarea
+                      className="w-full px-3 py-2 border border-border rounded-md bg-surface text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                      rows={4}
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-4 pt-6 border-t border-border">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditMode(false);
+                        // Reset form data
+                        setFormData({
+                          session_date: session.session_date,
+                          client_id: session.client_id,
+                          duration_min: session.duration_min,
+                          fee_currency: session.fee_currency,
+                          fee_amount: session.fee_amount,
+                          notes: session.notes || ''
+                        });
+                      }}
+                      disabled={loading}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? t('common.updating') : t('common.save')}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-content-secondary mb-1">
+                      {t('sessions.sessionDate')}
+                    </label>
+                    <p className="text-content-primary text-lg">{session.session_date}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-content-secondary mb-1">
+                      {t('sessions.client')}
+                    </label>
+                    <p className="text-content-primary text-lg">
+                      {session.client?.name || currentClient?.name || session.client_name || '-'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-content-secondary mb-1">
+                      {t('sessions.duration')}
+                    </label>
+                    <p className="text-content-primary">{session.duration_display}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-content-secondary mb-1">
+                      {t('sessions.fee')}
+                    </label>
+                    <p className="text-content-primary text-lg font-medium">{session.fee_display}</p>
+                  </div>
+
+                  {session.notes && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-content-secondary mb-1">
+                        {t('sessions.notes')}
+                      </label>
+                      <p className="text-content-primary whitespace-pre-wrap">{session.notes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             {/* Transcription Status */}
             {(isTranscribing || transcriptionSession?.status === 'pending') && transcriptionStatus && (
               <div className="bg-surface border border-border rounded-lg p-6">
@@ -1931,28 +2141,30 @@ ${t('sessions.aiChatFollowUp')}`;
                     </h3>
                     <div className="flex items-center gap-4">
                       <div className="text-sm text-content-secondary">
-                        {t('sessions.conversationSummary').replace('{duration}', formatDuration(transcript.duration_sec)).replace('{count}', transcript.segments.length.toString())}
+                        {t('sessions.conversationSummary').replace('{duration}', 
+                          speakingStats ? formatDuration(speakingStats.total_speaking_time + speakingStats.silence_time) : formatDuration(transcript.duration_sec)
+                        ).replace('{count}', transcript.segments.length.toString())}
                       </div>
-                      {!editingRoles ? (
+                      {!editingTranscript ? (
                         <Button
                           variant="outline"
-                          onClick={() => setEditingRoles(true)}
+                          onClick={() => setEditingTranscript(true)}
                           className="flex items-center gap-2 text-sm px-3 py-1"
                         >
                           <PencilIcon className="h-3 w-3" />
-                          {t('sessions.editRole')}
+                          編輯逐字稿
                         </Button>
                       ) : (
                         <div className="flex gap-2">
                           <Button
                             variant="outline"
-                            onClick={cancelRoleEditing}
+                            onClick={cancelTranscriptEditing}
                             className="text-sm px-3 py-1"
                           >
                             {t('sessions.cancel')}
                           </Button>
                           <Button
-                            onClick={saveRoleAssignments}
+                            onClick={saveTranscriptChanges}
                             className="flex items-center gap-2 text-sm px-3 py-1"
                           >
                             {t('sessions.save')}
@@ -1985,7 +2197,7 @@ ${t('sessions.aiChatFollowUp')}`;
                             {formatTime(segment.start_sec)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            {editingRoles ? (
+                            {editingTranscript ? (
                               <select
                                 value={tempSegmentRoles[segment.id || `${segment.speaker_id}-${segment.start_sec}`] || tempRoleAssignments[segment.speaker_id] || (getSpeakerRoleFromSegment(segment, transcript?.role_assignments) === SpeakerRole.COACH ? 'coach' : 'client')}
                                 onChange={(e) => {
@@ -2023,7 +2235,22 @@ ${t('sessions.aiChatFollowUp')}`;
                             )}
                           </td>
                           <td className="px-4 py-3 text-content-primary text-sm">
-                            {segment.content}
+                            {editingTranscript ? (
+                              <textarea
+                                value={tempSegmentContent[segment.id || `${segment.speaker_id}-${segment.start_sec}`] || segment.content}
+                                onChange={(e) => {
+                                  const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+                                  setTempSegmentContent(prev => ({
+                                    ...prev,
+                                    [segmentId]: e.target.value
+                                  }));
+                                }}
+                                className="w-full p-2 border border-border rounded bg-surface text-sm resize-none"
+                                rows={Math.max(1, Math.ceil(segment.content.length / 80))}
+                              />
+                            ) : (
+                              segment.content
+                            )}
                           </td>
                         </tr>
                       ))}
