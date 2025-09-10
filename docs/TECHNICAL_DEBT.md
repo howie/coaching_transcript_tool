@@ -1,72 +1,40 @@
 # Technical Debt
 
-## Database Schema Naming Issues
+## Database Schema Naming Issues ✅ RESOLVED
 
-### Current Confusing Column Names
-
-The following column names are confusing and should be renamed in a future migration:
-
-#### CoachingSession Table
-- `coach_id` → Should be `user_id` (points to user.id)
-- `audio_timeseq_id` → Should be `transcription_session_id` (points to session.id)
-- `transcript_timeseq_id` → Should be removed or clarified (unclear purpose)
-
-#### Relationships
-```
-User (用戶)
-  ↓ 1:N (coach_id → user_id)
-CoachingSession (會談記錄)
-  ↓ 1:1 (audio_timeseq_id → transcription_session_id)
-Session (轉錄會話)
-  ↓ 1:N
-ProcessingStatus (處理狀態)
-TranscriptSegment (轉錄片段)
-```
-
-### Proposed Migration Plan
-
-1. **Phase 1**: Add new columns with clear names
-   - Add `user_id` alongside `coach_id`
-   - Add `transcription_session_id` alongside `audio_timeseq_id`
-
-2. **Phase 2**: Update all code to use new column names
-   - Update models
-   - Update API endpoints
-   - Update frontend code
-
-3. **Phase 3**: Remove old columns
-   - Drop `coach_id`
-   - Drop `audio_timeseq_id`
-   - Remove `transcript_timeseq_id` if unused
-
-### Impact Assessment
-- **High Risk**: Database schema changes affect all layers
-- **Medium Effort**: Requires updates to backend API and frontend
-- **Low Business Impact**: No user-facing changes
-
-### Recommendation
-Defer this refactoring until after current MVP features are stable.
-Focus on fixing the immediate `audio_timeseq_id` mapping bug first.
+~~This section has been moved to "Recently Resolved Technical Debt" as these issues were fixed in August 2025.~~
 
 ## Recently Resolved Technical Debt
 
 ### Fixed in August 2025 ✅
-1. **Frontend-Backend Integration Gap** - RESOLVED
+1. **Database Schema Naming Inconsistencies** - RESOLVED
+   - **Issue**: Confusing column names: `coach_id` → `user_id`, `audio_timeseq_id` → `transcription_session_id`, unused `transcript_timeseq_id`
+   - **Solution**: Complete database refactoring with migration 0643b3b3d7b7 (Migration: 0643b3b3d7b7)
+   - **Impact**: Clear and consistent database schema across all tables
+   - **Changes Applied**:
+     - `coaching_session.coach_id` → `user_id`
+     - `coaching_session.audio_timeseq_id` → `transcription_session_id`
+     - `coaching_session.transcript_timeseq_id` → REMOVED (unused)
+     - `client.coach_id` → `user_id`
+     - `client.client_status` → `status`
+     - Consistent unit naming: `duration_sec` → `duration_seconds`, `start_sec/end_sec` → `start_seconds/end_seconds`
+
+2. **Frontend-Backend Integration Gap** - RESOLVED
    - **Issue**: Frontend using mock/fake data instead of real API calls
    - **Solution**: Complete API client implementation with real endpoints (Commit: a58d430)
    - **Impact**: Eliminated development/production inconsistencies
 
-2. **Progress Bar Precision Issues** - RESOLVED  
+3. **Progress Bar Precision Issues** - RESOLVED  
    - **Issue**: Floating point display issues causing visual inconsistencies
    - **Solution**: Implemented Math.round() for all progress calculations (Commit: 4d7b09a)
    - **Impact**: Consistent UI display across all progress indicators
 
-3. **Database Transaction Inconsistency** - RESOLVED
+4. **Database Transaction Inconsistency** - RESOLVED
    - **Issue**: Failed transcriptions leaving database in inconsistent state
    - **Solution**: Proper rollback mechanisms and atomic operations (Commit: a930412)
    - **Impact**: Improved data integrity and error recovery
 
-4. **Real-time Polling Memory Leaks** - RESOLVED
+5. **Real-time Polling Memory Leaks** - RESOLVED
    - **Issue**: Polling timers not properly cleaned up causing memory leaks
    - **Solution**: Proper useEffect cleanup and timer management (Commit: a58d430)
    - **Impact**: Better browser performance and resource management
@@ -74,12 +42,7 @@ Focus on fixing the immediate `audio_timeseq_id` mapping bug first.
 ## Current Priority Technical Debt
 
 ### High Priority (Address Next Quarter)
-1. **Database Schema Naming Consistency**
-   - Still needs addressing: confusing column names across tables
-   - Impact: Developer confusion and maintenance overhead
-   - Effort: Medium (requires careful migration planning)
-
-2. **Audio Format Support Strategy**
+1. **Audio Format Support Strategy**
    - Current state: M4A removed, MP4 added, but no clear format strategy
    - Recommendation: Establish comprehensive audio format support matrix
    - Consider: User demand vs. technical complexity trade-offs
