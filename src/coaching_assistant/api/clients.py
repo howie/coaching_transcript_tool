@@ -129,7 +129,9 @@ async def list_clients(
             "status": client.status,
             "is_anonymized": client.is_anonymized,
             "anonymized_at": (
-                client.anonymized_at.isoformat() if client.anonymized_at else None
+                client.anonymized_at.isoformat()
+                if client.anonymized_at
+                else None
             ),
             "session_count": session_count,
             "total_payment_amount": payment_total,
@@ -161,7 +163,9 @@ async def get_client_statistics(
         print(f"Statistics request from user: {current_user.id}")
 
         # Get all clients for the coach
-        clients = db.query(Client).filter(Client.user_id == current_user.id).all()
+        clients = (
+            db.query(Client).filter(Client.user_id == current_user.id).all()
+        )
         print(f"Found {len(clients)} clients")
 
         # Initialize empty distributions
@@ -191,11 +195,16 @@ async def get_client_statistics(
             source_counts = {}
             for client in clients:
                 source_key = client.source or "unknown"
-                source_name = source_labels.get(source_key, source_key or "未知")
-                source_counts[source_name] = source_counts.get(source_name, 0) + 1
+                source_name = source_labels.get(
+                    source_key, source_key or "未知"
+                )
+                source_counts[source_name] = (
+                    source_counts.get(source_name, 0) + 1
+                )
 
             source_distribution = [
-                {"name": name, "value": count} for name, count in source_counts.items()
+                {"name": name, "value": count}
+                for name, count in source_counts.items()
             ]
 
             # Type statistics
@@ -206,22 +215,29 @@ async def get_client_statistics(
                 type_counts[type_name] = type_counts.get(type_name, 0) + 1
 
             type_distribution = [
-                {"name": name, "value": count} for name, count in type_counts.items()
+                {"name": name, "value": count}
+                for name, count in type_counts.items()
             ]
 
             # Issue type statistics
             issue_counts = {}
             for client in clients:
                 if client.issue_types:
-                    issues = [issue.strip() for issue in client.issue_types.split(",")]
+                    issues = [
+                        issue.strip()
+                        for issue in client.issue_types.split(",")
+                    ]
                     for issue in issues:
                         if issue:
-                            issue_counts[issue] = issue_counts.get(issue, 0) + 1
+                            issue_counts[issue] = (
+                                issue_counts.get(issue, 0) + 1
+                            )
                 else:
                     issue_counts["未知"] = issue_counts.get("未知", 0) + 1
 
             issue_distribution = [
-                {"name": name, "value": count} for name, count in issue_counts.items()
+                {"name": name, "value": count}
+                for name, count in issue_counts.items()
             ]
 
         result = {
@@ -254,7 +270,9 @@ async def get_client(
     """Get a specific client."""
     client = (
         db.query(Client)
-        .filter(and_(Client.id == client_id, Client.user_id == current_user.id))
+        .filter(
+            and_(Client.id == client_id, Client.user_id == current_user.id)
+        )
         .first()
     )
 
@@ -262,7 +280,9 @@ async def get_client(
         raise HTTPException(status_code=404, detail="Client not found")
 
     session_count = (
-        db.query(CoachingSession).filter(CoachingSession.client_id == client.id).count()
+        db.query(CoachingSession)
+        .filter(CoachingSession.client_id == client.id)
+        .count()
     )
 
     # Calculate payment totals (assuming NTD as primary currency for now)
@@ -323,7 +343,8 @@ async def create_client(
 
         if existing:
             raise HTTPException(
-                status_code=409, detail="A client with this email already exists"
+                status_code=409,
+                detail="A client with this email already exists",
             )
 
     client = Client(
@@ -376,7 +397,9 @@ async def update_client(
     """Update a client."""
     client = (
         db.query(Client)
-        .filter(and_(Client.id == client_id, Client.user_id == current_user.id))
+        .filter(
+            and_(Client.id == client_id, Client.user_id == current_user.id)
+        )
         .first()
     )
 
@@ -384,7 +407,9 @@ async def update_client(
         raise HTTPException(status_code=404, detail="Client not found")
 
     if client.is_anonymized:
-        raise HTTPException(status_code=403, detail="Cannot edit anonymized client")
+        raise HTTPException(
+            status_code=403, detail="Cannot edit anonymized client"
+        )
 
     # Check for duplicate email if email is being updated
     if client_data.email and client_data.email != client.email:
@@ -403,7 +428,8 @@ async def update_client(
 
         if existing:
             raise HTTPException(
-                status_code=409, detail="A client with this email already exists"
+                status_code=409,
+                detail="A client with this email already exists",
             )
 
     # Update fields
@@ -415,7 +441,9 @@ async def update_client(
     db.refresh(client)
 
     session_count = (
-        db.query(CoachingSession).filter(CoachingSession.client_id == client.id).count()
+        db.query(CoachingSession)
+        .filter(CoachingSession.client_id == client.id)
+        .count()
     )
 
     # Calculate payment totals (assuming NTD as primary currency for now)
@@ -462,7 +490,9 @@ async def delete_client(
     """Delete a client (hard delete, only if no sessions)."""
     client = (
         db.query(Client)
-        .filter(and_(Client.id == client_id, Client.user_id == current_user.id))
+        .filter(
+            and_(Client.id == client_id, Client.user_id == current_user.id)
+        )
         .first()
     )
 
@@ -471,7 +501,9 @@ async def delete_client(
 
     # Check if client has any coaching sessions
     session_count = (
-        db.query(CoachingSession).filter(CoachingSession.client_id == client.id).count()
+        db.query(CoachingSession)
+        .filter(CoachingSession.client_id == client.id)
+        .count()
     )
 
     if session_count > 0:
@@ -495,7 +527,9 @@ async def anonymize_client(
     """Anonymize a client for GDPR compliance."""
     client = (
         db.query(Client)
-        .filter(and_(Client.id == client_id, Client.user_id == current_user.id))
+        .filter(
+            and_(Client.id == client_id, Client.user_id == current_user.id)
+        )
         .first()
     )
 
@@ -503,12 +537,18 @@ async def anonymize_client(
         raise HTTPException(status_code=404, detail="Client not found")
 
     if client.is_anonymized:
-        raise HTTPException(status_code=409, detail="Client is already anonymized")
+        raise HTTPException(
+            status_code=409, detail="Client is already anonymized"
+        )
 
     # Get next anonymous number for this coach
     anonymous_count = (
         db.query(Client)
-        .filter(and_(Client.user_id == current_user.id, Client.is_anonymized == True))
+        .filter(
+            and_(
+                Client.user_id == current_user.id, Client.is_anonymized == True
+            )
+        )
         .count()
     )
 

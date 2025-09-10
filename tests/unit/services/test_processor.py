@@ -1,4 +1,3 @@
-import io
 from pathlib import Path
 
 import pytest
@@ -45,7 +44,9 @@ def test_format_transcript_excel(sample_vtt_content):
 
 def test_format_transcript_invalid_format(sample_vtt_content):
     """Tests that an invalid format raises a ValueError."""
-    with pytest.raises(ValueError, match="Unsupported output format: invalid_format"):
+    with pytest.raises(
+        ValueError, match="Unsupported output format: invalid_format"
+    ):
         format_transcript(
             file_content=sample_vtt_content.encode("utf-8"),
             original_filename="sample.vtt",
@@ -65,7 +66,9 @@ def simplified_chinese_vtt_content():
     )
 
 
-def test_format_transcript_simplified_to_traditional(simplified_chinese_vtt_content):
+def test_format_transcript_simplified_to_traditional(
+    simplified_chinese_vtt_content,
+):
     """Tests converting simplified Chinese to traditional Chinese."""
     result = format_transcript(
         file_content=simplified_chinese_vtt_content.encode("utf-8"),

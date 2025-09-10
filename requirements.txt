@@ -18,6 +18,9 @@ google-auth>=2.23.0
 # AssemblyAI SDK for LeMUR
 assemblyai>=0.28.0
 
+# YAML parsing for configuration
+PyYAML>=6.0.0
+
 # Core dependencies for worker functionality
 fastapi>=0.104.0
 python-multipart>=0.0.6

@@ -2,7 +2,7 @@
 
 import os
 import sys
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Tuple
 from enum import Enum
 import json
 import base64
@@ -47,7 +47,9 @@ class EnvironmentValidator:
 
     def __init__(self, environment: str = None):
         """Initialize validator with environment."""
-        self.environment = environment or os.getenv("ENVIRONMENT", "development")
+        self.environment = environment or os.getenv(
+            "ENVIRONMENT", "development"
+        )
         self.errors: List[str] = []
         self.warnings: List[str] = []
         self.info: List[str] = []
@@ -129,7 +131,9 @@ class EnvironmentValidator:
 
         return len(self.errors) == 0, report
 
-    def _validate_var_content(self, var_name: str, value: str) -> Tuple[bool, str]:
+    def _validate_var_content(
+        self, var_name: str, value: str
+    ) -> Tuple[bool, str]:
         """
         Validate specific environment variable content.
 
@@ -162,7 +166,12 @@ class EnvironmentValidator:
                         )
 
                 # Check for required fields
-                required_fields = ["type", "project_id", "private_key", "client_email"]
+                required_fields = [
+                    "type",
+                    "project_id",
+                    "private_key",
+                    "client_email",
+                ]
                 missing_fields = [f for f in required_fields if f not in creds]
 
                 if missing_fields:
@@ -201,7 +210,10 @@ class EnvironmentValidator:
 
         elif var_name == "SECRET_KEY":
             if len(value) < 32:
-                return False, "Secret key should be at least 32 characters for security"
+                return (
+                    False,
+                    "Secret key should be at least 32 characters for security",
+                )
             if value == "dev-secret-key":
                 if self.environment == "production":
                     return False, "Cannot use default secret key in production"
@@ -241,7 +253,9 @@ class EnvironmentValidator:
             print("\n📝 Quick Setup Guide:")
             print("1. Copy .env.example to .env")
             print("2. Fill in the required values")
-            print("3. Run scripts/setup_env/setup-gcs.sh for Google Cloud setup")
+            print(
+                "3. Run scripts/setup_env/setup-gcs.sh for Google Cloud setup"
+            )
             print("4. Restart the application")
 
         print("\n" + "=" * 60)
@@ -256,12 +270,16 @@ class EnvironmentValidator:
         self.print_report(is_valid, report)
 
         if not is_valid:
-            print("\n💥 Application startup aborted due to missing configuration!")
+            print(
+                "\n💥 Application startup aborted due to missing configuration!"
+            )
             print("Please fix the errors and try again.")
             sys.exit(1)
 
         if self.warnings:
-            print("\n⚠️  Starting with warnings - some features may not work properly")
+            print(
+                "\n⚠️  Starting with warnings - some features may not work properly"
+            )
         else:
             print("\n✅ All environment variables validated successfully!")
 

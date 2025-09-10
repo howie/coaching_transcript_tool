@@ -7,13 +7,10 @@ from typing import Dict, List, Any, Optional
 from decimal import Decimal
 from dataclasses import dataclass
 from sqlalchemy.orm import Session
-from sqlalchemy import func, text, and_, desc, DECIMAL
+from sqlalchemy import func, and_, desc, DECIMAL
 
-from ...models.user import User, UserPlan, UserRole
+from ...models.user import User, UserRole
 from ...models.session import Session as TranscriptSession, SessionStatus
-from ...models.usage_analytics import UsageAnalytics
-from ...models.usage_log import UsageLog
-from ...models.billing_analytics import BillingAnalytics
 from ...models.ecpay_subscription import SaasSubscription
 from ..config import Settings
 
@@ -66,7 +63,9 @@ class AdminDailyReportService:
     def __init__(self, db_session: Session, settings: Settings):
         self.db = db_session
         self.settings = settings
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logging.getLogger(
+            f"{__name__}.{self.__class__.__name__}"
+        )
 
     def generate_daily_report(
         self, target_date: Optional[datetime] = None
@@ -84,20 +83,28 @@ class AdminDailyReportService:
             target_date = datetime.now(timezone.utc) - timedelta(days=1)
 
         # Define report period (24 hours ending at midnight of target_date)
-        report_start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        report_start = target_date.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
         report_end = report_start + timedelta(days=1)
 
-        self.logger.info(f"📊 Generating daily report for {report_start.date()}")
+        self.logger.info(
+            f"📊 Generating daily report for {report_start.date()}"
+        )
 
         try:
             # Gather all metrics - handle database errors gracefully
             user_metrics = self._get_user_metrics(report_start, report_end)
-            session_metrics = self._get_session_metrics(report_start, report_end)
+            session_metrics = self._get_session_metrics(
+                report_start, report_end
+            )
             admin_metrics = self._get_admin_metrics(report_start, report_end)
 
             # Handle billing metrics which may fail if table doesn't exist
             try:
-                billing_metrics = self._get_billing_metrics(report_start, report_end)
+                billing_metrics = self._get_billing_metrics(
+                    report_start, report_end
+                )
             except Exception as e:
                 self.logger.warning(f"Failed to get billing metrics: {e}")
                 # Rollback and try again with a new transaction
@@ -107,8 +114,12 @@ class AdminDailyReportService:
                     "subscription_changes": [],
                 }
 
-            system_metrics = self._get_system_health_metrics(report_start, report_end)
-            activity_metrics = self._get_activity_metrics(report_start, report_end)
+            system_metrics = self._get_system_health_metrics(
+                report_start, report_end
+            )
+            activity_metrics = self._get_activity_metrics(
+                report_start, report_end
+            )
 
             report_data = DailyReportData(
                 report_date=report_start.strftime("%Y-%m-%d"),
@@ -131,7 +142,9 @@ class AdminDailyReportService:
             self.logger.error(f"❌ Failed to generate daily report: {str(e)}")
             raise
 
-    def _get_user_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+    def _get_user_metrics(
+        self, start: datetime, end: datetime
+    ) -> Dict[str, Any]:
         """Get user-related metrics."""
         self.logger.debug("📋 Collecting user metrics...")
 
@@ -173,7 +186,9 @@ class AdminDailyReportService:
 
         # Users by plan
         plan_counts = (
-            self.db.query(User.plan, func.count(User.id)).group_by(User.plan).all()
+            self.db.query(User.plan, func.count(User.id))
+            .group_by(User.plan)
+            .all()
         )
 
         users_by_plan = {plan.value: count for plan, count in plan_counts}
@@ -186,7 +201,9 @@ class AdminDailyReportService:
             "users_by_plan": users_by_plan,
         }
 
-    def _get_session_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+    def _get_session_metrics(
+        self, start: datetime, end: datetime
+    ) -> Dict[str, Any]:
         """Get session and usage metrics."""
         self.logger.debug("📋 Collecting session metrics...")
 
@@ -209,7 +226,8 @@ class AdminDailyReportService:
         # Sessions by STT provider
         provider_counts = (
             self.db.query(
-                TranscriptSession.stt_provider, func.count(TranscriptSession.id)
+                TranscriptSession.stt_provider,
+                func.count(TranscriptSession.id),
             )
             .filter(
                 and_(
@@ -229,7 +247,9 @@ class AdminDailyReportService:
         usage_stats = (
             self.db.query(
                 func.sum(TranscriptSession.duration_seconds),
-                func.sum(func.cast(TranscriptSession.stt_cost_usd, DECIMAL(12, 4))),
+                func.sum(
+                    func.cast(TranscriptSession.stt_cost_usd, DECIMAL(12, 4))
+                ),
             )
             .filter(
                 and_(
@@ -248,10 +268,14 @@ class AdminDailyReportService:
             Decimal(str(total_seconds)) / 60 if total_seconds else Decimal("0")
         )
         total_cost_raw = (
-            usage_stats[1] if usage_stats and usage_stats[1] is not None else None
+            usage_stats[1]
+            if usage_stats and usage_stats[1] is not None
+            else None
         )
         total_cost_usd = (
-            Decimal(str(total_cost_raw)) if total_cost_raw is not None else Decimal("0")
+            Decimal(str(total_cost_raw))
+            if total_cost_raw is not None
+            else Decimal("0")
         )
 
         return {
@@ -263,7 +287,9 @@ class AdminDailyReportService:
             "total_cost_usd": total_cost_usd,
         }
 
-    def _get_admin_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+    def _get_admin_metrics(
+        self, start: datetime, end: datetime
+    ) -> Dict[str, Any]:
         """Get admin and staff activity metrics."""
         self.logger.debug("📋 Collecting admin metrics...")
 
@@ -271,7 +297,9 @@ class AdminDailyReportService:
         admin_users_query = (
             self.db.query(User)
             .filter(
-                User.role.in_([UserRole.ADMIN, UserRole.STAFF, UserRole.SUPER_ADMIN])
+                User.role.in_(
+                    [UserRole.ADMIN, UserRole.STAFF, UserRole.SUPER_ADMIN]
+                )
             )
             .order_by(User.role, User.email)
         )
@@ -283,7 +311,9 @@ class AdminDailyReportService:
                 "name": user.name,
                 "role": user.role.value,
                 "last_admin_login": (
-                    user.last_admin_login.isoformat() if user.last_admin_login else None
+                    user.last_admin_login.isoformat()
+                    if user.last_admin_login
+                    else None
                 ),
                 "admin_access_expires": (
                     user.admin_access_expires.isoformat()
@@ -310,9 +340,14 @@ class AdminDailyReportService:
             .count()
         )
 
-        return {"admin_users": admin_users, "staff_logins_today": staff_logins_today}
+        return {
+            "admin_users": admin_users,
+            "staff_logins_today": staff_logins_today,
+        }
 
-    def _get_billing_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+    def _get_billing_metrics(
+        self, start: datetime, end: datetime
+    ) -> Dict[str, Any]:
         """Get billing and subscription metrics."""
         self.logger.debug("📋 Collecting billing metrics...")
 
@@ -414,7 +449,9 @@ class AdminDailyReportService:
         )
 
         error_rate = (
-            (failed_sessions / total_sessions * 100) if total_sessions > 0 else 0.0
+            (failed_sessions / total_sessions * 100)
+            if total_sessions > 0
+            else 0.0
         )
 
         # Average processing time (approximation based on completed sessions)
@@ -438,7 +475,9 @@ class AdminDailyReportService:
             "avg_processing_time_minutes": avg_processing_time_minutes,
         }
 
-    def _get_activity_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+    def _get_activity_metrics(
+        self, start: datetime, end: datetime
+    ) -> Dict[str, Any]:
         """Get top user activity metrics."""
         self.logger.debug("📋 Collecting activity metrics...")
 
@@ -447,9 +486,19 @@ class AdminDailyReportService:
             self.db.query(
                 User,
                 func.count(TranscriptSession.id).label("session_count"),
-                func.sum(TranscriptSession.duration_seconds).label("total_seconds"),
+                func.sum(TranscriptSession.duration_seconds).label(
+                    "total_seconds"
+                ),
                 func.count(
-                    case([(TranscriptSession.status == SessionStatus.COMPLETED, 1)])
+                    case(
+                        [
+                            (
+                                TranscriptSession.status
+                                == SessionStatus.COMPLETED,
+                                1,
+                            )
+                        ]
+                    )
                 ).label("completed_sessions"),
             )
             .join(TranscriptSession, User.id == TranscriptSession.user_id)
@@ -522,7 +571,7 @@ class AdminDailyReportService:
                 <h2>{report.report_date}</h2>
                 <p>Report generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
             </div>
-            
+
             <!-- Key Metrics -->
             <div class="section">
                 <h3>📊 Key Metrics</h3>
@@ -555,13 +604,13 @@ class AdminDailyReportService:
                     <div class="metric-label">Total Cost</div>
                 </div>
             </div>
-            
+
             <!-- New Users -->
             <div class="section">
                 <h3>👥 New Users ({report.new_users_count})</h3>
                 {self._format_new_users_table(report.new_users) if report.new_users else '<p>No new users today.</p>'}
             </div>
-            
+
             <!-- Plan Distribution -->
             <div class="section">
                 <h3>💼 Users by Plan</h3>
@@ -570,7 +619,7 @@ class AdminDailyReportService:
                     {self._format_plan_distribution(report.users_by_plan, report.total_users)}
                 </table>
             </div>
-            
+
             <!-- Session Metrics -->
             <div class="section">
                 <h3>🔄 Session Activity</h3>
@@ -580,13 +629,13 @@ class AdminDailyReportService:
                     {self._format_provider_list(report.sessions_by_provider)}
                 </ul>
             </div>
-            
+
             <!-- Top Users -->
             <div class="section">
                 <h3>🏆 Top Active Users</h3>
                 {self._format_top_users_table(report.top_users) if report.top_users else '<p>No active users today.</p>'}
             </div>
-            
+
             <!-- Admin Activity -->
             <div class="section">
                 <h3>👨‍💼 Admin & Staff</h3>
@@ -596,7 +645,7 @@ class AdminDailyReportService:
                     {self._format_admin_users_list(report.admin_users)}
                 </div>
             </div>
-            
+
             <!-- System Health -->
             <div class="section">
                 <h3>🏥 System Health</h3>
@@ -609,7 +658,7 @@ class AdminDailyReportService:
                     <div class="metric-label">Avg Processing Time (min)</div>
                 </div>
             </div>
-            
+
             <!-- Billing Summary -->
             <div class="section">
                 <h3>💰 Billing & Subscriptions</h3>
@@ -619,7 +668,7 @@ class AdminDailyReportService:
                 </ul>
                 <p><strong>Recent Changes:</strong> {len(report.subscription_changes)} subscription events</p>
             </div>
-            
+
             <div class="section">
                 <p><small>Generated by Admin Daily Report Agent | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</small></p>
             </div>
@@ -665,7 +714,9 @@ class AdminDailyReportService:
             )
         return "".join(rows)
 
-    def _format_provider_list(self, sessions_by_provider: Dict[str, int]) -> str:
+    def _format_provider_list(
+        self, sessions_by_provider: Dict[str, int]
+    ) -> str:
         """Format provider distribution as HTML list items."""
         items = []
         for provider, count in sessions_by_provider.items():
@@ -715,7 +766,9 @@ class AdminDailyReportService:
             )
         return "".join(items)
 
-    def _format_subscription_list(self, active_subscriptions: Dict[str, int]) -> str:
+    def _format_subscription_list(
+        self, active_subscriptions: Dict[str, int]
+    ) -> str:
         """Format subscription distribution as HTML list items."""
         items = []
         for plan, count in active_subscriptions.items():
@@ -724,7 +777,9 @@ class AdminDailyReportService:
             )
         return "".join(items)
 
-    def export_report_json(self, report: DailyReportData, output_path: str) -> None:
+    def export_report_json(
+        self, report: DailyReportData, output_path: str
+    ) -> None:
         """Export report data as JSON file."""
 
         # Convert to serializable format

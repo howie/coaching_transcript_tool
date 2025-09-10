@@ -4,7 +4,7 @@ Main entry point for the Coaching Transcript Tool Backend API v2.0.
 重構後的 FastAPI 應用，移除了 Flask 依賴，純 FastAPI 架構。
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 import logging
@@ -34,7 +34,7 @@ from .middleware.logging import setup_api_logging
 from .middleware.error_handler import error_handler
 from .core.config import settings
 from .core.env_validator import validate_environment
-from .version import VERSION, DISPLAY_VERSION, DESCRIPTION
+from .version import VERSION, DISPLAY_VERSION
 
 # 在任何其他初始化之前驗證環境變數
 print("🚀 Starting Coaching Transcript Tool Backend API...")
@@ -42,8 +42,8 @@ validate_environment()
 
 # 設定日誌
 # 在 production/container 環境中，只輸出到 stdout，不寫檔案
-is_container = os.getenv('IS_CONTAINER', 'false').lower() == 'true'
-is_production = os.getenv('ENVIRONMENT', 'development') == 'production'
+is_container = os.getenv("IS_CONTAINER", "false").lower() == "true"
+is_production = os.getenv("ENVIRONMENT", "development") == "production"
 
 if is_container or is_production:
     # Container/Production: 只輸出到 stdout
@@ -51,6 +51,7 @@ if is_container or is_production:
 else:
     # Development: 輸出到檔案和 stdout
     import pathlib
+
     project_root = pathlib.Path(__file__).parent.parent.parent.parent.parent
     api_log_file = project_root / "logs" / "api.log"
     setup_api_logging(log_file=str(api_log_file))
@@ -91,10 +92,14 @@ app.include_router(
 app.include_router(
     sessions.router, prefix="/api/v1/sessions", tags=["transcription-sessions"]
 )
-app.include_router(summary.router, prefix="/api/v1/dashboard", tags=["summary"])
+app.include_router(
+    summary.router, prefix="/api/v1/dashboard", tags=["summary"]
+)
 app.include_router(coach_profile.router, tags=["coach-profile"])
 app.include_router(usage.router, tags=["usage"])
-app.include_router(usage_history.router, prefix="/api/v1/usage", tags=["usage-history"])
+app.include_router(
+    usage_history.router, prefix="/api/v1/usage", tags=["usage-history"]
+)
 app.include_router(plans.router, tags=["plans"])
 app.include_router(plan_limits.router, tags=["plan-limits"])
 app.include_router(transcript_smoothing.router, tags=["transcript-smoothing"])
@@ -124,7 +129,9 @@ async def root():
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info(f"Starting Coaching Transcript Tool Backend API {DISPLAY_VERSION}")
+    logger.info(
+        f"Starting Coaching Transcript Tool Backend API {DISPLAY_VERSION}"
+    )
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 

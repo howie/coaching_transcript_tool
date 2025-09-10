@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Any, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
@@ -60,7 +60,9 @@ async def user_root():
 
 
 @router.get("/profile", response_model=UserProfileResponse)
-async def get_user_profile(current_user: User = Depends(get_current_user_dependency)):
+async def get_user_profile(
+    current_user: User = Depends(get_current_user_dependency),
+):
     """
     獲取當前用戶資料
     """
@@ -114,7 +116,9 @@ async def update_user_preferences(
     prefs_update = {}
     if preferences_data.language is not None:
         if preferences_data.language not in ["zh", "en", "system"]:
-            raise HTTPException(status_code=400, detail="Invalid language preference")
+            raise HTTPException(
+                status_code=400, detail="Invalid language preference"
+            )
         prefs_update["language"] = preferences_data.language
 
     # Update preferences
@@ -138,19 +142,23 @@ async def change_password(
     """
     if current_user.auth_provider != "email":
         raise HTTPException(
-            status_code=400, detail="Password change not available for SSO users"
+            status_code=400,
+            detail="Password change not available for SSO users",
         )
 
     if not current_user.hashed_password:
         raise HTTPException(
-            status_code=400, detail="No password set. Use set-password endpoint."
+            status_code=400,
+            detail="No password set. Use set-password endpoint.",
         )
 
     # Verify current password
     if not pwd_context.verify(
         password_data.current_password, current_user.hashed_password
     ):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
+        raise HTTPException(
+            status_code=400, detail="Current password is incorrect"
+        )
 
     # Set new password
     current_user.hashed_password = pwd_context.hash(password_data.new_password)
@@ -196,7 +204,9 @@ async def delete_account(
 
 
 @router.get("/usage")
-async def get_user_usage(current_user: User = Depends(get_current_user_dependency)):
+async def get_user_usage(
+    current_user: User = Depends(get_current_user_dependency),
+):
     """
     獲取用戶使用情況統計
     """
@@ -226,5 +236,7 @@ async def submit_feedback(
     """
     提交用戶反饋
     """
-    logger.info(f"Received user feedback from {current_user.email}: {feedback_data}")
+    logger.info(
+        f"Received user feedback from {current_user.email}: {feedback_data}"
+    )
     return {"message": "Feedback received successfully"}

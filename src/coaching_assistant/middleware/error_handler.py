@@ -22,7 +22,9 @@ async def error_handler(request: Request, exc: Exception) -> JSONResponse:
         )
 
     if isinstance(exc, StarletteHTTPException):
-        logger.warning(f"Starlette HTTP Exception: {exc.status_code} - {exc.detail}")
+        logger.warning(
+            f"Starlette HTTP Exception: {exc.status_code} - {exc.detail}"
+        )
         return JSONResponse(
             status_code=exc.status_code,
             content={"error": exc.detail, "status_code": exc.status_code},

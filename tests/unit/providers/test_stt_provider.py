@@ -1,12 +1,11 @@
 """Test STT provider module."""
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import patch
 from decimal import Decimal
 
 from coaching_assistant.services.stt_provider import (
     TranscriptSegment,
-    TranscriptionResult,
     STTProviderError,
 )
 from coaching_assistant.services.stt_factory import STTProviderFactory
@@ -49,18 +48,24 @@ class TestSTTProviderFactory:
             return_value=None,
         ):
             provider = STTProviderFactory.create()
-            from coaching_assistant.services.assemblyai_stt import AssemblyAIProvider
+            from coaching_assistant.services.assemblyai_stt import (
+                AssemblyAIProvider,
+            )
+
             assert isinstance(provider, AssemblyAIProvider)
 
     def test_create_unsupported_provider(self):
         """Test creating unsupported provider raises error."""
-        with pytest.raises(STTProviderError, match="Failed to create STT provider"):
+        with pytest.raises(
+            STTProviderError, match="Failed to create STT provider"
+        ):
             STTProviderFactory.create("unsupported")
 
     def test_whisper_not_implemented(self):
         """Test Whisper provider not yet implemented."""
         with pytest.raises(
-            STTProviderError, match="Failed to create STT provider.*Whisper STT provider not yet implemented"
+            STTProviderError,
+            match="Failed to create STT provider.*Whisper STT provider not yet implemented",
         ):
             STTProviderFactory.create("whisper")
 
@@ -112,4 +117,6 @@ class TestGoogleSTTProvider:
 
     def test_create_segment_from_words(self):
         """Test creating segment from words."""
-        pytest.skip("Method _create_segment_from_words is private and requires complex setup")
+        pytest.skip(
+            "Method _create_segment_from_words is private and requires complex setup"
+        )

@@ -7,7 +7,11 @@ import os
 from datetime import datetime, timezone
 
 import boto3
-from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
+from botocore.exceptions import (
+    NoCredentialsError,
+    PartialCredentialsError,
+    ClientError,
+)
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -19,7 +23,9 @@ logger = logging.getLogger(__name__)
 S3_BUCKET = os.getenv("S3_BUCKET_NAME")
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")  # Default to a region if not set
+AWS_REGION = os.getenv(
+    "AWS_REGION", "ap-northeast-1"
+)  # Default to a region if not set
 
 
 def upload_snippet_to_s3(content: bytes, original_filename: str) -> None:
@@ -51,7 +57,9 @@ def upload_snippet_to_s3(content: bytes, original_filename: str) -> None:
         # Create a unique filename for the snippet
         # Ensure filename is ASCII-safe by encoding non-ASCII characters
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        safe_filename = original_filename.encode("ascii", "replace").decode("ascii")
+        safe_filename = original_filename.encode("ascii", "replace").decode(
+            "ascii"
+        )
         s3_key = f"unrecognized_formats/{timestamp}_{safe_filename}.txt"
 
         s3_client.put_object(
@@ -60,13 +68,17 @@ def upload_snippet_to_s3(content: bytes, original_filename: str) -> None:
             Body=snippet,
             ContentType="text/plain; charset=utf-8",
         )
-        logger.info(f"Successfully uploaded snippet to S3: s3://{S3_BUCKET}/{s3_key}")
+        logger.info(
+            f"Successfully uploaded snippet to S3: s3://{S3_BUCKET}/{s3_key}"
+        )
 
     except (NoCredentialsError, PartialCredentialsError):
         logger.error(
             "AWS credentials not found. Please configure them in your environment."
         )
     except ClientError as e:
-        logger.error(f"An S3 client error occurred: {e.response['Error']['Message']}")
+        logger.error(
+            f"An S3 client error occurred: {e.response['Error']['Message']}"
+        )
     except Exception as e:
         logger.error(f"An unexpected error occurred during S3 upload: {e}")

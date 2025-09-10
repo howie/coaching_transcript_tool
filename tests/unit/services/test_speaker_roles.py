@@ -1,17 +1,9 @@
 """Test speaker roles API endpoint."""
 
-import json
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
-from coaching_assistant.models.session import Session, SessionStatus
 from coaching_assistant.models.transcript import (
-    TranscriptSegment,
     SessionRole,
     SpeakerRole,
 )
-from coaching_assistant.models.user import User
-from coaching_assistant.main import app
 
 
 def test_speaker_roles_update():
@@ -60,7 +52,9 @@ def test_role_assignment_logic():
         assert role_str in ["coach", "client"]
 
         # Convert to enum
-        role_enum = SpeakerRole.COACH if role_str == "coach" else SpeakerRole.CLIENT
+        role_enum = (
+            SpeakerRole.COACH if role_str == "coach" else SpeakerRole.CLIENT
+        )
         assert role_enum in [SpeakerRole.COACH, SpeakerRole.CLIENT]
 
 

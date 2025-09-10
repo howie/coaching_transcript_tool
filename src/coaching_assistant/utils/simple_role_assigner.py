@@ -12,7 +12,7 @@ Future improvements could include:
 """
 
 import logging
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,9 @@ class SimpleRoleAssigner:
             # For Chinese text, we count characters as a proxy for words
             content = segment.content
             if self._is_chinese_text(content):
-                word_count = len([c for c in content if "\u4e00" <= c <= "\u9fff"])
+                word_count = len(
+                    [c for c in content if "\u4e00" <= c <= "\u9fff"]
+                )
             else:
                 word_count = len(content.split())
 
@@ -110,7 +112,9 @@ class SimpleRoleAssigner:
             for speaker_id, data in metrics.items()
         }
 
-    def assign_roles(self, segments: List) -> Tuple[Dict[int, str], Dict[str, float]]:
+    def assign_roles(
+        self, segments: List
+    ) -> Tuple[Dict[int, str], Dict[str, float]]:
         """
         Assign coach/client roles based on speaking ratios.
 
@@ -179,9 +183,13 @@ class SimpleRoleAssigner:
             # Confidence calculation
             if ratio_difference > 0.3:  # Clear difference (e.g., 70/30 split)
                 confidence = 0.9
-            elif ratio_difference > 0.2:  # Moderate difference (e.g., 60/40 split)
+            elif (
+                ratio_difference > 0.2
+            ):  # Moderate difference (e.g., 60/40 split)
                 confidence = 0.7
-            elif ratio_difference > 0.1:  # Small difference (e.g., 55/45 split)
+            elif (
+                ratio_difference > 0.1
+            ):  # Small difference (e.g., 55/45 split)
                 confidence = 0.5
             else:  # Very small difference
                 confidence = 0.3
@@ -212,7 +220,9 @@ class SimpleRoleAssigner:
             # More than 2 speakers - find the one who speaks most as client
             # This is a simplified approach for group sessions
             speakers_sorted = sorted(
-                speaker_metrics.items(), key=lambda x: x[1].total_duration, reverse=True
+                speaker_metrics.items(),
+                key=lambda x: x[1].total_duration,
+                reverse=True,
             )
 
             # Assign the most talkative as client, others as participants

@@ -3,7 +3,6 @@
 import enum
 from sqlalchemy import (
     Column,
-    String,
     Integer,
     ForeignKey,
     Float,
@@ -94,7 +93,9 @@ class SessionRole(BaseModel):
 
     # Ensure unique speaker_id per session
     __table_args__ = (
-        UniqueConstraint("session_id", "speaker_id", name="unique_session_speaker"),
+        UniqueConstraint(
+            "session_id", "speaker_id", name="unique_session_speaker"
+        ),
     )
 
     def __repr__(self):
@@ -127,7 +128,9 @@ class SegmentRole(BaseModel):
 
     # Relationships
     session = relationship("Session", back_populates="segment_roles")
-    segment = relationship("TranscriptSegment", back_populates="role_assignment")
+    segment = relationship(
+        "TranscriptSegment", back_populates="role_assignment"
+    )
 
     # Ensure unique segment_id per session
     __table_args__ = (

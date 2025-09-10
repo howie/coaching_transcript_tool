@@ -9,7 +9,9 @@ from coaching_assistant.models.transcript import SpeakerRole
 class TestTranscriptSegmentModel:
     """Test TranscriptSegment model basic functionality."""
 
-    def test_create_segment_with_required_fields(self, db_session, sample_session):
+    def test_create_segment_with_required_fields(
+        self, db_session, sample_session
+    ):
         """Test creating a transcript segment with required fields."""
         segment = TranscriptSegment(
             session_id=sample_session.id,
@@ -31,7 +33,9 @@ class TestTranscriptSegmentModel:
         assert segment.created_at is not None
         assert segment.updated_at is not None
 
-    def test_create_segment_with_optional_fields(self, db_session, sample_session):
+    def test_create_segment_with_optional_fields(
+        self, db_session, sample_session
+    ):
         """Test creating a transcript segment with optional fields."""
         segment = TranscriptSegment(
             session_id=sample_session.id,
@@ -93,7 +97,12 @@ class TestTranscriptSegmentProperties:
         ],
     )
     def test_duration_sec_property(
-        self, db_session, sample_session, start_seconds, end_seconds, expected_duration
+        self,
+        db_session,
+        sample_session,
+        start_seconds,
+        end_seconds,
+        expected_duration,
     ):
         """Test duration_sec property calculation."""
         segment = TranscriptSegment(
@@ -118,7 +127,12 @@ class TestTranscriptSegmentProperties:
         ],
     )
     def test_formatted_timespan_property(
-        self, db_session, sample_session, start_seconds, end_seconds, expected_timespan
+        self,
+        db_session,
+        sample_session,
+        start_seconds,
+        end_seconds,
+        expected_timespan,
     ):
         """Test formatted_timespan property."""
         segment = TranscriptSegment(
@@ -170,7 +184,9 @@ class TestTranscriptSegmentRelationships:
 class TestSessionRoleModel:
     """Test SessionRole model basic functionality."""
 
-    def test_create_role_with_required_fields(self, db_session, sample_session):
+    def test_create_role_with_required_fields(
+        self, db_session, sample_session
+    ):
         """Test creating a session role with required fields."""
         role = SessionRole(
             session_id=sample_session.id, speaker_id=1, role=SpeakerRole.COACH
@@ -210,7 +226,9 @@ class TestSessionRoleModel:
         with pytest.raises(IntegrityError):
             db_session.commit()
 
-    def test_unique_session_speaker_constraint(self, db_session, sample_session):
+    def test_unique_session_speaker_constraint(
+        self, db_session, sample_session
+    ):
         """Test that speaker_id must be unique within a session."""
         role1 = SessionRole(
             session_id=sample_session.id, speaker_id=1, role=SpeakerRole.COACH
@@ -229,18 +247,24 @@ class TestSessionRoleModel:
         with pytest.raises(IntegrityError):
             db_session.commit()  # Second role should fail
 
-    def test_different_sessions_same_speaker_allowed(self, db_session, sample_user):
+    def test_different_sessions_same_speaker_allowed(
+        self, db_session, sample_user
+    ):
         """Test that same speaker_id is allowed in different sessions."""
         from coaching_assistant.models import Session
         from coaching_assistant.models.session import SessionStatus
 
         # Create first session
         session1 = Session(
-            title="First Session", user_id=sample_user.id, status=SessionStatus.PENDING
+            title="First Session",
+            user_id=sample_user.id,
+            status=SessionStatus.PENDING,
         )
         # Create second session
         session2 = Session(
-            title="Second Session", user_id=sample_user.id, status=SessionStatus.PENDING
+            title="Second Session",
+            user_id=sample_user.id,
+            status=SessionStatus.PENDING,
         )
         db_session.add_all([session1, session2])
         db_session.commit()
@@ -315,7 +339,9 @@ class TestSessionRoleRelationships:
 class TestIntegratedTranscriptFunctionality:
     """Test integrated functionality between transcript models."""
 
-    def test_session_get_speaker_role_integration(self, db_session, sample_session):
+    def test_session_get_speaker_role_integration(
+        self, db_session, sample_session
+    ):
         """Test Session.get_speaker_role with actual SessionRole data."""
         # Create role assignment
         role = SessionRole(
@@ -326,7 +352,9 @@ class TestIntegratedTranscriptFunctionality:
 
         # Test that session can resolve speaker role
         assert sample_session.get_speaker_role(1) == "coach"
-        assert sample_session.get_speaker_role(2) == "Speaker 2"  # No role assigned
+        assert (
+            sample_session.get_speaker_role(2) == "Speaker 2"
+        )  # No role assigned
 
     def test_complete_session_data_flow(self, db_session, sample_session):
         """Test complete data flow: Session → Segments → Roles."""
@@ -361,10 +389,14 @@ class TestIntegratedTranscriptFunctionality:
         # Create role assignments
         roles = [
             SessionRole(
-                session_id=sample_session.id, speaker_id=1, role=SpeakerRole.COACH
+                session_id=sample_session.id,
+                speaker_id=1,
+                role=SpeakerRole.COACH,
             ),
             SessionRole(
-                session_id=sample_session.id, speaker_id=2, role=SpeakerRole.CLIENT
+                session_id=sample_session.id,
+                speaker_id=2,
+                role=SpeakerRole.CLIENT,
             ),
         ]
 

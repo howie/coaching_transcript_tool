@@ -6,7 +6,6 @@ from typing import List, Dict, Any
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 import io
-from openpyxl.utils import get_column_letter
 
 
 def calculate_column_widths(worksheet) -> None:
@@ -31,7 +30,9 @@ def calculate_column_widths(worksheet) -> None:
                 max_length = max(max_length, len(str(cell.value)))
 
         # Add some padding and set the column width
-        adjusted_width = (max_length + 2) * 1.1  # Add padding and a little extra
+        adjusted_width = (
+            max_length + 2
+        ) * 1.1  # Add padding and a little extra
 
         # Apply min and max width constraints
         if adjusted_width < min_width:
@@ -143,7 +144,9 @@ def _apply_styles(ws, data, font_size, coach_color, client_color):
         )
 
     for row_idx, item in enumerate(data, start=2):
-        fill = coach_fill if item["speaker"] in ["Coach", "教練"] else client_fill
+        fill = (
+            coach_fill if item["speaker"] in ["Coach", "教練"] else client_fill
+        )
         for col_idx in range(1, 4):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.font = cell_font

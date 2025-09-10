@@ -2,8 +2,7 @@
 
 import re
 import logging
-from typing import Dict, List, Tuple, Optional
-from collections import Counter
+from typing import Dict, List, Tuple
 from dataclasses import dataclass
 
 from ..services.stt_provider import TranscriptSegment
@@ -74,11 +73,19 @@ class SpeakerAnalyzer:
     def __init__(self, language: str = "auto"):
         """Initialize analyzer with language preference."""
         self.language = self._detect_primary_language(language)
-        logger.debug(f"SpeakerAnalyzer initialized for language: {self.language}")
+        logger.debug(
+            f"SpeakerAnalyzer initialized for language: {self.language}"
+        )
 
     def _detect_primary_language(self, language_code: str) -> str:
         """Detect primary language for pattern matching."""
-        if language_code in ["cmn-Hant-TW", "zh-TW", "cmn-Hans-CN", "zh-CN", "zh"]:
+        if language_code in [
+            "cmn-Hant-TW",
+            "zh-TW",
+            "cmn-Hans-CN",
+            "zh-CN",
+            "zh",
+        ]:
             return "zh"
         elif language_code in ["en-US", "en-GB", "en"]:
             return "en"
@@ -179,7 +186,9 @@ class SpeakerAnalyzer:
 
         return stats
 
-    def assign_roles(self, segments: List[TranscriptSegment]) -> Dict[int, str]:
+    def assign_roles(
+        self, segments: List[TranscriptSegment]
+    ) -> Dict[int, str]:
         """
         Automatically assign coach/client roles based on conversation patterns.
 
@@ -227,7 +236,9 @@ class SpeakerAnalyzer:
                 roles = {speaker2_id: "coach", speaker1_id: "client"}
 
             # Log the decision reasoning
-            coach_id = speaker1_id if coach_score_1 > coach_score_2 else speaker2_id
+            coach_id = (
+                speaker1_id if coach_score_1 > coach_score_2 else speaker2_id
+            )
             coach_stats = stats1 if coach_score_1 > coach_score_2 else stats2
             client_stats = stats2 if coach_score_1 > coach_score_2 else stats1
 
@@ -253,7 +264,9 @@ class SpeakerAnalyzer:
                 else:
                     roles[speaker_id] = "client"  # or could be 'participant'
 
-            logger.info(f"Multi-speaker session: assigned {len(roles)} speakers")
+            logger.info(
+                f"Multi-speaker session: assigned {len(roles)} speakers"
+            )
             return roles
 
     def _calculate_coach_score(self, stats: SpeakerStats) -> float:
@@ -273,16 +286,22 @@ class SpeakerAnalyzer:
         score += stats.question_ratio * 4.0
 
         # Shorter average segment length (coaches ask concise questions)
-        if stats.avg_segment_length < 15:  # Very short segments (questions/prompts)
+        if (
+            stats.avg_segment_length < 15
+        ):  # Very short segments (questions/prompts)
             score += 1.5
         elif stats.avg_segment_length < 30:  # Short segments
             score += 0.8
-        elif stats.avg_segment_length > 40:  # Long segments (client sharing stories)
+        elif (
+            stats.avg_segment_length > 40
+        ):  # Long segments (client sharing stories)
             score -= 1.0
 
         # Speaking time ratio (clients typically talk MORE)
         # Less total speaking time favors being the coach
-        total_words_penalty = stats.total_words / 1000.0  # Normalize by word count
+        total_words_penalty = (
+            stats.total_words / 1000.0
+        )  # Normalize by word count
         if total_words_penalty > 1.0:  # More than 1000 words suggests client
             score -= total_words_penalty * 0.8
         elif total_words_penalty < 0.3:  # Less than 300 words suggests coach
@@ -327,7 +346,9 @@ class SpeakerAnalyzer:
             return {"confidence": 0.5}  # Neutral confidence
 
         # Calculate confidence based on role differentiation
-        question_ratio_diff = coach_stats.question_ratio - client_stats.question_ratio
+        question_ratio_diff = (
+            coach_stats.question_ratio - client_stats.question_ratio
+        )
         avg_length_diff = (
             client_stats.avg_segment_length - coach_stats.avg_segment_length
         )
@@ -335,7 +356,9 @@ class SpeakerAnalyzer:
         confidence = 0.5  # Base confidence
 
         # Strong indicators increase confidence
-        if question_ratio_diff > 0.2:  # Coach asks significantly more questions
+        if (
+            question_ratio_diff > 0.2
+        ):  # Coach asks significantly more questions
             confidence += 0.3
         elif question_ratio_diff > 0.1:
             confidence += 0.15

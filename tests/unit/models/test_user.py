@@ -76,7 +76,9 @@ class TestUserModel:
 
     def test_user_str_representation(self, sample_user):
         """Test user string representation."""
-        expected = f"<User(email={sample_user.email}, plan={sample_user.plan.value})>"
+        expected = (
+            f"<User(email={sample_user.email}, plan={sample_user.plan.value})>"
+        )
         assert str(sample_user) == expected
 
 
@@ -89,15 +91,40 @@ class TestUserPlanLimits:
             (UserPlan.FREE, 0, 30, True),  # Within free limit
             (UserPlan.FREE, 0, 60, True),  # Exactly at free limit
             (UserPlan.FREE, 0, 61, False),  # Over free limit
-            (UserPlan.FREE, 30, 30, True),  # Within free limit with existing usage
-            (UserPlan.FREE, 50, 15, False),  # Over free limit with existing usage
+            (
+                UserPlan.FREE,
+                30,
+                30,
+                True,
+            ),  # Within free limit with existing usage
+            (
+                UserPlan.FREE,
+                50,
+                15,
+                False,
+            ),  # Over free limit with existing usage
             (UserPlan.PRO, 0, 300, True),  # Within pro limit
             (UserPlan.PRO, 0, 600, True),  # Exactly at pro limit
             (UserPlan.PRO, 0, 601, False),  # Over pro limit
-            (UserPlan.PRO, 400, 200, True),  # Within pro limit with existing usage
-            (UserPlan.PRO, 500, 150, False),  # Over pro limit with existing usage
+            (
+                UserPlan.PRO,
+                400,
+                200,
+                True,
+            ),  # Within pro limit with existing usage
+            (
+                UserPlan.PRO,
+                500,
+                150,
+                False,
+            ),  # Over pro limit with existing usage
             (UserPlan.ENTERPRISE, 0, 10000, True),  # Enterprise unlimited
-            (UserPlan.ENTERPRISE, 1000, 50000, True),  # Enterprise unlimited with usage
+            (
+                UserPlan.ENTERPRISE,
+                1000,
+                50000,
+                True,
+            ),  # Enterprise unlimited with usage
         ],
     )
     def test_is_usage_within_limit(
@@ -194,10 +221,14 @@ class TestUserRelationships:
         from coaching_assistant.models.session import SessionStatus
 
         session1 = Session(
-            title="Session 1", user_id=sample_user.id, status=SessionStatus.PENDING
+            title="Session 1",
+            user_id=sample_user.id,
+            status=SessionStatus.PENDING,
         )
         session2 = Session(
-            title="Session 2", user_id=sample_user.id, status=SessionStatus.COMPLETED
+            title="Session 2",
+            user_id=sample_user.id,
+            status=SessionStatus.COMPLETED,
         )
 
         db_session.add_all([session1, session2])
@@ -215,7 +246,9 @@ class TestUserRelationships:
         from coaching_assistant.models.session import SessionStatus
 
         session = Session(
-            title="Test Session", user_id=sample_user.id, status=SessionStatus.PENDING
+            title="Test Session",
+            user_id=sample_user.id,
+            status=SessionStatus.PENDING,
         )
 
         db_session.add(session)
@@ -227,5 +260,7 @@ class TestUserRelationships:
         db_session.commit()
 
         # Check that session is deleted
-        deleted_session = db_session.query(Session).filter_by(id=session_id).first()
+        deleted_session = (
+            db_session.query(Session).filter_by(id=session_id).first()
+        )
         assert deleted_session is None

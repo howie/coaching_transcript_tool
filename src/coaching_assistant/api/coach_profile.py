@@ -225,7 +225,9 @@ def get_coach_profile(
 ):
     """Get current user's coach profile."""
     profile = (
-        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+        db.query(CoachProfile)
+        .filter(CoachProfile.user_id == current_user.id)
+        .first()
     )
 
     if not profile:
@@ -235,7 +237,9 @@ def get_coach_profile(
 
 
 @router.post(
-    "/", response_model=CoachProfileResponse, status_code=status.HTTP_201_CREATED
+    "/",
+    response_model=CoachProfileResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 def create_coach_profile(
     profile_data: CoachProfileCreate,
@@ -245,7 +249,9 @@ def create_coach_profile(
     """Create a coach profile for the current user."""
     # Check if profile already exists
     existing_profile = (
-        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+        db.query(CoachProfile)
+        .filter(CoachProfile.user_id == current_user.id)
+        .first()
     )
 
     if existing_profile:
@@ -276,7 +282,9 @@ def create_coach_profile(
 
     # Set JSON fields
     profile.set_coaching_languages(profile_data.coaching_languages)
-    profile.set_communication_tools(profile_data.communication_tools.model_dump())
+    profile.set_communication_tools(
+        profile_data.communication_tools.model_dump()
+    )
     profile.set_certifications(profile_data.certifications)
     profile.set_specialties(profile_data.specialties)
 
@@ -295,12 +303,15 @@ def update_coach_profile(
 ):
     """Update the current user's coach profile."""
     profile = (
-        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+        db.query(CoachProfile)
+        .filter(CoachProfile.user_id == current_user.id)
+        .first()
     )
 
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Coach profile not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Coach profile not found",
         )
 
     # Update fields
@@ -337,12 +348,15 @@ def delete_coach_profile(
 ):
     """Delete the current user's coach profile."""
     profile = (
-        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+        db.query(CoachProfile)
+        .filter(CoachProfile.user_id == current_user.id)
+        .first()
     )
 
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Coach profile not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Coach profile not found",
         )
 
     db.delete(profile)
@@ -358,24 +372,31 @@ def get_coaching_plans(
     """Get all coaching plans for the current user's profile."""
     # Get coach profile
     profile = (
-        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+        db.query(CoachProfile)
+        .filter(CoachProfile.user_id == current_user.id)
+        .first()
     )
 
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Coach profile not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Coach profile not found",
         )
 
     # Get plans
     plans = (
-        db.query(CoachingPlan).filter(CoachingPlan.coach_profile_id == profile.id).all()
+        db.query(CoachingPlan)
+        .filter(CoachingPlan.coach_profile_id == profile.id)
+        .all()
     )
 
     return [_plan_to_response(plan) for plan in plans]
 
 
 @router.post(
-    "/plans", response_model=CoachingPlanResponse, status_code=status.HTTP_201_CREATED
+    "/plans",
+    response_model=CoachingPlanResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 def create_coaching_plan(
     plan_data: CoachingPlanCreate,
@@ -385,7 +406,9 @@ def create_coaching_plan(
     """Create a new coaching plan."""
     # Get coach profile
     profile = (
-        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+        db.query(CoachProfile)
+        .filter(CoachProfile.user_id == current_user.id)
+        .first()
     )
 
     if not profile:
@@ -427,24 +450,31 @@ def update_coaching_plan(
     """Update a coaching plan."""
     # Get coach profile
     profile = (
-        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+        db.query(CoachProfile)
+        .filter(CoachProfile.user_id == current_user.id)
+        .first()
     )
 
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Coach profile not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Coach profile not found",
         )
 
     # Get plan
     plan = (
         db.query(CoachingPlan)
-        .filter(CoachingPlan.id == plan_id, CoachingPlan.coach_profile_id == profile.id)
+        .filter(
+            CoachingPlan.id == plan_id,
+            CoachingPlan.coach_profile_id == profile.id,
+        )
         .first()
     )
 
     if not plan:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Coaching plan not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Coaching plan not found",
         )
 
     # Update fields
@@ -467,24 +497,31 @@ def delete_coaching_plan(
     """Delete a coaching plan."""
     # Get coach profile
     profile = (
-        db.query(CoachProfile).filter(CoachProfile.user_id == current_user.id).first()
+        db.query(CoachProfile)
+        .filter(CoachProfile.user_id == current_user.id)
+        .first()
     )
 
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Coach profile not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Coach profile not found",
         )
 
     # Get plan
     plan = (
         db.query(CoachingPlan)
-        .filter(CoachingPlan.id == plan_id, CoachingPlan.coach_profile_id == profile.id)
+        .filter(
+            CoachingPlan.id == plan_id,
+            CoachingPlan.coach_profile_id == profile.id,
+        )
         .first()
     )
 
     if not plan:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Coaching plan not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Coaching plan not found",
         )
 
     db.delete(plan)

@@ -3,7 +3,7 @@ Core processing logic for handling transcript files.
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Union, IO
+from typing import Optional, Union
 
 from ..parser import (
     VTTFormat,
@@ -64,7 +64,9 @@ def format_transcript(
             logger.debug(
                 f"Replacing names - Coach: {coach_name}, Client: {client_name}"
             )
-            processed_data = replace_names(consolidated_data, coach_name, client_name)
+            processed_data = replace_names(
+                consolidated_data, coach_name, client_name
+            )
         else:
             processed_data = consolidated_data
 
@@ -86,7 +88,9 @@ def format_transcript(
             raise ValueError(f"Unsupported output format: {output_format}")
 
     except UnrecognizedFormatError as e:
-        logger.warning(f"Unrecognized format for file '{original_filename}': {e}")
+        logger.warning(
+            f"Unrecognized format for file '{original_filename}': {e}"
+        )
         # Upload a snippet of the file for review
         upload_snippet_to_s3(file_content, original_filename)
         # Re-raise the exception to be handled by the API layer

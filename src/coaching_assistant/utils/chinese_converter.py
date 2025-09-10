@@ -55,7 +55,11 @@ class ChineseConverter:
                     (
                         self.convert_dict(item)
                         if isinstance(item, dict)
-                        else self.convert_text(item) if isinstance(item, str) else item
+                        else (
+                            self.convert_text(item)
+                            if isinstance(item, str)
+                            else item
+                        )
                     )
                     for item in value
                 ]
@@ -63,7 +67,9 @@ class ChineseConverter:
                 result[key] = value
         return result
 
-    def convert_list(self, data_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def convert_list(
+        self, data_list: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Convert Simplified Chinese text in a list of dictionaries to Traditional Chinese."""
         if not self.converter:
             return data_list
@@ -93,13 +99,17 @@ def convert_to_traditional(data):
         print(
             "Warning: opencc-python-reimplemented is not installed. Chinese conversion will be skipped."
         )
-        print("Please install it with: pip install opencc-python-reimplemented")
+        print(
+            "Please install it with: pip install opencc-python-reimplemented"
+        )
         return data
 
     if isinstance(data, str):
         return chinese_converter.convert_text(data)
     elif isinstance(data, dict):
         return chinese_converter.convert_dict(data)
-    elif isinstance(data, list) and all(isinstance(item, dict) for item in data):
+    elif isinstance(data, list) and all(
+        isinstance(item, dict) for item in data
+    ):
         return chinese_converter.convert_list(data)
     return data

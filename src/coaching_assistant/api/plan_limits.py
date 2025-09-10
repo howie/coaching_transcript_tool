@@ -3,7 +3,7 @@ Plan limits validation API endpoints.
 Handles usage validation and limit checking for different plan tiers.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -24,20 +24,33 @@ router = APIRouter(prefix="/api/v1/plan", tags=["plan-limits"])
 
 class ValidateActionRequest(BaseModel):
     """Request model for action validation."""
-    action: str = Field(..., description="Action to validate: create_session, transcribe, check_minutes, upload_file, export_transcript")
-    params: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Optional parameters for validation")
+
+    action: str = Field(
+        ...,
+        description="Action to validate: create_session, transcribe, check_minutes, upload_file, export_transcript",
+    )
+    params: Optional[Dict[str, Any]] = Field(
+        default_factory=dict, description="Optional parameters for validation"
+    )
 
 
 class LimitInfo(BaseModel):
     """Information about current usage and limits."""
-    type: str = Field(..., description="Type of limit: sessions, transcriptions, minutes, file_size, exports")
+
+    type: str = Field(
+        ...,
+        description="Type of limit: sessions, transcriptions, minutes, file_size, exports",
+    )
     current: int = Field(..., description="Current usage count")
     limit: int = Field(..., description="Plan limit (-1 for unlimited)")
-    reset_date: str = Field(..., description="ISO format date when limits reset")
+    reset_date: str = Field(
+        ..., description="ISO format date when limits reset"
+    )
 
 
 class UpgradeSuggestion(BaseModel):
     """Upgrade suggestion when limit is reached."""
+
     plan_id: str = Field(..., description="Suggested plan ID")
     display_name: str = Field(..., description="Display name of the plan")
     benefits: list[str] = Field(..., description="Key benefits of upgrading")
@@ -45,21 +58,26 @@ class UpgradeSuggestion(BaseModel):
 
 class ValidateActionResponse(BaseModel):
     """Response model for action validation."""
+
     allowed: bool = Field(..., description="Whether the action is allowed")
     message: Optional[str] = Field(None, description="Human-readable message")
-    limit_info: Optional[LimitInfo] = Field(None, description="Current usage and limit information")
-    upgrade_suggestion: Optional[UpgradeSuggestion] = Field(None, description="Upgrade suggestion if limit reached")
+    limit_info: Optional[LimitInfo] = Field(
+        None, description="Current usage and limit information"
+    )
+    upgrade_suggestion: Optional[UpgradeSuggestion] = Field(
+        None, description="Upgrade suggestion if limit reached"
+    )
 
 
 @router.post("/validate-action", response_model=ValidateActionResponse)
 async def validate_action(
     request: ValidateActionRequest,
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> ValidateActionResponse:
     """
     Validate if a user can perform a specific action based on their plan limits.
-    
+
     Actions:
     - create_session: Check if user can create a new coaching session
     - transcribe: Check if user can create a new transcription
@@ -70,16 +88,20 @@ async def validate_action(
     try:
         # Initialize usage tracker
         tracker = UsageTracker(db)
-        
+
         # Get user's current plan
         if current_user.plan:
             # Handle UserPlan enum conversion to PlanName
-            plan_value = current_user.plan.value if hasattr(current_user.plan, 'value') else str(current_user.plan)
+            plan_value = (
+                current_user.plan.value
+                if hasattr(current_user.plan, "value")
+                else str(current_user.plan)
+            )
             user_plan = PlanName(plan_value)
         else:
             user_plan = PlanName.FREE
         plan_limits = PlanLimits.get_plan_limit(user_plan)
-        
+
         # Get reset date (first day of next month)
         now = datetime.utcnow()
         if now.month == 12:
@@ -87,82 +109,92 @@ async def validate_action(
         else:
             reset_date = datetime(now.year, now.month + 1, 1)
         reset_date_str = reset_date.isoformat() + "Z"
-        
+
         # Validate based on action type
         if request.action == "create_session":
             current_usage = current_user.session_count or 0
             limit = plan_limits.max_sessions
             limit_type = "sessions"
-            
+
             # Check if unlimited (-1) or under limit
             allowed = limit == -1 or current_usage < limit
-            
+
             if not allowed:
                 message = "You have reached your monthly session limit"
             else:
                 message = None
-                
+
         elif request.action == "transcribe":
             current_usage = current_user.transcription_count or 0
             limit = plan_limits.max_transcriptions
             limit_type = "transcriptions"
-            
+
             allowed = limit == -1 or current_usage < limit
-            
+
             if not allowed:
                 message = "You have reached your monthly transcription limit"
             else:
                 message = None
-                
+
         elif request.action == "check_minutes":
             current_usage = current_user.usage_minutes or 0
             limit = plan_limits.max_minutes_per_month
             limit_type = "minutes"
-            
+
             # Check if adding requested minutes would exceed limit
-            requested_minutes = request.params.get("duration_min", 0) if request.params else 0
+            requested_minutes = (
+                request.params.get("duration_min", 0) if request.params else 0
+            )
             projected_usage = current_usage + requested_minutes
-            
+
             allowed = limit == -1 or projected_usage <= limit
-            
+
             if not allowed:
                 message = "You have reached your monthly audio minutes limit"
             else:
                 message = None
-                
+
         elif request.action == "upload_file":
-            file_size_mb = request.params.get("file_size_mb", 0) if request.params else 0
+            file_size_mb = (
+                request.params.get("file_size_mb", 0) if request.params else 0
+            )
             limit = plan_limits.max_file_size_mb
             limit_type = "file_size"
-            current_usage = file_size_mb  # For file size, current is the requested size
-            
+            current_usage = (
+                file_size_mb  # For file size, current is the requested size
+            )
+
             allowed = file_size_mb <= limit
-            
+
             if not allowed:
                 message = f"File size exceeds your plan limit of {limit}MB"
             else:
                 message = None
-                
+
         elif request.action == "export_transcript":
             # For exports, we'll track it separately if needed
             # For now, use session count as a proxy
             current_usage = current_user.session_count or 0
-            limit = plan_limits.max_exports_per_month if hasattr(plan_limits, 'max_exports_per_month') else 50
+            limit = (
+                plan_limits.max_exports_per_month
+                if hasattr(plan_limits, "max_exports_per_month")
+                else 50
+            )
             limit_type = "exports"
-            
+
             allowed = limit == -1 or current_usage < limit
-            
+
             if not allowed:
                 message = "You have reached your monthly export limit"
             else:
                 message = None
-                
+
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid action: {request.action}"
+                detail=f"Invalid action: {request.action}",
             )
-        
+
         # Build response
         response = ValidateActionResponse(
             allowed=allowed,
@@ -171,10 +203,10 @@ async def validate_action(
                 type=limit_type,
                 current=int(current_usage),
                 limit=int(limit),
-                reset_date=reset_date_str
-            )
+                reset_date=reset_date_str,
+            ),
         )
-        
+
         # Add upgrade suggestion if limit reached and not on highest plan
         if not allowed and user_plan != PlanName.ENTERPRISE:
             if user_plan == PlanName.FREE:
@@ -185,8 +217,8 @@ async def validate_action(
                         "100 sessions per month",
                         "1200 minutes of audio (20 hours)",
                         "200 transcriptions per month",
-                        "Priority support"
-                    ]
+                        "Priority support",
+                    ],
                 )
             elif user_plan == PlanName.PRO:
                 response.upgrade_suggestion = UpgradeSuggestion(
@@ -197,48 +229,56 @@ async def validate_action(
                         "Unlimited audio minutes",
                         "Unlimited transcriptions",
                         "Dedicated support",
-                        "Custom integrations"
-                    ]
+                        "Custom integrations",
+                    ],
                 )
-        
-        logger.info(f"Validation for user {current_user.id}: action={request.action}, allowed={allowed}")
+
+        logger.info(
+            f"Validation for user {current_user.id}: action={request.action}, allowed={allowed}"
+        )
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error validating action for user {current_user.id}: {str(e)}")
+        logger.error(
+            f"Error validating action for user {current_user.id}: {str(e)}"
+        )
         # Fail open - allow action on error
         return ValidateActionResponse(
             allowed=True,
             message="Validation temporarily unavailable, proceeding with action",
             limit_info=None,
-            upgrade_suggestion=None
+            upgrade_suggestion=None,
         )
 
 
 @router.get("/current-usage")
 async def get_current_usage(
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Get current usage statistics for the authenticated user."""
     try:
         if current_user.plan:
             # Handle UserPlan enum conversion to PlanName
-            plan_value = current_user.plan.value if hasattr(current_user.plan, 'value') else str(current_user.plan)
+            plan_value = (
+                current_user.plan.value
+                if hasattr(current_user.plan, "value")
+                else str(current_user.plan)
+            )
             user_plan = PlanName(plan_value)
         else:
             user_plan = PlanName.FREE
         plan_limits = PlanLimits.get_plan_limit(user_plan)
-        
+
         # Calculate reset date
         now = datetime.utcnow()
         if now.month == 12:
             reset_date = datetime(now.year + 1, 1, 1)
         else:
             reset_date = datetime(now.year, now.month + 1, 1)
-        
+
         return {
             "plan": user_plan.value,
             "usage": {
@@ -247,38 +287,38 @@ async def get_current_usage(
                     "limit": plan_limits.max_sessions,
                     "percentage": calculate_percentage(
                         current_user.session_count or 0,
-                        plan_limits.max_sessions
-                    )
+                        plan_limits.max_sessions,
+                    ),
                 },
                 "transcriptions": {
                     "current": current_user.transcription_count or 0,
                     "limit": plan_limits.max_transcriptions,
                     "percentage": calculate_percentage(
                         current_user.transcription_count or 0,
-                        plan_limits.max_transcriptions
-                    )
+                        plan_limits.max_transcriptions,
+                    ),
                 },
                 "minutes": {
                     "current": current_user.usage_minutes or 0,
                     "limit": plan_limits.max_minutes_per_month,
                     "percentage": calculate_percentage(
                         current_user.usage_minutes or 0,
-                        plan_limits.max_minutes_per_month
-                    )
+                        plan_limits.max_minutes_per_month,
+                    ),
                 },
-                "file_size_mb": {
-                    "limit": plan_limits.max_file_size_mb
-                }
+                "file_size_mb": {"limit": plan_limits.max_file_size_mb},
             },
             "reset_date": reset_date.isoformat() + "Z",
-            "days_until_reset": (reset_date - now).days
+            "days_until_reset": (reset_date - now).days,
         }
-        
+
     except Exception as e:
-        logger.error(f"Error getting usage for user {current_user.id}: {str(e)}")
+        logger.error(
+            f"Error getting usage for user {current_user.id}: {str(e)}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve usage information"
+            detail="Failed to retrieve usage information",
         )
 
 
@@ -287,49 +327,56 @@ async def increment_usage(
     metric: str,
     amount: int = 1,
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
     Increment usage counter for a specific metric.
     This endpoint is typically called after a successful action.
-    
+
     Metrics: session_count, transcription_count, usage_minutes
     """
     try:
         tracker = UsageTracker(db)
-        
+
         # Validate metric
-        valid_metrics = ["session_count", "transcription_count", "usage_minutes"]
+        valid_metrics = [
+            "session_count",
+            "transcription_count",
+            "usage_minutes",
+        ]
         if metric not in valid_metrics:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid metric: {metric}. Must be one of {valid_metrics}"
+                detail=f"Invalid metric: {metric}. Must be one of {valid_metrics}",
             )
-        
+
         # Increment the usage
         new_value = tracker.increment_usage(current_user.id, metric, amount)
-        
-        logger.info(f"Incremented {metric} by {amount} for user {current_user.id}. New value: {new_value}")
-        
+
+        logger.info(
+            f"Incremented {metric} by {amount} for user {current_user.id}. New value: {new_value}"
+        )
+
         return {
             "metric": metric,
             "amount_added": amount,
             "new_value": new_value,
-            "success": True
+            "success": True,
         }
-        
+
     except Exception as e:
-        logger.error(f"Error incrementing usage for user {current_user.id}: {str(e)}")
+        logger.error(
+            f"Error incrementing usage for user {current_user.id}: {str(e)}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update usage"
+            detail="Failed to update usage",
         )
 
 
 @router.post("/reset-monthly-usage")
 async def reset_monthly_usage(
-    admin_key: str,
-    db: Session = Depends(get_db)
+    admin_key: str, db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
     Reset monthly usage counters for all users.
@@ -339,27 +386,26 @@ async def reset_monthly_usage(
     # Verify admin key
     if admin_key != settings.ADMIN_API_KEY:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid admin key"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid admin key"
         )
-    
+
     try:
         tracker = UsageTracker(db)
         reset_count = tracker.reset_all_monthly_usage()
-        
+
         logger.info(f"Reset monthly usage for {reset_count} users")
-        
+
         return {
             "success": True,
             "users_reset": reset_count,
-            "reset_time": datetime.utcnow().isoformat() + "Z"
+            "reset_time": datetime.utcnow().isoformat() + "Z",
         }
-        
+
     except Exception as e:
         logger.error(f"Error resetting monthly usage: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to reset usage"
+            detail="Failed to reset usage",
         )
 
 

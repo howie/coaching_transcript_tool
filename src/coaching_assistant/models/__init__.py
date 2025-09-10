@@ -72,7 +72,7 @@ __all__ = [
     "GracePeriod",
     "WebhookLog",
     "ECPayAuthStatus",
-    "SubscriptionStatus", 
+    "SubscriptionStatus",
     "PaymentStatus",
     "PeriodType",
     "WebhookStatus",

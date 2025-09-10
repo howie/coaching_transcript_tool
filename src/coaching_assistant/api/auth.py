@@ -71,19 +71,29 @@ def get_password_hash(password):
 
 def create_access_token(user_id: str) -> str:
     """建立 Access Token"""
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
     to_encode = {"sub": user_id, "exp": expire, "type": "access"}
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+    )
 
 
 def create_refresh_token(user_id: str) -> str:
     """建立 Refresh Token"""
-    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.utcnow() + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
     to_encode = {"sub": user_id, "exp": expire, "type": "refresh"}
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+    )
 
 
-async def verify_recaptcha(token: str, remote_ip: str) -> tuple[bool, float, str]:
+async def verify_recaptcha(
+    token: str, remote_ip: str
+) -> tuple[bool, float, str]:
     """Verify reCAPTCHA token with Google's API"""
     if not settings.RECAPTCHA_ENABLED:
         return True, 1.0, "signup"  # Skip verification if disabled
@@ -104,7 +114,9 @@ async def verify_recaptcha(token: str, remote_ip: str) -> tuple[bool, float, str
             )
 
         if resp.status_code != 200:
-            print(f"reCAPTCHA verification failed with status {resp.status_code}")
+            print(
+                f"reCAPTCHA verification failed with status {resp.status_code}"
+            )
             return False, 0.0, ""
 
         data = resp.json()
@@ -125,7 +137,9 @@ async def verify_recaptcha(token: str, remote_ip: str) -> tuple[bool, float, str
 
 
 @router.post("/signup", response_model=UserResponse)
-async def signup(user: UserCreate, request: Request, db: Session = Depends(get_db)):
+async def signup(
+    user: UserCreate, request: Request, db: Session = Depends(get_db)
+):
     # Verify reCAPTCHA if enabled
     if settings.RECAPTCHA_ENABLED:
         # Get client IP
@@ -138,14 +152,18 @@ async def signup(user: UserCreate, request: Request, db: Session = Depends(get_d
 
         # Check verification result
         if not success or (action and action != "signup"):
-            raise HTTPException(status_code=403, detail="Failed Human Verification")
+            raise HTTPException(
+                status_code=403, detail="Failed Human Verification"
+            )
 
         # Check score threshold
         if score < settings.RECAPTCHA_MIN_SCORE:
             print(
                 f"reCAPTCHA score {score} below threshold {settings.RECAPTCHA_MIN_SCORE}"
             )
-            raise HTTPException(status_code=403, detail="Failed Human Verification")
+            raise HTTPException(
+                status_code=403, detail="Failed Human Verification"
+            )
 
     # Check if user already exists
     db_user = db.query(User).filter(User.email == user.email).first()
@@ -154,7 +172,9 @@ async def signup(user: UserCreate, request: Request, db: Session = Depends(get_d
 
     # Create new user
     hashed_password = get_password_hash(user.password)
-    db_user = User(email=user.email, hashed_password=hashed_password, name=user.name)
+    db_user = User(
+        email=user.email, hashed_password=hashed_password, name=user.name
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -163,10 +183,13 @@ async def signup(user: UserCreate, request: Request, db: Session = Depends(get_d
 
 @router.post("/login", response_model=Token)
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user or not verify_password(
+        form_data.password, user.hashed_password
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -193,13 +216,9 @@ async def google_login(redirect_uri: Optional[str] = None):
     if not redirect_uri:
         # 在生產環境使用完整的 URL
         if settings.ENVIRONMENT == "production":
-            redirect_uri = (
-                f"https://api.doxa.com.tw{settings.API_V1_STR}/auth/google/callback"
-            )
+            redirect_uri = f"https://api.doxa.com.tw{settings.API_V1_STR}/auth/google/callback"
         else:
-            redirect_uri = (
-                f"http://localhost:8000{settings.API_V1_STR}/auth/google/callback"
-            )
+            redirect_uri = f"http://localhost:8000{settings.API_V1_STR}/auth/google/callback"
 
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
@@ -211,7 +230,9 @@ async def google_login(redirect_uri: Optional[str] = None):
     }
 
     # 建立授權 URL
-    auth_url = f"{GOOGLE_AUTH_URL}?" + "&".join([f"{k}={v}" for k, v in params.items()])
+    auth_url = f"{GOOGLE_AUTH_URL}?" + "&".join(
+        [f"{k}={v}" for k, v in params.items()]
+    )
 
     return RedirectResponse(url=auth_url)
 
@@ -219,7 +240,9 @@ async def google_login(redirect_uri: Optional[str] = None):
 @router.get("/google/callback")
 async def google_callback(
     code: str = Query(..., description="Authorization code from Google"),
-    state: Optional[str] = Query(None, description="State parameter for security"),
+    state: Optional[str] = Query(
+        None, description="State parameter for security"
+    ),
     db: Session = Depends(get_db),
 ):
     """
@@ -254,7 +277,9 @@ async def google_callback(
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             # 獲取 access token
-            token_response = await client.post(GOOGLE_TOKEN_URL, data=token_data)
+            token_response = await client.post(
+                GOOGLE_TOKEN_URL, data=token_data
+            )
 
             if token_response.status_code != 200:
                 raise HTTPException(
@@ -267,16 +292,20 @@ async def google_callback(
 
             if not google_access_token:
                 raise HTTPException(
-                    status_code=400, detail="No access token received from Google"
+                    status_code=400,
+                    detail="No access token received from Google",
                 )
 
             # 2. 使用 access token 獲取用戶資訊
             headers = {"Authorization": f"Bearer {google_access_token}"}
-            userinfo_response = await client.get(GOOGLE_USERINFO_URL, headers=headers)
+            userinfo_response = await client.get(
+                GOOGLE_USERINFO_URL, headers=headers
+            )
 
             if userinfo_response.status_code != 200:
                 raise HTTPException(
-                    status_code=400, detail="Failed to get user information from Google"
+                    status_code=400,
+                    detail="Failed to get user information from Google",
                 )
 
             google_user = userinfo_response.json()
@@ -300,7 +329,9 @@ async def google_callback(
     # 3. 查找或建立用戶
     email = google_user.get("email")
     if not email:
-        raise HTTPException(status_code=400, detail="Email not provided by Google")
+        raise HTTPException(
+            status_code=400, detail="Email not provided by Google"
+        )
 
     # 查找現有用戶
     stmt = select(User).where(User.email == email)
@@ -343,7 +374,9 @@ async def google_callback(
 
 
 @router.post("/refresh")
-async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
+async def refresh_token(
+    request: RefreshTokenRequest, db: Session = Depends(get_db)
+):
     """
     使用 Refresh Token 獲取新的 Access Token
     """
@@ -429,7 +462,9 @@ async def get_current_user_dependency(
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user(current_user: User = Depends(get_current_user_dependency)):
+async def get_current_user(
+    current_user: User = Depends(get_current_user_dependency),
+):
     """
     獲取當前登入用戶資訊
     """

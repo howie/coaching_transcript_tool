@@ -45,18 +45,25 @@ class STTProviderFactory:
                 return AssemblyAIProvider()
             elif provider_type == "whisper":
                 # TODO: Implement WhisperSTTProvider when needed
-                raise NotImplementedError("Whisper STT provider not yet implemented")
+                raise NotImplementedError(
+                    "Whisper STT provider not yet implemented"
+                )
             else:
-                raise ValueError(f"Unsupported STT provider type: {provider_type}")
+                raise ValueError(
+                    f"Unsupported STT provider type: {provider_type}"
+                )
         except Exception as e:
-            logger.error(f"Failed to create STT provider '{provider_type}': {e}")
+            logger.error(
+                f"Failed to create STT provider '{provider_type}': {e}"
+            )
             raise STTProviderError(
                 f"Failed to create STT provider '{provider_type}': {e}"
             )
 
     @staticmethod
     def create_with_fallback(
-        primary_provider: Optional[str] = None, fallback_provider: str = "google"
+        primary_provider: Optional[str] = None,
+        fallback_provider: str = "google",
     ) -> STTProvider:
         """
         Create STT provider with fallback support.
@@ -69,7 +76,9 @@ class STTProviderFactory:
             STT provider instance
         """
         if primary_provider is None:
-            primary_provider = getattr(settings, "STT_PROVIDER", "google").lower()
+            primary_provider = getattr(
+                settings, "STT_PROVIDER", "google"
+            ).lower()
 
         try:
             logger.info(

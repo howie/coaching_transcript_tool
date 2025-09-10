@@ -1,7 +1,7 @@
 """Dashboard summary API endpoints."""
 
 from typing import Dict, Optional
-from datetime import date, datetime
+from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func, extract
@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from ..core.database import get_db
 from ..models import (
     CoachingSession,
-    Client,
     User,
     Session as TranscriptSession,
     SessionStatus,
