@@ -4,10 +4,8 @@ import logging
 from uuid import UUID
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime
-from typing import Optional
 
 from celery import Task
-from celery.exceptions import Retry
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DataError, IntegrityError
 
@@ -21,9 +19,12 @@ from ..models.transcript import (
 )
 from ..models.processing_status import ProcessingStatus
 from ..models.usage_log import TranscriptionType
-from ..services import STTProviderFactory, STTProviderError, STTProviderUnavailableError
+from ..services import (
+    STTProviderFactory,
+    STTProviderError,
+    STTProviderUnavailableError,
+)
 from ..services.usage_tracking import UsageTrackingService
-from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,11 @@ def transcribe_audio(
 
     # Get database session
     with get_db_session() as db:
-        session = db.query(SessionModel).filter(SessionModel.id == session_uuid).first()
+        session = (
+            db.query(SessionModel)
+            .filter(SessionModel.id == session_uuid)
+            .first()
+        )
 
         if not session:
             raise ValueError(f"Session {session_id} not found")
@@ -143,7 +148,9 @@ def transcribe_audio(
 
         try:
             # Use provider preference from session, fallback to global settings
-            preferred_provider = session.stt_provider if session.stt_provider else None
+            preferred_provider = (
+                session.stt_provider if session.stt_provider else None
+            )
 
             # Create STT provider (no fallback)
             if preferred_provider and preferred_provider != "auto":
@@ -169,12 +176,16 @@ def transcribe_audio(
             logger.info(f"Using STT provider: {provider_name}")
 
         except Exception as provider_error:
-            logger.error(f"Failed to initialize any STT provider: {provider_error}")
+            logger.error(
+                f"Failed to initialize any STT provider: {provider_error}"
+            )
             processing_status.update_progress(
                 0, f"Failed to initialize STT provider: {provider_error}"
             )
             db.commit()
-            raise STTProviderError(f"No STT provider available: {provider_error}")
+            raise STTProviderError(
+                f"No STT provider available: {provider_error}"
+            )
 
         try:
 
@@ -196,9 +207,7 @@ def transcribe_audio(
                         progress_percentage * 0.5
                     )  # 25% + (0-100% * 50%)
 
-                    progress_message = (
-                        f"Processing audio... {elapsed_minutes:.1f} min elapsed"
-                    )
+                    progress_message = f"Processing audio... {elapsed_minutes:.1f} min elapsed"
                     if progress_percentage > 90:
                         progress_message = "Almost done processing audio..."
 
@@ -248,25 +257,37 @@ def transcribe_audio(
                     progress_callback=update_transcription_progress,
                 )
 
-            logger.info(f"Transcription completed: {len(result.segments)} segments")
+            logger.info(
+                f"Transcription completed: {len(result.segments)} segments"
+            )
 
             # Update progress: transcription completed, now saving
-            processing_status.update_progress(80, "Saving transcript segments...")
+            processing_status.update_progress(
+                80, "Saving transcript segments..."
+            )
             db.commit()
 
             # Save transcript segments to database
             _save_transcript_segments(db, session_uuid, result.segments)
 
             # Save speaker role assignments if available
-            _save_speaker_role_assignments(db, session_uuid, result.provider_metadata)
+            _save_speaker_role_assignments(
+                db, session_uuid, result.provider_metadata
+            )
 
             # Calculate processing duration
-            processing_duration = (datetime.utcnow() - start_time).total_seconds()
+            processing_duration = (
+                datetime.utcnow() - start_time
+            ).total_seconds()
 
             # Update progress: finalizing
-            processing_status.update_progress(95, "Finalizing transcription...")
+            processing_status.update_progress(
+                95, "Finalizing transcription..."
+            )
             processing_status.duration_total = int(result.total_duration_sec)
-            processing_status.duration_processed = int(result.total_duration_sec)
+            processing_status.duration_processed = int(
+                result.total_duration_sec
+            )
             db.commit()
 
             # Calculate actual duration from segments
@@ -289,7 +310,9 @@ def transcribe_audio(
             # Store provider metadata
             if result.provider_metadata:
                 session.provider_metadata = result.provider_metadata
-                logger.info(f"Stored provider metadata for session {session_id}")
+                logger.info(
+                    f"Stored provider metadata for session {session_id}"
+                )
 
             # Log processing metadata
             session.transcription_job_id = self.request.id
@@ -299,20 +322,26 @@ def transcribe_audio(
                 100, "Transcription completed successfully!"
             )
             processing_status.status = "completed"
-            
+
             # Create usage log for successful transcription
             try:
                 usage_service = UsageTrackingService(db)
                 usage_log = usage_service.create_usage_log(
                     session=session,
                     transcription_type=TranscriptionType.ORIGINAL,
-                    cost_usd=float(result.cost_usd) if result.cost_usd else None,
+                    cost_usd=(
+                        float(result.cost_usd) if result.cost_usd else None
+                    ),
                     is_billable=True,
-                    billing_reason="transcription_completed"
+                    billing_reason="transcription_completed",
                 )
-                logger.info(f"Usage log created for session {session_id}: {usage_log.id}")
+                logger.info(
+                    f"Usage log created for session {session_id}: {usage_log.id}"
+                )
             except Exception as usage_error:
-                logger.error(f"Failed to create usage log for session {session_id}: {usage_error}")
+                logger.error(
+                    f"Failed to create usage log for session {session_id}: {usage_error}"
+                )
                 # Don't fail the transcription if usage logging fails
 
             db.commit()
@@ -341,25 +370,40 @@ def transcribe_audio(
 
         except STTProviderError as exc:
             error_msg = str(exc)
-            
+
             # Check if this is a temporary server error from AssemblyAI
-            if "temporary server error" in error_msg.lower() or "server error" in error_msg.lower():
-                logger.warning(f"Detected temporary server error for session {session_id}: {error_msg}")
-                
+            if (
+                "temporary server error" in error_msg.lower()
+                or "server error" in error_msg.lower()
+            ):
+                logger.warning(
+                    f"Detected temporary server error for session {session_id}: {error_msg}"
+                )
+
                 # Update status to indicate temporary issue
                 processing_status.status = "error"
-                processing_status.message = f"Temporary provider issue: {error_msg}"
+                processing_status.message = (
+                    f"Temporary provider issue: {error_msg}"
+                )
                 db.commit()
-                
+
                 # If we haven't exceeded retries, try again with longer delay
                 if self.request.retries < self.max_retries:
-                    retry_delay = 300 * (2 ** self.request.retries)  # 5 min, 10 min, 20 min
-                    logger.info(f"Will retry session {session_id} in {retry_delay} seconds due to server error")
+                    retry_delay = 300 * (
+                        2**self.request.retries
+                    )  # 5 min, 10 min, 20 min
+                    logger.info(
+                        f"Will retry session {session_id} in {retry_delay} seconds due to server error"
+                    )
                     raise self.retry(exc=exc, countdown=retry_delay)
                 else:
                     # Max retries exceeded even for server errors
-                    logger.error(f"Max retries exceeded for session {session_id} with server errors")
-                    session.mark_failed(f"Provider server error (retried {self.max_retries} times): {error_msg}")
+                    logger.error(
+                        f"Max retries exceeded for session {session_id} with server errors"
+                    )
+                    session.mark_failed(
+                        f"Provider server error (retried {self.max_retries} times): {error_msg}"
+                    )
                     processing_status.status = "failed"
                     processing_status.message = f"Provider unavailable after {self.max_retries} attempts"
                     db.commit()
@@ -371,7 +415,9 @@ def transcribe_audio(
                 processing_status.status = "failed"
                 processing_status.message = error_msg
                 db.commit()
-                logger.error(f"Session {session_id} failed permanently: {error_msg}")
+                logger.error(
+                    f"Session {session_id} failed permanently: {error_msg}"
+                )
                 raise
 
         except (DataError, IntegrityError) as exc:
@@ -389,13 +435,17 @@ def transcribe_audio(
         except Exception as exc:
             # Unexpected error - retry up to max_retries
             error_msg = f"Unexpected transcription error: {exc}"
-            logger.error(f"Session {session_id} error: {error_msg}", exc_info=True)
+            logger.error(
+                f"Session {session_id} error: {error_msg}", exc_info=True
+            )
 
             if self.request.retries < self.max_retries:
                 logger.info(
                     f"Retrying session {session_id} ({self.request.retries + 1}/{self.max_retries})"
                 )
-                raise self.retry(exc=exc, countdown=60 * (2**self.request.retries))
+                raise self.retry(
+                    exc=exc, countdown=60 * (2**self.request.retries)
+                )
             else:
                 # Max retries exceeded - rollback before final failure
                 db.rollback()
@@ -406,9 +456,13 @@ def transcribe_audio(
                 raise
 
 
-def _save_transcript_segments(db: Session, session_id: UUID, segments: list) -> None:
+def _save_transcript_segments(
+    db: Session, session_id: UUID, segments: list
+) -> None:
     """Save transcript segments to database."""
-    logger.info(f"Saving {len(segments)} transcript segments for session {session_id}")
+    logger.info(
+        f"Saving {len(segments)} transcript segments for session {session_id}"
+    )
 
     db_segments = []
     for segment in segments:
@@ -477,11 +531,15 @@ def _save_speaker_role_assignments(
 
             # Convert role string to SpeakerRole enum
             speaker_role = (
-                SpeakerRole.COACH if role_str == "coach" else SpeakerRole.CLIENT
+                SpeakerRole.COACH
+                if role_str == "coach"
+                else SpeakerRole.CLIENT
             )
 
             session_role = SessionRole(
-                session_id=session_id, speaker_id=speaker_id_int, role=speaker_role
+                session_id=session_id,
+                speaker_id=speaker_id_int,
+                role=speaker_role,
             )
             db.add(session_role)
             logger.info(

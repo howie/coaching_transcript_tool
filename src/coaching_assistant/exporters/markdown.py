@@ -31,11 +31,15 @@ def _wrap_content(content: str, max_width: int) -> str:
 
 def _format_table_row(time: str, speaker: str, content: str) -> str:
     """Format a single row of the markdown table."""
-    speaker_formatted = f"**{speaker}**" if speaker in ["Coach", "Client"] else speaker
+    speaker_formatted = (
+        f"**{speaker}**" if speaker in ["Coach", "Client"] else speaker
+    )
     return f"| {time} | {speaker_formatted} | {content} |\n"
 
 
-def generate_markdown(data: List[Dict[str, Any]], content_width: int = 80) -> str:
+def generate_markdown(
+    data: List[Dict[str, Any]], content_width: int = 80
+) -> str:
     """
     Generate a Markdown table from the parsed data.
 

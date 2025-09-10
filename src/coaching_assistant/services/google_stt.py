@@ -3,7 +3,7 @@
 import json
 import logging
 from decimal import Decimal
-from typing import List, Optional, Dict, Any
+from typing import List, Any
 from google.cloud import speech_v2
 from google.cloud.speech_v2 import (
     RecognitionConfig,
@@ -42,8 +42,6 @@ class GoogleSTTProvider(STTProvider):
 
             # Initialize credentials from JSON string if provided
             if settings.GOOGLE_APPLICATION_CREDENTIALS_JSON:
-                import tempfile
-                import os
                 import base64
                 from google.oauth2 import service_account
                 from google.api_core.client_options import ClientOptions
@@ -56,18 +54,22 @@ class GoogleSTTProvider(STTProvider):
                 except json.JSONDecodeError:
                     # If that fails, try Base64 decoding first
                     try:
-                        decoded_json = base64.b64decode(credentials_json).decode(
-                            "utf-8"
-                        )
+                        decoded_json = base64.b64decode(
+                            credentials_json
+                        ).decode("utf-8")
                         credentials_info = json.loads(decoded_json)
-                        logger.info("Successfully decoded Base64 encoded credentials")
+                        logger.info(
+                            "Successfully decoded Base64 encoded credentials"
+                        )
                     except Exception as e:
                         raise STTProviderError(
                             f"Failed to decode credentials JSON (tried both raw and Base64): {e}"
                         )
 
-                credentials = service_account.Credentials.from_service_account_info(
-                    credentials_info
+                credentials = (
+                    service_account.Credentials.from_service_account_info(
+                        credentials_info
+                    )
                 )
                 client_options = ClientOptions(api_endpoint=api_endpoint)
                 self.client = speech_v2.SpeechClient(
@@ -82,12 +84,19 @@ class GoogleSTTProvider(STTProvider):
                 from google.api_core.client_options import ClientOptions
 
                 client_options = ClientOptions(api_endpoint=api_endpoint)
-                self.client = speech_v2.SpeechClient(client_options=client_options)
-                logger.info("Google STT client initialized with default credentials")
+                self.client = speech_v2.SpeechClient(
+                    client_options=client_options
+                )
+                logger.info(
+                    "Google STT client initialized with default credentials"
+                )
                 logger.info(f"Using regional endpoint: {api_endpoint}")
 
             self.project_id = settings.GOOGLE_PROJECT_ID or "your-project-id"
-            if not settings.GOOGLE_PROJECT_ID or self.project_id == "your-project-id":
+            if (
+                not settings.GOOGLE_PROJECT_ID
+                or self.project_id == "your-project-id"
+            ):
                 logger.warning(
                     "GOOGLE_PROJECT_ID is not set; using placeholder 'your-project-id'. This may break Storage client calls. Configure GOOGLE_PROJECT_ID in settings."
                 )
@@ -115,7 +124,9 @@ class GoogleSTTProvider(STTProvider):
             else:
                 # Fallback to default credentials (for local development)
                 storage_client = storage.Client(project=self.project_id)
-                logger.debug("GCS Storage client initialized with default credentials")
+                logger.debug(
+                    "GCS Storage client initialized with default credentials"
+                )
 
             return storage_client
 
@@ -144,7 +155,9 @@ class GoogleSTTProvider(STTProvider):
         deadline = start_time + timedelta(minutes=timeout_minutes)
         last_log_time = start_time
         check_interval = 15  # Check every 15 seconds (faster polling)
-        log_interval = 60  # Log progress every 1 minute (more frequent updates)
+        log_interval = (
+            60  # Log progress every 1 minute (more frequent updates)
+        )
 
         logger.info(
             f"Started operation at {start_time.isoformat()}, timeout: {timeout_minutes} minutes"
@@ -162,9 +175,14 @@ class GoogleSTTProvider(STTProvider):
                 elapsed = (current_time - start_time).total_seconds()
 
                 # Check if it's a timeout (expected) vs real error
-                if "timeout" in error_str.lower() or "deadline" in error_str.lower():
+                if (
+                    "timeout" in error_str.lower()
+                    or "deadline" in error_str.lower()
+                ):
                     # Expected timeout - operation still running
-                    time_since_last_log = (current_time - last_log_time).total_seconds()
+                    time_since_last_log = (
+                        current_time - last_log_time
+                    ).total_seconds()
 
                     if time_since_last_log >= log_interval:
                         remaining_minutes = (
@@ -192,11 +210,15 @@ class GoogleSTTProvider(STTProvider):
                                     elapsed_minutes,
                                 )
                             except Exception as cb_error:
-                                logger.warning(f"Progress callback error: {cb_error}")
+                                logger.warning(
+                                    f"Progress callback error: {cb_error}"
+                                )
 
                         # Check operation status if available
                         try:
-                            if hasattr(operation, "done") and callable(operation.done):
+                            if hasattr(operation, "done") and callable(
+                                operation.done
+                            ):
                                 is_done = operation.done()
                                 logger.info(
                                     f"Operation status: {'Done' if is_done else 'Still processing'}"
@@ -206,7 +228,10 @@ class GoogleSTTProvider(STTProvider):
 
                     # Continue waiting
                     time.sleep(
-                        min(check_interval, (deadline - current_time).total_seconds())
+                        min(
+                            check_interval,
+                            (deadline - current_time).total_seconds(),
+                        )
                     )
                     continue
                 else:
@@ -218,12 +243,16 @@ class GoogleSTTProvider(STTProvider):
 
         # Timeout exceeded
         elapsed_minutes = (datetime.utcnow() - start_time).total_seconds() / 60
-        logger.error(f"Operation timed out after {elapsed_minutes:.1f} minutes")
+        logger.error(
+            f"Operation timed out after {elapsed_minutes:.1f} minutes"
+        )
         raise TimeoutError(
             f"Batch recognition timed out after {timeout_minutes} minutes"
         )
 
-    def _process_batch_results(self, response: Any, target_audio_uri: str) -> dict:
+    def _process_batch_results(
+        self, response: Any, target_audio_uri: str
+    ) -> dict:
         """
         Process batch recognition results with detailed per-file error collection.
 
@@ -271,7 +300,9 @@ class GoogleSTTProvider(STTProvider):
             if error_code > 0:
                 err_count += 1
                 # Format error message properly, avoid empty strings
-                msg_part = f": {error_message}" if error_message else " <no details>"
+                msg_part = (
+                    f": {error_message}" if error_message else " <no details>"
+                )
                 error_messages.append(f"Code {error_code}{msg_part}")
                 logger.error(
                     f"File {target_audio_uri} failed with code {error_code}: {error_message or '<empty>'}"
@@ -312,13 +343,14 @@ class GoogleSTTProvider(STTProvider):
             "has_errors": err_count > 0,
             "ok_count": ok_count,
             "err_count": err_count,
-            "error_details": "; ".join(error_messages) if error_messages else "",
+            "error_details": (
+                "; ".join(error_messages) if error_messages else ""
+            ),
             "output_uri": output_uri,
         }
 
     def _read_batch_results_from_gcs(self, output_uri: str) -> Any:
         """Read batch recognition results from GCS with retry logic for write visibility delays."""
-        from google.cloud import storage
         import json
         import time
         from google.auth.exceptions import RefreshError
@@ -336,7 +368,9 @@ class GoogleSTTProvider(STTProvider):
             if not blob_name:
                 raise ValueError(f"No blob name found in URI: {output_uri}")
 
-            logger.info(f"Reading batch results from server-provided URI: {output_uri}")
+            logger.info(
+                f"Reading batch results from server-provided URI: {output_uri}"
+            )
 
             # Use retry logic with exponential backoff for GCS write visibility delays
             # Use same credentials as STT client for consistent authentication
@@ -444,7 +478,9 @@ class GoogleSTTProvider(STTProvider):
             )
 
         except Exception as e:
-            logger.error(f"Failed to read batch results from GCS URI {output_uri}: {e}")
+            logger.error(
+                f"Failed to read batch results from GCS URI {output_uri}: {e}"
+            )
             raise STTProviderError(f"Failed to read batch results: {e}")
 
     def _validate_diarization_support(
@@ -484,7 +520,9 @@ class GoogleSTTProvider(STTProvider):
             )
             return False
 
-        logger.info(f"Diarization is supported for {language} + {model} in {location}")
+        logger.info(
+            f"Diarization is supported for {language} + {model} in {location}"
+        )
         return True
 
     def _detect_audio_format(
@@ -590,7 +628,10 @@ class GoogleSTTProvider(STTProvider):
             return AudioEncoding.LINEAR16, 44100, 1
 
     def _create_explicit_decoding_config(
-        self, audio_uri: str, filename: str = None, fallback_to_linear16: bool = False
+        self,
+        audio_uri: str,
+        filename: str = None,
+        fallback_to_linear16: bool = False,
     ) -> ExplicitDecodingConfig:
         """Create ExplicitDecodingConfig based on detected audio format."""
         if fallback_to_linear16:
@@ -672,27 +713,39 @@ class GoogleSTTProvider(STTProvider):
                 )
             else:
                 return self._transcribe_batch_mode(
-                    audio_uri, normalized_language, original_filename, progress_callback
+                    audio_uri,
+                    normalized_language,
+                    original_filename,
+                    progress_callback,
                 )
 
         except gcp_exceptions.ResourceExhausted as e:
             logger.error(f"Google STT quota exceeded: {e}")
-            raise STTProviderQuotaExceededError(f"Google STT quota exceeded: {e}")
+            raise STTProviderQuotaExceededError(
+                f"Google STT quota exceeded: {e}"
+            )
 
         except gcp_exceptions.InvalidArgument as e:
             error_msg = str(e)
             logger.error(f"Google STT InvalidArgument error: {error_msg}")
 
             # Handle specific recognizer configuration errors
-            if "recognizer" in error_msg.lower() or "diarization" in error_msg.lower():
+            if (
+                "recognizer" in error_msg.lower()
+                or "diarization" in error_msg.lower()
+            ):
                 logger.error(f"Recognizer configuration error")
                 raise STTProviderError(f"STT configuration error: {error_msg}")
             else:
-                raise STTProviderInvalidAudioError(f"Invalid audio file: {error_msg}")
+                raise STTProviderInvalidAudioError(
+                    f"Invalid audio file: {error_msg}"
+                )
 
         except gcp_exceptions.ServiceUnavailable as e:
             logger.error(f"Google STT service unavailable: {e}")
-            raise STTProviderUnavailableError(f"Google STT service unavailable: {e}")
+            raise STTProviderUnavailableError(
+                f"Google STT service unavailable: {e}"
+            )
 
         except Exception as e:
             logger.error(f"Google STT transcription failed: {e}")
@@ -739,7 +792,9 @@ class GoogleSTTProvider(STTProvider):
         logger.info(
             f"Using location: {location}, model: {model} for language: {language}"
         )
-        logger.info(f"Diarization: enabled with {min_speakers}-{max_speakers} speakers")
+        logger.info(
+            f"Diarization: enabled with {min_speakers}-{max_speakers} speakers"
+        )
 
         # Create explicit decoding config based on actual audio format
         explicit_decoding_config = self._create_explicit_decoding_config(
@@ -764,25 +819,35 @@ class GoogleSTTProvider(STTProvider):
         )
         logger.info(f"Using ephemeral recognizer: {recognizer_path}")
 
-        request = {"recognizer": recognizer_path, "config": config, "uri": audio_uri}
+        request = {
+            "recognizer": recognizer_path,
+            "config": config,
+            "uri": audio_uri,
+        }
 
         # Execute synchronous recognition with progress updates
         logger.info("Starting synchronous recognition with diarization...")
         if progress_callback:
-            progress_callback(10, "Starting recognition with speaker diarization...", 0)
+            progress_callback(
+                10, "Starting recognition with speaker diarization...", 0
+            )
 
         response = self.client.recognize(request=request)
 
         if progress_callback:
             progress_callback(90, "Processing diarization results...", 0)
 
-        logger.info("Recognition completed, processing results with diarization")
+        logger.info(
+            "Recognition completed, processing results with diarization"
+        )
 
         # Process results with diarization information
         segments = self._process_recognition_results_with_diarization(response)
 
         # Calculate duration from segments
-        total_duration = max((seg.end_seconds for seg in segments), default=0.0)
+        total_duration = max(
+            (seg.end_seconds for seg in segments), default=0.0
+        )
 
         # Estimate cost
         cost = self.estimate_cost(int(total_duration))
@@ -824,7 +889,9 @@ class GoogleSTTProvider(STTProvider):
         Transcribe audio using batchRecognize API without diarization.
         This is the original batch processing method.
         """
-        logger.info(f"Using batchRecognize API without diarization for {audio_uri}")
+        logger.info(
+            f"Using batchRecognize API without diarization for {audio_uri}"
+        )
 
         # Configure recognition features WITHOUT diarization
         features = RecognitionFeatures(
@@ -874,7 +941,9 @@ class GoogleSTTProvider(STTProvider):
         request = {
             "recognizer": recognizer_path,
             "config": config,
-            "recognition_output_config": {"gcs_output_config": {"uri": output_prefix}},
+            "recognition_output_config": {
+                "gcs_output_config": {"uri": output_prefix}
+            },
             "files": [{"uri": audio_uri}],
         }
 
@@ -886,7 +955,9 @@ class GoogleSTTProvider(STTProvider):
 
         try:
             timeout_minutes = 120
-            logger.info(f"Using {timeout_minutes} minute timeout for this file type")
+            logger.info(
+                f"Using {timeout_minutes} minute timeout for this file type"
+            )
 
             response = self._wait_for_operation_with_progress(
                 operation,
@@ -900,8 +971,12 @@ class GoogleSTTProvider(STTProvider):
 
             # Check if operation failed with specific error
             if hasattr(operation, "exception") and operation.exception():
-                logger.error(f"Operation exception details: {operation.exception()}")
-                raise STTProviderError(f"Operation failed: {operation.exception()}")
+                logger.error(
+                    f"Operation exception details: {operation.exception()}"
+                )
+                raise STTProviderError(
+                    f"Operation failed: {operation.exception()}"
+                )
             else:
                 raise STTProviderError(f"Operation error ({error_type}): {e}")
 
@@ -909,9 +984,7 @@ class GoogleSTTProvider(STTProvider):
         results_summary = self._process_batch_results(response, audio_uri)
 
         if results_summary["has_errors"]:
-            error_msg = (
-                f"STT batch operation had errors: {results_summary['error_details']}"
-            )
+            error_msg = f"STT batch operation had errors: {results_summary['error_details']}"
             logger.error(error_msg)
             raise STTProviderError(error_msg)
 
@@ -929,7 +1002,9 @@ class GoogleSTTProvider(STTProvider):
         segments = self._process_recognition_results(result, False)
 
         # Calculate duration from segments
-        total_duration = max((seg.end_seconds for seg in segments), default=0.0)
+        total_duration = max(
+            (seg.end_seconds for seg in segments), default=0.0
+        )
 
         # Estimate cost
         cost = self.estimate_cost(int(total_duration))
@@ -954,7 +1029,9 @@ class GoogleSTTProvider(STTProvider):
             },
         )
 
-    def _get_optimal_location_and_model(self, language: str) -> tuple[str, str]:
+    def _get_optimal_location_and_model(
+        self, language: str
+    ) -> tuple[str, str]:
         """
         Get the optimal location and model based on the language.
 
@@ -987,9 +1064,15 @@ class GoogleSTTProvider(STTProvider):
                 "location": default_location,
                 "model": "chirp_2",
             },  # Legacy - Simplified Chinese
-            "zh": {"location": default_location, "model": "chirp_2"},  # Generic Chinese
+            "zh": {
+                "location": default_location,
+                "model": "chirp_2",
+            },  # Generic Chinese
             # 日韓語系 - 使用 asia-southeast1 region (不支援 diarization，會自動降級到 batch mode)
-            "ja": {"location": default_location, "model": "chirp_2"},  # Japanese
+            "ja": {
+                "location": default_location,
+                "model": "chirp_2",
+            },  # Japanese
             "ko": {"location": default_location, "model": "chirp_2"},  # Korean
             # 英語系 - 如果要啟用 diarization，建議使用 us-central1 + chirp_2/latest_long
             "en-us": {
@@ -1044,7 +1127,10 @@ class GoogleSTTProvider(STTProvider):
 
             if language.lower() in diarization_optimal_configs:
                 optimal = diarization_optimal_configs[language.lower()]
-                if location != optimal["location"] or model != optimal["model"]:
+                if (
+                    location != optimal["location"]
+                    or model != optimal["model"]
+                ):
                     logger.info(
                         f"💡 For optimal diarization with {language}, consider using: "
                         f"location={optimal['location']}, model={optimal['model']}"
@@ -1115,24 +1201,30 @@ class GoogleSTTProvider(STTProvider):
                         f"Processing {len(words)} words, first word type: {type(first_word)}"
                     )
                     if isinstance(first_word, dict):
-                        logger.debug(f"First word dict keys: {first_word.keys()}")
+                        logger.debug(
+                            f"First word dict keys: {first_word.keys()}"
+                        )
 
                     # Handle both object attributes and dict keys for timing
                     if hasattr(first_word, "start_time"):
                         start_time = first_word.start_time
                         end_time = last_word.end_time
                         start_sec = (
-                            start_time.seconds + getattr(start_time, "nanos", 0) / 1e9
+                            start_time.seconds
+                            + getattr(start_time, "nanos", 0) / 1e9
                         )
-                        end_sec = end_time.seconds + getattr(end_time, "nanos", 0) / 1e9
+                        end_sec = (
+                            end_time.seconds
+                            + getattr(end_time, "nanos", 0) / 1e9
+                        )
                         logger.debug(
                             f"Using object timing: {start_sec:.2f}s - {end_sec:.2f}s"
                         )
                     elif isinstance(first_word, dict):
                         # Google STT v2 batch API uses startOffset/endOffset, try these first
-                        start_time = first_word.get("startOffset") or first_word.get(
-                            "startTime", "0s"
-                        )
+                        start_time = first_word.get(
+                            "startOffset"
+                        ) or first_word.get("startTime", "0s")
                         end_time = last_word.get("endOffset") or last_word.get(
                             "endTime", "5s"
                         )
@@ -1161,7 +1253,9 @@ class GoogleSTTProvider(STTProvider):
                     else:
                         start_sec = 0.0
                         end_sec = 5.0
-                        logger.warning("Unknown word format, using default timing")
+                        logger.warning(
+                            "Unknown word format, using default timing"
+                        )
 
                     # Calculate average confidence from words
                     word_confidences = []
@@ -1257,7 +1351,9 @@ class GoogleSTTProvider(STTProvider):
                             speaker_groups[speaker_tag] = []
                         speaker_groups[speaker_tag].append(word)
 
-                    logger.info(f"Found {len(speaker_groups)} speakers in this segment")
+                    logger.info(
+                        f"Found {len(speaker_groups)} speakers in this segment"
+                    )
 
                     # Create segments for each speaker group
                     for speaker_tag, speaker_words in speaker_groups.items():
@@ -1287,8 +1383,11 @@ class GoogleSTTProvider(STTProvider):
                                 else:
                                     # Create segment from accumulated words
                                     if current_segment_words:
-                                        segment = self._create_segment_from_words(
-                                            current_segment_words, speaker_tag
+                                        segment = (
+                                            self._create_segment_from_words(
+                                                current_segment_words,
+                                                speaker_tag,
+                                            )
                                         )
                                         segments.append(segment)
 
@@ -1315,7 +1414,8 @@ class GoogleSTTProvider(STTProvider):
                         TranscriptSegment(
                             speaker_id=1,
                             start_seconds=0.0,
-                            end_seconds=len(transcript.split()) / 2.5,  # Rough estimate
+                            end_seconds=len(transcript.split())
+                            / 2.5,  # Rough estimate
                             content=transcript.strip(),
                             confidence=confidence,
                         )
@@ -1346,7 +1446,9 @@ class GoogleSTTProvider(STTProvider):
 
         # Average confidence
         confidences = [getattr(word, "confidence", 1.0) for word in words]
-        avg_confidence = sum(confidences) / len(confidences) if confidences else 0.8
+        avg_confidence = (
+            sum(confidences) / len(confidences) if confidences else 0.8
+        )
 
         return TranscriptSegment(
             speaker_id=speaker_id,

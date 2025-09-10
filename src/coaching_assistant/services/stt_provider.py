@@ -60,7 +60,6 @@ class STTProvider(ABC):
         Returns:
             TranscriptionResult with segments and metadata
         """
-        pass
 
     @abstractmethod
     def estimate_cost(self, duration_seconds: int) -> Decimal:
@@ -73,34 +72,24 @@ class STTProvider(ABC):
         Returns:
             Estimated cost in USD
         """
-        pass
 
     @property
     @abstractmethod
     def provider_name(self) -> str:
         """Get provider name."""
-        pass
 
 
 class STTProviderError(Exception):
     """Base exception for STT provider errors."""
 
-    pass
-
 
 class STTProviderUnavailableError(STTProviderError):
     """STT provider is temporarily unavailable."""
-
-    pass
 
 
 class STTProviderQuotaExceededError(STTProviderError):
     """STT provider quota exceeded."""
 
-    pass
-
 
 class STTProviderInvalidAudioError(STTProviderError):
     """Invalid audio format or corrupted file."""
-
-    pass

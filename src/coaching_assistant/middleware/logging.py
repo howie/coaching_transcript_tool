@@ -4,9 +4,8 @@ Logging configuration for the Coaching Transcript Tool Backend API.
 
 import logging
 import sys
-import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Optional
 from logging.handlers import RotatingFileHandler
 
 
@@ -82,7 +81,9 @@ def setup_logging(
     # 設定第三方套件的日誌級別
     logging.getLogger("uvicorn").setLevel(logging.INFO)
     logging.getLogger("fastapi").setLevel(logging.INFO)
-    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)  # 減少 SQL 日誌
+    logging.getLogger("sqlalchemy.engine").setLevel(
+        logging.WARNING
+    )  # 減少 SQL 日誌
 
 
 class CeleryStyleFormatter(logging.Formatter):
@@ -102,9 +103,7 @@ class CeleryStyleFormatter(logging.Formatter):
 
         # Celery 風格格式: [YYYY-MM-DD HH:MM:SS,mmm: LEVEL/ProcessName] message
         process_name = getattr(record, "processName", "MainProcess")
-        formatted = (
-            f"[{timestamp}: {record.levelname}/{process_name}] {record.getMessage()}"
-        )
+        formatted = f"[{timestamp}: {record.levelname}/{process_name}] {record.getMessage()}"
 
         # 如果有異常，加入異常資訊
         if record.exc_info:

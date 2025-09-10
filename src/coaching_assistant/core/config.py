@@ -61,7 +61,9 @@ class Settings(BaseSettings):
     RECAPTCHA_SECRET: str = os.getenv(
         "RECAPTCHA_SECRET", "6LeIxAcTAAAAABKJdbdotzKATjbpe4U93716OSsz"
     )  # Test secret key for development
-    RECAPTCHA_MIN_SCORE: float = 0.5  # Minimum score to pass verification (0.0-1.0)
+    RECAPTCHA_MIN_SCORE: float = (
+        0.5  # Minimum score to pass verification (0.0-1.0)
+    )
 
     # 檔案上傳限制
     MAX_FILE_SIZE: int = 500  # MB
@@ -88,20 +90,30 @@ class Settings(BaseSettings):
     # STT (Speech-to-Text) 設定
     STT_PROVIDER: str = "assemblyai"  # "google" or "assemblyai"
     SPEECH_API_VERSION: str = "v2"  # Google Speech-to-Text API version
-    GOOGLE_STT_MODEL: str = "chirp_2"  # Default model (chirp supports more languages)
+    GOOGLE_STT_MODEL: str = (
+        "chirp_2"  # Default model (chirp supports more languages)
+    )
     GOOGLE_STT_LOCATION: str = "asia-southeast1"  # Default location for STT
 
     # AssemblyAI 設定
     ASSEMBLYAI_API_KEY: str = ""
     ASSEMBLYAI_MODEL: str = "best"  # "best" or "nano"
-    ASSEMBLYAI_SPEAKERS_EXPECTED: int = 2  # Number of speakers expected for diarization
+    ASSEMBLYAI_SPEAKERS_EXPECTED: int = (
+        2  # Number of speakers expected for diarization
+    )
     ASSEMBLYAI_WEBHOOK_URL: str = ""  # Optional webhook URL for notifications
 
     # LeMUR (Large Language Model) 設定
     LEMUR_MODEL: str = "claude_sonnet_4_20250514"  # Claude 4 Sonnet as default
-    LEMUR_FALLBACK_MODEL: str = "claude3_5_sonnet"  # Fallback to Claude 3.5 Sonnet
-    LEMUR_MAX_OUTPUT_SIZE: int = 4000  # Maximum output size for LeMUR responses
-    LEMUR_COMBINED_MODE: bool = True  # Enable combined speaker + punctuation processing
+    LEMUR_FALLBACK_MODEL: str = (
+        "claude3_5_sonnet"  # Fallback to Claude 3.5 Sonnet
+    )
+    LEMUR_MAX_OUTPUT_SIZE: int = (
+        4000  # Maximum output size for LeMUR responses
+    )
+    LEMUR_COMBINED_MODE: bool = (
+        True  # Enable combined speaker + punctuation processing
+    )
     LEMUR_PROMPTS_PATH: str = ""  # Custom path to prompts YAML file (optional)
 
     # Language-specific STT configurations (JSON format)
@@ -123,14 +135,14 @@ class Settings(BaseSettings):
     ECPAY_HASH_KEY: str = ""  # HashKey
     ECPAY_HASH_IV: str = ""  # HashIV
     ECPAY_ENVIRONMENT: str = "sandbox"  # "sandbox" or "production"
-    
+
     # Frontend/Backend URLs for ECPay callbacks
     FRONTEND_URL: str = "http://localhost:3000"
     API_BASE_URL: str = "http://localhost:8000"
-    
+
     # Admin webhook token for manual operations
     ADMIN_WEBHOOK_TOKEN: str = "change-me-in-production"
-    
+
     # Email Configuration (for payment notifications)
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587

@@ -1,12 +1,9 @@
 """Test progress update functionality."""
 
-import pytest
 from datetime import datetime
 from uuid import uuid4
-from sqlalchemy.orm import Session
 
 from coaching_assistant.models.processing_status import ProcessingStatus
-from coaching_assistant.models.session import Session as SessionModel, SessionStatus
 
 
 def test_progress_update():
@@ -15,7 +12,10 @@ def test_progress_update():
     # Create a ProcessingStatus instance
     session_id = uuid4()
     status = ProcessingStatus(
-        session_id=session_id, status="processing", progress=0, message="Initial"
+        session_id=session_id,
+        status="processing",
+        progress=0,
+        message="Initial",
     )
 
     # Test update_progress method
@@ -49,7 +49,8 @@ def test_progress_not_overridden():
         started_at=datetime.utcnow(),
     )
 
-    # The _update_processing_progress function should not override if progress > 0
+    # The _update_processing_progress function should not override
+    # if progress > 0
     # We test the logic here
     if status.progress == 0:
         # Only update if progress is 0

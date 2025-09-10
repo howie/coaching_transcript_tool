@@ -10,6 +10,9 @@ DOCKER_CLI_LATEST = $(PACKAGE_NAME)-cli:latest
 PYTHON = python3
 PIP = pip
 
+# Fix for zsh make compatibility
+SHELL := /bin/bash
+
 # Default target
 all: clean build
 
@@ -337,6 +340,13 @@ dist: clean
 dist-install: dist
 	$(PIP) install dist/*.whl --break-system-packages
 
+# Create aliases for zsh compatibility
+make-lint:
+	/usr/bin/make lint
+
+make-test-unit:
+	/usr/bin/make test-unit
+
 # Help target
 help:
 	@echo "Available targets:"
@@ -360,6 +370,10 @@ help:
 	@echo "  coverage       : Run standalone tests with coverage report"
 	@echo "  coverage-all   : Run all tests with coverage (requires API server)"
 	@echo "  lint           : Run linting (logs to logs/lint.log)"
+	@echo ""  
+	@echo "Zsh compatibility aliases:"
+	@echo "  make-lint      : Run linting (alias for zsh users)"
+	@echo "  make-test-unit : Run unit tests (alias for zsh users)"
 	@echo ""
 	@echo "Frontend (Node.js):"
 	@echo "  dev-frontend     : Start frontend development server (logs to logs/frontend-dev.log)"

@@ -8,13 +8,11 @@ Supports multiple formats:
 import re
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import List, Dict, Any, Optional, Type, Pattern, Match, Tuple
+from typing import List, Dict, Any, Optional, Match
 
 
 class UnrecognizedFormatError(ValueError):
     """Custom exception for when the VTT format cannot be determined."""
-
-    pass
 
 
 class VTTFormat(Enum):
@@ -32,13 +30,11 @@ class BaseVTTParser(ABC):
     @abstractmethod
     def get_pattern(cls) -> str:
         """Return the regex pattern for this format."""
-        pass
 
     @classmethod
     @abstractmethod
     def extract_data(cls, match: Match) -> Dict[str, Any]:
         """Extract data from regex match groups."""
-        pass
 
     @classmethod
     def parse(cls, content: str) -> List[Dict[str, Any]]:
@@ -127,12 +123,16 @@ def parse_vtt(
                 "Could not detect VTT format. Please specify the format type."
             )
         format_name = (
-            format_type.name if hasattr(format_type, "name") else str(format_type)
+            format_type.name
+            if hasattr(format_type, "name")
+            else str(format_type)
         )
         print(f"Detected VTT format: {format_name}")
     else:
         format_name = (
-            format_type.name if hasattr(format_type, "name") else str(format_type)
+            format_type.name
+            if hasattr(format_type, "name")
+            else str(format_type)
         )
         print(f"Using specified VTT format: {format_name}")
 
@@ -145,7 +145,9 @@ def parse_vtt(
     try:
         return parser.parse(content)
     except Exception as e:
-        raise ValueError(f"Error parsing VTT file with format {format_name}: {str(e)}")
+        raise ValueError(
+            f"Error parsing VTT file with format {format_name}: {str(e)}"
+        )
 
 
 def consolidate_speakers(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

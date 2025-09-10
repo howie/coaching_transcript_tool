@@ -2,7 +2,12 @@
 
 import pytest
 from datetime import date
-from coaching_assistant.models import CoachingSession, SessionSource, User, Client
+from coaching_assistant.models import (
+    CoachingSession,
+    SessionSource,
+    User,
+    Client,
+)
 
 
 class TestCoachingSessionSource:
@@ -11,7 +16,9 @@ class TestCoachingSessionSource:
     def test_create_coaching_session_with_source(self, db_session):
         """Test creating a coaching session with all SessionSource values."""
         # Create a coach user
-        coach = User(email="coach@example.com", name="Test Coach", google_id="coach123")
+        coach = User(
+            email="coach@example.com", name="Test Coach", google_id="coach123"
+        )
         db_session.add(coach)
         db_session.flush()
 
@@ -56,7 +63,9 @@ class TestCoachingSessionSource:
         """Test that source field is required."""
         # Create a coach user
         coach = User(
-            email="coach2@example.com", name="Test Coach 2", google_id="coach456"
+            email="coach2@example.com",
+            name="Test Coach 2",
+            google_id="coach456",
         )
         db_session.add(coach)
         db_session.flush()
@@ -78,14 +87,18 @@ class TestCoachingSessionSource:
         )
         db_session.add(session)
 
-        with pytest.raises(Exception):  # Should raise an integrity constraint error
+        with pytest.raises(
+            Exception
+        ):  # Should raise an integrity constraint error
             db_session.commit()
 
     def test_coaching_session_source_enum_validation(self, db_session):
         """Test that only valid SessionSource enum values are accepted."""
         # Create a coach user
         coach = User(
-            email="coach3@example.com", name="Test Coach 3", google_id="coach789"
+            email="coach3@example.com",
+            name="Test Coach 3",
+            google_id="coach789",
         )
         db_session.add(coach)
         db_session.flush()
@@ -129,7 +142,9 @@ class TestCoachingSessionSource:
         """Test that CoachingSession __repr__ works correctly with source field."""
         # Create a coach user
         coach = User(
-            email="coach4@example.com", name="Test Coach 4", google_id="coach999"
+            email="coach4@example.com",
+            name="Test Coach 4",
+            google_id="coach999",
         )
         db_session.add(coach)
         db_session.flush()
@@ -163,7 +178,9 @@ class TestCoachingSessionSource:
         """Test that relationships still work correctly with source field added."""
         # Create a coach user
         coach = User(
-            email="coach5@example.com", name="Test Coach 5", google_id="coach555"
+            email="coach5@example.com",
+            name="Test Coach 5",
+            google_id="coach555",
         )
         db_session.add(coach)
         db_session.flush()
@@ -196,7 +213,9 @@ class TestCoachingSessionSource:
         """Test creating multiple sessions with different sources for same client."""
         # Create a coach user
         coach = User(
-            email="coach6@example.com", name="Test Coach 6", google_id="coach666"
+            email="coach6@example.com",
+            name="Test Coach 6",
+            google_id="coach666",
         )
         db_session.add(coach)
         db_session.flush()

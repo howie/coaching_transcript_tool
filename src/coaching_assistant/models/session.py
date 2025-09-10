@@ -117,7 +117,9 @@ class Session(BaseModel):
                 return role.role.value
         return f"Speaker {speaker_id}"
 
-    def update_status(self, new_status: SessionStatus, error_message: str = None):
+    def update_status(
+        self, new_status: SessionStatus, error_message: str = None
+    ):
         """Update session status with optional error message."""
         self.status = new_status
         if error_message:

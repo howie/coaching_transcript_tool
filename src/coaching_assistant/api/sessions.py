@@ -7,7 +7,6 @@ from fastapi import (
     Depends,
     HTTPException,
     Query,
-    Response,
     UploadFile,
     File as FastAPIFile,
 )
@@ -31,7 +30,6 @@ from ..utils.gcs_uploader import GCSUploader
 from ..tasks.transcription_tasks import transcribe_audio
 from ..core.config import settings
 from ..exporters.excel import generate_excel
-from ..services.stt_factory import STTProviderFactory
 from ..services.usage_tracking import UsageTrackingService
 from ..services.plan_limits import PlanLimits
 
@@ -152,8 +150,11 @@ async def create_session(
     # CRITICAL: Check plan limits BEFORE creating session
     plan_limits = PlanLimits.from_user_plan(current_user.plan)
     current_sessions = current_user.session_count or 0
-    
-    if plan_limits.max_sessions != -1 and current_sessions >= plan_limits.max_sessions:
+
+    if (
+        plan_limits.max_sessions != -1
+        and current_sessions >= plan_limits.max_sessions
+    ):
         raise HTTPException(
             status_code=403,
             detail={
@@ -161,10 +162,12 @@ async def create_session(
                 "message": f"You have reached your monthly session limit of {plan_limits.max_sessions}",
                 "current_usage": current_sessions,
                 "limit": plan_limits.max_sessions,
-                "plan": current_user.plan.value if current_user.plan else "free"
-            }
+                "plan": (
+                    current_user.plan.value if current_user.plan else "free"
+                ),
+            },
         )
-    
+
     # Determine STT provider - use settings default if 'auto'
     provider = session_data.stt_provider
     if provider == "auto":
@@ -179,7 +182,7 @@ async def create_session(
     )
 
     db.add(session)
-    
+
     # Increment user's session count
     try:
         usage_service = UsageTrackingService(db)
@@ -188,7 +191,7 @@ async def create_session(
     except Exception as e:
         logger.error(f"Failed to increment session count: {e}")
         # Don't fail session creation if usage tracking fails
-    
+
     db.commit()
     db.refresh(session)
 
@@ -212,7 +215,11 @@ async def get_available_providers():
             "ja-JP",
             "ko-KR",
         ],
-        features=["Speaker Diarization", "High Accuracy", "Multiple Languages"],
+        features=[
+            "Speaker Diarization",
+            "High Accuracy",
+            "Multiple Languages",
+        ],
         cost_per_minute="~$0.024",
     )
     providers_info.append(google_info)
@@ -222,7 +229,11 @@ async def get_available_providers():
         name="assemblyai",
         display_name="AssemblyAI",
         supported_languages=["en", "zh", "ja"],
-        features=["Auto Speaker Diarization", "Coaching Analysis", "Fast Processing"],
+        features=[
+            "Auto Speaker Diarization",
+            "Coaching Analysis",
+            "Fast Processing",
+        ],
         cost_per_minute="~$0.015-0.024",
     )
     providers_info.append(assemblyai_info)
@@ -250,7 +261,10 @@ async def list_sessions(
         query = query.filter(Session.status == status)
 
     sessions = (
-        query.order_by(desc(Session.created_at)).offset(offset).limit(limit).all()
+        query.order_by(desc(Session.created_at))
+        .offset(offset)
+        .limit(limit)
+        .all()
     )
 
     return [SessionResponse.from_session(session) for session in sessions]
@@ -278,15 +292,19 @@ async def get_session(
 @router.post("/{session_id}/upload-url", response_model=UploadUrlResponse)
 async def get_upload_url(
     session_id: UUID,
-    filename: str = Query(..., pattern=r"^[^\/\\]+\.(mp3|wav|flac|ogg|mp4|m4a)$"),
-    file_size_mb: float = Query(..., description="File size in MB for plan limit validation"),
+    filename: str = Query(
+        ..., pattern=r"^[^\/\\]+\.(mp3|wav|flac|ogg|mp4|m4a)$"
+    ),
+    file_size_mb: float = Query(
+        ..., description="File size in MB for plan limit validation"
+    ),
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
 ):
     """Get signed URL for audio file upload."""
     # CRITICAL: Check file size limits BEFORE generating upload URL
     plan_limits = PlanLimits.from_user_plan(current_user.plan)
-    
+
     if file_size_mb > plan_limits.max_file_size_mb:
         raise HTTPException(
             status_code=413,
@@ -295,10 +313,12 @@ async def get_upload_url(
                 "message": f"File size {file_size_mb:.1f}MB exceeds your plan limit of {plan_limits.max_file_size_mb}MB",
                 "file_size_mb": file_size_mb,
                 "limit_mb": plan_limits.max_file_size_mb,
-                "plan": current_user.plan.value if current_user.plan else "free"
-            }
+                "plan": (
+                    current_user.plan.value if current_user.plan else "free"
+                ),
+            },
         )
-    
+
     logger.info(
         f"📤 UPLOAD URL REQUEST - Session: {session_id}, User: {current_user.id}, Filename: {filename}, Size: {file_size_mb}MB"
     )
@@ -326,7 +346,9 @@ async def get_upload_url(
 
     # If session is FAILED, reset it to UPLOADING state
     if session.status == SessionStatus.FAILED:
-        logger.info(f"🔄 Resetting FAILED session {session_id} to UPLOADING state")
+        logger.info(
+            f"🔄 Resetting FAILED session {session_id} to UPLOADING state"
+        )
         session.status = SessionStatus.UPLOADING
         session.error_message = None
         # Clear existing file data to allow fresh upload
@@ -364,9 +386,13 @@ async def get_upload_url(
             credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON,
         )
 
-        logger.info(f"🔗 Generating signed upload URL with 60min expiration...")
+        logger.info(
+            f"🔗 Generating signed upload URL with 60min expiration..."
+        )
         upload_url, expires_at = uploader.generate_signed_upload_url(
-            blob_name=gcs_path, content_type=content_type, expiration_minutes=60
+            blob_name=gcs_path,
+            content_type=content_type,
+            expiration_minutes=60,
         )
 
         # Update session with file info
@@ -395,7 +421,9 @@ async def get_upload_url(
         )
 
 
-@router.post("/{session_id}/confirm-upload", response_model=UploadConfirmResponse)
+@router.post(
+    "/{session_id}/confirm-upload", response_model=UploadConfirmResponse
+)
 async def confirm_upload(
     session_id: UUID,
     db: DBSession = Depends(get_db),
@@ -450,7 +478,9 @@ async def confirm_upload(
 
         file_exists, file_size = uploader.check_file_exists(blob_name)
 
-        logger.info(f"📊 File check result: exists={file_exists}, size={file_size}")
+        logger.info(
+            f"📊 File check result: exists={file_exists}, size={file_size}"
+        )
 
         if file_exists:
             # Update session status to PENDING if file exists
@@ -470,7 +500,9 @@ async def confirm_upload(
                 message=f"File uploaded successfully ({file_size} bytes). Ready for transcription.",
             )
         else:
-            logger.warning(f"❌ File not found for session {session_id}: {blob_name}")
+            logger.warning(
+                f"❌ File not found for session {session_id}: {blob_name}"
+            )
             logger.info(
                 f"💡 Suggestion: Use 'gcloud storage ls {session.gcs_audio_path}' to check manually"
             )
@@ -505,8 +537,11 @@ async def start_transcription(
     # CRITICAL: Check transcription limits BEFORE starting processing
     plan_limits = PlanLimits.from_user_plan(current_user.plan)
     current_transcriptions = current_user.transcription_count or 0
-    
-    if plan_limits.max_transcriptions != -1 and current_transcriptions >= plan_limits.max_transcriptions:
+
+    if (
+        plan_limits.max_transcriptions != -1
+        and current_transcriptions >= plan_limits.max_transcriptions
+    ):
         raise HTTPException(
             status_code=403,
             detail={
@@ -514,10 +549,12 @@ async def start_transcription(
                 "message": f"You have reached your monthly transcription limit of {plan_limits.max_transcriptions}",
                 "current_usage": current_transcriptions,
                 "limit": plan_limits.max_transcriptions,
-                "plan": current_user.plan.value if current_user.plan else "free"
-            }
+                "plan": (
+                    current_user.plan.value if current_user.plan else "free"
+                ),
+            },
         )
-    
+
     session = (
         db.query(Session)
         .filter(Session.id == session_id, Session.user_id == current_user.id)
@@ -614,7 +651,8 @@ async def retry_transcription(
 
     if not session.gcs_audio_path:
         raise HTTPException(
-            status_code=400, detail="No audio file found. Please re-upload the file."
+            status_code=400,
+            detail="No audio file found. Please re-upload the file.",
         )
 
     # Verify file still exists before retrying
@@ -634,7 +672,9 @@ async def retry_transcription(
             session.status = SessionStatus.UPLOADING
             session.audio_filename = None
             session.gcs_audio_path = None
-            session.error_message = "Audio file not found. Please re-upload the file."
+            session.error_message = (
+                "Audio file not found. Please re-upload the file."
+            )
             db.commit()
 
             raise HTTPException(
@@ -730,7 +770,9 @@ async def export_transcript(
     )
 
     if not segments:
-        raise HTTPException(status_code=404, detail="No transcript segments found")
+        raise HTTPException(
+            status_code=404, detail="No transcript segments found"
+        )
 
     # Generate transcript content based on format
     if format == "json":
@@ -751,7 +793,9 @@ async def export_transcript(
         response_io = io.StringIO(content)
     elif format == "xlsx":
         excel_buffer = _export_xlsx(session, segments, db)
-        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        media_type = (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
         response_io = excel_buffer
     else:
         raise HTTPException(status_code=400, detail="Invalid format")
@@ -926,7 +970,8 @@ async def update_segment_roles(
             segment_id = PyUUID(segment_id_str)
         except ValueError:
             raise HTTPException(
-                status_code=400, detail=f"Invalid segment ID format: '{segment_id_str}'"
+                status_code=400,
+                detail=f"Invalid segment ID format: '{segment_id_str}'",
             )
 
         # Verify segment exists and belongs to this session
@@ -941,7 +986,8 @@ async def update_segment_roles(
 
         if not segment:
             raise HTTPException(
-                status_code=400, detail=f"Segment not found: '{segment_id_str}'"
+                status_code=400,
+                detail=f"Segment not found: '{segment_id_str}'",
             )
 
         role = SpeakerRole.COACH if role_str == "coach" else SpeakerRole.CLIENT
@@ -958,11 +1004,17 @@ async def update_segment_roles(
     }
 
 
-def _create_default_status(session: Session, db: DBSession) -> ProcessingStatus:
+def _create_default_status(
+    session: Session, db: DBSession
+) -> ProcessingStatus:
     """Create default processing status based on session status."""
     status_map = {
         SessionStatus.UPLOADING: ("pending", 0, "Waiting for file upload"),
-        SessionStatus.PENDING: ("pending", 5, "File uploaded, queued for processing"),
+        SessionStatus.PENDING: (
+            "pending",
+            5,
+            "File uploaded, queued for processing",
+        ),
         SessionStatus.PROCESSING: ("processing", 10, "Processing audio..."),
         SessionStatus.COMPLETED: ("completed", 100, "Transcription complete!"),
         SessionStatus.FAILED: (
@@ -984,7 +1036,9 @@ def _create_default_status(session: Session, db: DBSession) -> ProcessingStatus:
         message=message,
         duration_total=session.duration_seconds,
         started_at=(
-            session.created_at if session.status == SessionStatus.PROCESSING else None
+            session.created_at
+            if session.status == SessionStatus.PROCESSING
+            else None
         ),
     )
 
@@ -1012,7 +1066,9 @@ def _update_processing_progress(
 
     # Only estimate progress if we don't have actual progress from Celery task
     # The Celery task sets actual progress, so we should NOT override it here
-    if session.duration_seconds and (status.progress is None or status.progress == 0):
+    if session.duration_seconds and (
+        status.progress is None or status.progress == 0
+    ):
         # Only set time-based estimate if progress hasn't been set by the actual task
         expected_processing_time = session.duration_seconds * 4  # 4x real-time
         time_based_progress = min(
@@ -1066,14 +1122,20 @@ def _export_json(
     from ..models.transcript import SessionRole, SegmentRole
 
     role_assignments = {}
-    roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
+    roles = (
+        db.query(SessionRole)
+        .filter(SessionRole.session_id == session.id)
+        .all()
+    )
     for role in roles:
         role_assignments[role.speaker_id] = role.role.value
 
     # Get segment-level role assignments
     segment_roles = {}
     segment_role_assignments = (
-        db.query(SegmentRole).filter(SegmentRole.session_id == session.id).all()
+        db.query(SegmentRole)
+        .filter(SegmentRole.session_id == session.id)
+        .all()
     )
     for seg_role in segment_role_assignments:
         segment_roles[str(seg_role.segment_id)] = seg_role.role.value
@@ -1095,7 +1157,8 @@ def _export_json(
                 "content": seg.content,
                 "confidence": seg.confidence,
                 "role": segment_roles.get(
-                    str(seg.id), role_assignments.get(seg.speaker_id, "unknown")
+                    str(seg.id),
+                    role_assignments.get(seg.speaker_id, "unknown"),
                 ),
             }
             for seg in segments
@@ -1112,7 +1175,11 @@ def _export_vtt(
 
     # Get role assignments (both speaker and segment level)
     role_assignments = {}
-    roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
+    roles = (
+        db.query(SessionRole)
+        .filter(SessionRole.session_id == session.id)
+        .all()
+    )
     for role in roles:
         role_assignments[role.speaker_id] = (
             "教練" if role.role.value == "coach" else "客戶"
@@ -1121,7 +1188,9 @@ def _export_vtt(
     # Get segment-level role assignments
     segment_roles = {}
     segment_role_assignments = (
-        db.query(SegmentRole).filter(SegmentRole.session_id == session.id).all()
+        db.query(SegmentRole)
+        .filter(SegmentRole.session_id == session.id)
+        .all()
     )
     for seg_role in segment_role_assignments:
         segment_roles[str(seg_role.segment_id)] = (
@@ -1153,7 +1222,11 @@ def _export_srt(
 
     # Get role assignments (both speaker and segment level)
     role_assignments = {}
-    roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
+    roles = (
+        db.query(SessionRole)
+        .filter(SessionRole.session_id == session.id)
+        .all()
+    )
     for role in roles:
         role_assignments[role.speaker_id] = (
             "教練" if role.role.value == "coach" else "客戶"
@@ -1162,7 +1235,9 @@ def _export_srt(
     # Get segment-level role assignments
     segment_roles = {}
     segment_role_assignments = (
-        db.query(SegmentRole).filter(SegmentRole.session_id == session.id).all()
+        db.query(SegmentRole)
+        .filter(SegmentRole.session_id == session.id)
+        .all()
     )
     for seg_role in segment_role_assignments:
         segment_roles[str(seg_role.segment_id)] = (
@@ -1195,7 +1270,11 @@ def _export_txt(
 
     # Get role assignments (both speaker and segment level)
     role_assignments = {}
-    roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
+    roles = (
+        db.query(SessionRole)
+        .filter(SessionRole.session_id == session.id)
+        .all()
+    )
     for role in roles:
         role_assignments[role.speaker_id] = (
             "教練" if role.role.value == "coach" else "客戶"
@@ -1204,7 +1283,9 @@ def _export_txt(
     # Get segment-level role assignments
     segment_roles = {}
     segment_role_assignments = (
-        db.query(SegmentRole).filter(SegmentRole.session_id == session.id).all()
+        db.query(SegmentRole)
+        .filter(SegmentRole.session_id == session.id)
+        .all()
     )
     for seg_role in segment_role_assignments:
         segment_roles[str(seg_role.segment_id)] = (
@@ -1240,7 +1321,11 @@ def _export_xlsx(
 
     # Get role assignments (both speaker and segment level)
     role_assignments = {}
-    roles = db.query(SessionRole).filter(SessionRole.session_id == session.id).all()
+    roles = (
+        db.query(SessionRole)
+        .filter(SessionRole.session_id == session.id)
+        .all()
+    )
     for role in roles:
         role_assignments[role.speaker_id] = (
             "Coach" if role.role.value == "coach" else "Client"
@@ -1249,7 +1334,9 @@ def _export_xlsx(
     # Get segment-level role assignments
     segment_roles = {}
     segment_role_assignments = (
-        db.query(SegmentRole).filter(SegmentRole.session_id == session.id).all()
+        db.query(SegmentRole)
+        .filter(SegmentRole.session_id == session.id)
+        .all()
     )
     for seg_role in segment_role_assignments:
         segment_roles[str(seg_role.segment_id)] = (
@@ -1281,7 +1368,11 @@ def _export_xlsx(
         start_time = _format_timestamp_vtt(seg.start_seconds)
 
         data.append(
-            {"time": start_time, "speaker": speaker_label, "content": seg.content}
+            {
+                "time": start_time,
+                "speaker": speaker_label,
+                "content": seg.content,
+            }
         )
 
     # Generate Excel file using the existing excel exporter
@@ -1322,7 +1413,8 @@ async def upload_session_transcript(
     if not session_exists:
         logger.warning(f"❌ Session {session_id} does not exist in database")
         raise HTTPException(
-            status_code=404, detail=f"Session {session_id} not found in database"
+            status_code=404,
+            detail=f"Session {session_id} not found in database",
         )
 
     # Check if session belongs to user
@@ -1368,7 +1460,8 @@ async def upload_session_transcript(
 
         if not segments:
             raise HTTPException(
-                status_code=400, detail="No valid transcript segments found in file"
+                status_code=400,
+                detail="No valid transcript segments found in file",
             )
 
         # Create a transcription session ID for this manual upload
@@ -1380,7 +1473,9 @@ async def upload_session_transcript(
             segment = TranscriptSegment(
                 id=uuid4(),
                 session_id=session_id,
-                speaker_id=segment_data.get("speaker_id", 1),  # Default to speaker 1
+                speaker_id=segment_data.get(
+                    "speaker_id", 1
+                ),  # Default to speaker 1
                 start_seconds=segment_data["start_seconds"],
                 end_seconds=segment_data["end_seconds"],
                 content=segment_data["content"],
@@ -1436,7 +1531,8 @@ def _parse_vtt_content(content: str) -> List[dict]:
         if "-->" in line:
             # Parse timestamp
             timestamp_match = re.match(
-                r"(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})", line
+                r"(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})",
+                line,
             )
             if timestamp_match:
                 start_time = _parse_timestamp(timestamp_match.group(1))
@@ -1451,14 +1547,17 @@ def _parse_vtt_content(content: str) -> List[dict]:
                     speaker_id = 1
                     content_text = content_line
 
-                    speaker_match = re.match(r"<v\s+([^>]+)>\s*(.*)", content_line)
+                    speaker_match = re.match(
+                        r"<v\s+([^>]+)>\s*(.*)", content_line
+                    )
                     if speaker_match:
                         speaker_name = speaker_match.group(1)
                         content_text = speaker_match.group(2)
                         # Simple speaker ID assignment based on name
                         speaker_id = (
                             2
-                            if "客戶" in speaker_name or "Client" in speaker_name
+                            if "客戶" in speaker_name
+                            or "Client" in speaker_name
                             else 1
                         )
 
@@ -1492,12 +1591,17 @@ def _parse_srt_content(content: str) -> List[dict]:
         # Parse timestamp (line 1)
         timestamp_line = lines[1].strip()
         timestamp_match = re.match(
-            r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})", timestamp_line
+            r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})",
+            timestamp_line,
         )
 
         if timestamp_match:
-            start_time = _parse_timestamp(timestamp_match.group(1).replace(",", "."))
-            end_time = _parse_timestamp(timestamp_match.group(2).replace(",", "."))
+            start_time = _parse_timestamp(
+                timestamp_match.group(1).replace(",", ".")
+            )
+            end_time = _parse_timestamp(
+                timestamp_match.group(2).replace(",", ".")
+            )
 
             # Content (lines 2+)
             content_lines = lines[2:]
@@ -1512,7 +1616,9 @@ def _parse_srt_content(content: str) -> List[dict]:
                 speaker_name = speaker_match.group(1)
                 content_text = speaker_match.group(2)
                 speaker_id = (
-                    2 if "客戶" in speaker_name or "Client" in speaker_name else 1
+                    2
+                    if "客戶" in speaker_name or "Client" in speaker_name
+                    else 1
                 )
 
             segments.append(
@@ -1542,7 +1648,10 @@ def _parse_timestamp(timestamp_str: str) -> float:
     if "." in seconds_str:
         seconds, milliseconds = seconds_str.split(".")
         total_seconds = (
-            hours * 3600 + minutes * 60 + int(seconds) + int(milliseconds) / 1000
+            hours * 3600
+            + minutes * 60
+            + int(seconds)
+            + int(milliseconds) / 1000
         )
     else:
         total_seconds = hours * 3600 + minutes * 60 + int(seconds_str)

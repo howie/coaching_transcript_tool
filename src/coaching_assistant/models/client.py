@@ -28,7 +28,9 @@ class Client(BaseModel):
     client_type = Column(
         String(50), nullable=True
     )  # paid, pro_bono, free_practice, other
-    issue_types = Column(Text, nullable=True)  # Comma-separated list of issue types
+    issue_types = Column(
+        Text, nullable=True
+    )  # Comma-separated list of issue types
     status = Column(
         String(50), nullable=False, default="first_session"
     )  # completed, in_progress, paused, first_session

@@ -2,8 +2,16 @@
 
 import enum
 import json
-from datetime import datetime
-from sqlalchemy import Column, String, Integer, Enum, Text, DateTime, DECIMAL, JSON
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    Enum,
+    Text,
+    DateTime,
+    DECIMAL,
+    JSON,
+)
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -18,11 +26,11 @@ class UserPlan(enum.Enum):
 
 class UserRole(enum.Enum):
     """User roles for access control."""
-    
-    USER = "user"                  # Regular user
-    STAFF = "staff"                # Support staff (read-only admin)
-    ADMIN = "admin"                # Full admin (read/write)
-    SUPER_ADMIN = "super_admin"    # System admin (manage other admins)
+
+    USER = "user"  # Regular user
+    STAFF = "staff"  # Support staff (read-only admin)
+    ADMIN = "admin"  # Full admin (read/write)
+    SUPER_ADMIN = "super_admin"  # System admin (manage other admins)
 
 
 class User(BaseModel):
@@ -30,7 +38,9 @@ class User(BaseModel):
 
     # Authentication fields
     email = Column(String(255), unique=True, nullable=False, index=True)
-    hashed_password = Column(String(255), nullable=True)  # Nullable for SSO users
+    hashed_password = Column(
+        String(255), nullable=True
+    )  # Nullable for SSO users
 
     # Profile fields
     name = Column(String(255), nullable=False)
@@ -40,22 +50,27 @@ class User(BaseModel):
     google_id = Column(String(255), unique=True, nullable=True, index=True)
 
     # Role-based access control
-    role = Column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]), default=UserRole.USER, nullable=False, index=True)
-    
+    role = Column(
+        Enum(UserRole, values_callable=lambda x: [e.value for e in x]),
+        default=UserRole.USER,
+        nullable=False,
+        index=True,
+    )
+
     # Security fields
     last_admin_login = Column(DateTime(timezone=True), nullable=True)
     admin_access_expires = Column(DateTime(timezone=True), nullable=True)
     allowed_ip_addresses = Column(JSON, nullable=True)  # Optional IP allowlist
-    
+
     # Subscription and usage
     plan = Column(Enum(UserPlan), default=UserPlan.FREE, nullable=False)
     usage_minutes = Column(Integer, default=0, nullable=False)
-    
+
     # Monthly usage tracking
     session_count = Column(Integer, default=0, nullable=False)
     transcription_count = Column(Integer, default=0, nullable=False)
     current_month_start = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Cumulative usage tracking
     total_sessions_created = Column(Integer, default=0, nullable=False)
     total_transcriptions_generated = Column(Integer, default=0, nullable=False)
@@ -67,10 +82,16 @@ class User(BaseModel):
 
     # Relationships
     sessions = relationship(
-        "Session", back_populates="user", cascade="all, delete-orphan", lazy="dynamic"
+        "Session",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
     )
     clients = relationship(
-        "Client", back_populates="user", cascade="all, delete-orphan", lazy="dynamic"
+        "Client",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
     )
     coaching_sessions = relationship(
         "CoachingSession",
@@ -108,7 +129,7 @@ class User(BaseModel):
         cascade="all, delete-orphan",
         lazy="dynamic",
     )
-    
+
     # ECPay subscription relationships
     ecpay_authorizations = relationship(
         "ECPayCreditAuthorization",
@@ -119,7 +140,7 @@ class User(BaseModel):
     saas_subscriptions = relationship(
         "SaasSubscription",
         back_populates="user",
-        cascade="all, delete-orphan", 
+        cascade="all, delete-orphan",
         lazy="dynamic",
     )
 
@@ -176,25 +197,27 @@ class User(BaseModel):
     def google_connected(self):
         """Check if Google account is connected."""
         return bool(self.google_id)
-    
+
     def has_role(self, required_role: UserRole) -> bool:
         """Check if user has required role or higher."""
         role_hierarchy = {
             UserRole.USER: 0,
             UserRole.STAFF: 1,
             UserRole.ADMIN: 2,
-            UserRole.SUPER_ADMIN: 3
+            UserRole.SUPER_ADMIN: 3,
         }
-        return role_hierarchy.get(self.role, 0) >= role_hierarchy.get(required_role, 0)
-    
+        return role_hierarchy.get(self.role, 0) >= role_hierarchy.get(
+            required_role, 0
+        )
+
     def is_admin(self) -> bool:
         """Check if user has admin privileges."""
         return self.has_role(UserRole.ADMIN)
-    
+
     def is_staff(self) -> bool:
         """Check if user has staff privileges."""
         return self.has_role(UserRole.STAFF)
-    
+
     def is_super_admin(self) -> bool:
         """Check if user is a super administrator."""
         return self.role == UserRole.SUPER_ADMIN

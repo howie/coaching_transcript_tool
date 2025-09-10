@@ -2,15 +2,16 @@
 
 import pytest
 from sqlalchemy.exc import IntegrityError
-from coaching_assistant.models import Session, User
+from coaching_assistant.models import Session
 from coaching_assistant.models.session import SessionStatus
-from coaching_assistant.models.user import UserPlan
 
 
 class TestSessionModel:
     """Test Session model basic functionality."""
 
-    def test_create_session_with_required_fields(self, db_session, sample_user):
+    def test_create_session_with_required_fields(
+        self, db_session, sample_user
+    ):
         """Test creating a session with all required fields."""
         session = Session(
             title="Test Coaching Session",
@@ -29,7 +30,9 @@ class TestSessionModel:
         assert session.created_at is not None
         assert session.updated_at is not None
 
-    def test_create_session_with_optional_fields(self, db_session, sample_user):
+    def test_create_session_with_optional_fields(
+        self, db_session, sample_user
+    ):
         """Test creating a session with optional fields."""
         session = Session(
             title="Premium Session",
@@ -136,7 +139,9 @@ class TestSessionProperties:
         self, db_session, sample_user, status, expected
     ):
         """Test is_processing_complete property."""
-        session = Session(title="Test Session", user_id=sample_user.id, status=status)
+        session = Session(
+            title="Test Session", user_id=sample_user.id, status=status
+        )
 
         assert session.is_processing_complete == expected
 
@@ -211,7 +216,9 @@ class TestSessionMethods:
         assert sample_session.status == SessionStatus.FAILED
         assert sample_session.error_message == error_msg
 
-    def test_get_speaker_role_with_assigned_role(self, db_session, sample_session):
+    def test_get_speaker_role_with_assigned_role(
+        self, db_session, sample_session
+    ):
         """Test get_speaker_role method with assigned role."""
         from coaching_assistant.models import SessionRole
         from coaching_assistant.models.transcript import SpeakerRole
@@ -330,9 +337,13 @@ class TestSessionRelationships:
 
         # Check that segment and role are deleted
         deleted_segment = (
-            db_session.query(TranscriptSegment).filter_by(id=segment_id).first()
+            db_session.query(TranscriptSegment)
+            .filter_by(id=segment_id)
+            .first()
         )
-        deleted_role = db_session.query(SessionRole).filter_by(id=role_id).first()
+        deleted_role = (
+            db_session.query(SessionRole).filter_by(id=role_id).first()
+        )
 
         assert deleted_segment is None
         assert deleted_role is None
