@@ -60,20 +60,6 @@ export function DashboardSidebar() {
       icon: CreditCardIcon,
       current: pathname.startsWith('/dashboard/billing')
     },
-    {
-      name: t('menu.analysis'),
-      href: '/dashboard/analysis',
-      icon: ChartBarIcon,
-      current: pathname === '/dashboard/analysis',
-      comingSoon: true
-    },
-    {
-      name: t('menu.insights'),
-      href: '/dashboard/insights',
-      icon: LightBulbIcon,
-      current: pathname === '/dashboard/insights',
-      comingSoon: true
-    },
   ]
 
   return (

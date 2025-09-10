@@ -133,7 +133,7 @@ const SessionDetailPage = () => {
     fee_amount: 0,
     notes: ''
   });
-  const [activeTab, setActiveTab] = useState<'overview' | 'transcript' | 'analysis'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'transcript' | 'ai-optimization' | 'analysis'>('overview');
   const [transcript, setTranscript] = useState<TranscriptData | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [exportFormat, setExportFormat] = useState<'txt' | 'xlsx'>('xlsx');
@@ -1264,6 +1264,19 @@ ${t('sessions.aiChatFollowUp')}`;
               </span>
             )}
           </button>
+          {hasTranscript && process.env.NODE_ENV === 'development' && (
+            <button
+              onClick={() => setActiveTab('ai-optimization')}
+              className={`pb-2 px-4 transition-colors flex items-center gap-2 ${
+                activeTab === 'ai-optimization' 
+                  ? 'text-blue-500 border-b-2 border-blue-500' 
+                  : 'text-content-secondary hover:text-content-primary'
+              }`}
+            >
+              <DocumentMagnifyingGlassIcon className="h-4 w-4" />
+              🧠 AI 優化
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('analysis')}
             className={`pb-2 px-4 transition-colors flex items-center gap-2 ${
@@ -1879,108 +1892,6 @@ ${t('sessions.aiChatFollowUp')}`;
               </div>
             )}
 
-            {/* AI Transcript Optimization - Dev Only with Editable Prompts */}
-            {hasTranscript && process.env.NODE_ENV === 'development' && (
-              <div className="bg-surface border border-border rounded-lg p-4 mb-4">
-                <div className="mb-4">
-                  <div className="mb-4">
-                    <h4 className="font-medium text-content-primary mb-1">
-                      🧠 {t('sessions.ai_optimize_transcript')} (Dev Only)
-                    </h4>
-                    <p className="text-sm text-content-secondary">
-                      {t('sessions.ai_optimize_description')}
-                    </p>
-                  </div>
-                  
-                  {/* Separate optimization buttons */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {/* Speaker Identification Button */}
-                    <Button
-                      onClick={handleSpeakerIdentification}
-                      className="bg-blue-600 text-white hover:bg-blue-700"
-                      disabled={speakerIdentificationInProgress || !transcript}
-                    >
-                      {speakerIdentificationInProgress ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          識別中...
-                        </>
-                      ) : (
-                        <>
-                          <UserGroupIcon className="h-4 w-4 mr-2" />
-                          說話者識別
-                        </>
-                      )}
-                    </Button>
-
-                    {/* Punctuation Optimization Button */}
-                    <Button
-                      onClick={handlePunctuationOptimization}
-                      className="bg-green-600 text-white hover:bg-green-700"
-                      disabled={punctuationOptimizationInProgress || !transcript}
-                    >
-                      {punctuationOptimizationInProgress ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          優化中...
-                        </>
-                      ) : (
-                        <>
-                          <PencilIcon className="h-4 w-4 mr-2" />
-                          標點符號優化
-                        </>
-                      )}
-                    </Button>
-
-                    {/* Combined Full Optimization Button */}
-                    <Button
-                      onClick={handleSmoothTranscript}
-                      className="bg-dashboard-accent text-dashboard-bg hover:bg-dashboard-accent-hover"
-                      disabled={smoothingInProgress || !transcript}
-                    >
-                      {smoothingInProgress ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {t('sessions.optimizing')}
-                        </>
-                      ) : (
-                        <>
-                          <DocumentMagnifyingGlassIcon className="h-4 w-4 mr-2" />
-                          完整優化
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* System Prompt Editor */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-content-primary mb-2">
-                      說話者識別 System Prompt:
-                    </label>
-                    <textarea
-                      value={speakerPrompt}
-                      onChange={(e) => setSpeakerPrompt(e.target.value)}
-                      className="w-full h-32 px-3 py-2 border border-border rounded-md bg-surface text-content-primary text-sm font-mono"
-                      placeholder="輸入說話者識別的 system prompt..."
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-content-primary mb-2">
-                      標點符號優化 System Prompt:
-                    </label>
-                    <textarea
-                      value={punctuationPrompt}
-                      onChange={(e) => setPunctuationPrompt(e.target.value)}
-                      className="w-full h-32 px-3 py-2 border border-border rounded-md bg-surface text-content-primary text-sm font-mono"
-                      placeholder="輸入標點符號優化的 system prompt..."
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Export Controls */}
             {hasTranscript && (
@@ -2065,9 +1976,6 @@ ${t('sessions.aiChatFollowUp')}`;
                         <th className="px-4 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">
                           {t('sessions.content')}
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider w-16">
-                          {t('sessions.confidence')}
-                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-surface divide-y divide-border">
@@ -2117,9 +2025,6 @@ ${t('sessions.aiChatFollowUp')}`;
                           <td className="px-4 py-3 text-content-primary text-sm">
                             {segment.content}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-content-secondary">
-                            {segment.confidence ? `${Math.round(segment.confidence * 100)}%` : '-'}
-                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -2143,6 +2048,121 @@ ${t('sessions.aiChatFollowUp')}`;
                     <DocumentTextIcon className="h-4 w-4" />
                     {t('sessions.goToOverviewToUpload').replace('{type}', isTranscriptOnly ? t('sessions.transcriptFile') : t('sessions.audioFile'))}
                   </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'ai-optimization' && (
+          <div className="space-y-6">
+            {!hasTranscript ? (
+              <div className="bg-surface border border-border rounded-lg p-12 text-center">
+                <DocumentMagnifyingGlassIcon className="h-16 w-16 text-content-secondary mx-auto mb-4" />
+                <p className="text-content-secondary mb-4">
+                  需要先上傳音檔並完成轉錄才能使用 AI 優化功能
+                </p>
+                <Button
+                  onClick={() => setActiveTab('overview')}
+                  className="flex items-center gap-2 mx-auto"
+                >
+                  <DocumentTextIcon className="h-4 w-4" />
+                  前往上傳音檔
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* AI Transcript Optimization - Dev Only with Editable Prompts */}
+                <div className="bg-surface border border-border rounded-lg p-6">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-2 text-content-primary flex items-center gap-2">
+                      🧠 AI 逐字稿優化
+                    </h3>
+                    <p className="text-sm text-content-secondary">
+                      使用 AI 技術優化逐字稿品質，包括說話者識別和標點符號改善
+                    </p>
+                  </div>
+                  
+                  {/* Optimization buttons */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    {/* Speaker Identification Button */}
+                    <Button
+                      onClick={handleSpeakerIdentification}
+                      className="bg-blue-600 text-white hover:bg-blue-700 h-auto py-4"
+                      disabled={speakerIdentificationInProgress || !transcript}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        {speakerIdentificationInProgress ? (
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                        ) : (
+                          <UserGroupIcon className="h-6 w-6" />
+                        )}
+                        <span className="font-medium">說話者識別</span>
+                        <span className="text-xs opacity-90">識別教練與客戶對話</span>
+                      </div>
+                    </Button>
+
+                    {/* Punctuation Optimization Button */}
+                    <Button
+                      onClick={handlePunctuationOptimization}
+                      className="bg-green-600 text-white hover:bg-green-700 h-auto py-4"
+                      disabled={punctuationOptimizationInProgress || !transcript}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        {punctuationOptimizationInProgress ? (
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                        ) : (
+                          <PencilIcon className="h-6 w-6" />
+                        )}
+                        <span className="font-medium">標點符號優化</span>
+                        <span className="text-xs opacity-90">改善中文標點符號</span>
+                      </div>
+                    </Button>
+
+                    {/* Combined Full Optimization Button */}
+                    <Button
+                      onClick={handleSmoothTranscript}
+                      className="bg-dashboard-accent text-dashboard-bg hover:bg-dashboard-accent-hover h-auto py-4"
+                      disabled={smoothingInProgress || !transcript}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        {smoothingInProgress ? (
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                        ) : (
+                          <DocumentMagnifyingGlassIcon className="h-6 w-6" />
+                        )}
+                        <span className="font-medium">完整優化</span>
+                        <span className="text-xs opacity-90">說話者 + 標點符號</span>
+                      </div>
+                    </Button>
+                  </div>
+                  
+                  {/* System Prompt Editor */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-content-primary mb-2">
+                        說話者識別 System Prompt:
+                      </label>
+                      <textarea
+                        value={speakerPrompt}
+                        onChange={(e) => setSpeakerPrompt(e.target.value)}
+                        className="w-full h-32 px-3 py-2 border border-border rounded-md bg-surface text-content-primary text-sm font-mono"
+                        placeholder="輸入說話者識別的 system prompt..."
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-content-primary mb-2">
+                        標點符號優化 System Prompt:
+                      </label>
+                      <textarea
+                        value={punctuationPrompt}
+                        onChange={(e) => setPunctuationPrompt(e.target.value)}
+                        className="w-full h-32 px-3 py-2 border border-border rounded-md bg-surface text-content-primary text-sm font-mono"
+                        placeholder="輸入標點符號優化的 system prompt..."
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
