@@ -139,35 +139,7 @@ const ClientDetailPage = () => {
     }
   }, [t]);
 
-  useEffect(() => {
-    if (clientId) {
-      fetchClient();
-      fetchSessions();
-      fetchOptions();
-    }
-  }, [clientId, fetchOptions]);
-
-  const getStatusLabel = (status: string) => {
-    const statusMap = {
-      'first_session': t('clients.statusFirstSession'),
-      'in_progress': t('clients.statusInProgress'),
-      'paused': t('clients.statusPaused'),
-      'completed': t('clients.statusCompleted')
-    };
-    return statusMap[status as keyof typeof statusMap] || status;
-  };
-
-  const getStatusColor = (status: string) => {
-    const colorMap = {
-      'first_session': 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200',
-      'in_progress': 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200',
-      'paused': 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200',
-      'completed': 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-    };
-    return colorMap[status as keyof typeof colorMap] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
-  };
-
-  const fetchClient = async () => {
+  const fetchClient = useCallback(async () => {
     try {
       console.log('Fetching client with ID:', clientId);
       const clientData = await apiClient.getClient(clientId);
@@ -192,9 +164,9 @@ const ClientDetailPage = () => {
     } finally {
       setFetching(false);
     }
-  };
+  }, [clientId]);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       const sessionsData = await apiClient.getSessions(1, 50, { client_id: clientId });
       setSessions(sessionsData.items || []);
@@ -202,7 +174,36 @@ const ClientDetailPage = () => {
       console.error('Failed to fetch sessions:', error);
       setSessions([]);
     }
+  }, [clientId]);
+
+  useEffect(() => {
+    if (clientId) {
+      fetchClient();
+      fetchSessions();
+      fetchOptions();
+    }
+  }, [clientId, fetchOptions, fetchClient, fetchSessions]);
+
+  const getStatusLabel = (status: string) => {
+    const statusMap = {
+      'first_session': t('clients.statusFirstSession'),
+      'in_progress': t('clients.statusInProgress'),
+      'paused': t('clients.statusPaused'),
+      'completed': t('clients.statusCompleted')
+    };
+    return statusMap[status as keyof typeof statusMap] || status;
   };
+
+  const getStatusColor = (status: string) => {
+    const colorMap = {
+      'first_session': 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200',
+      'in_progress': 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200',
+      'paused': 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200',
+      'completed': 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+    };
+    return colorMap[status as keyof typeof colorMap] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+  };
+
 
   // Translation helpers
   const getSourceLabel = (value: string | null | undefined) => {

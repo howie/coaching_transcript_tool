@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { 
   UserCircleIcon, 
   CameraIcon,
@@ -427,9 +428,11 @@ export default function ProfilePage() {
               <div className="flex items-center space-x-4">
                 <div className="w-20 h-20 bg-gray-600 rounded-full flex items-center justify-center overflow-hidden">
                   {formData.profile_photo_url ? (
-                    <img 
+                    <Image 
                       src={formData.profile_photo_url} 
                       alt="Profile" 
+                      width={80}
+                      height={80}
                       className="w-full h-full object-cover"
                     />
                   ) : (

@@ -96,6 +96,7 @@ function DashboardContent() {
         console.error('Failed to check localStorage for existing token:', error)
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, login]) // Remove user and isLoading from dependencies to prevent re-renders
 
   // Show loading state while processing OAuth or loading user

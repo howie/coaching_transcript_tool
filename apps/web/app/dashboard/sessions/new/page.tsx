@@ -41,6 +41,7 @@ const NewSessionContent = () => {
   useEffect(() => {
     fetchClients();
     fetchCurrencies();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load last session data when client is selected
