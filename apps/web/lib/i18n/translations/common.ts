@@ -42,8 +42,8 @@ export const commonTranslations = {
     'feature.converter.title': 'Transcript Converter',
     'feature.converter.desc': '將您的教練對話逐字稿從 VTT 或 SRT 格式轉換為結構化的 Excel 檔案，便於分析和檢視。',
     'feature.converter.btn': '上傳逐字稿',
-    'feature.analysis.title': 'ICF Marker Analysis',
-    'feature.analysis.desc': '自動識別和分析您教練對話中的 ICF 教練核心能力和標記，提升專業水準。',
+    'feature.analysis.title': '教練技巧分析',
+    'feature.analysis.desc': '自動識別和分析您教練對話中的核心技巧和互動模式，提升專業水準。',
     'feature.insights.title': '你的 AI 督導',
     'feature.insights.desc': '透過 AI 深度分析獲得見解和建議，改善您的教練效能和客戶體驗。',
     
@@ -92,8 +92,8 @@ export const commonTranslations = {
     'feature.converter.title': 'Transcript Converter',
     'feature.converter.desc': 'Convert your coaching session transcripts from VTT or SRT format to structured Excel files for analysis.',
     'feature.converter.btn': 'Upload Transcript',
-    'feature.analysis.title': 'ICF Marker Analysis',
-    'feature.analysis.desc': 'Automatically identify and analyze ICF coaching competencies and markers in your sessions.',
+    'feature.analysis.title': 'Coaching Skills Analysis',
+    'feature.analysis.desc': 'Automatically identify and analyze coaching techniques and interaction patterns in your sessions.',
     'feature.insights.title': 'Your AI Supervisor',
     'feature.insights.desc': 'Get AI-powered insights and suggestions to improve your coaching effectiveness.',
     
