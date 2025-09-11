@@ -5,6 +5,31 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.2] - 2025-09-11
+
+### 💰 Billing UI Enhancement
+
+#### Subscription Status Display Improvement
+- **Enhanced Plan Change Notifications**: Fixed subscription status banner to show specific plan change details
+  - **Issue**: When users scheduled plan changes, banner only showed generic "訂閱即將取消" (Subscription Will Be Cancelled)
+  - **Solution**: Parse `cancellation_reason` field to show specific plan change information
+    - Parse `DOWNGRADE_TO:{plan_id}:{billing_cycle}` format from backend
+    - Display specific target plan name instead of generic cancellation message
+    - Show "方案即將變更" (Plan Change Scheduled) with target plan details
+  - **User Experience**:
+    - ✅ Clear communication: "您的訂閱將於 {date} 變更為 {planName}"
+    - ✅ Special handling for FREE plan: "您的訂閱將於 {date} 變更為免費方案"
+    - ✅ Action button changed to "取消方案變更" instead of "重新啟用訂閱"
+  - **Files Modified**:
+    - `/src/coaching_assistant/api/v1/subscriptions.py` - Added cancellation_reason to API response
+    - `/apps/web/components/billing/SubscriptionStatusBanner.tsx` - Enhanced status parsing and display
+    - `/apps/web/lib/services/subscription.service.ts` - Added cancellation_reason to TypeScript interface
+    - `/apps/web/lib/i18n/translations/billing.ts` - Added new translation keys for plan changes
+    - `/apps/web/components/billing/SubscriptionDashboard.tsx` - Updated interface
+    - `/apps/web/components/billing/PaymentSettings.tsx` - Updated interface
+
+---
+
 ## [2.18.1] - 2025-09-11
 
 ### 🔧 Critical Bug Fix

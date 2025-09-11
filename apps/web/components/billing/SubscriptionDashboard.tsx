@@ -27,6 +27,7 @@ interface Subscription {
   current_period_start: string
   current_period_end: string
   cancel_at_period_end: boolean
+  cancellation_reason?: string
   next_payment_date?: string
 }
 
