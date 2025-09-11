@@ -77,10 +77,10 @@ async def create_authorization(
 
     try:
         # Validate request
-        if request.plan_id not in ["PRO", "ENTERPRISE"]:
+        if request.plan_id not in ["STUDENT", "PRO", "ENTERPRISE"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid plan_id. Must be PRO or ENTERPRISE.",
+                detail="Invalid plan_id. Must be STUDENT, PRO or ENTERPRISE.",
             )
 
         if request.billing_cycle not in ["monthly", "annual"]:
@@ -357,10 +357,10 @@ async def upgrade_subscription(
 
     try:
         # Validate request
-        if request.plan_id not in ["PRO", "ENTERPRISE"]:
+        if request.plan_id not in ["STUDENT", "PRO", "ENTERPRISE"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid plan_id. Must be PRO or ENTERPRISE.",
+                detail="Invalid plan_id. Must be STUDENT, PRO or ENTERPRISE.",
             )
 
         # Find current subscription
@@ -380,7 +380,7 @@ async def upgrade_subscription(
             )
 
         # Check if it's actually an upgrade
-        plan_hierarchy = {"PRO": 1, "ENTERPRISE": 2}
+        plan_hierarchy = {"FREE": 0, "STUDENT": 1, "PRO": 2, "ENTERPRISE": 3}
         current_level = plan_hierarchy.get(subscription.plan_id, 0)
         new_level = plan_hierarchy.get(request.plan_id, 0)
 
@@ -427,7 +427,7 @@ async def downgrade_subscription(
 
     try:
         # Validate request
-        if request.plan_id not in ["FREE", "PRO", "ENTERPRISE"]:
+        if request.plan_id not in ["FREE", "STUDENT", "PRO", "ENTERPRISE"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid plan_id.",
@@ -450,7 +450,7 @@ async def downgrade_subscription(
             )
 
         # Check if it's actually a downgrade
-        plan_hierarchy = {"FREE": 0, "PRO": 1, "ENTERPRISE": 2}
+        plan_hierarchy = {"FREE": 0, "STUDENT": 1, "PRO": 2, "ENTERPRISE": 3}
         current_level = plan_hierarchy.get(subscription.plan_id, 0)
         new_level = plan_hierarchy.get(request.plan_id, 0)
 

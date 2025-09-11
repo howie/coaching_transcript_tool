@@ -50,10 +50,42 @@ export function ChangePlan() {
   }
 
   const handlePlanSelect = async (planId: string, billingCycle: string) => {
-    if (!user || planId.toUpperCase() === 'FREE') return
+    if (!user) return
+    
+    // Handle FREE plan selection as cancellation
+    if (planId.toUpperCase() === 'FREE') {
+      const hasExistingSubscription = subscriptionData?.subscription && subscriptionData.status !== 'no_subscription'
+      if (hasExistingSubscription) {
+        const confirmed = window.confirm(
+          `確認降級至免費方案？\n\n` +
+          `目前方案: ${subscriptionData.subscription?.plan_name}\n` +
+          `降級至: 免費方案\n` +
+          `將於帳單週期結束時生效`
+        )
+        
+        if (!confirmed) return
+        
+        try {
+          const data = await subscriptionService.downgradeSubscription('FREE', billingCycle)
+          if (data.success) {
+            alert(`✅ 降級至免費方案成功！\n${data.message}`)
+            await loadSubscriptionData()
+          } else {
+            throw new Error(data.message || '降級失敗')
+          }
+        } catch (error) {
+          console.error('💥 降級失敗:', error)
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          alert(`降級過程中發生錯誤: ${errorMessage}`)
+        }
+      }
+      return
+    }
     
     // Map plan IDs to ECPay plan IDs - handle both upper and lower case
     const planMapping: Record<string, string> = {
+      'student': 'STUDENT',
+      'STUDENT': 'STUDENT',
       'pro': 'PRO',
       'PRO': 'PRO',
       'enterprise': 'ENTERPRISE',
@@ -290,7 +322,7 @@ function DatabasePricingDisplay({
     
     if (planIdUpper === currentPlanUpper) return 'current'
     
-    const hierarchy: Record<string, number> = { 'FREE': 0, 'PRO': 1, 'ENTERPRISE': 2 }
+    const hierarchy: Record<string, number> = { 'FREE': 0, 'STUDENT': 1, 'PRO': 2, 'ENTERPRISE': 3 }
     const currentLevel = hierarchy[currentPlanUpper] || 0
     const targetLevel = hierarchy[planIdUpper] || 0
     
@@ -475,7 +507,7 @@ function DatabasePricingDisplay({
             詳細功能比較
           </h3>
           <p className={`text-lg ${themeClasses.textSecondary}`}>
-            選擇最適合您需求的方案（數據來源：資料庫）
+            選擇最適合您需求的方案
           </p>
         </div>
 
@@ -498,28 +530,6 @@ function DatabasePricingDisplay({
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-gray-100 dark:border-gray-800">
-                <td className="p-6 font-medium">每月會談數</td>
-                {availablePlans
-                  .filter(plan => plan.is_active)
-                  .sort((a, b) => a.sort_order - b.sort_order)
-                  .map((plan) => (
-                  <td key={plan.id} className="p-6 text-center">
-                    {plan.limits.max_sessions === -1 ? '無限制' : plan.limits.max_sessions}
-                  </td>
-                ))}
-              </tr>
-              <tr className="border-b border-gray-100 dark:border-gray-800">
-                <td className="p-6 font-medium">每月轉錄數</td>
-                {availablePlans
-                  .filter(plan => plan.is_active)
-                  .sort((a, b) => a.sort_order - b.sort_order)
-                  .map((plan) => (
-                  <td key={plan.id} className="p-6 text-center">
-                    {plan.limits.max_transcriptions === -1 ? '無限制' : plan.limits.max_transcriptions}
-                  </td>
-                ))}
-              </tr>
               <tr className="border-b border-gray-100 dark:border-gray-800">
                 <td className="p-6 font-medium">每月轉錄分鐘數</td>
                 {availablePlans
