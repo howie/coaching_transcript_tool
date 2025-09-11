@@ -18,6 +18,7 @@ interface SubscriptionStatus {
     plan_name: string
     status: string
     cancel_at_period_end: boolean
+    cancellation_reason?: string
     current_period_end: string
     next_payment_date?: string
   }
@@ -64,6 +65,28 @@ export function SubscriptionStatusBanner() {
     return daysDiff
   }
 
+  const getPlanDisplayName = (planId: string): string => {
+    const planNames: Record<string, string> = {
+      'FREE': t('billing.planNameFree'),
+      'STUDENT': t('billing.planNameStudent'), 
+      'PRO': t('billing.planNamePro'),
+      'ENTERPRISE': t('billing.planNameEnterprise')
+    }
+    return planNames[planId.toUpperCase()] || planId
+  }
+
+  const parseDowngradeInfo = (cancellationReason: string): { planId: string; billingCycle: string } | null => {
+    if (!cancellationReason?.startsWith('DOWNGRADE_TO:')) return null
+    
+    const parts = cancellationReason.split(':')
+    if (parts.length !== 3) return null
+    
+    return {
+      planId: parts[1],
+      billingCycle: parts[2]
+    }
+  }
+
   const shouldShowBanner = () => {
     if (!subscriptionStatus || dismissed) return false
 
@@ -104,16 +127,42 @@ export function SubscriptionStatusBanner() {
     }
 
     if (subscription.cancel_at_period_end) {
-      return {
-        type: 'warning' as const,
-        icon: <ClockIcon className="h-5 w-5" />,
-        title: t('subscription.cancelledTitle'),
-        message: t('subscription.cancelledMessage', { 
-          date: new Date(subscription.current_period_end).toLocaleDateString() 
-        }),
-        action: {
-          text: t('subscription.reactivateSubscription'),
-          href: '/dashboard/billing?tab=payment'
+      // Check if this is a downgrade or cancellation
+      const downgradeInfo = parseDowngradeInfo(subscription.cancellation_reason || '')
+      
+      if (downgradeInfo) {
+        // This is a plan downgrade
+        const targetPlanName = getPlanDisplayName(downgradeInfo.planId)
+        const endDate = new Date(subscription.current_period_end).toLocaleDateString()
+        
+        return {
+          type: 'warning' as const,
+          icon: <ClockIcon className="h-5 w-5" />,
+          title: t('subscription.downgradingTitle'),
+          message: downgradeInfo.planId === 'FREE' 
+            ? t('subscription.downgradingToFreeMessage', { date: endDate })
+            : t('subscription.downgradingMessage', { 
+                date: endDate,
+                planName: targetPlanName 
+              }),
+          action: {
+            text: t('subscription.cancelPlanChange'),
+            href: '/dashboard/billing?tab=payment'
+          }
+        }
+      } else {
+        // This is a regular cancellation
+        return {
+          type: 'warning' as const,
+          icon: <ClockIcon className="h-5 w-5" />,
+          title: t('subscription.cancelledTitle'),
+          message: t('subscription.cancelledMessage', { 
+            date: new Date(subscription.current_period_end).toLocaleDateString() 
+          }),
+          action: {
+            text: t('billing.reactivateSubscription'),
+            href: '/dashboard/billing?tab=payment'
+          }
         }
       }
     }

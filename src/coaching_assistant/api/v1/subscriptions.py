@@ -180,6 +180,7 @@ async def get_current_subscription(
             "current_period_start": subscription.current_period_start.isoformat(),
             "current_period_end": subscription.current_period_end.isoformat(),
             "cancel_at_period_end": subscription.cancel_at_period_end,
+            "cancellation_reason": subscription.cancellation_reason,
             "next_payment_date": (
                 auth_record.next_pay_date.isoformat()
                 if auth_record and auth_record.next_pay_date
