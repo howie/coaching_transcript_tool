@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlusIcon, PencilIcon, TrashIcon, UserMinusIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
@@ -88,10 +88,18 @@ const ClientsPage = () => {
     return colorMap[status as keyof typeof colorMap] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
   };
 
-  useEffect(() => {
-    fetchClients();
-    fetchStatistics();
-  }, [currentPage, searchQuery]);
+  const fetchClients = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.getClients(currentPage, pageSize, searchQuery);
+      setClients(data.items);
+      setTotalPages(data.total_pages);
+    } catch (error) {
+      console.error('Failed to fetch clients:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize, searchQuery]);
 
   const fetchStatistics = async () => {
     try {
@@ -104,18 +112,10 @@ const ClientsPage = () => {
     }
   };
 
-  const fetchClients = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.getClients(currentPage, pageSize, searchQuery);
-      setClients(data.items);
-      setTotalPages(data.total_pages);
-    } catch (error) {
-      console.error('Failed to fetch clients:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchClients();
+    fetchStatistics();
+  }, [currentPage, searchQuery, fetchClients]);
 
   const handleDetail = (client: Client) => {
     router.push(`/dashboard/clients/${client.id}/detail`);

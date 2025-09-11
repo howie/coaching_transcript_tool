@@ -146,6 +146,7 @@ const SessionsPage = () => {
 
   useEffect(() => {
     fetchSessions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, filters]);
 
   // Load last session data when client is selected (only when modal is open)
