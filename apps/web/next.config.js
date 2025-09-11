@@ -38,6 +38,14 @@ function getVersionInfo() {
 const versionInfo = getVersionInfo()
 
 const nextConfig = {
+  eslint: {
+    // Allow production builds to continue even with ESLint warnings
+    ignoreDuringBuilds: false,
+  },
+  typescript: {
+    // Allow production builds to continue even with TypeScript errors
+    ignoreBuildErrors: false,
+  },
   async rewrites() {
     return [
       // Proxy API calls to backend server with HTTPS enforcement
