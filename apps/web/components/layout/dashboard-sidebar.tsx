@@ -18,12 +18,20 @@ import { useI18n } from '@/contexts/i18n-context'
 import { useSidebar } from '@/contexts/sidebar-context'
 import { getAppVersion } from '@/lib/version'
 
+interface NavigationItem {
+  name: string
+  href: string
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
+  current: boolean
+  comingSoon?: boolean
+}
+
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { t } = useI18n()
   const { isOpen, isCollapsed, isMobile, closeSidebar } = useSidebar()
 
-  const navigation = [
+  const navigation: NavigationItem[] = [
     {
       name: t('menu.dashboard'),
       href: '/dashboard',

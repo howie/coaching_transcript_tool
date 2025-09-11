@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   XMarkIcon,
   CheckIcon,
@@ -70,13 +70,24 @@ export function PlanChangeModal({
       ]
     },
     {
+      id: 'student',
+      name: 'STUDENT',
+      displayName: t('billing.planNameStudent'),
+      price: { monthly: 30000, annual: 30000 * 10 }, // TWD cents (300 TWD)
+      features: [
+        t('billing.feature.studentTranscriptionMinutes'),
+        t('billing.feature.studentFileSize'), 
+        t('billing.feature.studentRetention'),
+        t('billing.feature.allExportFormats'),
+        t('billing.feature.emailSupport')
+      ]
+    },
+    {
       id: 'pro',
       name: 'PRO',
       displayName: t('billing.planNamePro'),
       price: { monthly: 89900, annual: 89900 * 10 }, // TWD cents
       features: [
-        t('billing.feature.proSessions'),
-        t('billing.feature.proTranscriptions'),
         t('billing.feature.proTranscriptionMinutes'),
         t('billing.feature.proFileSize'),
         t('billing.feature.allExportFormats'),
@@ -117,7 +128,7 @@ export function PlanChangeModal({
     return `NT$${(amount / 100).toLocaleString()}`
   }
 
-  const calculateProration = async () => {
+  const calculateProration = useCallback(async () => {
     if (!selectedPlan || selectedPlan === currentPlan.toLowerCase()) {
       setProrationPreview(null)
       return
@@ -136,13 +147,13 @@ export function PlanChangeModal({
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedPlan, currentPlan, selectedCycle])
 
   useEffect(() => {
     if (selectedPlan) {
       calculateProration()
     }
-  }, [selectedPlan, selectedCycle])
+  }, [selectedPlan, selectedCycle, calculateProration])
 
   const handleConfirm = async () => {
     if (!selectedPlan) return

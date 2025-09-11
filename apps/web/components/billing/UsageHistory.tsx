@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useI18n } from '@/contexts/i18n-context';
 import LineChart from '@/components/charts/LineChart';
 import BarChart from '@/components/charts/BarChart';
@@ -147,20 +147,7 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
     return data;
   };
 
-  useEffect(() => {
-    fetchUsageData();
-  }, [userId, period]);
-
-  useEffect(() => {
-    if (showInsights) {
-      fetchInsights();
-    }
-    if (showPredictions) {
-      fetchPredictions();
-    }
-  }, [userId, showInsights, showPredictions]);
-
-  const fetchUsageData = async () => {
+  const fetchUsageData = useCallback(async () => {
     try {
       setLoading(true);
       // TODO: Replace with actual API call when backend is ready
@@ -175,9 +162,9 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
 
-  const fetchInsights = async () => {
+  const fetchInsights = useCallback(async () => {
     try {
       // TODO: Replace with actual API call when backend is ready
       // const response = await fetch(`/api/usage/insights?userId=${userId}`);
@@ -203,9 +190,9 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
     } catch (err) {
       console.error('Failed to fetch insights:', err);
     }
-  };
+  }, [t]);
 
-  const fetchPredictions = async () => {
+  const fetchPredictions = useCallback(async () => {
     try {
       // TODO: Replace with actual API call when backend is ready
       // const response = await fetch(`/api/usage/analytics?type=predictions&userId=${userId}`);
@@ -224,7 +211,20 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
     } catch (err) {
       console.error('Failed to fetch predictions:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchUsageData();
+  }, [fetchUsageData]);
+
+  useEffect(() => {
+    if (showInsights) {
+      fetchInsights();
+    }
+    if (showPredictions) {
+      fetchPredictions();
+    }
+  }, [showInsights, showPredictions, fetchInsights, fetchPredictions]);
 
   const exportData = async (format: 'csv' | 'pdf' | 'json') => {
     try {
