@@ -13,7 +13,7 @@ from coaching_assistant.core.database import get_db
 from coaching_assistant.api.auth import get_current_user_dependency
 from coaching_assistant.models.user import User
 from coaching_assistant.services.usage_tracker import UsageTracker
-from coaching_assistant.services.plan_limits import PlanLimits, PlanName
+from coaching_assistant.services.plan_limits import get_global_plan_limits, PlanName
 from coaching_assistant.core.config import settings
 import logging
 
@@ -100,7 +100,8 @@ async def validate_action(
             user_plan = PlanName(plan_value)
         else:
             user_plan = PlanName.FREE
-        plan_limits = PlanLimits.get_plan_limit(user_plan)
+        plan_limits_service = get_global_plan_limits()
+        plan_limits = plan_limits_service.get_plan_limit(user_plan)
 
         # Get reset date (first day of next month)
         now = datetime.utcnow()
@@ -110,35 +111,26 @@ async def validate_action(
             reset_date = datetime(now.year, now.month + 1, 1)
         reset_date_str = reset_date.isoformat() + "Z"
 
-        # Validate based on action type
+        # Validate based on action type - Phase 2: Only minutes-based limits
         if request.action == "create_session":
+            # Sessions are now unlimited - always allowed
             current_usage = current_user.session_count or 0
-            limit = plan_limits.max_sessions
+            limit = -1  # Unlimited
             limit_type = "sessions"
-
-            # Check if unlimited (-1) or under limit
-            allowed = limit == -1 or current_usage < limit
-
-            if not allowed:
-                message = "You have reached your monthly session limit"
-            else:
-                message = None
+            allowed = True
+            message = None
 
         elif request.action == "transcribe":
+            # Transcriptions are now unlimited - always allowed
             current_usage = current_user.transcription_count or 0
-            limit = plan_limits.max_transcriptions
+            limit = -1  # Unlimited
             limit_type = "transcriptions"
-
-            allowed = limit == -1 or current_usage < limit
-
-            if not allowed:
-                message = "You have reached your monthly transcription limit"
-            else:
-                message = None
+            allowed = True
+            message = None
 
         elif request.action == "check_minutes":
             current_usage = current_user.usage_minutes or 0
-            limit = plan_limits.max_minutes_per_month
+            limit = plan_limits.max_minutes
             limit_type = "minutes"
 
             # Check if adding requested minutes would exceed limit
@@ -208,28 +200,38 @@ async def validate_action(
         )
 
         # Add upgrade suggestion if limit reached and not on highest plan
-        if not allowed and user_plan != PlanName.ENTERPRISE:
+        if not allowed and user_plan != PlanName.COACHING_SCHOOL:
             if user_plan == PlanName.FREE:
                 response.upgrade_suggestion = UpgradeSuggestion(
-                    plan_id="PRO",
-                    display_name="Pro Plan",
+                    plan_id="STUDENT",
+                    display_name="學習方案",
                     benefits=[
-                        "100 sessions per month",
-                        "1200 minutes of audio (20 hours)",
-                        "200 transcriptions per month",
-                        "Priority support",
+                        "每月 500 分鐘音檔額度",
+                        "最大檔案 100MB",
+                        "所有匯出格式",
+                        "6 個月資料保存",
+                    ],
+                )
+            elif user_plan == PlanName.STUDENT:
+                response.upgrade_suggestion = UpgradeSuggestion(
+                    plan_id="PRO",
+                    display_name="專業方案",
+                    benefits=[
+                        "每月 3000 分鐘音檔額度",
+                        "最大檔案 200MB",
+                        "優先 Email 支援",
+                        "進階分析報告",
                     ],
                 )
             elif user_plan == PlanName.PRO:
                 response.upgrade_suggestion = UpgradeSuggestion(
-                    plan_id="ENTERPRISE",
-                    display_name="Enterprise Plan",
+                    plan_id="COACHING_SCHOOL",
+                    display_name="認證學校方案",
                     benefits=[
-                        "Unlimited sessions",
-                        "Unlimited audio minutes",
-                        "Unlimited transcriptions",
-                        "Dedicated support",
-                        "Custom integrations",
+                        "無限制音檔額度",
+                        "專屬支援",
+                        "自訂整合功能",
+                        "團隊協作功能",
                     ],
                 )
 
@@ -270,7 +272,8 @@ async def get_current_usage(
             user_plan = PlanName(plan_value)
         else:
             user_plan = PlanName.FREE
-        plan_limits = PlanLimits.get_plan_limit(user_plan)
+        plan_limits_service = get_global_plan_limits()
+        plan_limits = plan_limits_service.get_plan_limit(user_plan)
 
         # Calculate reset date
         now = datetime.utcnow()
@@ -282,28 +285,13 @@ async def get_current_usage(
         return {
             "plan": user_plan.value,
             "usage": {
-                "sessions": {
-                    "current": current_user.session_count or 0,
-                    "limit": plan_limits.max_sessions,
-                    "percentage": calculate_percentage(
-                        current_user.session_count or 0,
-                        plan_limits.max_sessions,
-                    ),
-                },
-                "transcriptions": {
-                    "current": current_user.transcription_count or 0,
-                    "limit": plan_limits.max_transcriptions,
-                    "percentage": calculate_percentage(
-                        current_user.transcription_count or 0,
-                        plan_limits.max_transcriptions,
-                    ),
-                },
+                # Phase 2: Only minutes-based limits, sessions/transcriptions unlimited
                 "minutes": {
                     "current": current_user.usage_minutes or 0,
-                    "limit": plan_limits.max_minutes_per_month,
+                    "limit": plan_limits.max_minutes,
                     "percentage": calculate_percentage(
                         current_user.usage_minutes or 0,
-                        plan_limits.max_minutes_per_month,
+                        plan_limits.max_minutes,
                     ),
                 },
                 "file_size_mb": {"limit": plan_limits.max_file_size_mb},

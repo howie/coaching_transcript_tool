@@ -12,7 +12,7 @@ from ..models.usage_history import UsageHistory
 from ..models.usage_log import UsageLog, TranscriptionType
 from ..models.user import User
 from ..models.session import Session as TranscriptionSession
-from ..services.plan_limits import PlanLimits
+from ..services.plan_limits import get_global_plan_limits
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class UsageAnalyticsService:
 
     def __init__(self, db: Session):
         self.db = db
-        self.plan_limits = PlanLimits()
+        self.plan_limits = get_global_plan_limits()
 
     def record_usage_snapshot(
         self, user_id: UUID, period_type: str = "hourly"
