@@ -51,6 +51,20 @@ class InvalidPlanConfiguration(CoachingAssistantException):
     """Raised when plan configuration is invalid."""
 
 
+class PlanConfigurationError(CoachingAssistantException):
+    """Raised when there's an error with plan configuration operations."""
+
+
+class PlanNotFoundError(CoachingAssistantException):
+    """Raised when a requested plan is not found."""
+
+    def __init__(self, plan_type: str):
+        message = f"Plan '{plan_type}' not found"
+        details = {"plan_type": plan_type}
+        super().__init__(message, details)
+        self.plan_type = plan_type
+
+
 class UsageTrackingError(CoachingAssistantException):
     """Raised when there's an error tracking usage."""
 
