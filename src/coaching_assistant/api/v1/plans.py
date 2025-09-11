@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from ...core.database import get_db
 from ...api.auth import get_current_user_dependency
 from ...models import User
+from ...services.plan_limits import get_global_plan_limits, PlanName
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +18,7 @@ router = APIRouter(prefix="/api/v1/plans", tags=["Plans"])
 
 
 class PlanLimits(BaseModel):
-    max_sessions: int
-    max_transcriptions: int
-    max_total_minutes: int
+    max_total_minutes: int  # Only limit based on minutes
     max_file_size_mb: int
 
 
@@ -55,104 +54,76 @@ async def get_available_plans(
     """Get all available subscription plans."""
 
     try:
-        # For now, return static plan data that matches database configuration
-        # In production, this would fetch from a plans table in the database
-        plans_data = [
-            {
+        # Generate plan data dynamically from PlanLimits service
+        plans_data = []
+        
+        # Define plan metadata
+        plan_metadata = {
+            PlanName.FREE: {
                 "id": "FREE",
-                "name": "FREE",
-                "display_name": "免費版",
+                "name": "FREE", 
+                "display_name": "免費試用方案",
                 "description": "開始您的教練旅程",
-                "pricing": {
-                    "monthly_twd": 0,
-                    "annual_twd": 0,
-                    "monthly_usd": 0,
-                    "annual_usd": 0,
-                },
                 "features": [
-                    "每月 10 個會談記錄",
-                    "每月 5 個轉錄",
                     "每月 200 分鐘轉錄額度",
-                    "錄音檔最長 40 分鐘",
                     "最大檔案 60MB",
                     "基本匯出格式",
                     "Email 支援",
                 ],
-                "limits": {
-                    "max_sessions": 10,
-                    "max_transcriptions": 5,
-                    "max_total_minutes": 200,
-                    "max_file_size_mb": 60,
-                },
-                "is_active": True,
                 "sort_order": 1,
             },
-            {
+            PlanName.STUDENT: {
+                "id": "STUDENT",
+                "name": "STUDENT",
+                "display_name": "學習方案", 
+                "description": "學生專屬優惠方案",
+                "features": [
+                    "每月 500 分鐘轉錄額度",
+                    "最大檔案 100MB",
+                    "所有匯出格式",
+                    "Email 支援",
+                    "6 個月資料保存",
+                ],
+                "sort_order": 2,
+            },
+            PlanName.PRO: {
                 "id": "PRO",
                 "name": "PRO",
-                "display_name": "專業版",
+                "display_name": "專業方案",
                 "description": "專業教練的最佳選擇",
-                "pricing": {
-                    "monthly_twd": 89900,  # NT$899.00
-                    "annual_twd": 749900,  # NT$7499.00 (17% discount)
-                    "monthly_usd": 2800,  # $28.00
-                    "annual_usd": 25200,  # $252.00
-                },
                 "features": [
-                    "每月 25 個會談記錄",
-                    "每月 50 個轉錄",
-                    "每月 300 分鐘轉錄額度",
-                    "錄音檔最長 90 分鐘",
+                    "每月 3000 分鐘轉錄額度",
                     "最大檔案 200MB",
                     "所有匯出格式",
                     "優先 Email 支援",
                     "進階分析報告",
-                    "自訂品牌",
                 ],
-                "limits": {
-                    "max_sessions": 25,
-                    "max_transcriptions": 50,
-                    "max_total_minutes": 300,
-                    "max_file_size_mb": 200,
-                },
-                "is_active": True,
-                "sort_order": 2,
-            },
-            {
-                "id": "ENTERPRISE",
-                "name": "ENTERPRISE",
-                "display_name": "企業版",
-                "description": "團隊與機構的企業解決方案",
-                "pricing": {
-                    "monthly_twd": 299900,  # NT$2999.00
-                    "annual_twd": 2499900,  # NT$24999.00 (17% discount)
-                    "monthly_usd": 9500,  # $95.00
-                    "annual_usd": 85500,  # $855.00
-                },
-                "features": [
-                    "每月 500 個會談記錄",
-                    "每月 1000 個轉錄",
-                    "每月 1500 分鐘轉錄額度",
-                    "錄音檔最長 4 小時",
-                    "最大檔案 500MB",
-                    "所有匯出格式",
-                    "專屬客戶經理",
-                    "24/7 電話支援",
-                    "團隊協作功能",
-                    "API 存取權限",
-                    "自訂整合",
-                    "SLA 服務保證",
-                ],
-                "limits": {
-                    "max_sessions": 500,
-                    "max_transcriptions": 1000,
-                    "max_total_minutes": 1500,
-                    "max_file_size_mb": 500,
-                },
-                "is_active": True,
                 "sort_order": 3,
             },
-        ]
+        }
+        
+        # Generate plans dynamically using PlanLimits service
+        plan_limits_service = get_global_plan_limits()
+        
+        for plan_name in [PlanName.FREE, PlanName.STUDENT, PlanName.PRO]:
+            limits = plan_limits_service.get_plan_limit(plan_name)
+            metadata = plan_metadata[plan_name]
+            
+            plan_data = {
+                **metadata,
+                "pricing": {
+                    "monthly_twd": limits.monthly_price_twd,
+                    "annual_twd": limits.annual_price_twd,
+                    "monthly_usd": limits.monthly_price_usd,
+                    "annual_usd": limits.annual_price_usd,
+                },
+                "limits": {
+                    "max_total_minutes": limits.max_minutes,
+                    "max_file_size_mb": limits.max_file_size_mb,
+                },
+                "is_active": True,
+            }
+            plans_data.append(plan_data)
 
         plans = [PlanResponse(**plan) for plan in plans_data]
 
