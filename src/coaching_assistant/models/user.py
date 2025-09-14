@@ -20,8 +20,10 @@ class UserPlan(enum.Enum):
     """User subscription plans."""
 
     FREE = "free"
+    STUDENT = "student"
     PRO = "pro"
-    ENTERPRISE = "enterprise"
+    ENTERPRISE = "enterprise"  # Deprecated, kept for backward compatibility
+    COACHING_SCHOOL = "coaching_school"  # Replaces ENTERPRISE
 
 
 class UserRole(enum.Enum):
@@ -63,7 +65,7 @@ class User(BaseModel):
     allowed_ip_addresses = Column(JSON, nullable=True)  # Optional IP allowlist
 
     # Subscription and usage
-    plan = Column(Enum(UserPlan), default=UserPlan.FREE, nullable=False)
+    plan = Column(Enum(UserPlan, values_callable=lambda x: [e.value for e in x]), default=UserPlan.FREE, nullable=False)
     usage_minutes = Column(Integer, default=0, nullable=False)
 
     # Monthly usage tracking

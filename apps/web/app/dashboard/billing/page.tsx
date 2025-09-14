@@ -133,43 +133,21 @@ export default function BillingPage() {
                         )}
                       </div>
                       
-                      {/* Enhanced Usage Metrics */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <div className="text-3xl font-bold text-dashboard-accent mb-2">
-                            {usageStatus.currentUsage?.sessions || 0}
-                          </div>
-                          <div className="text-sm text-gray-500 mb-1">
-                            / {usageStatus.planLimits?.maxSessions === -1 ? '∞' : (usageStatus.planLimits?.maxSessions || 0)}
-                          </div>
-                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {t('billing.sessions')}
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                            <div 
-                              className="bg-dashboard-accent h-2 rounded-full" 
-                              style={{ 
-                                width: usageStatus.usagePercentages?.sessions 
-                                  ? `${Math.min(100, usageStatus.usagePercentages.sessions)}%`
-                                  : '0%'
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-
-                        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <div className="text-3xl font-bold text-dashboard-accent mb-2">
+                      {/* Phase 2: Minutes-Only Usage Metric */}
+                      <div className="flex justify-center">
+                        <div className="max-w-md w-full text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="text-4xl font-bold text-dashboard-accent mb-3">
                             {usageStatus.currentUsage?.minutes || 0}
                           </div>
-                          <div className="text-sm text-gray-500 mb-1">
-                            / {usageStatus.planLimits?.maxTotalMinutes === -1 ? '∞' : (usageStatus.planLimits?.maxTotalMinutes || 0)}
+                          <div className="text-sm text-gray-500 mb-2">
+                            / {usageStatus.planLimits?.maxTotalMinutes === -1 ? '∞' : (usageStatus.planLimits?.maxTotalMinutes || 0)} {t('billing.minutes')}
                           </div>
-                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <div className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">
                             {t('billing.audioMinutes')}
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                          <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
                             <div 
-                              className="bg-dashboard-accent h-2 rounded-full" 
+                              className="bg-dashboard-accent h-3 rounded-full transition-all duration-300" 
                               style={{ 
                                 width: usageStatus.usagePercentages?.minutes 
                                   ? `${Math.min(100, usageStatus.usagePercentages.minutes)}%`
@@ -177,27 +155,11 @@ export default function BillingPage() {
                               }}
                             ></div>
                           </div>
-                        </div>
-
-                        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <div className="text-3xl font-bold text-dashboard-accent mb-2">
-                            {usageStatus.currentUsage?.transcriptions || 0}
-                          </div>
-                          <div className="text-sm text-gray-500 mb-1">
-                            / {usageStatus.planLimits?.maxTranscriptionCount === -1 ? '∞' : (usageStatus.planLimits?.maxTranscriptionCount || 0)}
-                          </div>
-                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {t('billing.transcriptions')}
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                            <div 
-                              className="bg-dashboard-accent h-2 rounded-full" 
-                              style={{ 
-                                width: usageStatus.usagePercentages?.transcriptions 
-                                  ? `${Math.min(100, usageStatus.usagePercentages.transcriptions)}%`
-                                  : '0%'
-                              }}
-                            ></div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            {usageStatus.usagePercentages?.minutes 
+                              ? `${Math.round(usageStatus.usagePercentages.minutes)}% ${t('billing.used')}`
+                              : `0% ${t('billing.used')}`
+                            }
                           </div>
                         </div>
                       </div>
@@ -230,7 +192,7 @@ export default function BillingPage() {
                             <div className="flex items-center space-x-2">
                               <CheckIcon className="h-4 w-4 text-dashboard-accent flex-shrink-0" />
                               <span className="text-sm text-gray-700 dark:text-gray-300">
-                                {t('billing.benefit.10xSessions')}
+                                {t('billing.benefit.15xMinutes')}
                               </span>
                             </div>
                             <div className="flex items-center space-x-2">

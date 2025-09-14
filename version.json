@@ -1,8 +1,8 @@
 {
-  "version": "2.17.0",
-  "displayVersion": "v2.17.0", 
-  "description": "A/B Speaker Format Consistency & Role Assignment Fix",
-  "releaseDate": "2025-09-09",
-  "releaseNotes": "Comprehensive fix for speaker format consistency and role assignment issues. Resolved the mixed A/B and Speaker_1/Speaker_2 format problem by: (1) Maintaining consistent A/B format throughout the entire pipeline from AssemblyAI to database storage; (2) Updated LeMUR prompts to use A/B labels instead of Speaker_1/Speaker_2; (3) Fixed missing role assignment storage by converting LeMUR speaker mapping to database format; (4) Removed early role assignment to avoid conflicts with LeMUR statistical analysis; (5) Enhanced role determination with detailed logging, confidence assessment, and consistency checking between character count and speaking time metrics. Now provides transparent explanations of role assignment decisions and warnings for uncertain cases.",
+  "version": "2.18.0",
+  "displayVersion": "v2.18.0", 
+  "description": "Student & Coaching School Plan System Implementation",
+  "releaseDate": "2025-09-11",
+  "releaseNotes": "Complete implementation of Student and Coaching School plan types with dynamic plan configuration system. Key features: (1) Added new Student plan (60min monthly, 50MB files, $9.99/month) and Coaching School plan (unlimited usage, 200MB files, $299/month) to serve educational institutions; (2) Implemented comprehensive plan configuration service with database-driven plan management, real-time validation, and usage analytics; (3) Enhanced frontend with dynamic plan-based file size limits, improved billing modal, and seamless plan switching; (4) Updated all dashboard components with plan-aware features and refined i18n translations for better user experience; (5) Added database migrations, management scripts, and emergency tools for production support; (6) Integrated plan validation throughout the entire system from file upload to session processing. The system now supports flexible plan configurations that can be updated without code changes.",
   "author": "Coachly Team"
 }

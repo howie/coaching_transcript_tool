@@ -128,7 +128,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
     else if (!existingAudioSessionId && currentSessionId && uploadState.status === 'idle') {
       setCurrentSessionId(null)
     }
-  }, [existingAudioSessionId])
+  }, [existingAudioSessionId, currentSessionId, uploadState.status])
 
   // Handle polling based on transcription session status
   useEffect(() => {
@@ -182,7 +182,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         }))
       }
     }
-  }, [transcriptionSession?.status, transcriptionStatus?.progress, currentSessionId])
+  }, [transcriptionSession, transcriptionStatus, currentSessionId, onUploadComplete])
   
   // Reset callback ref when session changes
   useEffect(() => {

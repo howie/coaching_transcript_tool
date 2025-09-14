@@ -76,7 +76,7 @@ export default function SignupPage() {
       }
       setIsLoading(false)
     }
-  }, [name, email, password, confirmPassword, getReCaptchaToken, login, router])
+  }, [name, email, password, confirmPassword, getReCaptchaToken, login, router, t])
 
   return (
     <div className="flex items-center justify-center min-h-screen" style={{backgroundColor: 'var(--section-light)'}}>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   UserCircleIcon, 
   KeyIcon,
@@ -52,12 +52,7 @@ export default function AccountSettingsPage() {
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState(false)
 
-  // Load user profile on mount
-  useEffect(() => {
-    loadUserProfile()
-  }, [user])
-
-  const loadUserProfile = async () => {
+  const loadUserProfile = useCallback(async () => {
     try {
       if (user) {
         // Use user from auth context first
@@ -73,7 +68,12 @@ export default function AccountSettingsPage() {
     } catch (error) {
       console.error('Failed to load profile:', error)
     }
-  }
+  }, [user, loadUser])
+
+  // Load user profile on mount
+  useEffect(() => {
+    loadUserProfile()
+  }, [loadUserProfile])
 
   const handlePersonalInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
