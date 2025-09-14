@@ -35,37 +35,45 @@ cd apps/web && npm test  # Frontend tests
 
 ## Work Modes & Subagents
 
-Delegate specialized tasks to appropriate subagents:
+### Available Agents ✅ (Invokable via Task Tool)
 
-### Code Quality & Testing
-- **After writing/modifying code** → `code-reviewer`
-- **When tests fail or errors occur** → `debugger`  
-- **Need to add test coverage** → `test-writer`
-- **Analyzing production errors** → `error-analyzer`
+These agents can be directly invoked and will handle tasks autonomously:
 
-### Architecture & Design
-- **New API endpoints** → `api-designer`
-- **Database schema changes** → `database-migrator`
-- **Background job implementation** → `celery-task-designer`
-- **Performance issues** → `performance-optimizer`
-
-### Feature Development & Planning
-- **Breaking down complex features** → `feature-analyst`
-- **Creating user stories from requirements** → `user-story-designer`
-- **Epic planning and roadmap creation** → `product-planner`
-- **Requirements analysis and documentation** → `requirements-analyst`
-
-### DevOps & Maintenance
-- **Before deployment** → `security-auditor`
-- **Container setup** → `docker-builder`
-- **Package updates** → `dependency-updater`
-- **Multi-language support and i18n fixes** → `i18n-translator`
-
-### General
 - **Complex multi-step tasks** → `general-purpose`
-- **Post-commit tasks** → `post-commit-updater`
+- **Post-commit maintenance** → `post-commit-updater`
+- **Web research and documentation** → `web-research-agent`  
+- **Git worktree and feature management** → `git-worktree-feature-manager`
+- **Database analysis and monitoring** → `database-query-analyzer`
 
-See `@docs/claude/subagents.md` for detailed capabilities and usage patterns.
+### Workflow Patterns 📋 (Manual Implementation)
+
+These are structured approaches and best practices - follow the documented patterns manually or delegate to `general-purpose` agent:
+
+**Code Quality & Testing**
+- **After writing/modifying code** → Follow `@docs/claude/subagent/planned/code-reviewer.md`
+- **When tests fail or errors occur** → Follow `@docs/claude/subagent/planned/debugger.md`
+- **Need to add test coverage** → Follow `@docs/claude/subagent/planned/test-writer.md`
+- **Analyzing production errors** → Follow `@docs/claude/subagent/planned/error-analyzer.md`
+
+**Architecture & Design**
+- **New API endpoints** → Follow `@docs/claude/subagent/planned/api-designer.md`
+- **Database schema changes** → Follow `@docs/claude/subagent/planned/database-migrator.md`
+- **Background job implementation** → Follow `@docs/claude/subagent/planned/celery-task-designer.md`
+- **Performance issues** → Follow `@docs/claude/subagent/planned/performance-optimizer.md`
+
+**Feature Development & Planning**
+- **Breaking down complex features** → Follow `@docs/claude/subagent/planned/feature-analyst.md`
+- **Creating user stories** → Follow `@docs/claude/subagent/planned/user-story-designer.md`
+- **Epic planning and roadmaps** → Follow `@docs/claude/subagent/planned/product-planner.md`
+- **Requirements analysis** → Follow `@docs/claude/subagent/planned/requirements-analyst.md`
+
+**DevOps & Maintenance**
+- **Before deployment** → Follow `@docs/claude/subagent/planned/security-auditor.md`
+- **Container setup** → Follow `@docs/claude/subagent/planned/docker-builder.md`
+- **Package updates** → Follow `@docs/claude/subagent/planned/dependency-updater.md`
+- **Multi-language support** → Follow `@docs/claude/subagent/planned/i18n-translator.md`
+
+See `@docs/claude/subagent/` for detailed agent documentation and workflow patterns.
 
 ## Key Development Commands
 
@@ -82,9 +90,9 @@ See `@docs/claude/subagents.md` for detailed capabilities and usage patterns.
 - `make build-frontend` - Production build
 - `make deploy-frontend` - Deploy to Cloudflare
 
-## Project Structure
+## Project Structure - Clean Architecture Implementation
 
-**Standard Python Project Layout** (following PEP 518 and community best practices):
+**Clean Architecture Layout** (following Clean Architecture and PEP 518 principles):
 
 ```
 coaching_transcript_tool/
@@ -111,20 +119,34 @@ coaching_transcript_tool/
 │       │   ├── settings.py   # Main configuration class
 │       │   ├── environment.py # Environment variable handling
 │       │   └── logging_config.py # Logging configuration
-│       ├── core/             # Core business logic
-│       │   ├── services/     # Business logic layer
-│       │   ├── models/       # SQLAlchemy database models
-│       │   └── repositories/ # Data access abstraction layer
-│       ├── api/              # FastAPI route handlers
+│       ├── core/             # 🏛️ CORE BUSINESS LOGIC (Clean Architecture)
+│       │   ├── services/     # 📋 Use Cases - PURE business logic
+│       │   ├── models/       # 🎯 Domain models (eventually pure domain)
+│       │   └── repositories/ # 🔌 Repository ports/interfaces
+│       │       └── ports.py  # Protocol definitions for data access
+│       ├── infrastructure/   # 🔧 INFRASTRUCTURE LAYER (Clean Architecture)
+│       │   ├── db/           # Database-specific implementations
+│       │   │   ├── models/   # SQLAlchemy ORM models (future)
+│       │   │   ├── repositories/ # SQLAlchemy repository implementations
+│       │   │   └── session.py    # Database session factory
+│       │   ├── memory_repositories.py # In-memory repos for testing
+│       │   ├── factories.py  # Dependency injection factories
+│       │   ├── http/         # HTTP client adapters
+│       │   └── cache/        # Redis/cache adapters
+│       ├── api/              # 🌐 API INTERFACE LAYER (Clean Architecture)
+│       │   ├── controllers/  # HTTP request handlers
+│       │   ├── schemas/      # Pydantic I/O models (boundary only)
+│       │   └── middleware/   # FastAPI middleware
 │       ├── tasks/            # Celery background tasks
 │       └── utils/            # Common utilities and helpers
 ├── tests/                    # Test suite (separate from src)
 │   ├── README.md             # Testing overview and structure
 │   ├── conftest.py           # pytest configuration
 │   ├── fixtures/             # Test data and mocks
-│   ├── unit/                 # Fast, isolated unit tests
+│   ├── unit/                 # Fast, isolated unit tests (use in-memory repos)
 │   ├── integration/          # Service integration tests
 │   ├── api/                  # API endpoint tests
+│   ├── architecture/         # Architecture compliance tests
 │   ├── e2e/                  # End-to-end workflow tests
 │   │   ├── requirements.txt  # Python dependencies for E2E tests
 │   │   ├── test_lemur_*.py   # LeMUR optimization testing scripts
@@ -141,9 +163,11 @@ coaching_transcript_tool/
 │   ├── claude/               # AI assistant configuration
 │   │   └── context/          # Project context for AI assistants
 │   ├── features/             # Feature documentation (in development)
+│   │   └── refactor-architecture/ # Clean Architecture migration docs
 │   ├── features_done/        # Completed feature documentation
 │   └── deployment/          # Deployment guides and configs
 ├── scripts/                  # Development and maintenance scripts
+│   └── check_architecture.py # Architecture compliance checker
 ├── terraform/               # Infrastructure as code (GCP)
 ├── poc-assemblyAI/          # AssemblyAI integration prototypes
 ├── pyproject.toml           # Modern Python project configuration (PEP 518)
@@ -153,30 +177,56 @@ coaching_transcript_tool/
 ├── .pre-commit-config.yaml  # Code quality automation
 ├── mypy.ini                 # Type checking configuration
 ├── pytest.ini              # Test runner configuration
-└── Makefile                 # Development commands
+└── Makefile                 # Development commands + architecture checks
 ```
+
+### Clean Architecture Principles ✨
+
+**🚫 CRITICAL RULES - NEVER VIOLATE**:
+1. **Core Services**: ZERO SQLAlchemy imports or Session dependencies
+2. **API Layer**: Only HTTP concerns, no business logic or direct DB access  
+3. **Repository Pattern**: All data access through repository ports
+4. **Dependency Direction**: Core → Infrastructure, never the reverse
 
 ### Key Structure Benefits
 
-1. **PEP 518 Compliance**: Uses modern `pyproject.toml` and `src/` layout
-2. **Package Isolation**: Prevents import issues during development
-3. **Clear Separation**: Tests, docs, and source code are properly separated
-4. **Type Safety**: Includes `py.typed` marker and mypy configuration
-5. **Development Workflow**: Pre-commit hooks and quality tools configured
+1. **Clean Architecture**: Proper separation of concerns with dependency inversion
+2. **Testability**: Business logic can be tested without database dependencies
+3. **Maintainability**: Changes in infrastructure don't affect business logic  
+4. **PEP 518 Compliance**: Uses modern `pyproject.toml` and `src/` layout
+5. **Package Isolation**: Prevents import issues during development
+6. **Clear Separation**: Tests, docs, and source code are properly separated
+7. **Type Safety**: Includes `py.typed` marker and mypy configuration
+8. **Development Workflow**: Pre-commit hooks and quality tools configured
 
-### Module Organization
+### Module Organization - Clean Architecture Layers
 
-The `coaching_assistant` package follows layered architecture:
+The `coaching_assistant` package follows Clean Architecture principles:
 
+**🏛️ CORE LAYER** (Business Logic - Zero External Dependencies):
+- **core/services/**: Use Cases - Pure business logic with repository port injection
+- **core/repositories/ports.py**: Repository interface contracts (Protocols)
+- **core/models/**: Domain models (gradually moving to pure domain entities)
+
+**🔧 INFRASTRUCTURE LAYER** (External Concerns):
+- **infrastructure/db/repositories/**: SQLAlchemy repository implementations  
+- **infrastructure/db/session.py**: Database session factory management
+- **infrastructure/memory_repositories.py**: In-memory repos for unit testing
+- **infrastructure/factories.py**: Dependency injection and object creation
+
+**🌐 API LAYER** (HTTP Interface):
+- **api/**: HTTP controllers - Only request/response handling
+- **api/schemas/**: Pydantic models - I/O boundary only, never in core
+
+**⚙️ SUPPORTING LAYERS**:
 - **config/**: Centralized configuration with environment handling
-- **core/services/**: Business logic and domain services
-- **core/models/**: Database models and domain entities
-- **core/repositories/**: Data access abstraction layer
-- **api/**: HTTP request handlers and routing
-- **tasks/**: Asynchronous background processing
+- **tasks/**: Asynchronous background processing (Celery)
 - **utils/**: Shared utilities and helper functions
 
-**Note**: This structure is planned for implementation. See `docs/refactor-new-claude-structure.md` for detailed migration plan.
+**🔄 Migration Status**: 
+- ✅ **Phase 1 Complete**: Repository ports, infrastructure setup, pilot use case
+- 🚧 **Phase 2 In Progress**: API endpoints migration, full service layer
+- 📅 **Phase 3 Planned**: Pure domain models, complete ORM isolation
 
 ## Development Methodology: Test-Driven Development (TDD)
 
@@ -518,12 +568,20 @@ The frontend automatically adapts to show the correct limits:
 
 For detailed information, reference these docs:
 
+**🏛️ Clean Architecture**:
+- **Architecture Refactoring Plan**: `@docs/features/refactor-architecture/README.md` - Complete migration strategy
+- **Architectural Rules**: `@docs/features/refactor-architecture/architectural-rules.md` - ⚠️ **CRITICAL** - Mandatory compliance rules
+- **Repository Patterns**: Reference implementation in `src/coaching_assistant/infrastructure/`
+
+**📚 Development Standards**:
 - **Subagents Guide**: `@docs/claude/subagents.md` - Detailed subagent capabilities & usage
 - **Engineering Standards**: `@docs/claude/engineering-standards.md` - TDD, code style, quality
 - **Testing**: `@docs/claude/testing.md` - Test organization, frontend/backend testing strategies
 - **i18n Guidelines**: `@docs/claude/i18n.md` - Internationalization implementation and best practices
+
+**⚙️ Technical Implementation**:
 - **Configuration**: `@docs/claude/configuration.md` - Environment variables, providers
-- **STT Architecture**: `@docs/claude/architecture/stt.md` - Provider details, fallback
+- **STT Architecture**: `@docs/architecture/stt.md` - Provider details, fallback
 - **Session ID Mapping**: `@docs/claude/session-id-mapping.md` - Critical guide for Coaching vs Transcript Session IDs
 - **Deployment**: `@docs/claude/deployment/*.md` - Platform-specific guides
 - **API Reference**: See `/docs/api/` or OpenAPI at `/docs`
@@ -580,6 +638,13 @@ For comprehensive frontend testing strategies and best practices, see `@docs/cla
 - Prioritize security: never commit secrets, use environment variables
 - **Session ID Types**: Be aware of Coaching Session ID vs Transcript Session ID distinction (see `@docs/claude/session-id-mapping.md`)
 - **File Organization**: Store temporary debug files in `tmp/`, reusable tests in `tests/` directory
+- **Documentation Organization**: 
+  - `docs/` - Team-shared documentation (architecture, project status, roadmaps)
+  - `docs/claude/` - AI assistant-specific guidance (engineering standards, i18n, testing)  
+  - `docs/claude/context/` - AI contextual information (project overview, strategy)
+  - `docs/architecture/` - Unified architectural documentation (system patterns, tech stack, STT)
+  - `docs/lessons-learned/` - Development lessons and retrospectives
+  - Avoid duplicate documentation between team and AI directories
 - **Update changelog** - When making major changes, update `docs/claude/CHANGELOG.md`
 
 ## Deployment

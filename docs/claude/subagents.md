@@ -1,5 +1,36 @@
 # Subagents Guide
 
+This document provides an overview of Claude Code subagents and workflow patterns. For detailed documentation, see the organized subagent directory at `@docs/claude/subagent/`.
+
+## 🚀 Quick Navigation
+
+- **[Available Agents](./subagent/active/)** ✅ - Agents you can actually invoke
+- **[Workflow Patterns](./subagent/planned/)** 📋 - Manual processes and best practices  
+- **[Complete Directory](./subagent/)** - Full documentation with examples
+
+## Available vs Planned
+
+### ✅ Available Agents (Can be invoked via Task tool)
+- **[general-purpose](./subagent/active/general-purpose.md)** - Complex multi-step tasks
+- **[post-commit-updater](./subagent/active/post-commit-updater.md)** - Post-commit maintenance
+- **[web-research-agent](./subagent/active/web-research-agent.md)** - Web research and documentation
+- **[git-worktree-feature-manager](./subagent/active/git-worktree-feature-manager.md)** - Git worktree management
+- **[database-query-analyzer](./subagent/active/database-query-analyzer.md)** - Database analysis
+
+### 📋 Workflow Patterns (Manual implementation required)
+- Code Quality & Testing patterns (code-reviewer, debugger, test-writer, error-analyzer)
+- Architecture & Design patterns (api-designer, database-migrator, performance-optimizer)
+- Feature Development patterns (feature-analyst, user-story-designer, product-planner)
+- DevOps & Maintenance patterns (security-auditor, docker-builder, dependency-updater)
+
+---
+
+*The content below is preserved for reference, but the new organized documentation in `/subagent/` is recommended for current usage.*
+
+---
+
+# Legacy Documentation
+
 Specialized agents for specific tasks in the coaching assistant platform.
 
 ## Subagent Catalog

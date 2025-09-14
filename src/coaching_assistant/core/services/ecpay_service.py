@@ -541,6 +541,10 @@ class ECPaySubscriptionService:
         """Get plan pricing configuration."""
 
         pricing = {
+            "STUDENT": {
+                "monthly": {"amount_twd": 29900, "plan_name": "學習方案"},
+                "annual": {"amount_twd": 300000, "plan_name": "學習方案"},
+            },
             "PRO": {
                 "monthly": {"amount_twd": 89900, "plan_name": "專業方案"},
                 "annual": {"amount_twd": 899900, "plan_name": "專業方案"},
@@ -557,6 +561,8 @@ class ECPaySubscriptionService:
         """Get plan details from payment amount."""
 
         amount_mapping = {
+            29900: {"plan_id": "STUDENT", "plan_name": "學習方案"},
+            300000: {"plan_id": "STUDENT", "plan_name": "學習方案"},
             89900: {"plan_id": "PRO", "plan_name": "專業方案"},
             899900: {"plan_id": "PRO", "plan_name": "專業方案"},
             299900: {"plan_id": "ENTERPRISE", "plan_name": "企業方案"},
@@ -1038,14 +1044,21 @@ class ECPaySubscriptionService:
         """Schedule subscription downgrade for period end."""
 
         try:
-            # Get new plan details
-            new_plan_pricing = self._get_plan_pricing(
-                new_plan_id, new_billing_cycle
-            )
-            if not new_plan_pricing:
-                raise ValueError(
-                    f"Invalid plan: {new_plan_id} with cycle: {new_billing_cycle}"
+            # Handle FREE plan downgrade specially (no pricing needed)
+            if new_plan_id == "FREE":
+                new_plan_pricing = {
+                    "amount_twd": 0,
+                    "plan_name": "免費方案"
+                }
+            else:
+                # Get new plan details
+                new_plan_pricing = self._get_plan_pricing(
+                    new_plan_id, new_billing_cycle
                 )
+                if not new_plan_pricing:
+                    raise ValueError(
+                        f"Invalid plan: {new_plan_id} with cycle: {new_billing_cycle}"
+                    )
 
             # For simplicity, we'll use a custom field or create a pending changes table
             # For now, we'll store the pending change in subscription metadata

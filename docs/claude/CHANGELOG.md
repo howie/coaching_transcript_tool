@@ -5,6 +5,133 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.2] - 2025-09-11
+
+### 💰 Billing UI Enhancement
+
+#### Subscription Status Display Improvement
+- **Enhanced Plan Change Notifications**: Fixed subscription status banner to show specific plan change details
+  - **Issue**: When users scheduled plan changes, banner only showed generic "訂閱即將取消" (Subscription Will Be Cancelled)
+  - **Solution**: Parse `cancellation_reason` field to show specific plan change information
+    - Parse `DOWNGRADE_TO:{plan_id}:{billing_cycle}` format from backend
+    - Display specific target plan name instead of generic cancellation message
+    - Show "方案即將變更" (Plan Change Scheduled) with target plan details
+  - **User Experience**:
+    - ✅ Clear communication: "您的訂閱將於 {date} 變更為 {planName}"
+    - ✅ Special handling for FREE plan: "您的訂閱將於 {date} 變更為免費方案"
+    - ✅ Action button changed to "取消方案變更" instead of "重新啟用訂閱"
+  - **Files Modified**:
+    - `/src/coaching_assistant/api/v1/subscriptions.py` - Added cancellation_reason to API response
+    - `/apps/web/components/billing/SubscriptionStatusBanner.tsx` - Enhanced status parsing and display
+    - `/apps/web/lib/services/subscription.service.ts` - Added cancellation_reason to TypeScript interface
+    - `/apps/web/lib/i18n/translations/billing.ts` - Added new translation keys for plan changes
+    - `/apps/web/components/billing/SubscriptionDashboard.tsx` - Updated interface
+    - `/apps/web/components/billing/PaymentSettings.tsx` - Updated interface
+
+---
+
+## [2.18.1] - 2025-09-11
+
+### 🔧 Critical Bug Fix
+
+#### ECPay STUDENT Plan Support
+- **Fixed Critical Downgrade Error**: Resolved "Invalid plan: STUDENT with cycle: annual" error
+  - **Root Cause**: ECPay service was missing STUDENT plan pricing configuration in payment processing
+  - **Issue**: Users couldn't downgrade to STUDENT plans, causing 500 Internal Server Error
+  - **Solution**: Added complete STUDENT plan support to ECPay payment service
+    - Added STUDENT monthly pricing: NT$299 (29900 cents)
+    - Added STUDENT annual pricing: NT$3000 (300000 cents) 
+    - Added amount mapping for payment processing
+    - Added special handling for FREE plan downgrades (no payment required)
+  - **Files Modified**:
+    - `/src/coaching_assistant/core/services/ecpay_service.py` - Added STUDENT plan pricing and FREE plan handling
+  - **Impact**: All plan downgrade operations now work correctly
+    - ✅ PRO → STUDENT downgrades work
+    - ✅ STUDENT → FREE downgrades work  
+    - ✅ Any plan → FREE cancellations work
+    - ✅ Eliminates payment processing errors for STUDENT plans
+
+---
+
+## [2.18.0] - 2025-09-11
+
+### 💰 Billing & Plan Management Improvements
+
+#### UI/UX Enhancements
+- **Cleaned Up Plan Comparison Table**: Removed unnecessary information from billing page
+  - **Removed**: "(數據來源：資料庫)" text from detailed feature comparison section
+  - **Simplified Table**: Removed "每月會談數" and "每月轉錄數" columns from comparison table
+  - **Focused on Core Metrics**: Now displays only essential limits (minutes and file size)
+  - **Impact**: Cleaner, more focused user experience on billing page
+
+#### Plan Downgrade Functionality Fixed
+- **Complete Plan Hierarchy Support**: Fixed downgrade functionality to support all plan types
+  - **Frontend Fixes**:
+    - Added STUDENT plan to plan hierarchy mapping in `subscription.service.ts`
+    - Updated `ChangePlan.tsx` to include STUDENT in plan change logic
+    - Implemented FREE plan selection as proper cancellation/downgrade flow
+  - **Backend Fixes**:
+    - Updated `/api/v1/subscriptions/upgrade` endpoint to accept STUDENT plans
+    - Updated `/api/v1/subscriptions/downgrade` endpoint to accept STUDENT plans
+    - Fixed plan hierarchy: `{"FREE": 0, "STUDENT": 1, "PRO": 2, "ENTERPRISE": 3}`
+    - Updated authorization endpoint to support STUDENT plan subscriptions
+  - **User Impact**:
+    - ✅ Users can now downgrade from PRO → STUDENT
+    - ✅ Users can now downgrade from PRO → FREE (via cancellation)
+    - ✅ Users can now downgrade from STUDENT → FREE (via cancellation)
+    - ✅ Proper confirmation dialogs for all downgrade scenarios
+  - **Files Modified**:
+    - `/src/coaching_assistant/api/v1/subscriptions.py` - Updated plan validation and hierarchy
+    - `/apps/web/lib/services/subscription.service.ts` - Added STUDENT to hierarchy
+    - `/apps/web/components/billing/ChangePlan.tsx` - Implemented complete downgrade logic
+
+### 🔧 Technical Improvements
+- **TypeScript Compilation**: Fixed syntax errors in billing components
+- **Plan Mapping Consistency**: Ensured consistent plan hierarchy across frontend and backend
+- **Error Handling**: Improved error messages for plan change operations
+- **ECPay Integration**: Added STUDENT plan support to payment processing service
+  - **Issue**: ECPay service was missing STUDENT plan pricing configuration
+  - **Fix**: Added STUDENT plan pricing (NT$299/month, NT$3000/year) to ECPay service
+  - **Enhancement**: Added special handling for FREE plan downgrades (no payment required)
+  - **Impact**: Eliminates "Invalid plan: STUDENT with cycle: annual" errors
+
+---
+
+## [2.17.0] - 2025-09-11
+
+### 🔧 Critical Bug Fixes
+
+#### Pricing Display Fix
+- **Fixed Zero Pricing Display Bug**: Resolved issue where web UI showed NT$0 for all paid plans on billing page
+  - **Root Cause**: `PlanLimits` service was not correctly extracting pricing data from database configurations
+  - **Issue Details**: 
+    - Field name mismatch: Service looked for `monthly_price_twd_cents` at root level, but data was in nested `pricing.monthly_twd`
+    - Unit conversion error: Service divided by 100 expecting cents, but received TWD values
+  - **Solution**: Updated `_convert_db_config_to_plan_limit()` method in `plan_limits.py`
+    - Fixed field extraction from nested `pricing` dictionary
+    - Corrected unit conversion (multiply by 100 to convert TWD to cents)
+  - **Impact**: 
+    - ✅ FREE plan: Correctly shows NT$0/month
+    - ✅ STUDENT plan: Now shows NT$299/month (was NT$0)
+    - ✅ PRO plan: Now shows NT$899/month (was NT$0)
+    - ✅ COACHING_SCHOOL plan: Shows NT$5000/month when available
+  - **Files Modified**: 
+    - `/src/coaching_assistant/services/plan_limits.py` - Fixed pricing extraction logic
+  - **Testing**: Verified complete data flow from database → services → API → frontend
+
+#### Phase 2 System Stability
+- **SQLAlchemy Enum Handling**: Fixed authentication errors during Phase 2 migration
+  - **Issue**: Database enum values (lowercase) incompatible with SQLAlchemy enum mapping
+  - **Solution**: Updated all enum column definitions to use `values_callable` parameter
+  - **Impact**: Resolved 500 errors during Google OAuth authentication flow
+
+### 📈 System Health
+- **Complete Database-Driven Pricing**: All plan pricing now sourced from PostgreSQL configurations
+- **Chinese Localization**: Confirmed proper display of Traditional Chinese plan names
+- **API Consistency**: All pricing endpoints return consistent values in cents format
+
+---
+
 ## [2.16.0] - 2025-09-10
 
 ### 🎯 Customer Feedback UI Improvements
