@@ -16,6 +16,7 @@ export interface SubscriptionData {
     current_period_start: string
     current_period_end: string
     cancel_at_period_end: boolean
+    cancellation_reason?: string
     next_payment_date?: string
   }
   payment_method?: {
@@ -308,8 +309,9 @@ class SubscriptionService {
   getPlanChangeType(currentPlanId: string, targetPlanId: string): 'upgrade' | 'downgrade' | 'same' {
     const planHierarchy: Record<string, number> = {
       'FREE': 0,
-      'PRO': 1,
-      'ENTERPRISE': 2
+      'STUDENT': 1,
+      'PRO': 2,
+      'ENTERPRISE': 3
     }
     
     const currentLevel = planHierarchy[currentPlanId.toUpperCase()] || 0
