@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { PencilIcon, TrashIcon, ArrowLeftIcon, DocumentArrowDownIcon, MicrophoneIcon, DocumentTextIcon, ChartBarIcon, ChatBubbleLeftRightIcon, DocumentMagnifyingGlassIcon, CloudArrowUpIcon, ExclamationTriangleIcon, ArrowUpIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
@@ -214,6 +214,7 @@ const SessionDetailPage = () => {
       fetchCurrencies();
       checkUsageLimits();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   // Refresh transcription status when switching back to overview or transcript tabs
@@ -230,6 +231,59 @@ const SessionDetailPage = () => {
       fetchTranscript(transcriptionSessionId);
     }
   }, [transcriptionSession?.status, transcriptionSessionId, transcript]);
+
+  // Define calculateSpeakingStats function before using it
+  const calculateSpeakingStats = useCallback((segments: TranscriptSegment[]): SpeakingStats => {
+    let coachTime = 0;
+    let clientTime = 0;
+    
+    segments.forEach(segment => {
+      const duration = segment.end_sec - segment.start_sec;
+      const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+      
+      // Determine role using safe priority logic
+      let roleString: string;
+      if (tempSegmentRoles[segmentId]) {
+        roleString = tempSegmentRoles[segmentId];
+      } else if (tempRoleAssignments[segment.speaker_id]) {
+        roleString = tempRoleAssignments[segment.speaker_id];
+      } else {
+        // Use safe fallback
+        const defaultRole = getSpeakerRoleFromSegment(segment, transcript?.role_assignments);
+        roleString = defaultRole === SpeakerRole.COACH ? 'coach' : 'client';
+      }
+      
+      if (roleString === 'coach' || roleString === SpeakerRole.COACH) {
+        coachTime += duration;
+      } else {
+        clientTime += duration;
+      }
+    });
+    
+    const totalSpeaking = coachTime + clientTime;
+    
+    // Improved duration calculation: use the actual time span from first to last segment
+    let totalDuration = 0;
+    if (segments.length > 0) {
+      const sortedSegments = segments.slice().sort((a, b) => a.start_sec - b.start_sec);
+      const firstStart = sortedSegments[0].start_sec;
+      const lastEnd = Math.max(...segments.map(s => s.end_sec));
+      totalDuration = lastEnd - firstStart;
+    }
+    
+    // Calculate silence time more accurately
+    // Silence time = total duration - sum of actual speaking segments
+    let silenceTime = Math.max(0, totalDuration - totalSpeaking);
+    
+    return {
+      coach_speaking_time: coachTime,
+      client_speaking_time: clientTime,
+      total_speaking_time: totalSpeaking,
+      coach_percentage: totalSpeaking > 0 ? (coachTime / totalSpeaking) * 100 : 0,
+      client_percentage: totalSpeaking > 0 ? (clientTime / totalSpeaking) * 100 : 0,
+      silence_time: silenceTime
+    };
+  }, [tempRoleAssignments, tempSegmentRoles, transcript?.role_assignments]);
 
   useEffect(() => {
     // Calculate speaking stats when transcript is available
@@ -268,9 +322,9 @@ const SessionDetailPage = () => {
       });
       setTempSegmentRoles(segmentRoles);
     }
-  }, [transcript]);
+  }, [transcript, calculateSpeakingStats]);
 
-  const checkUsageLimits = async () => {
+  const checkUsageLimits = useCallback(async () => {
     try {
       // Check if user can create sessions and transcriptions
       const results = await validateMultiple([
@@ -317,7 +371,7 @@ const SessionDetailPage = () => {
       setCanUseAudioAnalysis(true);
       setLimitMessage(null);
     }
-  };
+  }, [validateMultiple, validateAction, lastValidation, t]);
 
   const fetchSession = async () => {
     try {
@@ -488,57 +542,6 @@ const SessionDetailPage = () => {
     return getSpeakerColor(role);
   };
 
-  const calculateSpeakingStats = (segments: TranscriptSegment[]): SpeakingStats => {
-    let coachTime = 0;
-    let clientTime = 0;
-    
-    segments.forEach(segment => {
-      const duration = segment.end_sec - segment.start_sec;
-      const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
-      
-      // Determine role using safe priority logic
-      let roleString: string;
-      if (tempSegmentRoles[segmentId]) {
-        roleString = tempSegmentRoles[segmentId];
-      } else if (tempRoleAssignments[segment.speaker_id]) {
-        roleString = tempRoleAssignments[segment.speaker_id];
-      } else {
-        // Use safe fallback
-        const defaultRole = getSpeakerRoleFromSegment(segment, transcript?.role_assignments);
-        roleString = defaultRole === SpeakerRole.COACH ? 'coach' : 'client';
-      }
-      
-      if (roleString === 'coach' || roleString === SpeakerRole.COACH) {
-        coachTime += duration;
-      } else {
-        clientTime += duration;
-      }
-    });
-    
-    const totalSpeaking = coachTime + clientTime;
-    
-    // Improved duration calculation: use the actual time span from first to last segment
-    let totalDuration = 0;
-    if (segments.length > 0) {
-      const sortedSegments = segments.slice().sort((a, b) => a.start_sec - b.start_sec);
-      const firstStart = sortedSegments[0].start_sec;
-      const lastEnd = Math.max(...segments.map(s => s.end_sec));
-      totalDuration = lastEnd - firstStart;
-    }
-    
-    // Calculate silence time more accurately
-    // Silence time = total duration - sum of actual speaking segments
-    let silenceTime = Math.max(0, totalDuration - totalSpeaking);
-    
-    return {
-      coach_speaking_time: coachTime,
-      client_speaking_time: clientTime,
-      total_speaking_time: totalSpeaking,
-      coach_percentage: totalSpeaking > 0 ? (coachTime / totalSpeaking) * 100 : 0,
-      client_percentage: totalSpeaking > 0 ? (clientTime / totalSpeaking) * 100 : 0,
-      silence_time: silenceTime
-    };
-  };
 
   const generateAISummary = async () => {
     if (!transcript || !transcript.segments.length) return;
@@ -1283,9 +1286,6 @@ ${t('sessions.aiChatFollowUp')}`;
           >
             <DocumentTextIcon className="h-4 w-4" />
             {t('sessions.transcript')}
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
-              Beta
-            </span>
             {isTranscribing && (
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
                 {t('sessions.processing')}
@@ -1297,7 +1297,7 @@ ${t('sessions.aiChatFollowUp')}`;
               </span>
             )}
           </button>
-          {hasTranscript && process.env.NODE_ENV === 'development' && (
+          {hasTranscript && (
             <button
               onClick={() => setActiveTab('ai-optimization')}
               className={`pb-2 px-4 transition-colors flex items-center gap-2 ${
@@ -1716,7 +1716,7 @@ ${t('sessions.aiChatFollowUp')}`;
                                       </span>
                                     </div>
                                     <p className="text-sm text-content-secondary italic">
-                                      "{segment.content}"
+                                      &ldquo;{segment.content}&rdquo;
                                     </p>
                                   </div>
                                   <div className="flex-shrink-0">
@@ -1827,258 +1827,86 @@ ${t('sessions.aiChatFollowUp')}`;
                 })()
               )}
 
-              {/* Speaking Statistics - shown when transcript is available */}
-              {speakingStats && hasTranscript && (
-                <div className="mt-6 space-y-4">
-                  <div className="border-t border-border pt-4">
-                    <h4 className="font-medium text-content-primary mb-3">{t('sessions.talkAnalysisResults')}</h4>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Speaking Time Distribution */}
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                      <h4 className="font-medium text-content-primary mb-3">{t('sessions.talkTimeDistribution')}</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-blue-600 font-medium">{t('sessions.coach')}</span>
-                          <span className="text-sm">{formatDuration(speakingStats.coach_speaking_time)} ({speakingStats.coach_percentage.toFixed(1)}%)</span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                          <div 
-                            className="bg-blue-500 h-2 rounded-full" 
-                            style={{width: `${speakingStats.coach_percentage}%`}}
-                          ></div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <span className="text-green-600 font-medium">{t('sessions.client')}</span>
-                          <span className="text-sm">{formatDuration(speakingStats.client_speaking_time)} ({speakingStats.client_percentage.toFixed(1)}%)</span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                          <div 
-                            className="bg-green-500 h-2 rounded-full" 
-                            style={{width: `${speakingStats.client_percentage}%`}}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Overall Stats */}
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                      <h4 className="font-medium text-content-primary mb-3">{t('sessions.overallStats')}</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-content-secondary">{t('sessions.totalDuration')}</span>
-                          <span className="text-content-primary font-medium">
-                            {speakingStats ? formatDuration(speakingStats.total_speaking_time + speakingStats.silence_time) : formatDuration(transcript?.duration_sec || 0)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-content-secondary">{t('sessions.talkTime')}</span>
-                          <span className="text-content-primary font-medium">{formatDuration(speakingStats.total_speaking_time)}</span>
-                        </div>
-                        {/* Silence time calculation is not accurate from STT, showing warning */}
-                        <div className="flex justify-between">
-                          <span className="text-content-secondary">
-                            {t('sessions.silenceTime')}
-                            <span className="text-xs text-yellow-600 ml-1" title={t('sessions.silenceTimeNote')}>
-                              ({t('sessions.silenceTimeNote')})
-                            </span>
-                          </span>
-                          <span className="text-content-primary font-medium">
-                            {speakingStats.silence_time > 0 ? formatDuration(speakingStats.silence_time) : t('sessions.silenceTimeCalculationError')}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-content-secondary">{t('sessions.conversationSegments')}</span>
-                          <span className="text-content-primary font-medium">{transcript?.segments.length || 0}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
 
         {activeTab === 'transcript' && (
           <div className="space-y-4">
-            {/* Session Overview - moved from overview tab */}
-            <div className="bg-surface border border-border rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-content-primary flex items-center gap-2">
-                  <DocumentMagnifyingGlassIcon className="h-5 w-5" />
-                  {t('sessions.basicInfo')}
-                </h3>
-                {!editMode && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setEditMode(true)}
-                    className="flex items-center gap-2 text-sm px-3 py-1"
-                  >
-                    <PencilIcon className="h-3 w-3" />
-                    {t('common.edit')}
-                  </Button>
-                )}
-              </div>
-              
-              {editMode ? (
-                <form onSubmit={handleUpdate} className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-content-primary mb-2">
-                      {t('sessions.sessionDate')} *
-                    </label>
-                    <Input
-                      type="date"
-                      required
-                      value={formData.session_date}
-                      onChange={(e) => setFormData({ ...formData, session_date: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-content-primary mb-2">
-                      {t('sessions.client')} *
-                    </label>
-                    <Select
-                      required
-                      value={formData.client_id}
-                      onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
-                    >
-                      <option value="" disabled>{t('sessions.selectClient')}</option>
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-content-primary mb-2">
-                      {t('sessions.durationMinutes')}
-                    </label>
-                    <Input
-                      type="number"
-                      min="1"
-                      required
-                      value={formData.duration_min}
-                      onChange={(e) => setFormData({ ...formData, duration_min: parseInt(e.target.value) || 0 })}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-content-primary mb-2">
-                        {t('sessions.currency')}
-                      </label>
-                      <Select
-                        value={formData.fee_currency}
-                        onChange={(e) => setFormData({ ...formData, fee_currency: e.target.value })}
-                      >
-                        {currencies.map((currency) => (
-                          <option key={currency.value} value={currency.value}>
-                            {String(currency.label || currency.value)}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-content-primary mb-2">
-                        {t('sessions.amount')} *
-                      </label>
-                      <Input
-                        type="number"
-                        min="0"
-                        required
-                        value={formData.fee_amount}
-                        onChange={(e) => setFormData({ ...formData, fee_amount: parseInt(e.target.value) || 0 })}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-content-primary mb-2">
-                      {t('sessions.notes')}
-                    </label>
-                    <textarea
-                      className="w-full px-3 py-2 border border-border rounded-md bg-surface text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                      rows={4}
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-4 pt-6 border-t border-border">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setEditMode(false);
-                        // Reset form data
-                        setFormData({
-                          session_date: session.session_date,
-                          client_id: session.client_id,
-                          duration_min: session.duration_min,
-                          fee_currency: session.fee_currency,
-                          fee_amount: session.fee_amount,
-                          notes: session.notes || ''
-                        });
-                      }}
-                      disabled={loading}
-                    >
-                      {t('common.cancel')}
-                    </Button>
-                    <Button type="submit" disabled={loading}>
-                      {loading ? t('common.updating') : t('common.save')}
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-content-secondary mb-1">
-                      {t('sessions.sessionDate')}
-                    </label>
-                    <p className="text-content-primary text-lg">{session.session_date}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-content-secondary mb-1">
-                      {t('sessions.client')}
-                    </label>
-                    <p className="text-content-primary text-lg">
-                      {session.client?.name || currentClient?.name || session.client_name || '-'}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-content-secondary mb-1">
-                      {t('sessions.duration')}
-                    </label>
-                    <p className="text-content-primary">{session.duration_display}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-content-secondary mb-1">
-                      {t('sessions.fee')}
-                    </label>
-                    <p className="text-content-primary text-lg font-medium">{session.fee_display}</p>
-                  </div>
-
-                  {session.notes && (
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-content-secondary mb-1">
-                        {t('sessions.notes')}
-                      </label>
-                      <p className="text-content-primary whitespace-pre-wrap">{session.notes}</p>
-                    </div>
-                  )}
+            {/* Speaking Statistics - moved from overview tab */}
+            {speakingStats && hasTranscript && (
+              <div className="bg-surface border border-border rounded-lg p-6">
+                <div className="border-b border-border pb-4 mb-6">
+                  <h3 className="text-lg font-semibold text-content-primary flex items-center gap-2">
+                    <DocumentMagnifyingGlassIcon className="h-5 w-5" />
+                    {t('sessions.talkAnalysisResults')}
+                  </h3>
                 </div>
-              )}
-            </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Speaking Time Distribution */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                    <h4 className="font-medium text-content-primary mb-3">{t('sessions.talkTimeDistribution')}</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-blue-600 font-medium">{t('sessions.coach')}</span>
+                        <span className="text-sm">{formatDuration(speakingStats.coach_speaking_time)} ({speakingStats.coach_percentage.toFixed(1)}%)</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full" 
+                          style={{width: `${speakingStats.coach_percentage}%`}}
+                        ></div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span className="text-green-600 font-medium">{t('sessions.client')}</span>
+                        <span className="text-sm">{formatDuration(speakingStats.client_speaking_time)} ({speakingStats.client_percentage.toFixed(1)}%)</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div 
+                          className="bg-green-500 h-2 rounded-full" 
+                          style={{width: `${speakingStats.client_percentage}%`}}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Overall Stats */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                    <h4 className="font-medium text-content-primary mb-3">{t('sessions.overallStats')}</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-content-secondary">{t('sessions.totalDuration')}</span>
+                        <span className="text-content-primary font-medium">
+                          {speakingStats ? formatDuration(speakingStats.total_speaking_time + speakingStats.silence_time) : formatDuration(transcript?.duration_sec || 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-content-secondary">{t('sessions.talkTime')}</span>
+                        <span className="text-content-primary font-medium">{formatDuration(speakingStats.total_speaking_time)}</span>
+                      </div>
+                      {/* Silence time calculation is not accurate from STT, showing warning */}
+                      <div className="flex justify-between">
+                        <span className="text-content-secondary">
+                          {t('sessions.silenceTime')}
+                          <span className="text-xs text-yellow-600 ml-1" title={t('sessions.silenceTimeNote')}>
+                            ({t('sessions.silenceTimeNote')})
+                          </span>
+                        </span>
+                        <span className="text-content-primary font-medium">
+                          {speakingStats.silence_time > 0 ? formatDuration(speakingStats.silence_time) : t('sessions.silenceTimeCalculationError')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-content-secondary">{t('sessions.conversationSegments')}</span>
+                        <span className="text-content-primary font-medium">{transcript?.segments.length || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Transcription Status */}
             {(isTranscribing || transcriptionSession?.status === 'pending') && transcriptionStatus && (
               <div className="bg-surface border border-border rounded-lg p-6">

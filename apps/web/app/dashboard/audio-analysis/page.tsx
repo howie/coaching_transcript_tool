@@ -203,7 +203,7 @@ export default function AudioAnalysisPage() {
         }))
       }
     }
-  }, [transcriptionSession, transcriptionStatus])
+  }, [transcriptionSession, transcriptionStatus, t])
 
   const resetUpload = () => {
     setSelectedFile(null)

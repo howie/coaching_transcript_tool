@@ -246,13 +246,14 @@ class UsageTracker:
             Dictionary with usage summary including percentages
         """
         from coaching_assistant.services.plan_limits import (
-            PlanLimits,
+            get_global_plan_limits,
             PlanName,
         )
 
         usage = self.get_current_usage(user_id)
         plan_name = PlanName(usage.get("plan", "FREE"))
-        limits = PlanLimits.get_limits(plan_name)
+        plan_limits_service = get_global_plan_limits()
+        limits = plan_limits_service.get_plan_limit(plan_name)
 
         def calculate_percentage(current: int, limit: int) -> float:
             if limit == -1:  # Unlimited

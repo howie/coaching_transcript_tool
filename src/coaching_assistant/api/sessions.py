@@ -31,7 +31,7 @@ from ..tasks.transcription_tasks import transcribe_audio
 from ..core.config import settings
 from ..exporters.excel import generate_excel
 from ..services.usage_tracking import UsageTrackingService
-from ..services.plan_limits import PlanLimits
+from ..services.plan_limits import get_global_plan_limits
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -147,26 +147,8 @@ async def create_session(
     current_user: User = Depends(get_current_user_dependency),
 ):
     """Create a new transcription session."""
-    # CRITICAL: Check plan limits BEFORE creating session
-    plan_limits = PlanLimits.from_user_plan(current_user.plan)
-    current_sessions = current_user.session_count or 0
-
-    if (
-        plan_limits.max_sessions != -1
-        and current_sessions >= plan_limits.max_sessions
-    ):
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "session_limit_exceeded",
-                "message": f"You have reached your monthly session limit of {plan_limits.max_sessions}",
-                "current_usage": current_sessions,
-                "limit": plan_limits.max_sessions,
-                "plan": (
-                    current_user.plan.value if current_user.plan else "free"
-                ),
-            },
-        )
+    # Note: Session limits removed in Phase 2 - now unlimited
+    # Only minutes-based limits are enforced
 
     # Determine STT provider - use settings default if 'auto'
     provider = session_data.stt_provider
@@ -303,7 +285,8 @@ async def get_upload_url(
 ):
     """Get signed URL for audio file upload."""
     # CRITICAL: Check file size limits BEFORE generating upload URL
-    plan_limits = PlanLimits.from_user_plan(current_user.plan)
+    plan_limits_service = get_global_plan_limits()
+    plan_limits = plan_limits_service.from_user_plan(current_user.plan)
 
     if file_size_mb > plan_limits.max_file_size_mb:
         raise HTTPException(
@@ -534,26 +517,8 @@ async def start_transcription(
     current_user: User = Depends(get_current_user_dependency),
 ):
     """Start transcription processing for uploaded audio."""
-    # CRITICAL: Check transcription limits BEFORE starting processing
-    plan_limits = PlanLimits.from_user_plan(current_user.plan)
-    current_transcriptions = current_user.transcription_count or 0
-
-    if (
-        plan_limits.max_transcriptions != -1
-        and current_transcriptions >= plan_limits.max_transcriptions
-    ):
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "transcription_limit_exceeded",
-                "message": f"You have reached your monthly transcription limit of {plan_limits.max_transcriptions}",
-                "current_usage": current_transcriptions,
-                "limit": plan_limits.max_transcriptions,
-                "plan": (
-                    current_user.plan.value if current_user.plan else "free"
-                ),
-            },
-        )
+    # Note: Transcription limits removed in Phase 2 - now unlimited
+    # Only minutes-based limits are enforced
 
     session = (
         db.query(Session)
