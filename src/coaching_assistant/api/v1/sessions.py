@@ -21,10 +21,12 @@ import logging
 import re
 
 from ...core.database import get_db  # Still needed for role management endpoints
-from ...models.session import Session, SessionStatus
+from ...core.models.session import SessionStatus
 from ...models.processing_status import ProcessingStatus
-from ...models.user import User
+# TEMPORARY: Still needed for legacy endpoints that haven't been migrated to Clean Architecture
+from ...models.session import Session
 from ...models.transcript import TranscriptSegment
+from ...models.user import User
 from .auth import get_current_user_dependency
 from ...api.v1.dependencies import (
     get_session_creation_use_case,
