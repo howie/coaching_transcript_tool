@@ -302,11 +302,23 @@ function DatabasePricingDisplay({
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual')
 
   const formatPrice = (amountCents: number) => {
+    // 防止 NaN 和無效值
+    if (!amountCents || isNaN(amountCents) || amountCents <= 0) {
+      return 'NT$0'
+    }
     return new Intl.NumberFormat('zh-TW', {
       style: 'currency',
       currency: 'TWD',
       minimumFractionDigits: 0
     }).format(amountCents / 100)
+  }
+
+  // 安全的月費計算函數，專門處理年繳方案的月均價格
+  const calculateMonthlyEquivalent = (annualPriceCents: number) => {
+    if (!annualPriceCents || isNaN(annualPriceCents) || annualPriceCents <= 0) {
+      return null
+    }
+    return Math.round(annualPriceCents / 12)
   }
 
   const calculateSavings = (monthlyPrice: number, annualPrice: number) => {
@@ -450,21 +462,24 @@ function DatabasePricingDisplay({
                         </span>
                       </div>
 
-                      {billingCycle === 'annual' && plan.pricing.annual_twd > 0 && savings > 0 && (
-                        <div className="space-y-1">
-                          <div className="text-sm text-gray-500">
-                            相當於每月 {formatPrice(plan.pricing.annual_twd / 12)}
+                      {billingCycle === 'annual' && plan.pricing.annual_twd > 0 && savings > 0 && (() => {
+                        const monthlyEquivalent = calculateMonthlyEquivalent(plan.pricing.annual_twd)
+                        return monthlyEquivalent && (
+                          <div className="space-y-1">
+                            <div className="text-sm text-gray-500">
+                              相當於每月 {formatPrice(monthlyEquivalent)}
+                            </div>
+                            <div className="flex items-center justify-center space-x-2 text-sm">
+                              <span className="line-through text-gray-400">
+                                月繳全年 {formatPrice(plan.pricing.monthly_twd * 12)}
+                              </span>
+                              <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs">
+                                年繳省 {savings}%
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-center space-x-2 text-sm">
-                            <span className="line-through text-gray-400">
-                              原價 {formatPrice(plan.pricing.monthly_twd * 12)}
-                            </span>
-                            <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs">
-                              省 {savings}%
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                        )
+                      })()}
                     </div>
                   </div>
 
