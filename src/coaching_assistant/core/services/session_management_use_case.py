@@ -17,10 +17,10 @@ from ..repositories.ports import (
     TranscriptRepoPort,
     PlanConfigurationRepoPort,
 )
-from ...models.session import Session as SessionModel, SessionStatus
-from ...models.user import User, UserPlan
-from ...models.usage_log import UsageLog, TranscriptionType
-from ...models.transcript import TranscriptSegment
+from ..models.session import Session, SessionStatus
+from ..models.user import User, UserPlan
+from ..models.usage_log import UsageLog, TranscriptionType
+from ..models.transcript import TranscriptSegment
 from ...exceptions import DomainException
 import logging
 import json
@@ -50,18 +50,18 @@ class SessionCreationUseCase:
         title: str,
         language: str = "cmn-Hant-TW",
         stt_provider: str = "auto",
-    ) -> SessionModel:
+    ) -> Session:
         """Create a new transcription session.
-        
+
         Args:
             user_id: ID of the user creating the session
             title: Session title
             language: Language code for transcription
             stt_provider: STT provider to use
-            
+
         Returns:
-            Created session model
-            
+            Created session domain model
+
         Raises:
             ValueError: If user not found
             DomainException: If user has exceeded plan limits
@@ -74,8 +74,8 @@ class SessionCreationUseCase:
         # Check plan limits
         self._validate_plan_limits(user)
 
-        # Create session
-        session = SessionModel(
+        # Create session domain model
+        session = Session(
             id=uuid4(),
             user_id=user_id,
             title=title,
@@ -125,15 +125,15 @@ class SessionRetrievalUseCase:
         self.user_repo = user_repo
         self.transcript_repo = transcript_repo
 
-    def get_session_by_id(self, session_id: UUID, user_id: UUID) -> Optional[SessionModel]:
+    def get_session_by_id(self, session_id: UUID, user_id: UUID) -> Optional[Session]:
         """Get session by ID, ensuring user owns the session.
-        
+
         Args:
             session_id: Session ID to retrieve
             user_id: User ID for ownership validation
-            
+
         Returns:
-            Session model if found and owned by user, None otherwise
+            Session domain model if found and owned by user, None otherwise
         """
         session = self.session_repo.get_by_id(session_id)
         if not session or session.user_id != user_id:
@@ -146,17 +146,17 @@ class SessionRetrievalUseCase:
         status: Optional[SessionStatus] = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[SessionModel]:
+    ) -> List[Session]:
         """Get sessions for a user with optional filtering.
-        
+
         Args:
             user_id: User ID
             status: Optional status filter
             limit: Maximum number of sessions to return
             offset: Number of sessions to skip
-            
+
         Returns:
-            List of session models
+            List of session domain models
         """
         return self.session_repo.get_by_user_id(user_id, status, limit, offset)
 
@@ -200,17 +200,17 @@ class SessionStatusUpdateUseCase:
 
     def update_session_status(
         self, session_id: UUID, status: SessionStatus, user_id: UUID
-    ) -> SessionModel:
+    ) -> Session:
         """Update session status with validation.
-        
+
         Args:
             session_id: Session ID to update
             status: New status
             user_id: User ID for ownership validation
-            
+
         Returns:
-            Updated session model
-            
+            Updated session domain model
+
         Raises:
             ValueError: If session not found or not owned by user
             DomainException: If status transition is invalid
@@ -249,22 +249,29 @@ class SessionStatusUpdateUseCase:
                 f"Invalid status transition from {current_status} to {new_status}"
             )
 
-    def _create_completion_usage_log(self, session: SessionModel) -> None:
+    def _create_completion_usage_log(self, session: Session) -> None:
         """Create usage log entry when session completes."""
-        if not session.duration_minutes or session.duration_minutes <= 0:
+        # Calculate duration in minutes from seconds
+        duration_minutes = 0
+        if session.duration_seconds and session.duration_seconds > 0:
+            duration_minutes = int(session.duration_seconds / 60)
+
+        if duration_minutes <= 0:
             return  # No usage to log
 
-        cost = Decimal(session.stt_cost_usd or "0.00")
-        
+        # Use reasonable default cost calculation (could be enhanced later)
+        cost_cents = duration_minutes * 10  # 10 cents per minute as default
+
         usage_log = UsageLog(
             id=uuid4(),
             user_id=session.user_id,
             session_id=session.id,
-            transcription_type=TranscriptionType.AUDIO,
-            duration_minutes=session.duration_minutes,
-            cost_usd=cost,
-            stt_provider=session.stt_provider,
-            language=session.language,
+            transcription_type=TranscriptionType.ORIGINAL,
+            duration_minutes=duration_minutes,
+            cost_cents=cost_cents,
+            currency="TWD",
+            stt_provider=session.stt_provider or "google",
+            billable=True,
             created_at=datetime.utcnow(),
         )
 
@@ -312,8 +319,8 @@ class SessionTranscriptUpdateUseCase:
         )
 
         # Update session metadata if needed
-        session.updated_at = datetime.utcnow()
-        self.session_repo.save(session)
+        updated_session = session.replace(updated_at=datetime.utcnow())
+        self.session_repo.save(updated_session)
 
         return updated_segments
 
@@ -322,17 +329,17 @@ class SessionTranscriptUpdateUseCase:
         session_id: UUID,
         metadata: Dict[str, Any],
         user_id: UUID,
-    ) -> SessionModel:
+    ) -> Session:
         """Update session metadata.
-        
+
         Args:
             session_id: Session ID
             metadata: Metadata to update
             user_id: User ID for ownership validation
-            
+
         Returns:
-            Updated session model
-            
+            Updated session domain model
+
         Raises:
             ValueError: If session not found or not owned by user
         """
@@ -340,25 +347,23 @@ class SessionTranscriptUpdateUseCase:
         if not session or session.user_id != user_id:
             raise ValueError("Session not found or access denied")
 
-        # Update allowed metadata fields
+        # Create updated session domain model with new metadata
+        updated_fields = {}
+
         if "duration_seconds" in metadata:
-            session.duration_seconds = metadata["duration_seconds"]
-            session.duration_minutes = metadata["duration_seconds"] / 60.0
+            updated_fields["duration_seconds"] = metadata["duration_seconds"]
 
         if "audio_filename" in metadata:
-            session.audio_filename = metadata["audio_filename"]
-
-        if "stt_cost_usd" in metadata:
-            session.stt_cost_usd = str(metadata["stt_cost_usd"])
-
-        if "provider_metadata" in metadata:
-            session.provider_metadata = metadata["provider_metadata"]
+            updated_fields["audio_filename"] = metadata["audio_filename"]
 
         if "error_message" in metadata:
-            session.error_message = metadata["error_message"]
+            updated_fields["error_message"] = metadata["error_message"]
 
-        session.updated_at = datetime.utcnow()
-        return self.session_repo.save(session)
+        updated_fields["updated_at"] = datetime.utcnow()
+
+        # Create new session instance with updated fields
+        updated_session = session.replace(**updated_fields)
+        return self.session_repo.save(updated_session)
 
 
 class SessionUploadManagementUseCase:
@@ -469,7 +474,7 @@ class SessionUploadManagementUseCase:
         user_id: UUID,
         audio_filename: str,
         gcs_audio_path: str,
-    ) -> SessionModel:
+    ) -> Session:
         """Update session with file information after URL generation.
 
         Args:
@@ -479,7 +484,7 @@ class SessionUploadManagementUseCase:
             gcs_audio_path: GCS storage path
 
         Returns:
-            Updated session model
+            Updated session domain model
 
         Raises:
             ValueError: If session not found or not owned by user
@@ -488,17 +493,19 @@ class SessionUploadManagementUseCase:
         if not session or session.user_id != user_id:
             raise ValueError("Session not found or access denied")
 
-        session.audio_filename = audio_filename
-        session.gcs_audio_path = gcs_audio_path
-        session.updated_at = datetime.utcnow()
+        updated_session = session.replace(
+            audio_filename=audio_filename,
+            gcs_audio_path=gcs_audio_path,
+            updated_at=datetime.utcnow()
+        )
 
-        return self.session_repo.save(session)
+        return self.session_repo.save(updated_session)
 
     def mark_upload_complete(
         self,
         session_id: UUID,
         user_id: UUID,
-    ) -> SessionModel:
+    ) -> Session:
         """Mark upload as complete and update session status.
 
         Args:
@@ -639,7 +646,7 @@ class SessionTranscriptionManagementUseCase:
         session_id: UUID,
         user_id: UUID,
         job_id: str,
-    ) -> SessionModel:
+    ) -> Session:
         """Update session with transcription job ID.
 
         Args:
