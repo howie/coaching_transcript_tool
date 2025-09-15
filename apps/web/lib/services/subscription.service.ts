@@ -3,7 +3,7 @@
  * This service fetches real data from the backend database
  */
 
-import { apiClient } from '../api'
+import { apiClient } from '@/lib/api'
 
 export interface SubscriptionData {
   subscription?: {
@@ -289,8 +289,13 @@ class SubscriptionService {
    * Calculate savings percentage for annual plans
    */
   calculateAnnualSavings(monthlyPrice: number, annualPrice: number): number {
-    if (monthlyPrice === 0 || annualPrice === 0) return 0
+    // 防止 NaN 和無效計算
+    if (!monthlyPrice || !annualPrice || isNaN(monthlyPrice) || isNaN(annualPrice) ||
+        monthlyPrice <= 0 || annualPrice <= 0) {
+      return 0
+    }
     const monthlyCost = monthlyPrice * 12
+    if (monthlyCost <= annualPrice) return 0  // 年繳沒有比較便宜
     const savings = ((monthlyCost - annualPrice) / monthlyCost) * 100
     return Math.round(savings)
   }
