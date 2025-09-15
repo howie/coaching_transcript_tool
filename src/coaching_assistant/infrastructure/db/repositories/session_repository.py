@@ -1,43 +1,47 @@
-"""SQLAlchemy implementation of SessionRepoPort.
+"""SQLAlchemy implementation of SessionRepoPort with domain model conversion.
 
 This module provides the concrete implementation of session repository
-operations using SQLAlchemy ORM.
+operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
+following Clean Architecture principles.
 """
 
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session as DBSession
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func, desc, and_
 
 from ....core.repositories.ports import SessionRepoPort
-from ....models.session import Session as SessionModel, SessionStatus
+from ....core.models.session import Session, SessionStatus
+from ..models.session_model import SessionModel
 
 
 class SQLAlchemySessionRepository(SessionRepoPort):
-    """SQLAlchemy implementation of the SessionRepoPort interface."""
+    """SQLAlchemy implementation of the SessionRepoPort interface with domain conversion."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: DBSession):
         """Initialize repository with database session.
-        
+
         Args:
             session: SQLAlchemy session for database operations
         """
         self.session = session
 
-    def get_by_id(self, session_id: UUID) -> Optional[SessionModel]:
+    def get_by_id(self, session_id: UUID) -> Optional[Session]:
         """Get session by ID.
-        
+
         Args:
             session_id: UUID of the session to retrieve
-            
+
         Returns:
-            Session entity or None if not found
+            Session domain entity or None if not found
         """
         try:
-            return self.session.get(SessionModel, session_id)
+            orm_session = self.session.get(SessionModel, session_id)
+            return orm_session.to_domain() if orm_session else None
         except SQLAlchemyError as e:
+            # Log error in production
             raise RuntimeError(f"Database error retrieving session {session_id}") from e
 
     def get_by_user_id(
@@ -46,82 +50,100 @@ class SQLAlchemySessionRepository(SessionRepoPort):
         status: Optional[SessionStatus] = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[SessionModel]:
+    ) -> List[Session]:
         """Get sessions by user ID with optional filtering.
-        
+
         Args:
             user_id: UUID of the user
             status: Optional session status filter
             limit: Maximum number of sessions to return
             offset: Number of sessions to skip
-            
+
         Returns:
-            List of session entities
+            List of Session domain entities
         """
         try:
             query = (
                 self.session.query(SessionModel)
                 .filter(SessionModel.user_id == user_id)
             )
-            
+
             if status is not None:
                 query = query.filter(SessionModel.status == status)
-            
-            return (
+
+            orm_sessions = (
                 query
                 .order_by(desc(SessionModel.created_at))
                 .offset(offset)
                 .limit(limit)
                 .all()
             )
+            return [orm_session.to_domain() for orm_session in orm_sessions]
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error retrieving sessions for user {user_id}") from e
 
-    def save(self, session_model: SessionModel) -> SessionModel:
+    def save(self, session: Session) -> Session:
         """Save or update session entity.
-        
+
         Args:
-            session_model: Session entity to save
-            
+            session: Session domain entity to save
+
         Returns:
-            Saved session entity
+            Saved Session domain entity with updated fields
         """
         try:
-            if session_model.id is None or not self._is_attached(session_model):
-                self.session.add(session_model)
-            
-            self.session.commit()
-            self.session.refresh(session_model)
-            return session_model
+            if session.id:
+                # Update existing session
+                orm_session = self.session.get(SessionModel, session.id)
+                if orm_session:
+                    orm_session.update_from_domain(session)
+                else:
+                    # Session ID exists but not found in DB - create new
+                    orm_session = SessionModel.from_domain(session)
+                    self.session.add(orm_session)
+            else:
+                # Create new session
+                orm_session = SessionModel.from_domain(session)
+                self.session.add(orm_session)
+
+            self.session.flush()  # Get the ID without committing
+            return orm_session.to_domain()
+
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error saving session") from e
+            raise RuntimeError(f"Database error saving session {session.title}") from e
 
-    def update_status(self, session_id: UUID, status: SessionStatus) -> SessionModel:
+    def update_status(self, session_id: UUID, status: SessionStatus) -> Session:
         """Update session status.
-        
+
         Args:
             session_id: UUID of session to update
             status: New status to set
-            
+
         Returns:
-            Updated session entity
-            
+            Updated Session domain entity
+
         Raises:
             ValueError: If session not found
             RuntimeError: If database error occurs
         """
         try:
-            session_model = self.session.get(SessionModel, session_id)
-            if session_model is None:
+            orm_session = self.session.get(SessionModel, session_id)
+            if orm_session is None:
                 raise ValueError(f"Session {session_id} not found")
-            
-            session_model.status = status
-            session_model.updated_at = datetime.utcnow()
-            
-            self.session.commit()
-            self.session.refresh(session_model)
-            return session_model
+
+            # Use domain model for business rule validation if needed
+            domain_session = orm_session.to_domain()
+            domain_session.status = status
+            domain_session.updated_at = datetime.utcnow()
+
+            # Update ORM model with validated domain data
+            orm_session.update_from_domain(domain_session)
+            self.session.flush()
+            return orm_session.to_domain()
+        except ValueError:
+            # Re-raise business rule violations
+            raise
         except SQLAlchemyError as e:
             self.session.rollback()
             raise RuntimeError(f"Database error updating session status for {session_id}") from e
@@ -131,19 +153,19 @@ class SQLAlchemySessionRepository(SessionRepoPort):
         user_id: UUID,
         start_date: datetime,
         end_date: datetime,
-    ) -> List[SessionModel]:
+    ) -> List[Session]:
         """Get sessions within date range for user.
-        
+
         Args:
             user_id: UUID of the user
             start_date: Start of date range
             end_date: End of date range
-            
+
         Returns:
-            List of session entities within the date range
+            List of Session domain entities within the date range
         """
         try:
-            return (
+            orm_sessions = (
                 self.session.query(SessionModel)
                 .filter(
                     and_(
@@ -155,16 +177,17 @@ class SQLAlchemySessionRepository(SessionRepoPort):
                 .order_by(SessionModel.created_at)
                 .all()
             )
+            return [orm_session.to_domain() for orm_session in orm_sessions]
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error retrieving sessions by date range for user {user_id}") from e
 
     def count_user_sessions(self, user_id: UUID, since: Optional[datetime] = None) -> int:
         """Count user sessions, optionally since a date.
-        
+
         Args:
             user_id: UUID of the user
             since: Optional date to count from
-            
+
         Returns:
             Count of user sessions
         """
@@ -173,10 +196,10 @@ class SQLAlchemySessionRepository(SessionRepoPort):
                 self.session.query(SessionModel)
                 .filter(SessionModel.user_id == user_id)
             )
-            
+
             if since is not None:
                 query = query.filter(SessionModel.created_at >= since)
-            
+
             return query.count()
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error counting sessions for user {user_id}") from e
@@ -185,11 +208,11 @@ class SQLAlchemySessionRepository(SessionRepoPort):
         self, user_id: UUID, since: Optional[datetime] = None
     ) -> int:
         """Get total duration in minutes for user sessions.
-        
+
         Args:
             user_id: UUID of the user
             since: Optional date to count from
-            
+
         Returns:
             Total duration in minutes
         """
@@ -203,33 +226,22 @@ class SQLAlchemySessionRepository(SessionRepoPort):
                     )
                 )
             )
-            
+
             if since is not None:
                 query = query.filter(SessionModel.created_at >= since)
-            
+
             total_seconds = query.scalar() or 0
             return int(total_seconds / 60)  # Convert to minutes
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error calculating total duration for user {user_id}") from e
 
-    def _is_attached(self, session_model: SessionModel) -> bool:
-        """Check if session entity is attached to current session.
-        
-        Args:
-            session_model: Session entity to check
-            
-        Returns:
-            True if attached to session
-        """
-        return session_model in self.session
 
-
-def create_session_repository(session: Session) -> SessionRepoPort:
+def create_session_repository(session: DBSession) -> SessionRepoPort:
     """Factory function to create a session repository.
-    
+
     Args:
         session: SQLAlchemy session
-        
+
     Returns:
         SessionRepoPort implementation
     """
