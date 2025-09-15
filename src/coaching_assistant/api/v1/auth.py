@@ -17,9 +17,9 @@ from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from sqlalchemy import select
 
-from ..core.config import settings
-from ..core.database import get_db
-from ..models.user import User, UserPlan
+from ...core.config import settings
+from ...core.database import get_db
+from ...models.user import User, UserPlan
 
 router = APIRouter(tags=["authentication"])
 

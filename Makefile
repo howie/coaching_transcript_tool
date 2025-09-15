@@ -7,8 +7,8 @@ DOCKER_API_IMAGE = $(PACKAGE_NAME)-api:$(VERSION)
 DOCKER_CLI_IMAGE = $(PACKAGE_NAME)-cli:$(VERSION)
 DOCKER_API_LATEST = $(PACKAGE_NAME)-api:latest
 DOCKER_CLI_LATEST = $(PACKAGE_NAME)-cli:latest
-PYTHON = python3
-PIP = pip
+PYTHON = uv run python
+UV = uv
 
 # Fix for zsh make compatibility
 SHELL := /bin/bash
@@ -40,10 +40,12 @@ clean-frontend:
 
 # Build the package
 build: clean
+	@echo "Setting up uv environment..."
+	$(UV) sync
 	@echo "Installing core logic package..."
-	$(PYTHON) -m pip install -e . --break-system-packages
+	$(UV) pip install -e .
 	@echo "Installing api-server dependencies..."
-	$(PYTHON) -m pip install -r apps/api-server/requirements.txt --break-system-packages
+	$(UV) pip install -r apps/api-server/requirements.txt
 
 # Install the package locally
 install: build
@@ -319,10 +321,12 @@ coverage-all: dev-setup
 
 # Install development dependencies
 dev-setup:
-	$(PIP) install -r apps/api-server/requirements.txt --break-system-packages
-	$(PIP) install -r apps/cli/requirements.txt --break-system-packages
-	$(PIP) install setuptools wheel build flake8 pytest --break-system-packages
-	$(PIP) install -e . --break-system-packages
+	@echo "Setting up development environment with uv..."
+	$(UV) sync --dev
+	$(UV) pip install -r apps/api-server/requirements.txt
+	$(UV) pip install -r apps/cli/requirements.txt
+	$(UV) pip install setuptools wheel build flake8 pytest
+	$(UV) pip install -e .
 
 # Run linting
 lint: dev-setup
@@ -333,12 +337,12 @@ lint: dev-setup
 
 # Create a distribution package
 dist: clean
-	$(PYTHON) -m pip install setuptools wheel build --break-system-packages
-	$(PYTHON) -m build
+	$(UV) pip install setuptools wheel build
+	$(UV) run python -m build
 
 # Install the package from the distribution
 dist-install: dist
-	$(PIP) install dist/*.whl --break-system-packages
+	$(UV) pip install dist/*.whl
 
 # Create aliases for zsh compatibility
 make-lint:

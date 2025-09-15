@@ -27,19 +27,32 @@
 - In-memory repositories for testing
 - Dependency injection factories created
 
-**Phase 2: READY TO START** 🔄
-- Update API endpoints to use factories
-- Remove direct Session dependencies
-- Implement dependency injection in FastAPI
+**Phase 2.0: COMPLETED** ✅
+- API structure consolidated - all endpoints moved to `/api/v1/`
+- Duplicate plans endpoints resolved with backwards compatibility
+- Main.py updated with proper router configuration
+- FastAPI dependency injection module created (`api/v1/dependencies.py`)
+- 13+ API files reorganized for consistency
+
+**Phase 2.1: READY TO START** 🔄
+- Migrate Priority 1 APIs to Clean Architecture (sessions, plans, subscriptions)
+- Remove direct Session dependencies from API endpoints
+- Implement use case pattern with dependency injection
 
 ## 🚀 Quick Start for Next Phase
 
 ```bash
-# Start Phase 2 implementation
-git checkout -b feature/clean-architecture-phase-2
+# Continue on existing Phase 2 branch (Phase 2.0 complete)
+git checkout feature/clean-architecture-phase-2
 
+# Start Phase 2.1: Clean Architecture Migration
 # See detailed instructions in:
 cat docs/features/refactor-architecture/phase-2-api-migration.md
+
+# Priority 1 APIs ready for migration:
+# - /api/v1/sessions.py (transcription core)
+# - /api/v1/plans.py (plan validation and limits)  
+# - /api/v1/subscriptions.py (billing management)
 ```
 
 ## 📋 Navigation
@@ -47,7 +60,7 @@ cat docs/features/refactor-architecture/phase-2-api-migration.md
 | Document | Purpose | Status |
 |----------|---------|--------|
 | [Phase 1](./phase-1-foundation.md) | Foundation setup | ✅ Complete |
-| [Phase 2](./phase-2-api-migration.md) | API layer migration | 🔄 Ready |
+| [Phase 2](./phase-2-api-migration.md) | API layer migration | 🔄 In Progress (2.0 ✅, 2.1 Ready) |
 | [Phase 3](./phase-3-domain-models.md) | Domain model separation | 📋 Future |
 | [Architecture Rules](./architectural-rules.md) | Compliance guidelines | ✅ Defined |
 
