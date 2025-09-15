@@ -7,14 +7,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, func, extract
 from pydantic import BaseModel
 
-from ..core.database import get_db
-from ..models import (
+from ...core.database import get_db
+from ...models import (
     CoachingSession,
     User,
     Session as TranscriptSession,
     SessionStatus,
 )
-from ..api.auth import get_current_user_dependency
+from .auth import get_current_user_dependency
 
 router = APIRouter()
 

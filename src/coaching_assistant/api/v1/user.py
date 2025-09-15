@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 
-from ..core.database import get_db
-from ..models.user import User, UserPlan
-from ..api.auth import get_current_user_dependency
+from ...core.database import get_db
+from ...models.user import User, UserPlan
+from .auth import get_current_user_dependency
 
 logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

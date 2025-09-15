@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from coaching_assistant.core.database import get_db
-from coaching_assistant.api.auth import get_current_user_dependency
+from .auth import get_current_user_dependency
 from coaching_assistant.models.user import User
 from coaching_assistant.services.usage_tracker import UsageTracker
 from coaching_assistant.services.plan_limits import get_global_plan_limits, PlanName

@@ -19,12 +19,12 @@ import logging
 import re
 import json
 
-from ..core.database import get_db
-from ..models import CoachingSession, Client, User, SessionSource
-from ..models.session import Session, SessionStatus
-from ..models.transcript import TranscriptSegment, SpeakerRole, SessionRole
-from ..api.auth import get_current_user_dependency
-from ..utils.chinese_converter import convert_to_traditional
+from ...core.database import get_db
+from ...models import CoachingSession, Client, User, SessionSource
+from ...models.session import Session, SessionStatus
+from ...models.transcript import TranscriptSegment, SpeakerRole, SessionRole
+from .auth import get_current_user_dependency
+from ...utils.chinese_converter import convert_to_traditional
 
 logger = logging.getLogger(__name__)
 

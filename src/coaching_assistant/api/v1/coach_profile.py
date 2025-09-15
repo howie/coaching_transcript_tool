@@ -6,12 +6,12 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field, UUID4
 from datetime import datetime
 
-from ..core.database import get_db
-from ..models import User, CoachProfile, CoachingPlan
+from ...core.database import get_db
+from ...models import User, CoachProfile, CoachingPlan
 from .auth import get_current_user_dependency
 
 
-router = APIRouter(prefix="/api/coach-profile", tags=["coach-profile"])
+router = APIRouter(tags=["coach-profile"])
 
 
 # Pydantic models for request/response

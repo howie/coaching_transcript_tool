@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Body, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from ..core.database import get_db
-from ..models.user import User, UserRole
-from ..services.permissions import PermissionService
+from ...core.database import get_db
+from ...models.user import User, UserRole
+from ...services.permissions import PermissionService
 from .dependencies import (
     require_super_admin,
     require_admin,

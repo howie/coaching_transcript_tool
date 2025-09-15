@@ -99,12 +99,12 @@ const ClientDetailPage = () => {
         value: item.value,
         label: item.labelKey ? t(item.labelKey) : item.label || item.value
       }));
-      
+
       const processedTypes = typesData.map((item: any) => ({
         value: item.value,
         label: item.labelKey ? t(item.labelKey) : item.label || item.value
       }));
-      
+
       const processedStatuses = statusesData.map((item: any) => ({
         value: item.value,
         label: item.labelKey ? t(item.labelKey) : item.label || item.value
@@ -137,7 +137,7 @@ const ClientDetailPage = () => {
         { value: 'completed', label: t('clients.statusCompleted') }
       ]);
     }
-  }, [t]);
+  }, []);
 
   const fetchClient = useCallback(async () => {
     try {
@@ -182,7 +182,7 @@ const ClientDetailPage = () => {
       fetchSessions();
       fetchOptions();
     }
-  }, [clientId, fetchOptions, fetchClient, fetchSessions]);
+  }, [clientId]);
 
   const getStatusLabel = (status: string) => {
     const statusMap = {

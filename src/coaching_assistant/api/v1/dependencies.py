@@ -4,10 +4,11 @@ This module provides dependency injection for use cases following Clean Architec
 All use cases are created through factories that inject the appropriate repository implementations.
 """
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
+from .auth import get_current_user_dependency
 from ...infrastructure.factories import (
     UsageTrackingServiceFactory,
     SessionServiceFactory,
@@ -20,6 +21,11 @@ from ...core.services.session_management_use_case import (
     SessionRetrievalUseCase,
     SessionStatusUpdateUseCase,
     SessionTranscriptUpdateUseCase,
+    SessionUploadManagementUseCase,
+    SessionTranscriptionManagementUseCase,
+    SessionExportUseCase,
+    SessionStatusRetrievalUseCase,
+    SessionTranscriptUploadUseCase,
 )
 from ...core.services.plan_management_use_case import (
     PlanRetrievalUseCase,
@@ -75,6 +81,41 @@ def get_session_transcript_update_use_case(
     return SessionServiceFactory.create_session_transcript_update_use_case(db)
 
 
+def get_session_upload_management_use_case(
+    db: Session = Depends(get_db)
+) -> SessionUploadManagementUseCase:
+    """Dependency to inject SessionUploadManagementUseCase."""
+    return SessionServiceFactory.create_session_upload_management_use_case(db)
+
+
+def get_session_transcription_management_use_case(
+    db: Session = Depends(get_db)
+) -> SessionTranscriptionManagementUseCase:
+    """Dependency to inject SessionTranscriptionManagementUseCase."""
+    return SessionServiceFactory.create_session_transcription_management_use_case(db)
+
+
+def get_session_export_use_case(
+    db: Session = Depends(get_db)
+) -> SessionExportUseCase:
+    """Dependency to inject SessionExportUseCase."""
+    return SessionServiceFactory.create_session_export_use_case(db)
+
+
+def get_session_status_retrieval_use_case(
+    db: Session = Depends(get_db)
+) -> SessionStatusRetrievalUseCase:
+    """Dependency to inject SessionStatusRetrievalUseCase."""
+    return SessionServiceFactory.create_session_status_retrieval_use_case(db)
+
+
+def get_session_transcript_upload_use_case(
+    db: Session = Depends(get_db)
+) -> SessionTranscriptUploadUseCase:
+    """Dependency to inject SessionTranscriptUploadUseCase."""
+    return SessionServiceFactory.create_session_transcript_upload_use_case(db)
+
+
 # Plan Management Dependencies
 def get_plan_retrieval_use_case(
     db: Session = Depends(get_db)
@@ -110,3 +151,47 @@ def get_subscription_modification_use_case(
 ) -> SubscriptionModificationUseCase:
     """Dependency to inject SubscriptionModificationUseCase."""
     return SubscriptionServiceFactory.create_subscription_modification_use_case(db)
+
+
+# Admin Permission Dependencies
+async def require_super_admin(
+    current_user = Depends(get_current_user_dependency),
+) -> None:
+    """Dependency to ensure the current user has super admin permissions."""
+    from ...models.user import UserRole
+    if not current_user or current_user.role != UserRole.SUPER_ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="Super admin access required"
+        )
+
+
+async def require_admin(
+    current_user = Depends(get_current_user_dependency),
+) -> None:
+    """Dependency to ensure the current user has admin permissions."""
+    from ...models.user import UserRole
+    if not current_user or current_user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+
+
+async def require_staff(
+    current_user = Depends(get_current_user_dependency),
+) -> None:
+    """Dependency to ensure the current user has staff permissions or higher."""
+    from ...models.user import UserRole
+    if not current_user or current_user.role not in [UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN]:
+        raise HTTPException(
+            status_code=403,
+            detail="Staff access required"
+        )
+
+
+async def get_current_user_with_permissions(
+    current_user = Depends(get_current_user_dependency),
+):
+    """Dependency to get current user with permission context."""
+    return current_user

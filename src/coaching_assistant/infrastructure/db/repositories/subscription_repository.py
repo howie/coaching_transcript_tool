@@ -25,10 +25,14 @@ class SubscriptionRepository(SubscriptionRepoPort):
             self.db_session.query(SaasSubscription)
             .filter(
                 SaasSubscription.user_id == user_id,
-                SaasSubscription.status.in_([
-                    SubscriptionStatus.ACTIVE,
-                    SubscriptionStatus.PENDING_CANCELLATION
-                ])
+                SaasSubscription.status.in_(
+                    [
+                        SubscriptionStatus.ACTIVE.value,
+                        SubscriptionStatus.PAST_DUE.value,
+                        SubscriptionStatus.UNPAID.value,
+                        SubscriptionStatus.TRIALING.value,
+                    ]
+                ),
             )
             .first()
         )
@@ -91,7 +95,8 @@ class SubscriptionRepository(SubscriptionRepoPort):
         if not subscription:
             raise ValueError(f"Subscription not found: {subscription_id}")
         
-        subscription.status = status
+        # Persist enum value as string
+        subscription.status = status.value if hasattr(status, "value") else status
         self.db_session.commit()
         self.db_session.refresh(subscription)
         return subscription

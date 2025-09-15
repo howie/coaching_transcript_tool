@@ -12,20 +12,20 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from ..services.transcript_smoother import (
+from ...services.transcript_smoother import (
     smooth_and_punctuate,
     TranscriptProcessingError,
     MissingWordsError,
     UnsupportedLanguageError,
 )
-from ..services.lemur_transcript_smoother import (
+from ...services.lemur_transcript_smoother import (
     smooth_transcript_with_lemur,
 )
 from .auth import get_current_user_dependency
-from ..models.session import Session
-from ..models.transcript import TranscriptSegment as TranscriptSegmentModel
-from ..models.coaching_session import CoachingSession
-from ..core.database import get_db
+from ...models.session import Session
+from ...models.transcript import TranscriptSegment as TranscriptSegmentModel
+from ...models.coaching_session import CoachingSession
+from ...core.database import get_db
 from sqlalchemy.orm import Session as DBSession
 
 logger = logging.getLogger(__name__)
@@ -1052,7 +1052,7 @@ async def get_default_config(
     """
     try:
         if language.lower() == "chinese":
-            from ..services.transcript_smoother import (
+            from ...services.transcript_smoother import (
                 ChineseSmoothingConfig,
                 ChineseProcessor,
             )
@@ -1081,7 +1081,7 @@ async def get_default_config(
             }
 
         elif language.lower() == "english":
-            from ..services.transcript_smoother import (
+            from ...services.transcript_smoother import (
                 EnglishSmoothingConfig,
                 EnglishProcessor,
             )

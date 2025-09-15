@@ -22,6 +22,13 @@ from ...models.user import User, UserPlan
 from ...models.usage_log import UsageLog, TranscriptionType
 from ...models.transcript import TranscriptSegment
 from ...exceptions import DomainException
+import logging
+import json
+import re
+import io
+from datetime import timedelta
+
+logger = logging.getLogger(__name__)
 
 
 class SessionCreationUseCase:
@@ -74,7 +81,7 @@ class SessionCreationUseCase:
             title=title,
             language=language,
             stt_provider=stt_provider if stt_provider != "auto" else None,
-            status=SessionStatus.CREATED,
+            status=SessionStatus.UPLOADING,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -229,11 +236,12 @@ class SessionStatusUpdateUseCase:
     ) -> None:
         """Validate if status transition is allowed."""
         valid_transitions = {
-            SessionStatus.CREATED: [SessionStatus.UPLOADED, SessionStatus.FAILED],
-            SessionStatus.UPLOADED: [SessionStatus.PROCESSING, SessionStatus.FAILED],
+            SessionStatus.UPLOADING: [SessionStatus.PENDING, SessionStatus.FAILED],
+            SessionStatus.PENDING: [SessionStatus.PROCESSING, SessionStatus.FAILED],
             SessionStatus.PROCESSING: [SessionStatus.COMPLETED, SessionStatus.FAILED],
             SessionStatus.COMPLETED: [SessionStatus.PROCESSING],  # Allow reprocessing
-            SessionStatus.FAILED: [SessionStatus.PROCESSING, SessionStatus.UPLOADED],
+            SessionStatus.FAILED: [SessionStatus.PROCESSING, SessionStatus.UPLOADING],
+            SessionStatus.CANCELLED: [SessionStatus.UPLOADING],  # Allow restart
         }
 
         if new_status not in valid_transitions.get(current_status, []):
@@ -351,3 +359,661 @@ class SessionTranscriptUpdateUseCase:
 
         session.updated_at = datetime.utcnow()
         return self.session_repo.save(session)
+
+
+class SessionUploadManagementUseCase:
+    """Use case for managing audio file uploads (URL generation and confirmation)."""
+
+    def __init__(
+        self,
+        session_repo: SessionRepoPort,
+        user_repo: UserRepoPort,
+        plan_config_repo: PlanConfigurationRepoPort,
+    ):
+        self.session_repo = session_repo
+        self.user_repo = user_repo
+        self.plan_config_repo = plan_config_repo
+
+    def generate_upload_url(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        filename: str,
+        file_size_mb: float,
+    ) -> Dict[str, Any]:
+        """Generate signed upload URL for audio file.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+            filename: Original filename
+            file_size_mb: File size in MB for validation
+
+        Returns:
+            Dictionary with upload URL, GCS path, and expiration
+
+        Raises:
+            ValueError: If session not found or not owned by user
+            DomainException: If file size exceeds plan limits or session status invalid
+        """
+        # Validate user and get plan limits
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise ValueError(f"User not found: {user_id}")
+
+        plan_config = self.plan_config_repo.get_by_plan_type(user.plan)
+        if plan_config:
+            max_file_size = plan_config.limits.get("maxFileSizeMB", 60)
+            if file_size_mb > max_file_size:
+                raise DomainException(
+                    f"File size {file_size_mb:.1f}MB exceeds plan limit of {max_file_size}MB"
+                )
+
+        # Validate session ownership and status
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        if session.status not in [SessionStatus.UPLOADING, SessionStatus.FAILED]:
+            raise DomainException(
+                f"Cannot upload to session with status {session.status.value}. "
+                f"Upload is only allowed for sessions in UPLOADING or FAILED status."
+            )
+
+        # Reset failed session to uploading state
+        if session.status == SessionStatus.FAILED:
+            session.status = SessionStatus.UPLOADING
+            session.error_message = None
+            session.audio_filename = None
+            session.gcs_audio_path = None
+            session.transcription_job_id = None
+            session = self.session_repo.save(session)
+
+        return {
+            "session": session,
+            "filename": filename,
+            "file_size_mb": file_size_mb,
+            "user_plan": user.plan,
+        }
+
+    def confirm_upload(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, Any]:
+        """Confirm that audio file was successfully uploaded.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+
+        Returns:
+            Dictionary with confirmation status and file info
+
+        Raises:
+            ValueError: If session not found or not owned by user
+        """
+        # Validate session ownership
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        return {
+            "session": session,
+            "gcs_path": session.gcs_audio_path,
+        }
+
+    def update_session_file_info(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        audio_filename: str,
+        gcs_audio_path: str,
+    ) -> SessionModel:
+        """Update session with file information after URL generation.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+            audio_filename: Original filename
+            gcs_audio_path: GCS storage path
+
+        Returns:
+            Updated session model
+
+        Raises:
+            ValueError: If session not found or not owned by user
+        """
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        session.audio_filename = audio_filename
+        session.gcs_audio_path = gcs_audio_path
+        session.updated_at = datetime.utcnow()
+
+        return self.session_repo.save(session)
+
+    def mark_upload_complete(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+    ) -> SessionModel:
+        """Mark upload as complete and update session status.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+
+        Returns:
+            Updated session model
+
+        Raises:
+            ValueError: If session not found or not owned by user
+        """
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        if session.status == SessionStatus.UPLOADING:
+            session.status = SessionStatus.PENDING
+            session.updated_at = datetime.utcnow()
+            session = self.session_repo.save(session)
+
+        return session
+
+
+class SessionTranscriptionManagementUseCase:
+    """Use case for managing transcription operations (start, retry)."""
+
+    def __init__(
+        self,
+        session_repo: SessionRepoPort,
+        transcript_repo: TranscriptRepoPort,
+    ):
+        self.session_repo = session_repo
+        self.transcript_repo = transcript_repo
+
+    def start_transcription(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, Any]:
+        """Start transcription processing for uploaded audio.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+
+        Returns:
+            Dictionary with transcription info for task queue
+
+        Raises:
+            ValueError: If session not found or not owned by user
+            DomainException: If session status or file invalid
+        """
+        # Validate session ownership
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        # Validate session status
+        if session.status not in [SessionStatus.UPLOADING, SessionStatus.PENDING]:
+            raise DomainException(
+                f"Cannot start transcription for session with status {session.status.value}"
+            )
+
+        if not session.gcs_audio_path:
+            raise DomainException("No audio file uploaded")
+
+        # Update status to processing
+        session.status = SessionStatus.PROCESSING
+        session.updated_at = datetime.utcnow()
+        session = self.session_repo.save(session)
+
+        return {
+            "session_id": str(session_id),
+            "gcs_uri": session.gcs_audio_path,
+            "language": session.language,
+            "original_filename": session.audio_filename,
+            "stt_provider": session.stt_provider,
+        }
+
+    def retry_transcription(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, Any]:
+        """Retry transcription for failed sessions.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+
+        Returns:
+            Dictionary with transcription info for task queue
+
+        Raises:
+            ValueError: If session not found or not owned by user
+            DomainException: If session status invalid or file missing
+        """
+        # Validate session ownership
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        # Only allow retry for FAILED sessions
+        if session.status != SessionStatus.FAILED:
+            raise DomainException(
+                f"Cannot retry transcription for session with status {session.status.value}. "
+                f"Only failed sessions can be retried."
+            )
+
+        if not session.gcs_audio_path:
+            raise DomainException(
+                "No audio file found. Please re-upload the file."
+            )
+
+        # Clear existing data and reset status
+        session.status = SessionStatus.PROCESSING
+        session.error_message = None
+        session.transcription_job_id = None
+        session.updated_at = datetime.utcnow()
+
+        # Clear existing transcript segments and processing status
+        self.transcript_repo.delete_by_session_id(session_id)
+
+        session = self.session_repo.save(session)
+
+        return {
+            "session_id": str(session_id),
+            "gcs_uri": session.gcs_audio_path,
+            "language": session.language,
+            "original_filename": session.audio_filename,
+            "stt_provider": session.stt_provider,
+            "retry": True,
+        }
+
+    def update_transcription_job_id(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        job_id: str,
+    ) -> SessionModel:
+        """Update session with transcription job ID.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+            job_id: Celery task ID
+
+        Returns:
+            Updated session model
+
+        Raises:
+            ValueError: If session not found or not owned by user
+        """
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        session.transcription_job_id = job_id
+        session.updated_at = datetime.utcnow()
+
+        return self.session_repo.save(session)
+
+
+class SessionExportUseCase:
+    """Use case for exporting session transcripts in various formats."""
+
+    def __init__(
+        self,
+        session_repo: SessionRepoPort,
+        transcript_repo: TranscriptRepoPort,
+    ):
+        self.session_repo = session_repo
+        self.transcript_repo = transcript_repo
+
+    def export_transcript(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        format: str = "json",
+    ) -> Dict[str, Any]:
+        """Export transcript in specified format.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+            format: Export format (json, vtt, srt, txt, xlsx)
+
+        Returns:
+            Dictionary with session, segments, and format info
+
+        Raises:
+            ValueError: If session not found or not owned by user
+            DomainException: If transcript not available or format invalid
+        """
+        # Validate session ownership
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        if session.status != SessionStatus.COMPLETED:
+            raise DomainException(
+                f"Transcript not available. Session status: {session.status.value}"
+            )
+
+        # Get transcript segments
+        segments = self.transcript_repo.get_by_session_id(session_id)
+        if not segments:
+            raise DomainException("No transcript segments found")
+
+        # Validate format
+        valid_formats = ["json", "vtt", "srt", "txt", "xlsx"]
+        if format not in valid_formats:
+            raise DomainException(f"Invalid format. Supported: {', '.join(valid_formats)}")
+
+        return {
+            "session": session,
+            "segments": segments,
+            "format": format,
+        }
+
+
+class SessionStatusRetrievalUseCase:
+    """Use case for retrieving detailed session processing status."""
+
+    def __init__(
+        self,
+        session_repo: SessionRepoPort,
+    ):
+        self.session_repo = session_repo
+
+    def get_detailed_status(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, Any]:
+        """Get detailed processing status for a session.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+
+        Returns:
+            Dictionary with detailed status information
+
+        Raises:
+            ValueError: If session not found or not owned by user
+        """
+        # Validate session ownership
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        return {
+            "session": session,
+        }
+
+
+class SessionTranscriptUploadUseCase:
+    """Use case for uploading transcript files (VTT/SRT) directly to sessions."""
+
+    def __init__(
+        self,
+        session_repo: SessionRepoPort,
+        transcript_repo: TranscriptRepoPort,
+    ):
+        self.session_repo = session_repo
+        self.transcript_repo = transcript_repo
+
+    def upload_transcript_file(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        filename: str,
+        content: str,
+    ) -> Dict[str, Any]:
+        """Upload and process transcript file content.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+            filename: Original filename
+            content: File content as string
+
+        Returns:
+            Dictionary with upload results
+
+        Raises:
+            ValueError: If session not found or not owned by user
+            DomainException: If file format invalid or parsing fails
+        """
+        # Validate session ownership
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        # Validate file format
+        if not filename:
+            raise DomainException("No filename provided")
+
+        file_extension = filename.split(".")[-1].lower()
+        if file_extension not in ["vtt", "srt"]:
+            raise DomainException(
+                "Invalid file format. Only VTT and SRT files are supported."
+            )
+
+        # Parse the transcript content
+        segments = []
+        if file_extension == "vtt":
+            segments = self._parse_vtt_content(content)
+        elif file_extension == "srt":
+            segments = self._parse_srt_content(content)
+
+        if not segments:
+            raise DomainException("No valid transcript segments found in file")
+
+        return {
+            "session": session,
+            "segments_data": segments,
+            "file_extension": file_extension,
+        }
+
+    def save_transcript_segments(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        segments_data: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Save parsed transcript segments to database.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for ownership validation
+            segments_data: List of segment dictionaries
+
+        Returns:
+            Dictionary with save results
+
+        Raises:
+            ValueError: If session not found or not owned by user
+        """
+        # Validate session ownership
+        session = self.session_repo.get_by_id(session_id)
+        if not session or session.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+
+        # Create transcript segments
+        segments = []
+        total_duration = 0
+
+        for segment_data in segments_data:
+            segment = TranscriptSegment(
+                id=uuid4(),
+                session_id=session_id,
+                speaker_id=segment_data.get("speaker_id", 1),
+                start_seconds=segment_data["start_seconds"],
+                end_seconds=segment_data["end_seconds"],
+                content=segment_data["content"],
+                confidence=1.0,  # Manual upload, assume high confidence
+            )
+            total_duration = max(total_duration, segment_data["end_seconds"])
+            segments.append(segment)
+
+        # Save segments
+        saved_segments = self.transcript_repo.save_segments(segments)
+
+        # Update session with transcript info
+        session.duration_seconds = total_duration
+        session.duration_minutes = total_duration / 60.0
+        session.status = SessionStatus.COMPLETED
+        session.updated_at = datetime.utcnow()
+        session = self.session_repo.save(session)
+
+        return {
+            "session": session,
+            "segments_count": len(saved_segments),
+            "duration_seconds": total_duration,
+        }
+
+    def _parse_vtt_content(self, content: str) -> List[Dict[str, Any]]:
+        """Parse VTT file content and return segments."""
+        segments = []
+        lines = content.strip().split("\n")
+
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+
+            # Skip header and empty lines
+            if line == "WEBVTT" or line == "" or line.startswith("NOTE"):
+                i += 1
+                continue
+
+            # Look for timestamp line
+            if "-->" in line:
+                # Parse timestamp
+                timestamp_match = re.match(
+                    r"(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})",
+                    line,
+                )
+                if timestamp_match:
+                    start_time = self._parse_timestamp(timestamp_match.group(1))
+                    end_time = self._parse_timestamp(timestamp_match.group(2))
+
+                    # Get the content (next line)
+                    i += 1
+                    if i < len(lines):
+                        content_line = lines[i].strip()
+
+                        # Extract speaker and content from VTT format like "<v Speaker>Content"
+                        speaker_id = 1
+                        content_text = content_line
+
+                        speaker_match = re.match(r"<v\s+([^>]+)>\s*(.*)", content_line)
+                        if speaker_match:
+                            speaker_name = speaker_match.group(1)
+                            content_text = speaker_match.group(2)
+                            # Simple speaker ID assignment based on name
+                            speaker_id = (
+                                2
+                                if "客戶" in speaker_name or "Client" in speaker_name
+                                else 1
+                            )
+
+                        segments.append(
+                            {
+                                "start_seconds": start_time,
+                                "end_seconds": end_time,
+                                "content": content_text,
+                                "speaker_id": speaker_id,
+                            }
+                        )
+
+            i += 1
+
+        return segments
+
+    def _parse_srt_content(self, content: str) -> List[Dict[str, Any]]:
+        """Parse SRT file content and return segments."""
+        segments = []
+
+        # Split by double newline to get individual subtitle blocks
+        blocks = re.split(r"\n\s*\n", content.strip())
+
+        for block in blocks:
+            lines = block.strip().split("\n")
+            if len(lines) < 3:
+                continue
+
+            # Skip sequence number (line 0)
+            # Parse timestamp (line 1)
+            timestamp_line = lines[1].strip()
+            timestamp_match = re.match(
+                r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})",
+                timestamp_line,
+            )
+
+            if timestamp_match:
+                start_time = self._parse_timestamp(
+                    timestamp_match.group(1).replace(",", ".")
+                )
+                end_time = self._parse_timestamp(
+                    timestamp_match.group(2).replace(",", ".")
+                )
+
+                # Content (lines 2+)
+                content_lines = lines[2:]
+                content_text = " ".join(content_lines)
+
+                # Extract speaker info if present
+                speaker_id = 1
+
+                # Look for speaker prefix like "教練: " or "Coach: "
+                speaker_match = re.match(r"(.*?):\s*(.*)", content_text)
+                if speaker_match:
+                    speaker_name = speaker_match.group(1)
+                    content_text = speaker_match.group(2)
+                    speaker_id = (
+                        2
+                        if "客戶" in speaker_name or "Client" in speaker_name
+                        else 1
+                    )
+
+                segments.append(
+                    {
+                        "start_seconds": start_time,
+                        "end_seconds": end_time,
+                        "content": content_text,
+                        "speaker_id": speaker_id,
+                    }
+                )
+
+        return segments
+
+    def _parse_timestamp(self, timestamp_str: str) -> float:
+        """Convert timestamp string to seconds."""
+        # Handle format: HH:MM:SS.mmm
+        time_parts = timestamp_str.split(":")
+        if len(time_parts) != 3:
+            raise ValueError(f"Invalid timestamp format: {timestamp_str}")
+
+        hours = int(time_parts[0])
+        minutes = int(time_parts[1])
+        seconds_str = time_parts[2]
+
+        # Handle seconds with milliseconds
+        if "." in seconds_str:
+            seconds, milliseconds = seconds_str.split(".")
+            total_seconds = (
+                hours * 3600
+                + minutes * 60
+                + int(seconds)
+                + int(milliseconds) / 1000
+            )
+        else:
+            total_seconds = hours * 3600 + minutes * 60 + int(seconds_str)
+
+        return total_seconds
