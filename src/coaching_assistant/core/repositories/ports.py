@@ -12,10 +12,10 @@ from datetime import datetime, date
 from decimal import Decimal
 from uuid import UUID
 
-# Domain types - these will eventually move to a dedicated domain module
-from ...models.user import User, UserPlan
-from ...models.session import Session as SessionModel, SessionStatus
-from ...models.usage_log import UsageLog, TranscriptionType
+# Domain types - now using pure domain models
+from ..models.user import User, UserPlan, UserRole
+from ..models.session import Session, SessionStatus
+from ..models.usage_log import UsageLog, TranscriptionType
 from ...models.usage_history import UsageHistory
 from ...models.usage_analytics import UsageAnalytics
 from ...models.plan_configuration import PlanConfiguration
@@ -68,7 +68,7 @@ class UserRepoPort(Protocol):
 class SessionRepoPort(Protocol):
     """Repository interface for transcription Session entity operations."""
 
-    def get_by_id(self, session_id: UUID) -> Optional[SessionModel]:
+    def get_by_id(self, session_id: UUID) -> Optional[Session]:
         """Get session by ID."""
         ...
 
@@ -78,15 +78,15 @@ class SessionRepoPort(Protocol):
         status: Optional[SessionStatus] = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[SessionModel]:
+    ) -> List[Session]:
         """Get sessions by user ID with optional filtering."""
         ...
 
-    def save(self, session: SessionModel) -> SessionModel:
+    def save(self, session: Session) -> Session:
         """Save or update session entity."""
         ...
 
-    def update_status(self, session_id: UUID, status: SessionStatus) -> SessionModel:
+    def update_status(self, session_id: UUID, status: SessionStatus) -> Session:
         """Update session status."""
         ...
 
@@ -95,7 +95,7 @@ class SessionRepoPort(Protocol):
         user_id: UUID,
         start_date: datetime,
         end_date: datetime,
-    ) -> List[SessionModel]:
+    ) -> List[Session]:
         """Get sessions within date range for user."""
         ...
 
