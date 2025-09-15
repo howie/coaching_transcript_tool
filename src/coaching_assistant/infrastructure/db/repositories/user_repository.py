@@ -353,3 +353,16 @@ class SQLAlchemyUserRepository(UserRepoPort):
         except SQLAlchemyError as e:
             self.session.rollback()
             raise RuntimeError("Database error resetting monthly usage for all users") from e
+
+
+# Factory function for dependency injection
+def create_user_repository(db_session: Session) -> UserRepoPort:
+    """Factory function to create UserRepository with database session.
+
+    Args:
+        db_session: SQLAlchemy database session
+
+    Returns:
+        UserRepoPort implementation
+    """
+    return SQLAlchemyUserRepository(db_session)
