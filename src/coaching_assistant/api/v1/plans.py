@@ -8,17 +8,31 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
-from ...api.auth import get_current_user_dependency
+from .auth import get_current_user_dependency
+from .dependencies import (
+    get_plan_retrieval_use_case,
+    get_plan_validation_use_case,
+)
 from ...models import User
 from ...models.user import UserPlan
 from ...models.plan_configuration import PlanConfiguration
 from ...models.ecpay_subscription import SaasSubscription
 from ...services.usage_tracking import PlanLimits as UsagePlanLimits
 from ...services.plan_limits import get_global_plan_limits, PlanName
+from ...core.services.plan_management_use_case import (
+    PlanRetrievalUseCase,
+    PlanValidationUseCase,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Plans"])
+
+
+# Helper function to safely get plan value
+def _get_plan_value(plan):
+    """Safely get the string value from a plan field, handling both enum and string types."""
+    return plan.value if hasattr(plan, 'value') else plan
 
 
 # Pydantic models for v1 API
@@ -324,6 +338,204 @@ async def get_available_plans_v1(
         )
 
 
+@router.get("/current")
+async def get_current_plan_status(
+    current_user: User = Depends(get_current_user_dependency),
+    plan_retrieval_use_case: PlanRetrievalUseCase = Depends(get_plan_retrieval_use_case),
+    plan_validation_use_case: PlanValidationUseCase = Depends(get_plan_validation_use_case),
+    db: Session = Depends(get_db),  # Still needed for subscription query - will be migrated later
+) -> Dict[str, Any]:
+    """Get current user's plan details and usage status."""
+    logger.info(f"📊 User {current_user.id} requesting current plan status")
+
+    try:
+        # Get plan configuration through use case
+        plan_info = plan_retrieval_use_case.get_user_current_plan(current_user.id)
+
+        # Get usage validation information
+        usage_validation = plan_validation_use_case.validate_user_limits(current_user.id)
+
+        # Build usage status from validation results
+        current_usage = usage_validation["current_usage"]
+        limits = usage_validation["limits"]
+
+        # Calculate usage percentages
+        def calc_percentage(current: float, limit: float) -> float | None:
+            if limit == -1 or limit == float("inf") or not isinstance(limit, (int, float)):
+                return None
+            return round((current / limit * 100), 2) if limit > 0 else 0
+
+        # Convert limits format for API compatibility
+        formatted_limits = {
+            "maxSessions": limits.get("maxSessions", -1),
+            "maxTotalMinutes": limits.get("maxMinutes", -1),
+            "maxTranscriptionCount": limits.get("maxTranscriptions", -1),
+            "maxFileSizeMb": limits.get("maxFileSize", 60),
+            "exportFormats": limits.get("exportFormats", ["json", "txt"]),
+            "concurrentProcessing": limits.get("concurrentJobs", 1),
+            "retentionDays": limits.get("retentionDays", 30),
+        }
+
+        usage_status = {
+            "userId": str(current_user.id),
+            "plan": _get_plan_value(current_user.plan),
+            "planDisplayName": plan_info.get("display_name", _get_plan_value(current_user.plan)),
+            "currentUsage": {
+                "sessions": current_usage["session_count"],
+                "minutes": current_usage["total_minutes"],
+                "transcriptions": current_user.transcription_count,  # Keep from user model for now
+            },
+            "planLimits": formatted_limits,
+            "usagePercentages": {
+                "sessions": calc_percentage(
+                    current_usage["session_count"],
+                    formatted_limits["maxSessions"],
+                ),
+                "minutes": calc_percentage(
+                    current_usage["total_minutes"],
+                    formatted_limits["maxTotalMinutes"]
+                ),
+                "transcriptions": calc_percentage(
+                    current_user.transcription_count,
+                    formatted_limits["maxTranscriptionCount"],
+                ),
+            },
+            "approachingLimits": {
+                "sessions": len([w for w in usage_validation["warnings"] if w["type"] == "session_count_warning"]) > 0,
+                "minutes": len([w for w in usage_validation["warnings"] if w["type"] == "minutes_warning"]) > 0,
+                "transcriptions": False,  # Not implemented in use case yet
+            },
+            "nextReset": current_usage.get("period_start"),  # Use period info from use case
+        }
+
+        # Add upgrade suggestion if approaching limits (simplified logic)
+        if (
+            any(usage_status["approachingLimits"].values())
+            and _get_plan_value(current_user.plan) != UserPlan.ENTERPRISE.value
+        ):
+            suggested_plan = (
+                UserPlan.PRO
+                if _get_plan_value(current_user.plan) == UserPlan.FREE.value
+                else UserPlan.ENTERPRISE
+            )
+            suggested_config = PLAN_CONFIGS[suggested_plan]
+            usage_status["upgradeSuggestion"] = {
+                "suggestedPlan": suggested_config["planName"],
+                "displayName": suggested_config["displayName"],
+                "keyBenefits": _get_upgrade_benefits(current_user.plan, suggested_plan),
+                "pricing": suggested_config["pricing"],
+                "tagline": suggested_config["tagline"],
+            }
+
+        # Build subscription info from actual subscription data
+        subscription_info = {
+            "startDate": (
+                current_user.created_at.isoformat() if current_user.created_at else None
+            ),
+            "endDate": None,
+            "active": _get_plan_value(current_user.plan) != UserPlan.FREE.value,  # More accurate active status
+            "stripeSubscriptionId": None,
+        }
+
+        # Get actual subscription data if user has paid plan
+        if _get_plan_value(current_user.plan) != UserPlan.FREE.value:
+            active_subscription = (
+                db.query(SaasSubscription)
+                .filter(
+                    SaasSubscription.user_id == current_user.id,
+                    SaasSubscription.status.in_(["active", "past_due"]),
+                )
+                .first()
+            )
+
+            if active_subscription:
+                subscription_info.update(
+                    {
+                        "active": active_subscription.status == "active",
+                        "startDate": active_subscription.current_period_start.isoformat(),
+                        "endDate": active_subscription.current_period_end.isoformat(),
+                        "subscriptionId": str(active_subscription.id),
+                        "planId": active_subscription.plan_id,
+                        "billingCycle": active_subscription.billing_cycle,
+                        "status": active_subscription.status,
+                        "nextPaymentDate": None,
+                    }
+                )
+
+                # Get next payment date from authorization record
+                if (
+                    active_subscription.auth_record
+                    and active_subscription.auth_record.next_pay_date
+                ):
+                    subscription_info["nextPaymentDate"] = (
+                        active_subscription.auth_record.next_pay_date.isoformat()
+                    )
+            else:
+                # User has paid plan in database but no active subscription
+                subscription_info["active"] = False
+                logger.warning(
+                    f"User {current_user.id} has plan {_get_plan_value(current_user.plan)} but no active subscription"
+                )
+
+        return {
+            "currentPlan": plan_info,
+            "usageStatus": usage_status,
+            "subscriptionInfo": subscription_info,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get current plan status for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve current plan status"
+        )
+
+
+@router.get("/compare")
+async def compare_plans(
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Get plan comparison focused on upgrade paths."""
+    logger.info(f"📊 User {current_user.id} requesting plan comparison")
+
+    # Get all plans
+    all_plans_response = await get_available_plans_legacy(db)
+    all_plans = all_plans_response["plans"]
+
+    # Mark current plan
+    for plan in all_plans:
+        if plan["planName"] == _get_plan_value(current_user.plan).lower().replace(
+            "enterprise", "business"
+        ):
+            plan["isCurrent"] = True
+        else:
+            plan["isCurrent"] = False
+
+    # Get upgrade suggestion
+    recommended_upgrade = None
+    if _get_plan_value(current_user.plan) != UserPlan.ENTERPRISE.value:
+        suggested_plan = (
+            UserPlan.PRO
+            if _get_plan_value(current_user.plan) == UserPlan.FREE.value
+            else UserPlan.ENTERPRISE
+        )
+        suggested_config = PLAN_CONFIGS[suggested_plan]
+        recommended_upgrade = {
+            "suggestedPlan": suggested_config["planName"],
+            "displayName": suggested_config["displayName"],
+            "keyBenefits": _get_upgrade_benefits(current_user.plan, suggested_plan),
+            "pricing": suggested_config["pricing"],
+            "tagline": suggested_config["tagline"],
+        }
+
+    return {
+        "currentPlan": _get_plan_value(current_user.plan),
+        "plans": all_plans,
+        "recommendedUpgrade": recommended_upgrade,
+    }
+
+
 @router.get("/{plan_id}", response_model=PlanResponse)
 async def get_plan_by_id(
     plan_id: str,
@@ -391,215 +603,6 @@ async def get_available_plans_legacy(db: Session = Depends(get_db)) -> Dict[str,
     }
 
 
-@router.get("/current")
-async def get_current_plan_status(
-    current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    """Get current user's plan details and usage status."""
-    logger.info(f"📊 User {current_user.id} requesting current plan status")
-
-    # Get plan configuration from database
-    plan_config = get_plan_config_from_db(db, current_user.plan)
-
-    # Convert unlimited values
-    if plan_config["limits"]["maxSessions"] == "unlimited":
-        plan_config["limits"]["maxSessions"] = -1
-    if plan_config["limits"]["maxTotalMinutes"] == "unlimited":
-        plan_config["limits"]["maxTotalMinutes"] = -1
-    if plan_config["limits"]["maxTranscriptionCount"] == "unlimited":
-        plan_config["limits"]["maxTranscriptionCount"] = -1
-    if plan_config["limits"]["retentionDays"] == "permanent":
-        plan_config["limits"]["retentionDays"] = -1
-
-    # Calculate usage percentages
-    def calc_percentage(current: float, limit: float) -> float | None:
-        if limit == -1 or limit == float("inf"):
-            return None
-        return round((current / limit * 100), 2) if limit > 0 else 0
-
-    # Get plan limits from service
-    plan_limits = UsagePlanLimits.get_limits(current_user.plan)
-    max_minutes = plan_limits["minutes_per_month"]
-    if max_minutes == float("inf"):
-        max_minutes = -1
-
-    # Build usage status
-    usage_status = {
-        "userId": str(current_user.id),
-        "plan": current_user.plan.value,
-        "planDisplayName": plan_config["displayName"],
-        "currentUsage": {
-            "sessions": current_user.session_count,
-            "minutes": current_user.usage_minutes,
-            "transcriptions": current_user.transcription_count,
-        },
-        "planLimits": plan_config["limits"],
-        "usagePercentages": {
-            "sessions": calc_percentage(
-                current_user.session_count,
-                plan_config["limits"]["maxSessions"],
-            ),
-            "minutes": calc_percentage(current_user.usage_minutes, max_minutes),
-            "transcriptions": calc_percentage(
-                current_user.transcription_count,
-                plan_config["limits"]["maxTranscriptionCount"],
-            ),
-        },
-        "approachingLimits": {
-            "sessions": (
-                calc_percentage(
-                    current_user.session_count,
-                    plan_config["limits"]["maxSessions"],
-                )
-                or 0
-            )
-            >= 80,
-            "minutes": (
-                calc_percentage(current_user.usage_minutes, max_minutes) or 0
-            )
-            >= 80,
-            "transcriptions": (
-                calc_percentage(
-                    current_user.transcription_count,
-                    plan_config["limits"]["maxTranscriptionCount"],
-                )
-                or 0
-            )
-            >= 80,
-        },
-        "nextReset": None,
-    }
-
-    # Calculate next reset date (first day of next month)
-    if current_user.current_month_start:
-        next_month = current_user.current_month_start.replace(day=1)
-        if next_month.month == 12:
-            next_month = next_month.replace(year=next_month.year + 1, month=1)
-        else:
-            next_month = next_month.replace(month=next_month.month + 1)
-        usage_status["nextReset"] = next_month.isoformat()
-
-    # Add upgrade suggestion if approaching limits
-    if (
-        any(usage_status["approachingLimits"].values())
-        and current_user.plan != UserPlan.ENTERPRISE
-    ):
-        suggested_plan = (
-            UserPlan.PRO
-            if current_user.plan == UserPlan.FREE
-            else UserPlan.ENTERPRISE
-        )
-        suggested_config = PLAN_CONFIGS[suggested_plan]
-        usage_status["upgradeSuggestion"] = {
-            "suggestedPlan": suggested_config["planName"],
-            "displayName": suggested_config["displayName"],
-            "keyBenefits": _get_upgrade_benefits(current_user.plan, suggested_plan),
-            "pricing": suggested_config["pricing"],
-            "tagline": suggested_config["tagline"],
-        }
-
-    # Build subscription info from actual subscription data
-    subscription_info = {
-        "startDate": (
-            current_user.created_at.isoformat() if current_user.created_at else None
-        ),
-        "endDate": None,
-        "active": current_user.plan != UserPlan.FREE,  # More accurate active status
-        "stripeSubscriptionId": None,
-    }
-
-    # Get actual subscription data if user has paid plan
-    if current_user.plan != UserPlan.FREE:
-        active_subscription = (
-            db.query(SaasSubscription)
-            .filter(
-                SaasSubscription.user_id == current_user.id,
-                SaasSubscription.status.in_(["active", "past_due"]),
-            )
-            .first()
-        )
-
-        if active_subscription:
-            subscription_info.update(
-                {
-                    "active": active_subscription.status == "active",
-                    "startDate": active_subscription.current_period_start.isoformat(),
-                    "endDate": active_subscription.current_period_end.isoformat(),
-                    "subscriptionId": str(active_subscription.id),
-                    "planId": active_subscription.plan_id,
-                    "billingCycle": active_subscription.billing_cycle,
-                    "status": active_subscription.status,
-                    "nextPaymentDate": None,
-                }
-            )
-
-            # Get next payment date from authorization record
-            if (
-                active_subscription.auth_record
-                and active_subscription.auth_record.next_pay_date
-            ):
-                subscription_info["nextPaymentDate"] = (
-                    active_subscription.auth_record.next_pay_date.isoformat()
-                )
-        else:
-            # User has paid plan in database but no active subscription
-            subscription_info["active"] = False
-            logger.warning(
-                f"User {current_user.id} has plan {current_user.plan} but no active subscription"
-            )
-
-    return {
-        "currentPlan": plan_config,
-        "usageStatus": usage_status,
-        "subscriptionInfo": subscription_info,
-    }
-
-
-@router.get("/compare")
-async def compare_plans(
-    current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    """Get plan comparison focused on upgrade paths."""
-    logger.info(f"📊 User {current_user.id} requesting plan comparison")
-
-    # Get all plans
-    all_plans_response = await get_available_plans_legacy(db)
-    all_plans = all_plans_response["plans"]
-
-    # Mark current plan
-    for plan in all_plans:
-        if plan["planName"] == current_user.plan.value.lower().replace(
-            "enterprise", "business"
-        ):
-            plan["isCurrent"] = True
-        else:
-            plan["isCurrent"] = False
-
-    # Get upgrade suggestion
-    recommended_upgrade = None
-    if current_user.plan != UserPlan.ENTERPRISE:
-        suggested_plan = (
-            UserPlan.PRO
-            if current_user.plan == UserPlan.FREE
-            else UserPlan.ENTERPRISE
-        )
-        suggested_config = PLAN_CONFIGS[suggested_plan]
-        recommended_upgrade = {
-            "suggestedPlan": suggested_config["planName"],
-            "displayName": suggested_config["displayName"],
-            "keyBenefits": _get_upgrade_benefits(current_user.plan, suggested_plan),
-            "pricing": suggested_config["pricing"],
-            "tagline": suggested_config["tagline"],
-        }
-
-    return {
-        "currentPlan": current_user.plan.value,
-        "plans": all_plans,
-        "recommendedUpgrade": recommended_upgrade,
-    }
-
 
 @router.post("/validate")
 async def validate_action(
@@ -662,7 +665,7 @@ async def validate_action(
             validation_result.update(
                 {
                     "allowed": False,
-                    "message": f"Export format '{export_format}' not available on {current_user.plan.value} plan",
+                    "message": f"Export format '{export_format}' not available on {_get_plan_value(current_user.plan)} plan",
                     "limitInfo": {
                         "type": "exportFormats",
                         "requested": export_format,
@@ -693,11 +696,11 @@ async def validate_action(
     # Add upgrade suggestion if action is blocked
     if (
         not validation_result["allowed"]
-        and current_user.plan != UserPlan.ENTERPRISE
+        and _get_plan_value(current_user.plan) != UserPlan.ENTERPRISE.value
     ):
         suggested_plan = (
             UserPlan.PRO
-            if current_user.plan == UserPlan.FREE
+            if _get_plan_value(current_user.plan) == UserPlan.FREE.value
             else UserPlan.ENTERPRISE
         )
         suggested_config = PLAN_CONFIGS[suggested_plan]

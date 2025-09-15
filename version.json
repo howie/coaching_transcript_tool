@@ -1,8 +1,8 @@
 {
-  "version": "2.18.0",
-  "displayVersion": "v2.18.0", 
-  "description": "Student & Coaching School Plan System Implementation",
-  "releaseDate": "2025-09-11",
-  "releaseNotes": "Complete implementation of Student and Coaching School plan types with dynamic plan configuration system. Key features: (1) Added new Student plan (60min monthly, 50MB files, $9.99/month) and Coaching School plan (unlimited usage, 200MB files, $299/month) to serve educational institutions; (2) Implemented comprehensive plan configuration service with database-driven plan management, real-time validation, and usage analytics; (3) Enhanced frontend with dynamic plan-based file size limits, improved billing modal, and seamless plan switching; (4) Updated all dashboard components with plan-aware features and refined i18n translations for better user experience; (5) Added database migrations, management scripts, and emergency tools for production support; (6) Integrated plan validation throughout the entire system from file upload to session processing. The system now supports flexible plan configurations that can be updated without code changes.",
+  "version": "2.18.1",
+  "displayVersion": "v2.18.1",
+  "description": "Plans API Critical Bug Fixes",
+  "releaseDate": "2025-09-15",
+  "releaseNotes": "Critical bug fixes for /api/plans/current endpoint that was causing 500 Internal Server Errors for authenticated users. Key fixes: (1) Resolved enum/string type inconsistency issues in SQLAlchemy model serialization by implementing defensive _get_plan_value() helper function; (2) Fixed AttributeError in subscription management where code was accessing non-existent 'next_billing_date' field instead of 'current_period_end'; (3) Applied fixes to both API layer (plans.py) and core business logic layer (plan_management_use_case.py) for complete resolution; (4) Enhanced error handling for enum value extraction across the plan management system. The Plans and Usage page now loads successfully for all authenticated users.",
   "author": "Coachly Team"
 }

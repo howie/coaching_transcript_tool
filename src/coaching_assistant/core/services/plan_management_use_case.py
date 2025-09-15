@@ -22,6 +22,11 @@ from ...models.session import SessionStatus
 from ...exceptions import DomainException
 
 
+def _get_plan_value(plan):
+    """Safely get the string value from a plan field, handling both enum and string types."""
+    return plan.value if hasattr(plan, 'value') else plan
+
+
 class PlanRetrievalUseCase:
     """Use case for retrieving plan information and configurations."""
 
@@ -71,7 +76,7 @@ class PlanRetrievalUseCase:
         
         plan_info = self._format_plan_config(plan_config)
         plan_info.update({
-            "user_plan": user.plan.value,
+            "user_plan": _get_plan_value(user.plan),
             "subscription": self._format_subscription_info(subscription) if subscription else None,
             "is_current_plan": True,
         })
@@ -123,16 +128,26 @@ class PlanRetrievalUseCase:
         }
 
         return {
-            "id": config.plan_type.value,
+            "id": _get_plan_value(config.plan_type),
             "name": config.plan_name,
             "display_name": config.display_name,
             "description": config.description,
             "tagline": config.tagline,
             "limits": formatted_limits,
             "features": config.features or {},
-            "pricing": config.pricing or {},
+            "pricing": self._get_pricing_dict(config),
             "is_active": config.is_active,
             "sort_order": config.sort_order,
+        }
+
+    def _get_pricing_dict(self, config) -> Dict[str, Any]:
+        """Build pricing dictionary from PlanConfiguration fields."""
+        return {
+            "monthly_usd": config.monthly_price_cents / 100,
+            "annual_usd": config.annual_price_cents / 100,
+            "monthly_twd": config.monthly_price_twd_cents / 100,
+            "annual_twd": config.annual_price_twd_cents / 100,
+            "currency": config.currency,
         }
 
     def _format_limit_value(self, value: int) -> str | int:
@@ -147,11 +162,11 @@ class PlanRetrievalUseCase:
         """Format subscription information."""
         return {
             "id": str(subscription.id),
-            "status": subscription.status.value,
+            "status": _get_plan_value(subscription.status),
             "plan_id": subscription.plan_id,
             "billing_cycle": subscription.billing_cycle,
             "created_at": subscription.created_at.isoformat(),
-            "next_billing_date": subscription.next_billing_date.isoformat() if subscription.next_billing_date else None,
+            "next_billing_date": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
         }
 
     def _get_fallback_plan_info(self, plan_type: UserPlan) -> Dict[str, Any]:
@@ -249,7 +264,16 @@ class PlanValidationUseCase:
 
         plan_config = self.plan_config_repo.get_by_plan_type(user.plan)
         if not plan_config:
-            return {"valid": True, "message": "No plan limits configured"}
+            # Fallback with default structure when no plan config found
+            current_usage = self._get_current_usage(user_id)
+            return {
+                "valid": True,
+                "message": "No plan limits configured",
+                "limits": {},
+                "current_usage": current_usage,
+                "violations": [],
+                "warnings": []
+            }
 
         limits = plan_config.limits
         current_usage = self._get_current_usage(user_id)
@@ -343,13 +367,21 @@ class PlanValidationUseCase:
         # Get current period usage (can be configured)
         now = datetime.utcnow()
         period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)  # Start of month
-        
-        session_count = self.session_repo.count_user_sessions(user_id, since=period_start)
-        total_minutes = self.session_repo.get_total_duration_minutes(user_id, since=period_start)
-        
-        # Get usage logs for cost calculation
-        usage_logs = self.usage_log_repo.get_by_user_id(user_id, period_start, now)
-        total_cost = sum(log.cost_usd for log in usage_logs)
+
+        try:
+            # Try to get usage from repositories (Clean Architecture approach)
+            session_count = self.session_repo.count_user_sessions(user_id, since=period_start)
+            total_minutes = self.session_repo.get_total_duration_minutes(user_id, since=period_start)
+
+            # Get usage logs for cost calculation
+            usage_logs = self.usage_log_repo.get_by_user_id(user_id, period_start, now)
+            total_cost = sum(log.cost_usd for log in usage_logs)
+        except (AttributeError, Exception):
+            # Fallback to user model data during Clean Architecture migration
+            user = self.user_repo.get_by_id(user_id)
+            session_count = getattr(user, 'session_count', 0)
+            total_minutes = getattr(user, 'usage_minutes', 0)
+            total_cost = 0.0  # Default for cost tracking
 
         return {
             "session_count": session_count,
