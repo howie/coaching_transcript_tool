@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
 from datetime import datetime
 from decimal import Decimal
+from dataclasses import replace
 
 from ..repositories.ports import (
     SessionRepoPort,
@@ -427,11 +428,14 @@ class SessionUploadManagementUseCase:
 
         # Reset failed session to uploading state
         if session.status == SessionStatus.FAILED:
-            session.status = SessionStatus.UPLOADING
-            session.error_message = None
-            session.audio_filename = None
-            session.gcs_audio_path = None
-            session.transcription_job_id = None
+            session = replace(
+                session,
+                status=SessionStatus.UPLOADING,
+                error_message=None,
+                audio_filename=None,
+                gcs_audio_path=None,
+                transcription_job_id=None
+            )
             session = self.session_repo.save(session)
 
         return {
@@ -523,8 +527,11 @@ class SessionUploadManagementUseCase:
             raise ValueError("Session not found or access denied")
 
         if session.status == SessionStatus.UPLOADING:
-            session.status = SessionStatus.PENDING
-            session.updated_at = datetime.utcnow()
+            session = replace(
+                session,
+                status=SessionStatus.PENDING,
+                updated_at=datetime.utcnow()
+            )
             session = self.session_repo.save(session)
 
         return session
@@ -574,8 +581,11 @@ class SessionTranscriptionManagementUseCase:
             raise DomainException("No audio file uploaded")
 
         # Update status to processing
-        session.status = SessionStatus.PROCESSING
-        session.updated_at = datetime.utcnow()
+        session = replace(
+            session,
+            status=SessionStatus.PROCESSING,
+            updated_at=datetime.utcnow()
+        )
         session = self.session_repo.save(session)
 
         return {
@@ -622,10 +632,13 @@ class SessionTranscriptionManagementUseCase:
             )
 
         # Clear existing data and reset status
-        session.status = SessionStatus.PROCESSING
-        session.error_message = None
-        session.transcription_job_id = None
-        session.updated_at = datetime.utcnow()
+        session = replace(
+            session,
+            status=SessionStatus.PROCESSING,
+            error_message=None,
+            transcription_job_id=None,
+            updated_at=datetime.utcnow()
+        )
 
         # Clear existing transcript segments and processing status
         self.transcript_repo.delete_by_session_id(session_id)
@@ -664,8 +677,11 @@ class SessionTranscriptionManagementUseCase:
         if not session or session.user_id != user_id:
             raise ValueError("Session not found or access denied")
 
-        session.transcription_job_id = job_id
-        session.updated_at = datetime.utcnow()
+        session = replace(
+            session,
+            transcription_job_id=job_id,
+            updated_at=datetime.utcnow()
+        )
 
         return self.session_repo.save(session)
 
@@ -873,10 +889,12 @@ class SessionTranscriptUploadUseCase:
         saved_segments = self.transcript_repo.save_segments(segments)
 
         # Update session with transcript info
-        session.duration_seconds = total_duration
-        session.duration_minutes = total_duration / 60.0
-        session.status = SessionStatus.COMPLETED
-        session.updated_at = datetime.utcnow()
+        session = replace(
+            session,
+            duration_seconds=total_duration,
+            status=SessionStatus.COMPLETED,
+            updated_at=datetime.utcnow()
+        )
         session = self.session_repo.save(session)
 
         return {
