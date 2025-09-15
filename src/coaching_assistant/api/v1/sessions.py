@@ -20,18 +20,24 @@ import json
 import logging
 import re
 
-from ..core.database import get_db
-from ..models.session import Session, SessionStatus
-from ..models.processing_status import ProcessingStatus
-from ..models.user import User
-from ..models.transcript import TranscriptSegment
-from ..api.auth import get_current_user_dependency
-from ..utils.gcs_uploader import GCSUploader
-from ..tasks.transcription_tasks import transcribe_audio
-from ..core.config import settings
-from ..exporters.excel import generate_excel
-from ..services.usage_tracking import UsageTrackingService
-from ..services.plan_limits import get_global_plan_limits
+from ...core.database import get_db
+from ...models.session import Session, SessionStatus
+from ...models.processing_status import ProcessingStatus
+from ...models.user import User
+from ...models.transcript import TranscriptSegment
+from .auth import get_current_user_dependency
+from ...api.v1.dependencies import (
+    get_session_creation_use_case,
+    get_session_retrieval_use_case,
+    get_session_status_update_use_case,
+    get_session_transcript_update_use_case,
+)
+from ...utils.gcs_uploader import GCSUploader
+from ...tasks.transcription_tasks import transcribe_audio
+from ...core.config import settings
+from ...exporters.excel import generate_excel
+from ...services.usage_tracking import UsageTrackingService
+from ...services.plan_limits import get_global_plan_limits
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -143,40 +149,16 @@ class ProvidersResponse(BaseModel):
 @router.post("", response_model=SessionResponse)
 async def create_session(
     session_data: SessionCreate,
-    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    session_creation_use_case=Depends(get_session_creation_use_case),
 ):
     """Create a new transcription session."""
-    # Note: Session limits removed in Phase 2 - now unlimited
-    # Only minutes-based limits are enforced
-
-    # Determine STT provider - use settings default if 'auto'
-    provider = session_data.stt_provider
-    if provider == "auto":
-        provider = getattr(settings, "STT_PROVIDER", "google")
-
-    session = Session(
-        title=session_data.title,
+    session = session_creation_use_case.execute(
         user_id=current_user.id,
+        title=session_data.title,
         language=session_data.language,
-        stt_provider=provider,
-        status=SessionStatus.UPLOADING,
+        stt_provider=session_data.stt_provider,
     )
-
-    db.add(session)
-
-    # Increment user's session count
-    try:
-        usage_service = UsageTrackingService(db)
-        usage_service.increment_session_count(current_user)
-        logger.info(f"Session count incremented for user {current_user.id}")
-    except Exception as e:
-        logger.error(f"Failed to increment session count: {e}")
-        # Don't fail session creation if usage tracking fails
-
-    db.commit()
-    db.refresh(session)
-
     return SessionResponse.from_session(session)
 
 
@@ -233,20 +215,15 @@ async def list_sessions(
     status: Optional[SessionStatus] = None,
     limit: int = Query(default=50, le=100),
     offset: int = Query(default=0, ge=0),
-    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    session_retrieval_use_case=Depends(get_session_retrieval_use_case),
 ):
     """List user's transcription sessions."""
-    query = db.query(Session).filter(Session.user_id == current_user.id)
-
-    if status:
-        query = query.filter(Session.status == status)
-
-    sessions = (
-        query.order_by(desc(Session.created_at))
-        .offset(offset)
-        .limit(limit)
-        .all()
+    sessions = session_retrieval_use_case.get_user_sessions(
+        user_id=current_user.id,
+        status=status,
+        limit=limit,
+        offset=offset,
     )
 
     return [SessionResponse.from_session(session) for session in sessions]
@@ -255,14 +232,13 @@ async def list_sessions(
 @router.get("/{session_id}", response_model=SessionResponse)
 async def get_session(
     session_id: UUID,
-    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    session_retrieval_use_case=Depends(get_session_retrieval_use_case),
 ):
     """Get a specific transcription session."""
-    session = (
-        db.query(Session)
-        .filter(Session.id == session_id, Session.user_id == current_user.id)
-        .first()
+    session = session_retrieval_use_case.get_session_by_id(
+        session_id=session_id,
+        user_id=current_user.id,
     )
 
     if not session:
