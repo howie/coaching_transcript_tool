@@ -9,9 +9,19 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
-from ...api.auth import get_current_user_dependency
+from .auth import get_current_user_dependency
+from .dependencies import (
+    get_subscription_creation_use_case,
+    get_subscription_retrieval_use_case,
+    get_subscription_modification_use_case,
+)
 from ...core.services.ecpay_service import ECPaySubscriptionService
 from ...core.config import settings
+from ...core.services.subscription_management_use_case import (
+    SubscriptionCreationUseCase,
+    SubscriptionRetrievalUseCase,
+    SubscriptionModificationUseCase,
+)
 from ...models import (
     User,
     SaasSubscription,
@@ -22,7 +32,7 @@ from ...models.ecpay_subscription import PaymentStatus
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/subscriptions", tags=["Subscriptions"])
+router = APIRouter(tags=["Subscriptions"])
 
 
 # Request/Response models
@@ -140,58 +150,26 @@ async def create_authorization(
 @router.get("/current", response_model=CurrentSubscriptionResponse)
 async def get_current_subscription(
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
+    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(get_subscription_retrieval_use_case),
+    db: Session = Depends(get_db),  # Still needed for ECPay operations until Phase 3
 ):
     """Get user's current subscription details."""
 
     try:
-        # Find active subscription
-        subscription = (
-            db.query(SaasSubscription)
-            .filter(
-                SaasSubscription.user_id == current_user.id,
-                SaasSubscription.status.in_(["active", "past_due"]),
-            )
-            .first()
-        )
+        # Get subscription details through use case
+        subscription_data = subscription_retrieval_use_case.get_current_subscription(current_user.id)
 
-        if not subscription:
+        if not subscription_data:
             return CurrentSubscriptionResponse(status="no_subscription")
 
-        # Get authorization details
-        auth_record = subscription.auth_record
-        payment_method = None
-
-        if auth_record:
-            payment_method = {
-                "card_last4": auth_record.card_last4,
-                "card_brand": auth_record.card_brand,
-                "auth_status": auth_record.auth_status,
-            }
-
-        subscription_data = {
-            "id": str(subscription.id),
-            "plan_id": subscription.plan_id,
-            "plan_name": subscription.plan_name,
-            "billing_cycle": subscription.billing_cycle,
-            "amount_twd": subscription.amount_twd,
-            "currency": subscription.currency,
-            "status": subscription.status,
-            "current_period_start": subscription.current_period_start.isoformat(),
-            "current_period_end": subscription.current_period_end.isoformat(),
-            "cancel_at_period_end": subscription.cancel_at_period_end,
-            "cancellation_reason": subscription.cancellation_reason,
-            "next_payment_date": (
-                auth_record.next_pay_date.isoformat()
-                if auth_record and auth_record.next_pay_date
-                else None
-            ),
-        }
+        # Format for API response (use case returns different format)
+        payment_method = subscription_data.get("payment_method")
+        subscription_info = subscription_data.get("subscription")
 
         return CurrentSubscriptionResponse(
-            subscription=subscription_data,
+            subscription=subscription_info,
             payment_method=payment_method,
-            status="active",
+            status="active" if subscription_info else "no_subscription",
         )
 
     except Exception as e:

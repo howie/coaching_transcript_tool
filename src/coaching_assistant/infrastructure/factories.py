@@ -17,6 +17,11 @@ from ..core.services.session_management_use_case import (
     SessionRetrievalUseCase,
     SessionStatusUpdateUseCase,
     SessionTranscriptUpdateUseCase,
+    SessionUploadManagementUseCase,
+    SessionTranscriptionManagementUseCase,
+    SessionExportUseCase,
+    SessionStatusRetrievalUseCase,
+    SessionTranscriptUploadUseCase,
 )
 from ..core.services.plan_management_use_case import (
     PlanRetrievalUseCase,
@@ -208,8 +213,63 @@ class SessionServiceFactory:
         """Create a SessionTranscriptUpdateUseCase with all dependencies injected."""
         session_repo = create_session_repository(db_session)
         transcript_repo = create_transcript_repository(db_session)
-        
+
         return SessionTranscriptUpdateUseCase(
+            session_repo=session_repo,
+            transcript_repo=transcript_repo,
+        )
+
+    @staticmethod
+    def create_session_upload_management_use_case(db_session: Session) -> SessionUploadManagementUseCase:
+        """Create a SessionUploadManagementUseCase with all dependencies injected."""
+        session_repo = create_session_repository(db_session)
+        user_repo = create_user_repository(db_session)
+        plan_config_repo = create_plan_configuration_repository(db_session)
+
+        return SessionUploadManagementUseCase(
+            session_repo=session_repo,
+            user_repo=user_repo,
+            plan_config_repo=plan_config_repo,
+        )
+
+    @staticmethod
+    def create_session_transcription_management_use_case(db_session: Session) -> SessionTranscriptionManagementUseCase:
+        """Create a SessionTranscriptionManagementUseCase with all dependencies injected."""
+        session_repo = create_session_repository(db_session)
+        transcript_repo = create_transcript_repository(db_session)
+
+        return SessionTranscriptionManagementUseCase(
+            session_repo=session_repo,
+            transcript_repo=transcript_repo,
+        )
+
+    @staticmethod
+    def create_session_export_use_case(db_session: Session) -> SessionExportUseCase:
+        """Create a SessionExportUseCase with all dependencies injected."""
+        session_repo = create_session_repository(db_session)
+        transcript_repo = create_transcript_repository(db_session)
+
+        return SessionExportUseCase(
+            session_repo=session_repo,
+            transcript_repo=transcript_repo,
+        )
+
+    @staticmethod
+    def create_session_status_retrieval_use_case(db_session: Session) -> SessionStatusRetrievalUseCase:
+        """Create a SessionStatusRetrievalUseCase with all dependencies injected."""
+        session_repo = create_session_repository(db_session)
+
+        return SessionStatusRetrievalUseCase(
+            session_repo=session_repo,
+        )
+
+    @staticmethod
+    def create_session_transcript_upload_use_case(db_session: Session) -> SessionTranscriptUploadUseCase:
+        """Create a SessionTranscriptUploadUseCase with all dependencies injected."""
+        session_repo = create_session_repository(db_session)
+        transcript_repo = create_transcript_repository(db_session)
+
+        return SessionTranscriptUploadUseCase(
             session_repo=session_repo,
             transcript_repo=transcript_repo,
         )

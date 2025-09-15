@@ -135,7 +135,7 @@ def client(db_session):
 @pytest.fixture
 def authenticated_client(client, test_user, db_session):
     """Create an authenticated test client."""
-    from coaching_assistant.api.auth import get_current_user_dependency
+    from coaching_assistant.api.v1.auth import get_current_user_dependency
     
     def override_get_current_user():
         return test_user

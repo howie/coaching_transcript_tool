@@ -7,14 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..core.services.admin_daily_report import AdminDailyReportService
-from ..tasks.admin_report_tasks import (
+from ...core.services.admin_daily_report import AdminDailyReportService
+from ...tasks.admin_report_tasks import (
     generate_and_send_daily_report,
     schedule_weekly_summary_report,
 )
-from ..models.user import User, UserRole
-from ..core.database import get_db
-from ..core.config import settings
+from ...models.user import User, UserRole
+from ...core.database import get_db
+from ...core.config import settings
 from .dependencies import require_admin
 
 router = APIRouter(prefix="/admin/reports", tags=["Admin Reports"])

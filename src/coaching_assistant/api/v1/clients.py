@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, func, or_
 from pydantic import BaseModel, Field
 
-from ..core.database import get_db
-from ..models import Client, CoachingSession, User
-from ..api.auth import get_current_user_dependency
+from ...core.database import get_db
+from ...models import Client, CoachingSession, User
+from .auth import get_current_user_dependency
 
 router = APIRouter()
 

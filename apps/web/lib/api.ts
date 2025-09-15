@@ -187,6 +187,7 @@ class ApiClient {
     // Clear the stored token
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token')
+      localStorage.removeItem('auth_token')
       // Redirect to login page
       window.location.href = '/login'
     }
@@ -275,7 +276,8 @@ class ApiClient {
     // Safe localStorage access with error handling
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        token = localStorage.getItem('token')
+        // Prefer new key 'auth_token' but support legacy 'token'
+        token = localStorage.getItem('auth_token') || localStorage.getItem('token')
       }
     } catch (error) {
       debugWarn('Failed to access localStorage:', error)

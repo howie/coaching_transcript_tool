@@ -11,7 +11,7 @@ from fastapi import (
     File as FastAPIFile,
 )
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session as DBSession
+from sqlalchemy.orm import Session as DBSession  # Still needed for role management endpoints
 from sqlalchemy import desc
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
@@ -20,7 +20,7 @@ import json
 import logging
 import re
 
-from ...core.database import get_db
+from ...core.database import get_db  # Still needed for role management endpoints
 from ...models.session import Session, SessionStatus
 from ...models.processing_status import ProcessingStatus
 from ...models.user import User
@@ -31,6 +31,11 @@ from ...api.v1.dependencies import (
     get_session_retrieval_use_case,
     get_session_status_update_use_case,
     get_session_transcript_update_use_case,
+    get_session_upload_management_use_case,
+    get_session_transcription_management_use_case,
+    get_session_export_use_case,
+    get_session_status_retrieval_use_case,
+    get_session_transcript_upload_use_case,
 )
 from ...utils.gcs_uploader import GCSUploader
 from ...tasks.transcription_tasks import transcribe_audio
@@ -256,113 +261,73 @@ async def get_upload_url(
     file_size_mb: float = Query(
         ..., description="File size in MB for plan limit validation"
     ),
-    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    upload_management_use_case=Depends(get_session_upload_management_use_case),
 ):
     """Get signed URL for audio file upload."""
-    # CRITICAL: Check file size limits BEFORE generating upload URL
-    plan_limits_service = get_global_plan_limits()
-    plan_limits = plan_limits_service.from_user_plan(current_user.plan)
-
-    if file_size_mb > plan_limits.max_file_size_mb:
-        raise HTTPException(
-            status_code=413,
-            detail={
-                "error": "file_size_exceeded",
-                "message": f"File size {file_size_mb:.1f}MB exceeds your plan limit of {plan_limits.max_file_size_mb}MB",
-                "file_size_mb": file_size_mb,
-                "limit_mb": plan_limits.max_file_size_mb,
-                "plan": (
-                    current_user.plan.value if current_user.plan else "free"
-                ),
-            },
-        )
+    from ...exceptions import DomainException
 
     logger.info(
         f"📤 UPLOAD URL REQUEST - Session: {session_id}, User: {current_user.id}, Filename: {filename}, Size: {file_size_mb}MB"
     )
 
-    session = (
-        db.query(Session)
-        .filter(Session.id == session_id, Session.user_id == current_user.id)
-        .first()
-    )
-
-    if not session:
-        logger.warning(
-            f"❌ Upload URL request failed - Session {session_id} not found for user {current_user.id}"
-        )
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    if session.status not in [SessionStatus.UPLOADING, SessionStatus.FAILED]:
-        logger.warning(
-            f"❌ Upload URL request failed - Session {session_id} status is {session.status.value}, expected UPLOADING or FAILED"
-        )
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot upload to session with status {session.status.value}. Upload is only allowed for sessions in UPLOADING or FAILED status.",
-        )
-
-    # If session is FAILED, reset it to UPLOADING state
-    if session.status == SessionStatus.FAILED:
-        logger.info(
-            f"🔄 Resetting FAILED session {session_id} to UPLOADING state"
-        )
-        session.status = SessionStatus.UPLOADING
-        session.error_message = None
-        # Clear existing file data to allow fresh upload
-        session.audio_filename = None
-        session.gcs_audio_path = None
-        session.transcription_job_id = None
-        db.commit()
-
-    # Generate GCS path
-    file_extension = filename.split(".")[-1].lower()
-    gcs_filename = f"{session_id}.{file_extension}"
-    gcs_path = f"audio-uploads/{current_user.id}/{gcs_filename}"
-    full_gcs_path = f"gs://{settings.AUDIO_STORAGE_BUCKET}/{gcs_path}"
-
-    # Map file extensions to proper MIME types
-    content_type_map = {
-        "mp3": "audio/mpeg",
-        "wav": "audio/wav",
-        "flac": "audio/flac",
-        "ogg": "audio/ogg",
-        "mp4": "audio/mp4",
-        "m4a": "audio/mp4",  # M4A uses same MIME type as MP4
-    }
-    content_type = content_type_map.get(file_extension, "audio/mpeg")
-
-    logger.info(f"🗂️  GCS Path: {full_gcs_path}")
-    logger.info(f"🪣 Bucket: {settings.AUDIO_STORAGE_BUCKET}")
-    logger.info(f"📁 Blob name: {gcs_path}")
-    logger.info(f"🏷️  Content-Type: {content_type}")
-
     try:
+        # Use case validates plan limits, session ownership, and status
+        result = upload_management_use_case.generate_upload_url(
+            session_id=session_id,
+            user_id=current_user.id,
+            filename=filename,
+            file_size_mb=file_size_mb,
+        )
+
+        session = result["session"]
+        user_plan = result["user_plan"]
+
+        # Generate GCS path
+        file_extension = filename.split(".")[-1].lower()
+        gcs_filename = f"{session_id}.{file_extension}"
+        gcs_path = f"audio-uploads/{current_user.id}/{gcs_filename}"
+        full_gcs_path = f"gs://{settings.AUDIO_STORAGE_BUCKET}/{gcs_path}"
+
+        # Map file extensions to proper MIME types
+        content_type_map = {
+            "mp3": "audio/mpeg",
+            "wav": "audio/wav",
+            "flac": "audio/flac",
+            "ogg": "audio/ogg",
+            "mp4": "audio/mp4",
+            "m4a": "audio/mp4",  # M4A uses same MIME type as MP4
+        }
+        content_type = content_type_map.get(file_extension, "audio/mpeg")
+
+        logger.info(f"🗂️  GCS Path: {full_gcs_path}")
+        logger.info(f"🪣 Bucket: {settings.AUDIO_STORAGE_BUCKET}")
+        logger.info(f"📁 Blob name: {gcs_path}")
+        logger.info(f"🏷️  Content-Type: {content_type}")
+
         # Create GCS uploader and get signed URL
         uploader = GCSUploader(
             bucket_name=settings.AUDIO_STORAGE_BUCKET,
             credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON,
         )
 
-        logger.info(
-            f"🔗 Generating signed upload URL with 60min expiration..."
-        )
+        logger.info(f"🔗 Generating signed upload URL with 60min expiration...")
         upload_url, expires_at = uploader.generate_signed_upload_url(
             blob_name=gcs_path,
             content_type=content_type,
             expiration_minutes=60,
         )
 
-        # Update session with file info
-        session.audio_filename = filename
-        session.gcs_audio_path = full_gcs_path
-        db.commit()
+        # Update session with file info using use case
+        upload_management_use_case.update_session_file_info(
+            session_id=session_id,
+            user_id=current_user.id,
+            audio_filename=filename,
+            gcs_audio_path=full_gcs_path,
+        )
 
         logger.info(f"✅ Upload URL generated successfully!")
-        logger.info(
-            f"🔗 Upload URL: {upload_url[:100]}...{upload_url[-20:]}"
-        )  # Log partial URL for security
+        logger.info(f"🔗 Upload URL: {upload_url[:100]}...{upload_url[-20:]}")
         logger.info(f"⏰ Expires at: {expires_at}")
         logger.info(f"💾 Session updated with GCS path: {full_gcs_path}")
 
@@ -370,14 +335,32 @@ async def get_upload_url(
             upload_url=upload_url, gcs_path=gcs_path, expires_at=expires_at
         )
 
+    except DomainException as e:
+        # Handle domain exceptions (plan limits, status validation)
+        if "File size" in str(e) and "exceeds plan limit" in str(e):
+            raise HTTPException(
+                status_code=413,
+                detail={
+                    "error": "file_size_exceeded",
+                    "message": str(e),
+                    "file_size_mb": file_size_mb,
+                    "plan": (current_user.plan.value if current_user.plan else "free"),
+                },
+            )
+        elif "Cannot upload to session" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        # Handle session not found
+        if "Session not found" in str(e):
+            logger.warning(f"❌ Upload URL request failed - Session {session_id} not found for user {current_user.id}")
+            raise HTTPException(status_code=404, detail="Session not found")
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(
-            f"❌ Failed to generate upload URL for session {session_id}: {e}",
-            exc_info=True,
-        )
-        raise HTTPException(
-            status_code=500, detail=f"Failed to generate upload URL: {str(e)}"
-        )
+        logger.error(f"❌ Failed to generate upload URL for session {session_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to generate upload URL: {str(e)}")
 
 
 @router.post(
@@ -385,39 +368,36 @@ async def get_upload_url(
 )
 async def confirm_upload(
     session_id: UUID,
-    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    upload_management_use_case=Depends(get_session_upload_management_use_case),
 ):
     """Confirm that audio file was successfully uploaded to GCS."""
     logger.info(
         f"🔍 UPLOAD CONFIRMATION REQUEST - Session: {session_id}, User: {current_user.id}"
     )
 
-    session = (
-        db.query(Session)
-        .filter(Session.id == session_id, Session.user_id == current_user.id)
-        .first()
-    )
-
-    if not session:
-        logger.warning(
-            f"❌ Upload confirmation failed - Session {session_id} not found for user {current_user.id}"
-        )
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    logger.info(f"📋 Session status: {session.status.value}")
-    logger.info(f"🗂️  Expected GCS path: {session.gcs_audio_path}")
-
-    if not session.gcs_audio_path:
-        logger.warning(f"❌ No GCS path configured for session {session_id}")
-        return UploadConfirmResponse(
-            file_exists=False,
-            file_size=None,
-            ready_for_transcription=False,
-            message="No upload path configured for this session",
-        )
-
     try:
+        # Use case validates session ownership and gets session info
+        result = upload_management_use_case.confirm_upload(
+            session_id=session_id,
+            user_id=current_user.id,
+        )
+
+        session = result["session"]
+        gcs_path = result["gcs_path"]
+
+        logger.info(f"📋 Session status: {session.status.value}")
+        logger.info(f"🗂️  Expected GCS path: {gcs_path}")
+
+        if not gcs_path:
+            logger.warning(f"❌ No GCS path configured for session {session_id}")
+            return UploadConfirmResponse(
+                file_exists=False,
+                file_size=None,
+                ready_for_transcription=False,
+                message="No upload path configured for this session",
+            )
+
         # Check if file exists in GCS
         uploader = GCSUploader(
             bucket_name=settings.AUDIO_STORAGE_BUCKET,
@@ -426,27 +406,24 @@ async def confirm_upload(
 
         # Extract blob name from GCS path
         # Format: gs://bucket/path/to/file -> path/to/file
-        blob_name = session.gcs_audio_path.replace(
-            f"gs://{settings.AUDIO_STORAGE_BUCKET}/", ""
-        )
+        blob_name = gcs_path.replace(f"gs://{settings.AUDIO_STORAGE_BUCKET}/", "")
 
         logger.info(f"🔍 Checking file existence in GCS...")
         logger.info(f"🪣 Bucket: {settings.AUDIO_STORAGE_BUCKET}")
         logger.info(f"📄 Blob name: {blob_name}")
-        logger.info(f"🔗 Full path: {session.gcs_audio_path}")
+        logger.info(f"🔗 Full path: {gcs_path}")
 
         file_exists, file_size = uploader.check_file_exists(blob_name)
 
-        logger.info(
-            f"📊 File check result: exists={file_exists}, size={file_size}"
-        )
+        logger.info(f"📊 File check result: exists={file_exists}, size={file_size}")
 
         if file_exists:
-            # Update session status to PENDING if file exists
-            if session.status == SessionStatus.UPLOADING:
-                session.status = SessionStatus.PENDING
-                db.commit()
-                logger.info(f"✅ Session status updated to PENDING")
+            # Update session status to PENDING if file exists using use case
+            upload_management_use_case.mark_upload_complete(
+                session_id=session_id,
+                user_id=current_user.id,
+            )
+            logger.info(f"✅ Session status updated to PENDING")
 
             logger.info(
                 f"✅ File confirmed for session {session_id}: {blob_name} ({file_size} bytes)"
@@ -459,12 +436,8 @@ async def confirm_upload(
                 message=f"File uploaded successfully ({file_size} bytes). Ready for transcription.",
             )
         else:
-            logger.warning(
-                f"❌ File not found for session {session_id}: {blob_name}"
-            )
-            logger.info(
-                f"💡 Suggestion: Use 'gcloud storage ls {session.gcs_audio_path}' to check manually"
-            )
+            logger.warning(f"❌ File not found for session {session_id}: {blob_name}")
+            logger.info(f"💡 Suggestion: Use 'gcloud storage ls {gcs_path}' to check manually")
 
             return UploadConfirmResponse(
                 file_exists=False,
@@ -473,6 +446,15 @@ async def confirm_upload(
                 message=f"File not found at expected location: {blob_name}",
             )
 
+    except ValueError as e:
+        # Handle session not found
+        if "Session not found" in str(e):
+            logger.warning(
+                f"❌ Upload confirmation failed - Session {session_id} not found for user {current_user.id}"
+            )
+            raise HTTPException(status_code=404, detail="Session not found")
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(
             f"❌ Error checking file existence for session {session_id}: {e}",
@@ -489,135 +471,112 @@ async def confirm_upload(
 @router.post("/{session_id}/start-transcription")
 async def start_transcription(
     session_id: UUID,
-    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    transcription_management_use_case=Depends(get_session_transcription_management_use_case),
 ):
     """Start transcription processing for uploaded audio."""
     # Note: Transcription limits removed in Phase 2 - now unlimited
     # Only minutes-based limits are enforced
+    from ...exceptions import DomainException
 
-    session = (
-        db.query(Session)
-        .filter(Session.id == session_id, Session.user_id == current_user.id)
-        .first()
-    )
-
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    # Allow starting from UPLOADING or PENDING status
-    if session.status not in [SessionStatus.UPLOADING, SessionStatus.PENDING]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot start transcription for session with status {session.status.value}",
+    try:
+        # Use case validates session ownership, status, and file existence
+        transcription_data = transcription_management_use_case.start_transcription(
+            session_id=session_id,
+            user_id=current_user.id,
         )
 
-    if not session.gcs_audio_path:
-        raise HTTPException(status_code=400, detail="No audio file uploaded")
+        # Verify file exists before starting transcription
+        gcs_uri = transcription_data["gcs_uri"]
+        blob_name = gcs_uri.replace(f"gs://{settings.AUDIO_STORAGE_BUCKET}/", "")
 
-    # Verify file exists before starting transcription
-    try:
         uploader = GCSUploader(
             bucket_name=settings.AUDIO_STORAGE_BUCKET,
             credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON,
         )
 
-        blob_name = session.gcs_audio_path.replace(
-            f"gs://{settings.AUDIO_STORAGE_BUCKET}/", ""
-        )
         file_exists, file_size = uploader.check_file_exists(blob_name)
 
         if not file_exists:
             raise HTTPException(
                 status_code=400,
-                detail=f"Audio file not found in storage. Please re-upload the file.",
+                detail="Audio file not found in storage. Please re-upload the file.",
             )
 
         logger.info(
             f"Starting transcription for session {session_id}, file size: {file_size} bytes"
         )
 
+        # Queue transcription task
+        task = transcribe_audio.delay(
+            session_id=transcription_data["session_id"],
+            gcs_uri=transcription_data["gcs_uri"],
+            language=transcription_data["language"],
+            original_filename=transcription_data["original_filename"],
+        )
+
+        # Store task ID for tracking using use case
+        transcription_management_use_case.update_transcription_job_id(
+            session_id=session_id,
+            user_id=current_user.id,
+            job_id=task.id,
+        )
+
+        return {
+            "message": "Transcription started",
+            "task_id": task.id,
+            "estimated_completion_minutes": 120,  # Estimate 2 hours max
+            "file_size": file_size,
+        }
+
+    except DomainException as e:
+        if "Cannot start transcription" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "No audio file uploaded" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        if "Session not found" in str(e):
+            raise HTTPException(status_code=404, detail="Session not found")
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error verifying file before transcription: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to verify audio file: {str(e)}"
         )
 
-    # Update status to processing
-    session.update_status(SessionStatus.PROCESSING)
-    db.commit()
-
-    # Queue transcription task
-    task = transcribe_audio.delay(
-        session_id=str(session_id),
-        gcs_uri=session.gcs_audio_path,
-        language=session.language,
-        original_filename=session.audio_filename,
-    )
-
-    # Store task ID for tracking
-    session.transcription_job_id = task.id
-    db.commit()
-
-    return {
-        "message": "Transcription started",
-        "task_id": task.id,
-        "estimated_completion_minutes": 120,  # Estimate 2 hours max
-        "file_size": file_size,
-    }
-
 
 @router.post("/{session_id}/retry-transcription")
 async def retry_transcription(
     session_id: UUID,
-    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    transcription_management_use_case=Depends(get_session_transcription_management_use_case),
 ):
     """Retry transcription for failed sessions."""
-    session = (
-        db.query(Session)
-        .filter(Session.id == session_id, Session.user_id == current_user.id)
-        .first()
-    )
+    from ...exceptions import DomainException
 
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    # Only allow retry for FAILED sessions
-    if session.status != SessionStatus.FAILED:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot retry transcription for session with status {session.status.value}. Only failed sessions can be retried.",
-        )
-
-    if not session.gcs_audio_path:
-        raise HTTPException(
-            status_code=400,
-            detail="No audio file found. Please re-upload the file.",
-        )
-
-    # Verify file still exists before retrying
     try:
+        # Use case validates session ownership, status, and clears existing data
+        transcription_data = transcription_management_use_case.retry_transcription(
+            session_id=session_id,
+            user_id=current_user.id,
+        )
+
+        # Verify file still exists before retrying
+        gcs_uri = transcription_data["gcs_uri"]
+        blob_name = gcs_uri.replace(f"gs://{settings.AUDIO_STORAGE_BUCKET}/", "")
+
         uploader = GCSUploader(
             bucket_name=settings.AUDIO_STORAGE_BUCKET,
             credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON,
         )
 
-        blob_name = session.gcs_audio_path.replace(
-            f"gs://{settings.AUDIO_STORAGE_BUCKET}/", ""
-        )
         file_exists, file_size = uploader.check_file_exists(blob_name)
 
         if not file_exists:
-            # Reset session to allow re-upload
-            session.status = SessionStatus.UPLOADING
-            session.audio_filename = None
-            session.gcs_audio_path = None
-            session.error_message = (
-                "Audio file not found. Please re-upload the file."
-            )
-            db.commit()
-
+            # File missing - use case should handle resetting session
             raise HTTPException(
                 status_code=400,
                 detail="Audio file no longer exists. Session reset to allow re-upload.",
@@ -627,187 +586,191 @@ async def retry_transcription(
             f"Retrying transcription for session {session_id}, file size: {file_size} bytes"
         )
 
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions
+        # Queue transcription task with retry attempt tracking
+        task = transcribe_audio.delay(
+            session_id=transcription_data["session_id"],
+            gcs_uri=transcription_data["gcs_uri"],
+            language=transcription_data["language"],
+            original_filename=transcription_data["original_filename"],
+        )
+
+        # Store new task ID using use case
+        transcription_management_use_case.update_transcription_job_id(
+            session_id=session_id,
+            user_id=current_user.id,
+            job_id=task.id,
+        )
+
+        return {
+            "message": "Transcription retry started",
+            "task_id": task.id,
+            "estimated_completion_minutes": 120,
+            "file_size": file_size,
+            "retry": True,
+        }
+
+    except DomainException as e:
+        if "Cannot retry transcription" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "No audio file found" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        if "Session not found" in str(e):
+            raise HTTPException(status_code=404, detail="Session not found")
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error verifying file before retry: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to verify audio file: {str(e)}"
         )
 
-    # Reset session status and clear error
-    session.status = SessionStatus.PROCESSING
-    session.error_message = None
-
-    # Clear any existing transcription job ID
-    session.transcription_job_id = None
-
-    # Clear existing transcript segments if any
-    from ..models.transcript import TranscriptSegment
-
-    db.query(TranscriptSegment).filter(
-        TranscriptSegment.session_id == session_id
-    ).delete()
-
-    # Clear existing processing status
-    from ..models.processing_status import ProcessingStatus
-
-    db.query(ProcessingStatus).filter(
-        ProcessingStatus.session_id == session_id
-    ).delete()
-
-    db.commit()
-
-    # Queue transcription task with retry attempt tracking
-    task = transcribe_audio.delay(
-        session_id=str(session_id),
-        gcs_uri=session.gcs_audio_path,
-        language=session.language,
-        original_filename=session.audio_filename,
-    )
-
-    # Store new task ID
-    session.transcription_job_id = task.id
-    db.commit()
-
-    return {
-        "message": "Transcription retry started",
-        "task_id": task.id,
-        "estimated_completion_minutes": 120,
-        "file_size": file_size,
-        "retry": True,
-    }
-
 
 @router.get("/{session_id}/transcript")
 async def export_transcript(
     session_id: UUID,
     format: str = Query("json", pattern="^(json|vtt|srt|txt|xlsx)$"),
-    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    export_use_case=Depends(get_session_export_use_case),
 ):
     """Export transcript in various formats."""
-    session = (
-        db.query(Session)
-        .filter(Session.id == session_id, Session.user_id == current_user.id)
-        .first()
-    )
+    from ...exceptions import DomainException
 
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    if session.status != SessionStatus.COMPLETED:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Transcript not available. Session status: {session.status.value}",
+    try:
+        # Use case validates session ownership, status, and gets transcript data
+        export_data = export_use_case.export_transcript(
+            session_id=session_id,
+            user_id=current_user.id,
+            format=format,
         )
 
-    # Get transcript segments
-    segments = (
-        db.query(TranscriptSegment)
-        .filter(TranscriptSegment.session_id == session_id)
-        .order_by(TranscriptSegment.start_seconds)
-        .all()
-    )
+        session = export_data["session"]
+        segments = export_data["segments"]
 
-    if not segments:
-        raise HTTPException(
-            status_code=404, detail="No transcript segments found"
+        # We need a database session for the export helper functions
+        # This is temporary until we refactor these into the use case
+        db = next(get_db())
+
+        # Generate transcript content based on format
+        if format == "json":
+            content = _export_json(session, segments, db)
+            media_type = "application/json"
+            response_io = io.StringIO(content)
+        elif format == "vtt":
+            content = _export_vtt(session, segments, db)
+            media_type = "text/vtt"
+            response_io = io.StringIO(content)
+        elif format == "srt":
+            content = _export_srt(session, segments, db)
+            media_type = "text/srt"
+            response_io = io.StringIO(content)
+        elif format == "txt":
+            content = _export_txt(session, segments, db)
+            media_type = "text/plain"
+            response_io = io.StringIO(content)
+        elif format == "xlsx":
+            excel_buffer = _export_xlsx(session, segments, db)
+            media_type = (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+            response_io = excel_buffer
+        else:
+            raise HTTPException(status_code=400, detail="Invalid format")
+
+        # Create filename
+        clean_title = "".join(
+            c for c in session.title if c.isalnum() or c in (" ", "-", "_")
+        ).strip()
+        filename = f"{clean_title}.{format}"
+
+        # Return as streaming response
+        return StreamingResponse(
+            response_io,
+            media_type=media_type,
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
-    # Generate transcript content based on format
-    if format == "json":
-        content = _export_json(session, segments, db)
-        media_type = "application/json"
-        response_io = io.StringIO(content)
-    elif format == "vtt":
-        content = _export_vtt(session, segments, db)
-        media_type = "text/vtt"
-        response_io = io.StringIO(content)
-    elif format == "srt":
-        content = _export_srt(session, segments, db)
-        media_type = "text/srt"
-        response_io = io.StringIO(content)
-    elif format == "txt":
-        content = _export_txt(session, segments, db)
-        media_type = "text/plain"
-        response_io = io.StringIO(content)
-    elif format == "xlsx":
-        excel_buffer = _export_xlsx(session, segments, db)
-        media_type = (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        response_io = excel_buffer
-    else:
-        raise HTTPException(status_code=400, detail="Invalid format")
-
-    # Create filename
-    clean_title = "".join(
-        c for c in session.title if c.isalnum() or c in (" ", "-", "_")
-    ).strip()
-    filename = f"{clean_title}.{format}"
-
-    # Return as streaming response
-    return StreamingResponse(
-        response_io,
-        media_type=media_type,
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
-    )
+    except DomainException as e:
+        if "Transcript not available" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "No transcript segments found" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        elif "Invalid format" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        if "Session not found" in str(e):
+            raise HTTPException(status_code=404, detail="Session not found")
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{session_id}/status", response_model=SessionStatusResponse)
 async def get_session_status(
     session_id: UUID,
-    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    status_retrieval_use_case=Depends(get_session_status_retrieval_use_case),
 ):
     """Get detailed processing status for a session."""
-    # Check if session exists and belongs to user
-    session = (
-        db.query(Session)
-        .filter(Session.id == session_id, Session.user_id == current_user.id)
-        .first()
-    )
+    try:
+        # Use case validates session ownership and gets session info
+        status_data = status_retrieval_use_case.get_detailed_status(
+            session_id=session_id,
+            user_id=current_user.id,
+        )
 
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+        session = status_data["session"]
 
-    # Get the processing status (should be only one per session)
-    latest_status = (
-        db.query(ProcessingStatus)
-        .filter(ProcessingStatus.session_id == session_id)
-        .first()
-    )
+        # For now, we still need database access for ProcessingStatus
+        # TODO: Move ProcessingStatus logic to use case in future iteration
+        from ...core.database import get_db
+        db = next(get_db())
 
-    # If no status exists, create a basic one based on session status
-    if not latest_status:
-        latest_status = _create_default_status(session, db)
+        # Get the processing status (should be only one per session)
+        latest_status = (
+            db.query(ProcessingStatus)
+            .filter(ProcessingStatus.session_id == session_id)
+            .first()
+        )
 
-    # Update progress calculation if processing
-    # NOTE: This should only estimate progress if not already set by Celery task
-    if session.status == SessionStatus.PROCESSING:
-        _update_processing_progress(session, latest_status, db)
+        # If no status exists, create a basic one based on session status
+        if not latest_status:
+            latest_status = _create_default_status(session, db)
 
-    response = SessionStatusResponse(
-        session_id=session.id,
-        status=session.status,
-        progress=latest_status.progress_percentage,
-        message=latest_status.message,
-        duration_processed=latest_status.duration_processed,
-        duration_total=latest_status.duration_total,
-        started_at=latest_status.started_at,
-        estimated_completion=latest_status.estimated_completion,
-        processing_speed=latest_status.processing_speed,
-        created_at=latest_status.created_at,
-        updated_at=latest_status.updated_at,
-    )
+        # Update progress calculation if processing
+        # NOTE: This should only estimate progress if not already set by Celery task
+        if session.status == SessionStatus.PROCESSING:
+            _update_processing_progress(session, latest_status, db)
 
-    # Debug logging
-    logger.info(
-        f"🔍 STATUS API DEBUG - Session {session_id}: progress={latest_status.progress_percentage}%, status={session.status}, message='{latest_status.message}'"
-    )
+        response = SessionStatusResponse(
+            session_id=session.id,
+            status=session.status,
+            progress=latest_status.progress_percentage,
+            message=latest_status.message,
+            duration_processed=latest_status.duration_processed,
+            duration_total=latest_status.duration_total,
+            started_at=latest_status.started_at,
+            estimated_completion=latest_status.estimated_completion,
+            processing_speed=latest_status.processing_speed,
+            created_at=latest_status.created_at,
+            updated_at=latest_status.updated_at,
+        )
 
-    return response
+        # Debug logging
+        logger.info(
+            f"🔍 STATUS API DEBUG - Session {session_id}: progress={latest_status.progress_percentage}%, status={session.status}, message='{latest_status.message}'"
+        )
+
+        return response
+
+    except ValueError as e:
+        if "Session not found" in str(e):
+            raise HTTPException(status_code=404, detail="Session not found")
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
 
 
 class SpeakerRoleUpdateRequest(BaseModel):
@@ -822,8 +785,9 @@ class SegmentRoleUpdateRequest(BaseModel):
 async def update_speaker_roles(
     session_id: UUID,
     request: SpeakerRoleUpdateRequest,
-    db: DBSession = Depends(get_db),
+    db: DBSession = Depends(get_db),  # Temporary until Phase 3 migration
     current_user: User = Depends(get_current_user_dependency),
+    transcript_update_use_case=Depends(get_session_transcript_update_use_case),
 ):
     """Update speaker role assignments for a session."""
     session = (
@@ -842,7 +806,7 @@ async def update_speaker_roles(
         )
 
     # Import here to avoid circular imports
-    from ..models.transcript import SessionRole, SpeakerRole
+    from ...models.transcript import SessionRole, SpeakerRole
 
     # Clear existing role assignments
     db.query(SessionRole).filter(SessionRole.session_id == session_id).delete()
@@ -873,7 +837,7 @@ async def update_speaker_roles(
 async def update_segment_roles(
     session_id: UUID,
     request: SegmentRoleUpdateRequest,
-    db: DBSession = Depends(get_db),
+    db: DBSession = Depends(get_db),  # Temporary until Phase 3 migration
     current_user: User = Depends(get_current_user_dependency),
 ):
     """Update individual segment role assignments for a session."""
@@ -893,7 +857,7 @@ async def update_segment_roles(
         )
 
     # Import here to avoid circular imports
-    from ..models.transcript import SegmentRole, SpeakerRole
+    from ...models.transcript import SegmentRole, SpeakerRole
     from uuid import UUID as PyUUID
 
     # Clear existing segment role assignments
@@ -1060,7 +1024,7 @@ def _export_json(
 ) -> str:
     """Export transcript as JSON."""
     # Get role assignments for this session (speaker-level)
-    from ..models.transcript import SessionRole, SegmentRole
+    from ...models.transcript import SessionRole, SegmentRole
 
     role_assignments = {}
     roles = (
@@ -1112,7 +1076,7 @@ def _export_vtt(
     session: Session, segments: List[TranscriptSegment], db: DBSession
 ) -> str:
     """Export transcript as WebVTT."""
-    from ..models.transcript import SessionRole, SegmentRole
+    from ...models.transcript import SessionRole, SegmentRole
 
     # Get role assignments (both speaker and segment level)
     role_assignments = {}
@@ -1159,7 +1123,7 @@ def _export_srt(
     session: Session, segments: List[TranscriptSegment], db: DBSession
 ) -> str:
     """Export transcript as SRT."""
-    from ..models.transcript import SessionRole, SegmentRole
+    from ...models.transcript import SessionRole, SegmentRole
 
     # Get role assignments (both speaker and segment level)
     role_assignments = {}
@@ -1207,7 +1171,7 @@ def _export_txt(
     session: Session, segments: List[TranscriptSegment], db: DBSession
 ) -> str:
     """Export transcript as plain text."""
-    from ..models.transcript import SessionRole, SegmentRole
+    from ...models.transcript import SessionRole, SegmentRole
 
     # Get role assignments (both speaker and segment level)
     role_assignments = {}
@@ -1258,7 +1222,7 @@ def _export_xlsx(
     session: Session, segments: List[TranscriptSegment], db: DBSession
 ) -> io.BytesIO:
     """Export transcript as Excel file."""
-    from ..models.transcript import SessionRole, SegmentRole
+    from ...models.transcript import SessionRole, SegmentRole
 
     # Get role assignments (both speaker and segment level)
     role_assignments = {}
@@ -1340,105 +1304,47 @@ def _format_timestamp_srt(seconds: float) -> str:
 async def upload_session_transcript(
     session_id: UUID,
     file: UploadFile = FastAPIFile(...),
-    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    transcript_upload_use_case=Depends(get_session_transcript_upload_use_case),
 ):
     """Upload a VTT or SRT transcript file directly to a session."""
+    from ...exceptions import DomainException
 
     logger.info(
         f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, filename={file.filename}"
     )
-
-    # Check if session exists at all
-    session_exists = db.query(Session).filter(Session.id == session_id).first()
-    if not session_exists:
-        logger.warning(f"❌ Session {session_id} does not exist in database")
-        raise HTTPException(
-            status_code=404,
-            detail=f"Session {session_id} not found in database",
-        )
-
-    # Check if session belongs to user
-    session = (
-        db.query(Session)
-        .filter(Session.id == session_id, Session.user_id == current_user.id)
-        .first()
-    )
-
-    if not session:
-        logger.warning(
-            f"❌ Session {session_id} exists but does not belong to user {current_user.id}"
-        )
-        logger.info(
-            f"📊 Session owner: {session_exists.user_id}, requesting user: {current_user.id}"
-        )
-        raise HTTPException(
-            status_code=404, detail="Session not found or access denied"
-        )
-
-    # Check file type
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
-
-    file_extension = file.filename.split(".")[-1].lower()
-    if file_extension not in ["vtt", "srt"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid file format. Only VTT and SRT files are supported.",
-        )
 
     try:
         # Read file content
         content = await file.read()
         content_str = content.decode("utf-8")
 
-        # Parse the transcript
-        segments = []
-        if file_extension == "vtt":
-            segments = _parse_vtt_content(content_str)
-        elif file_extension == "srt":
-            segments = _parse_srt_content(content_str)
+        # Use case validates session ownership and file format, parses content
+        upload_result = transcript_upload_use_case.upload_transcript_file(
+            session_id=session_id,
+            user_id=current_user.id,
+            filename=file.filename or "transcript",
+            content=content_str,
+        )
 
-        if not segments:
-            raise HTTPException(
-                status_code=400,
-                detail="No valid transcript segments found in file",
-            )
+        segments_data = upload_result["segments_data"]
 
-        # Create a transcription session ID for this manual upload
+        # Save parsed segments using use case
+        save_result = transcript_upload_use_case.save_transcript_segments(
+            session_id=session_id,
+            user_id=current_user.id,
+            segments_data=segments_data,
+        )
+
+        # Create a transcription session ID for compatibility
         transcription_session_id = str(uuid4())
-
-        # Save segments to database
-        total_duration = 0
-        for i, segment_data in enumerate(segments):
-            segment = TranscriptSegment(
-                id=uuid4(),
-                session_id=session_id,
-                speaker_id=segment_data.get(
-                    "speaker_id", 1
-                ),  # Default to speaker 1
-                start_seconds=segment_data["start_seconds"],
-                end_seconds=segment_data["end_seconds"],
-                content=segment_data["content"],
-                confidence=1.0,  # Manual upload, assume high confidence
-            )
-            total_duration = max(total_duration, segment_data["end_seconds"])
-            db.add(segment)
-
-        # Update session with transcript info
-        # Note: session here is a Session (transcription session), not CoachingSession
-        # No need to set transcription_session_id as this session IS the transcription session
-        session.duration_seconds = total_duration
-        session.status = SessionStatus.COMPLETED
-
-        db.commit()
 
         return {
             "message": "Transcript uploaded successfully",
             "session_id": str(session_id),
             "transcription_session_id": transcription_session_id,
-            "segments_count": len(segments),
-            "duration_seconds": total_duration,
+            "segments_count": save_result["segments_count"],
+            "duration_seconds": save_result["duration_seconds"],
         }
 
     except UnicodeDecodeError:
@@ -1446,8 +1352,21 @@ async def upload_session_transcript(
             status_code=400,
             detail="File encoding not supported. Please use UTF-8 encoding.",
         )
+    except DomainException as e:
+        if "No filename provided" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "Invalid file format" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        elif "No valid transcript segments found" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        if "Session not found" in str(e):
+            raise HTTPException(status_code=404, detail="Session not found or access denied")
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        db.rollback()
         logger.error(f"Error uploading transcript: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to process transcript: {str(e)}"

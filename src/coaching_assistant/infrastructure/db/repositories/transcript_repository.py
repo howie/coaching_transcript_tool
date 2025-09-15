@@ -19,7 +19,7 @@ class TranscriptRepository(TranscriptRepoPort):
         return (
             self.db_session.query(TranscriptSegment)
             .filter(TranscriptSegment.session_id == session_id)
-            .order_by(TranscriptSegment.start_time)
+            .order_by(TranscriptSegment.start_seconds)
             .all()
         )
 

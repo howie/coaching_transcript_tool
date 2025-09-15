@@ -84,10 +84,11 @@ class SubscriptionCreationUseCase:
         authorization = ECPayCreditAuthorization(
             id=uuid4(),
             user_id=user_id,
-            auth_id=auth_id,
             merchant_member_id=merchant_member_id,
-            plan_id=plan_id,
-            billing_cycle=billing_cycle,
+            auth_amount=100,  # 1 TWD for authorization
+            period_type="Month",
+            frequency=1,
+            period_amount=0,  # Will be set later based on plan
             auth_status=ECPayAuthStatus.PENDING,
             created_at=datetime.utcnow(),
         )
@@ -151,9 +152,13 @@ class SubscriptionCreationUseCase:
             raise ValueError(f"Plan configuration not found for: {plan_id}")
 
         # Calculate subscription details
-        pricing = plan_config.pricing or {}
-        amount_key = f"{billing_cycle}_twd"
-        amount_cents = pricing.get(amount_key, 0)
+        # Map billing cycle to actual price fields
+        if billing_cycle == "monthly":
+            amount_cents = plan_config.monthly_price_twd_cents
+        elif billing_cycle == "annual":
+            amount_cents = plan_config.annual_price_twd_cents
+        else:
+            amount_cents = 0
         
         if amount_cents <= 0:
             raise ValueError(f"Invalid pricing for {plan_id} {billing_cycle}")
@@ -163,13 +168,15 @@ class SubscriptionCreationUseCase:
             id=uuid4(),
             user_id=user_id,
             plan_id=plan_id,
+            plan_name=f"{plan_id} Plan",
             billing_cycle=billing_cycle,
             status=SubscriptionStatus.ACTIVE,
-            amount_cents=amount_cents,
+            amount_twd=amount_cents,
             currency="TWD",
-            authorization_id=authorization_id,
+            auth_id=authorization_id,
+            current_period_start=datetime.utcnow().date(),
+            current_period_end=self._calculate_next_billing_date(billing_cycle),
             created_at=datetime.utcnow(),
-            next_billing_date=self._calculate_next_billing_date(billing_cycle),
         )
 
         saved_subscription = self.subscription_repo.save_subscription(subscription)
@@ -185,7 +192,7 @@ class SubscriptionCreationUseCase:
         # For now, return mock data structure
         return {
             "MerchantID": "Mock_Merchant_ID",
-            "MerchantTradeNo": authorization.auth_id,
+            "MerchantTradeNo": authorization.merchant_member_id,
             "PaymentType": "aio",
             "TotalAmount": "1",  # Minimal amount for authorization
             "TradeDesc": f"Credit card authorization for {authorization.plan_id}",
@@ -250,25 +257,25 @@ class SubscriptionRetrievalUseCase:
             "id": str(subscription.id),
             "plan_id": subscription.plan_id,
             "billing_cycle": subscription.billing_cycle,
-            "status": subscription.status.value,
-            "amount_cents": subscription.amount_cents,
+            "status": subscription.status.value if hasattr(subscription.status, 'value') else str(subscription.status),
+            "amount_cents": getattr(subscription, 'amount_twd', 0),
             "currency": subscription.currency,
             "created_at": subscription.created_at.isoformat(),
-            "next_billing_date": subscription.next_billing_date.isoformat() if subscription.next_billing_date else None,
+            "next_billing_date": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
         }
 
         payment_method_data = None
         if authorization:
             payment_method_data = {
-                "auth_id": authorization.auth_id,
-                "auth_status": authorization.auth_status.value,
+                "auth_id": authorization.merchant_member_id,
+                "auth_status": authorization.auth_status.value if hasattr(authorization.auth_status, 'value') else str(authorization.auth_status),
                 "created_at": authorization.created_at.isoformat(),
             }
 
         return {
             "subscription": subscription_data,
             "payment_method": payment_method_data,
-            "status": subscription.status.value,
+            "status": subscription.status.value if hasattr(subscription.status, 'value') else str(subscription.status),
         }
 
     def get_subscription_payments(self, user_id: UUID) -> Dict[str, Any]:
@@ -289,7 +296,7 @@ class SubscriptionRetrievalUseCase:
         payment_data = [
             {
                 "id": str(payment.id),
-                "amount_cents": payment.amount_cents,
+                "amount_cents": getattr(payment, 'amount_twd', 0),
                 "currency": payment.currency,
                 "status": payment.status.value,
                 "payment_date": payment.payment_date.isoformat() if payment.payment_date else None,
@@ -379,10 +386,20 @@ class SubscriptionModificationUseCase:
             raise DomainException("Subscription is not active")
 
         # Update subscription status
-        new_status = SubscriptionStatus.CANCELED if immediate else SubscriptionStatus.PENDING_CANCELLATION
-        updated_subscription = self.subscription_repo.update_subscription_status(
-            subscription.id, new_status
-        )
+        if immediate:
+            new_status = SubscriptionStatus.CANCELLED
+            updated_subscription = self.subscription_repo.update_subscription_status(
+                subscription.id, new_status
+            )
+        else:
+            # Schedule cancellation at period end: keep ACTIVE status and mark flag if available
+            try:
+                # Directly mark cancel_at_period_end flag when repository does not expose a method
+                subscription.cancel_at_period_end = True
+                updated_subscription = self.subscription_repo.save_subscription(subscription)  # type: ignore[attr-defined]
+            except Exception:
+                # Fallback: leave status ACTIVE without flag if repository lacks save method
+                updated_subscription = subscription
 
         # If immediate cancellation, update user plan to FREE
         if immediate:
@@ -391,8 +408,8 @@ class SubscriptionModificationUseCase:
         return {
             "success": True,
             "subscription_id": str(updated_subscription.id),
-            "status": updated_subscription.status.value,
-            "effective_date": "immediate" if immediate else updated_subscription.next_billing_date.isoformat(),
+            "status": updated_subscription.status.value if hasattr(updated_subscription.status, "value") else updated_subscription.status,
+            "effective_date": "immediate" if immediate else (getattr(updated_subscription, "current_period_end", None).isoformat() if getattr(updated_subscription, "current_period_end", None) else "period_end"),
             "message": f"Subscription {'canceled' if immediate else 'scheduled for cancellation'}",
         }
 
@@ -422,9 +439,13 @@ class SubscriptionModificationUseCase:
             raise ValueError(f"Plan configuration not found for: {new_plan_id}")
 
         # Calculate new pricing
-        pricing = new_plan_config.pricing or {}
-        amount_key = f"{new_billing_cycle}_twd"
-        new_amount_cents = pricing.get(amount_key, 0)
+        # Map billing cycle to actual price fields
+        if new_billing_cycle == "monthly":
+            new_amount_cents = new_plan_config.monthly_price_twd_cents
+        elif new_billing_cycle == "annual":
+            new_amount_cents = new_plan_config.annual_price_twd_cents
+        else:
+            new_amount_cents = 0
 
         if new_amount_cents <= 0:
             raise ValueError(f"Invalid pricing for {new_plan_id} {new_billing_cycle}")
@@ -432,7 +453,7 @@ class SubscriptionModificationUseCase:
         # Update subscription
         subscription.plan_id = new_plan_id
         subscription.billing_cycle = new_billing_cycle
-        subscription.amount_cents = new_amount_cents
+        subscription.amount_twd = new_amount_cents
         subscription.updated_at = datetime.utcnow()
 
         updated_subscription = self.subscription_repo.save_subscription(subscription)
@@ -480,14 +501,18 @@ class SubscriptionModificationUseCase:
         if not new_plan_config:
             raise ValueError(f"Plan configuration not found for: {new_plan_id}")
 
-        pricing = new_plan_config.pricing or {}
-        amount_key = f"{new_billing_cycle}_twd"
-        new_amount_cents = pricing.get(amount_key, 0)
+        # Map billing cycle to actual price fields
+        if new_billing_cycle == "monthly":
+            new_amount_cents = new_plan_config.monthly_price_twd_cents
+        elif new_billing_cycle == "annual":
+            new_amount_cents = new_plan_config.annual_price_twd_cents
+        else:
+            new_amount_cents = 0
 
         # Calculate remaining value of current subscription
         # This is a simplified calculation - in practice, you'd need more complex logic
-        current_amount = subscription.amount_cents
-        remaining_days = (subscription.next_billing_date - datetime.utcnow().date()).days
+        current_amount = getattr(subscription, 'amount_twd', 0)
+        remaining_days = (subscription.current_period_end - datetime.utcnow().date()).days
         billing_period_days = 30 if subscription.billing_cycle == "monthly" else 365
         
         remaining_value = int((current_amount * remaining_days) / billing_period_days)

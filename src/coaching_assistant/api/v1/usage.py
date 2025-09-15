@@ -6,12 +6,12 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import logging
 
-from ..core.database import get_db
-from ..api.auth import get_current_user_dependency
-from ..api.dependencies import require_admin  # Use the new permission system
-from ..models.user import User
-from ..models.usage_analytics import UsageAnalytics
-from ..services.usage_tracking import UsageTrackingService
+from ...core.database import get_db
+from .auth import get_current_user_dependency
+from ...api.dependencies import require_admin  # Use the new permission system
+from ...models.user import User
+from ...models.usage_analytics import UsageAnalytics
+from ...services.usage_tracking import UsageTrackingService
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ async def get_current_month_usage(
     logger.info(f"📊 User {current_user.id} requesting current month usage")
 
     # Get plan limits
-    from ..services.usage_tracking import PlanLimits
+    from ...services.usage_tracking import PlanLimits
 
     plan_limits = PlanLimits.get_limits(current_user.plan)
 

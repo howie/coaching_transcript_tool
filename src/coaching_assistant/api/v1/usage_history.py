@@ -12,11 +12,11 @@ from fastapi import APIRouter, HTTPException, status, Depends, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from ..core.database import get_db
-from ..models.user import User
-from ..models.usage_history import UsageHistory
-from ..services.usage_analytics_service import UsageAnalyticsService
-from ..api.auth import get_current_user_dependency
+from ...core.database import get_db
+from ...models.user import User
+from ...models.usage_history import UsageHistory
+from ...services.usage_analytics_service import UsageAnalyticsService
+from .auth import get_current_user_dependency
 
 logger = logging.getLogger(__name__)
 
