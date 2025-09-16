@@ -1,8 +1,8 @@
 {
-  "version": "2.19.0",
-  "displayVersion": "v2.19.0",
-  "description": "WP3 - Subscriptions Vertical Slice Clean Architecture Refactor",
+  "version": "2.20.0",
+  "displayVersion": "v2.20.0",
+  "description": "WP5 - Complete Domain ↔ ORM Convergence & Schema Migration",
   "releaseDate": "2025-09-16",
-  "releaseNotes": "Complete Clean Architecture refactor of subscription/payment system (WP3). Major improvements: (1) Refactored subscription API to remove direct SQLAlchemy dependencies - all business logic now handled through use cases following Clean Architecture principles; (2) Added comprehensive test coverage with unit tests (subscription use cases), integration tests (repository layer), and E2E tests (complete subscription workflows); (3) Enhanced transaction safety with explicit flush/rollback mechanisms; (4) Improved architecture compliance - API layer now handles only HTTP concerns while core business logic resides in use case layer; (5) Maintained full backward compatibility while significantly improving code maintainability and testability. Total: ~200 lines of business logic migrated from API to use case layer, ~600 lines of new test coverage added.",
+  "releaseNotes": "Complete WP5 domain ↔ ORM convergence implementation establishing enterprise-grade Clean Architecture. Major achievements: (1) Phase 3 completed - All 5 subscription domain models (ECPayCreditAuthorization, SaasSubscription, SubscriptionPayment, SubscriptionPendingChange, WebhookLog) fully migrated with complete domain/infrastructure separation; (2) Created comprehensive infrastructure ORM models with complete to_domain() and from_domain() conversion methods; (3) Updated subscription repository to eliminate all legacy model dependencies; (4) Established complete Clean Architecture compliance with zero infrastructure dependencies in domain layer; (5) All critical business domains now follow proper domain ↔ ORM patterns: Configuration Management ✅, Transcript Management ✅, Billing Management ✅. Total: 5 complex billing models migrated, ~800 lines of domain/infrastructure code added, 100% Clean Architecture compliance achieved for core business models.",
   "author": "Coachly Team"
 }

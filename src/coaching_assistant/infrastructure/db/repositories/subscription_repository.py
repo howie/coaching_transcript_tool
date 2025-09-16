@@ -1,4 +1,4 @@
-"""Subscription repository implementation using SQLAlchemy."""
+"""Subscription repository implementation using SQLAlchemy with Clean Architecture."""
 
 import logging
 from typing import List, Optional
@@ -7,11 +7,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from ....core.repositories.ports import SubscriptionRepoPort
-from ....models.ecpay_subscription import (
+from ....core.models.subscription import (
     SaasSubscription,
     SubscriptionPayment,
     ECPayCreditAuthorization,
     SubscriptionStatus,
+)
+from ..models.subscription_model import (
+    SaasSubscriptionModel,
+    SubscriptionPaymentModel,
+    ECPayCreditAuthorizationModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,21 +36,23 @@ class SubscriptionRepository(SubscriptionRepoPort):
                 logger.warning(f"Database session is not active for subscription query, user {user_id}")
                 return None
 
-            return (
-                self.db_session.query(SaasSubscription)
+            orm_subscription = (
+                self.db_session.query(SaasSubscriptionModel)
                 .filter(
-                    SaasSubscription.user_id == user_id,
-                    SaasSubscription.status.in_(
+                    SaasSubscriptionModel.user_id == user_id,
+                    SaasSubscriptionModel.status.in_(
                         [
-                            SubscriptionStatus.ACTIVE.value,
-                        SubscriptionStatus.PAST_DUE.value,
-                        SubscriptionStatus.UNPAID.value,
-                        SubscriptionStatus.TRIALING.value,
-                    ]
-                ),
+                            SubscriptionStatus.ACTIVE,
+                            SubscriptionStatus.PAST_DUE,
+                            SubscriptionStatus.UNPAID,
+                            SubscriptionStatus.TRIALING,
+                        ]
+                    ),
+                )
+                .first()
             )
-            .first()
-        )
+
+            return orm_subscription.to_domain() if orm_subscription else None
         except SQLAlchemyError as e:
             logger.error(f"Database error in get_subscription_by_user_id for user {user_id}: {e}")
             self.db_session.rollback()
@@ -57,9 +64,10 @@ class SubscriptionRepository(SubscriptionRepoPort):
 
     def save_subscription(self, subscription: SaasSubscription) -> SaasSubscription:
         """Save or update subscription."""
-        self.db_session.add(subscription)
+        orm_subscription = SaasSubscriptionModel.from_domain(subscription)
+        self.db_session.add(orm_subscription)
         self.db_session.flush()  # Ensure ID is generated without committing
-        return subscription
+        return orm_subscription.to_domain()
 
     def get_credit_authorization_by_user_id(
         self, user_id: UUID
@@ -71,12 +79,14 @@ class SubscriptionRepository(SubscriptionRepoPort):
                 logger.warning(f"Database session is not active for authorization query, user {user_id}")
                 return None
 
-            return (
-                self.db_session.query(ECPayCreditAuthorization)
-                .filter(ECPayCreditAuthorization.user_id == user_id)
-                .order_by(ECPayCreditAuthorization.created_at.desc())
+            orm_auth = (
+                self.db_session.query(ECPayCreditAuthorizationModel)
+                .filter(ECPayCreditAuthorizationModel.user_id == user_id)
+                .order_by(ECPayCreditAuthorizationModel.created_at.desc())
                 .first()
             )
+
+            return orm_auth.to_domain() if orm_auth else None
         except SQLAlchemyError as e:
             logger.error(f"Database error in get_credit_authorization_by_user_id for user {user_id}: {e}")
             self.db_session.rollback()
@@ -90,44 +100,47 @@ class SubscriptionRepository(SubscriptionRepoPort):
         self, auth: ECPayCreditAuthorization
     ) -> ECPayCreditAuthorization:
         """Save or update credit authorization."""
-        self.db_session.add(auth)
+        orm_auth = ECPayCreditAuthorizationModel.from_domain(auth)
+        self.db_session.add(orm_auth)
         self.db_session.flush()  # Ensure ID is generated without committing
-        return auth
+        return orm_auth.to_domain()
 
     def save_payment(self, payment: SubscriptionPayment) -> SubscriptionPayment:
         """Save subscription payment record."""
-        self.db_session.add(payment)
+        orm_payment = SubscriptionPaymentModel.from_domain(payment)
+        self.db_session.add(orm_payment)
         self.db_session.flush()  # Ensure ID is generated without committing
-        return payment
+        return orm_payment.to_domain()
 
     def get_payments_for_subscription(
         self, subscription_id: UUID
     ) -> List[SubscriptionPayment]:
         """Get all payments for a subscription."""
-        return (
-            self.db_session.query(SubscriptionPayment)
-            .filter(SubscriptionPayment.subscription_id == subscription_id)
-            .order_by(SubscriptionPayment.created_at.desc())
+        orm_payments = (
+            self.db_session.query(SubscriptionPaymentModel)
+            .filter(SubscriptionPaymentModel.subscription_id == subscription_id)
+            .order_by(SubscriptionPaymentModel.created_at.desc())
             .all()
         )
+        return [payment.to_domain() for payment in orm_payments]
 
     def update_subscription_status(
         self, subscription_id: UUID, status: SubscriptionStatus
     ) -> SaasSubscription:
         """Update subscription status."""
-        subscription = (
-            self.db_session.query(SaasSubscription)
-            .filter(SaasSubscription.id == subscription_id)
+        orm_subscription = (
+            self.db_session.query(SaasSubscriptionModel)
+            .filter(SaasSubscriptionModel.id == subscription_id)
             .first()
         )
-        
-        if not subscription:
+
+        if not orm_subscription:
             raise ValueError(f"Subscription not found: {subscription_id}")
-        
-        # Persist enum value as string
-        subscription.status = status.value if hasattr(status, "value") else status
+
+        # Update the enum directly
+        orm_subscription.status = status
         self.db_session.flush()  # Ensure changes are flushed without committing
-        return subscription
+        return orm_subscription.to_domain()
 
 
 def create_subscription_repository(db_session: Session) -> SubscriptionRepoPort:
