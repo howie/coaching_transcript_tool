@@ -1,12 +1,36 @@
-# Phase 3: Domain Model Separation ✅ COMPLETED
+# Phase 3: Domain Model Separation ⚠️ PARTIAL - DATABASE MIGRATION REQUIRED
 
 ## Overview
 
 Phase 3 completes the Clean Architecture transformation by separating domain models from ORM models and moving infrastructure concerns to the appropriate layer.
 
 **Duration**: 2-3 weeks
-**Status**: ✅ **COMPLETED** (2025-09-15)
+**Status**: ⚠️ **PARTIAL** - Critical schema migration issue discovered (2025-09-16)
 **Prerequisites**: ✅ Phase 1 + ✅ Phase 2
+
+## ⚠️ CRITICAL ISSUE DISCOVERED
+
+**Problem**: Infrastructure models expect different database schema than what exists in production.
+**Impact**: `/api/plans/current` and subscription endpoints were returning 500 errors.
+**Resolution**: Temporarily reverted to legacy models, infrastructure migration requires database schema migration.
+
+### Immediate Hotfix Applied (2025-09-16)
+- ✅ Reverted user repository to use legacy `User` model instead of infrastructure `UserModel`
+- ✅ Endpoints now return 401 (expected) instead of 500 (error)
+- ✅ API functionality restored
+- ✅ Created comprehensive migration guide: `critical-schema-migration-guide.md`
+
+### Required Next Steps
+1. **Database Schema Migration**: Create Alembic migration to update user table schema
+2. **Gradual Model Transition**: Update legacy model with new fields + compatibility layer
+3. **Infrastructure Model Cutover**: Switch back to infrastructure models after migration
+4. **Legacy Model Cleanup**: Remove `src/coaching_assistant/models/user.py` after migration
+
+### Current Status
+- 🏛️ **Clean Architecture**: Maintained - still using repository ports and use cases
+- ⚠️ **Infrastructure Models**: Temporarily disabled due to schema mismatch
+- ✅ **API Functionality**: Restored - all endpoints working correctly
+- 📋 **Migration Plan**: Documented and ready for implementation
 
 ## Objectives
 

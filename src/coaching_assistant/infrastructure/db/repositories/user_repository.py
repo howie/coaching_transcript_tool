@@ -13,7 +13,7 @@ from sqlalchemy import and_
 
 from ....core.repositories.ports import UserRepoPort
 from ....core.models.user import User as DomainUser, UserPlan, UserRole
-from ...db.models.user_model import UserModel
+from ....models.user import User as UserModel
 
 
 class SQLAlchemyUserRepository(UserRepoPort):
@@ -28,10 +28,53 @@ class SQLAlchemyUserRepository(UserRepoPort):
         self.session = session
 
     def _to_domain(self, orm_user: UserModel) -> DomainUser:
-        """Convert ORM User to domain User using infrastructure model method."""
+        """Convert ORM User to domain User model."""
         if not orm_user:
             return None
-        return orm_user.to_domain()
+
+        # Manual conversion from legacy ORM to domain model
+        return DomainUser(
+            id=orm_user.id,
+            email=orm_user.email,
+            name=orm_user.name,
+            hashed_password=orm_user.hashed_password,
+            avatar_url=orm_user.avatar_url,
+            plan=orm_user.plan,
+            role=orm_user.role,
+            usage_minutes=orm_user.usage_minutes,
+            session_count=orm_user.session_count,
+            created_at=orm_user.created_at,
+            updated_at=orm_user.updated_at,
+            last_active_at=getattr(orm_user, 'last_active_at', None),
+            stripe_customer_id=getattr(orm_user, 'stripe_customer_id', None),
+            subscription_status=getattr(orm_user, 'subscription_status', None),
+        )
+
+    def _create_orm_user(self, user: DomainUser) -> UserModel:
+        """Create ORM user from domain user."""
+        orm_user = UserModel(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            hashed_password=user.hashed_password,
+            avatar_url=user.avatar_url,
+            plan=user.plan,
+            role=user.role,
+            usage_minutes=user.usage_minutes,
+            session_count=user.session_count,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        )
+
+        # Set optional fields if they exist in the legacy model
+        if hasattr(orm_user, 'last_active_at'):
+            orm_user.last_active_at = user.last_active_at
+        if hasattr(orm_user, 'stripe_customer_id'):
+            orm_user.stripe_customer_id = user.stripe_customer_id
+        if hasattr(orm_user, 'subscription_status'):
+            orm_user.subscription_status = user.subscription_status
+
+        return orm_user
 
     def get_by_id(self, user_id: UUID) -> Optional[DomainUser]:
         """Get user by ID.
@@ -101,15 +144,29 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 # Update existing user
                 orm_user = self.session.get(UserModel, user.id)
                 if orm_user:
-                    # Update existing user using infrastructure model method
-                    orm_user.update_from_domain(user)
+                    # Update existing user fields manually
+                    orm_user.email = user.email
+                    orm_user.name = user.name
+                    orm_user.hashed_password = user.hashed_password
+                    orm_user.avatar_url = user.avatar_url
+                    orm_user.plan = user.plan
+                    orm_user.role = user.role
+                    orm_user.usage_minutes = user.usage_minutes
+                    orm_user.session_count = user.session_count
+                    if hasattr(orm_user, 'last_active_at'):
+                        orm_user.last_active_at = user.last_active_at
+                    if hasattr(orm_user, 'stripe_customer_id'):
+                        orm_user.stripe_customer_id = user.stripe_customer_id
+                    if hasattr(orm_user, 'subscription_status'):
+                        orm_user.subscription_status = user.subscription_status
+                    orm_user.updated_at = user.updated_at
                 else:
                     # User ID exists but not found in DB - create new
-                    orm_user = UserModel.from_domain(user)
+                    orm_user = self._create_orm_user(user)
                     self.session.add(orm_user)
             else:
                 # Create new user
-                orm_user = UserModel.from_domain(user)
+                orm_user = self._create_orm_user(user)
                 self.session.add(orm_user)
 
             self.session.flush()  # Get the ID without committing
