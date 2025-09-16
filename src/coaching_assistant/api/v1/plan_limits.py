@@ -19,7 +19,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/plan", tags=["plan-limits"])
+router = APIRouter(tags=["plan-limits"])
 
 
 class ValidateActionRequest(BaseModel):

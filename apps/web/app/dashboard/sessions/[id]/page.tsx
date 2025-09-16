@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { PencilIcon, TrashIcon, ArrowLeftIcon, DocumentArrowDownIcon, MicrophoneIcon, DocumentTextIcon, ChartBarIcon, ChatBubbleLeftRightIcon, DocumentMagnifyingGlassIcon, CloudArrowUpIcon, ExclamationTriangleIcon, ArrowUpIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
@@ -181,14 +181,7 @@ const SessionDetailPage = () => {
   // Use transcription status hook for progress tracking
   const transcriptionSessionId = session?.transcription_session_id;
   
-  // Debug client information
-  console.log('Client debug info:', {
-    sessionClient: session?.client,
-    sessionClientId: session?.client_id,
-    clientsArray: clients,
-    currentClient: clients.find(c => c.id === session?.client_id),
-    fullSession: session
-  });
+  // Client information for debugging (removed console.log to prevent infinite loop)
   
   const {
     status: transcriptionStatus,
@@ -218,11 +211,14 @@ const SessionDetailPage = () => {
   }, [sessionId]);
 
   // Refresh transcription status when switching back to overview or transcript tabs
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
+
   useEffect(() => {
     if (transcriptionSessionId && (activeTab === 'overview' || activeTab === 'transcript')) {
-      refetch();
+      refetchRef.current();
     }
-  }, [activeTab, transcriptionSessionId, refetch]);
+  }, [activeTab, transcriptionSessionId]);
 
   useEffect(() => {
     // Auto-fetch transcript when transcription is completed and we don't have it yet

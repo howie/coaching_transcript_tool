@@ -89,6 +89,11 @@ class SessionResponse(BaseModel):
 
     @classmethod
     def from_session(cls, session: Session):
+        # Calculate duration_minutes from duration_seconds for legacy compatibility
+        duration_minutes = None
+        if session.duration_seconds:
+            duration_minutes = round(session.duration_seconds / 60, 1)
+
         return cls(
             id=session.id,
             title=session.title,
@@ -97,8 +102,8 @@ class SessionResponse(BaseModel):
             stt_provider=session.stt_provider,
             audio_filename=session.audio_filename,
             duration_seconds=session.duration_seconds,
-            duration_minutes=session.duration_minutes,
-            segments_count=session.segments_count,
+            duration_minutes=duration_minutes,
+            segments_count=getattr(session, "segments_count", 0),  # Default to 0 for legacy compatibility
             error_message=session.error_message,
             stt_cost_usd=session.stt_cost_usd,
             provider_metadata=getattr(session, "provider_metadata", None),
