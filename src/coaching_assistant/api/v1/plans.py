@@ -5,9 +5,7 @@ from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
-
-from ...core.database import get_db
+# Removed direct database dependencies for Clean Architecture compliance
 from .auth import get_current_user_dependency
 from .dependencies import (
     get_plan_retrieval_use_case,
@@ -16,9 +14,6 @@ from .dependencies import (
 )
 from ...models import User
 from ...models.user import UserPlan
-from ...models.plan_configuration import PlanConfiguration
-from ...services.usage_tracking import PlanLimits as UsagePlanLimits
-from ...services.plan_limits import get_global_plan_limits, PlanName
 from ...core.services.plan_management_use_case import (
     PlanRetrievalUseCase,
     PlanValidationUseCase,
@@ -69,68 +64,7 @@ class PlansListResponse(BaseModel):
     total: int
 
 
-# Helper functions from original plans.py
-def get_plan_config_from_db(db: Session, plan_type: UserPlan) -> Dict[str, Any]:
-    """Get plan configuration from database."""
-    plan_config = (
-        db.query(PlanConfiguration)
-        .filter(PlanConfiguration.plan_type == plan_type)
-        .first()
-    )
-
-    if not plan_config:
-        logger.warning(
-            f"Plan configuration not found for {plan_type}, using fallback"
-        )
-        # Fallback to hardcoded config if not found in DB
-        return PLAN_CONFIGS[plan_type].copy()
-
-    # Convert database model to API format
-    limits = plan_config.limits.copy()
-
-    # Map database keys to API keys for consistency
-    api_limits = {
-        "maxSessions": limits.get("maxSessions", -1),
-        "maxTotalMinutes": limits.get("maxMinutes", -1),
-        "maxTranscriptionCount": limits.get("maxTranscriptions", -1),
-        "maxFileSizeMb": limits.get("maxFileSize", 60),
-        "exportFormats": ["json", "txt"],  # Default formats
-        "concurrentProcessing": limits.get("concurrentJobs", 1),
-        "retentionDays": limits.get("retentionDays", 30),
-    }
-
-    # Convert -1 to "unlimited" for frontend display
-    if api_limits["maxSessions"] == -1:
-        api_limits["maxSessions"] = "unlimited"
-    if api_limits["maxTotalMinutes"] == -1:
-        api_limits["maxTotalMinutes"] = "unlimited"
-    if api_limits["maxTranscriptionCount"] == -1:
-        api_limits["maxTranscriptionCount"] = "unlimited"
-    if api_limits["retentionDays"] == -1:
-        api_limits["retentionDays"] = "permanent"
-
-    return {
-        "planName": plan_config.plan_name,
-        "displayName": plan_config.display_name,
-        "description": plan_config.description,
-        "tagline": plan_config.tagline,
-        "limits": api_limits,
-        "features": plan_config.features or {},
-        "pricing": {
-            "monthlyUsd": plan_config.monthly_price_cents / 100,
-            "annualUsd": plan_config.annual_price_cents / 100,
-            "monthlyTwd": plan_config.monthly_price_twd_cents / 100,
-            "annualTwd": plan_config.annual_price_twd_cents / 100,
-            "annualDiscountPercentage": plan_config._calculate_annual_discount(),
-            "annualSavingsUsd": plan_config._calculate_annual_savings(),
-            "currency": plan_config.currency,
-        },
-        "display": {
-            "isPopular": plan_config.is_popular,
-            "colorScheme": plan_config.color_scheme,
-            "sortOrder": plan_config.sort_order,
-        },
-    }
+# Direct database access functions removed - use injected use cases instead
 
 
 def _get_upgrade_benefits(current_plan: UserPlan, suggested_plan: UserPlan) -> List[str]:
@@ -161,178 +95,47 @@ def _get_upgrade_benefits(current_plan: UserPlan, suggested_plan: UserPlan) -> L
     return benefits.get((current_plan, suggested_plan), [])
 
 
-# Plan configurations - DEPRECATED: now using database, keeping as fallback
-PLAN_CONFIGS = {
-    UserPlan.FREE: {
-        "planName": "free",
-        "displayName": "Free Trial",
-        "description": "Perfect for trying out the platform",
-        "tagline": "Get started for free",
-        "limits": {
-            "maxSessions": 10,
-            "maxTotalMinutes": 120,
-            "maxTranscriptionCount": 20,
-            "maxFileSizeMb": 50,
-            "exportFormats": ["json", "txt"],
-            "concurrentProcessing": 1,
-            "retentionDays": 30,
-        },
-        "features": {
-            "prioritySupport": False,
-            "exportFormats": ["json", "txt"],
-            "concurrentProcessing": 1,
-        },
-        "pricing": {
-            "monthlyUsd": 0,
-            "annualUsd": 0,
-            "annualDiscountPercentage": 0,
-            "annualSavingsUsd": 0,
-        },
-        "display": {"isPopular": False, "colorScheme": "gray", "sortOrder": 1},
-    },
-    UserPlan.PRO: {
-        "planName": "pro",
-        "displayName": "Pro Plan",
-        "description": "For professional coaches",
-        "tagline": "Most popular choice",
-        "limits": {
-            "maxSessions": 100,
-            "maxTotalMinutes": 1200,
-            "maxTranscriptionCount": 200,
-            "maxFileSizeMb": 200,
-            "exportFormats": ["json", "txt", "vtt", "srt"],
-            "concurrentProcessing": 3,
-            "retentionDays": 365,
-        },
-        "features": {
-            "prioritySupport": True,
-            "exportFormats": ["json", "txt", "vtt", "srt"],
-            "concurrentProcessing": 3,
-        },
-        "pricing": {
-            "monthlyUsd": 29.99,
-            "annualUsd": 24.99,
-            "annualDiscountPercentage": 17,
-            "annualSavingsUsd": 60,
-        },
-        "display": {"isPopular": True, "colorScheme": "blue", "sortOrder": 2},
-    },
-    UserPlan.ENTERPRISE: {
-        "planName": "business",
-        "displayName": "Business Plan",
-        "description": "For coaching organizations",
-        "tagline": "Scale your team",
-        "limits": {
-            "maxSessions": "unlimited",
-            "maxTotalMinutes": "unlimited",
-            "maxTranscriptionCount": "unlimited",
-            "maxFileSizeMb": 500,
-            "exportFormats": ["json", "txt", "vtt", "srt", "xlsx"],
-            "concurrentProcessing": 10,
-            "retentionDays": "permanent",
-        },
-        "features": {
-            "prioritySupport": True,
-            "exportFormats": ["json", "txt", "vtt", "srt", "xlsx"],
-            "concurrentProcessing": 10,
-        },
-        "pricing": {
-            "monthlyUsd": 99.99,
-            "annualUsd": 83.33,
-            "annualDiscountPercentage": 17,
-            "annualSavingsUsd": 200,
-        },
-        "display": {
-            "isPopular": False,
-            "colorScheme": "purple",
-            "sortOrder": 3,
-        },
-    },
-}
+# Hardcoded plan configurations removed - now using repository pattern through use cases
 
 
 # V1 API Endpoints (newer plan system)
 @router.get("", response_model=PlansListResponse)
 async def get_available_plans_v1(
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
+    plan_retrieval_use_case: PlanRetrievalUseCase = Depends(get_plan_retrieval_use_case),
 ):
-    """Get all available subscription plans (V1 API with new plan system)."""
+    """Get all available subscription plans (V1 API using Clean Architecture)."""
     try:
-        # Generate plan data dynamically from PlanLimits service
-        plans_data = []
-        
-        # Define plan metadata
-        plan_metadata = {
-            PlanName.FREE: {
-                "id": "FREE",
-                "name": "FREE", 
-                "display_name": "免費試用方案",
-                "description": "開始您的教練旅程",
-                "features": [
-                    "每月 200 分鐘轉錄額度",
-                    "最大檔案 60MB",
-                    "基本匯出格式",
-                    "Email 支援",
-                ],
-                "sort_order": 1,
-            },
-            PlanName.STUDENT: {
-                "id": "STUDENT",
-                "name": "STUDENT",
-                "display_name": "學習方案", 
-                "description": "學生專屬優惠方案",
-                "features": [
-                    "每月 500 分鐘轉錄額度",
-                    "最大檔案 100MB",
-                    "所有匯出格式",
-                    "Email 支援",
-                    "6 個月資料保存",
-                ],
-                "sort_order": 2,
-            },
-            PlanName.PRO: {
-                "id": "PRO",
-                "name": "PRO",
-                "display_name": "專業方案",
-                "description": "專業教練的最佳選擇",
-                "features": [
-                    "每月 3000 分鐘轉錄額度",
-                    "最大檔案 200MB",
-                    "所有匯出格式",
-                    "優先 Email 支援",
-                    "進階分析報告",
-                ],
-                "sort_order": 3,
-            },
-        }
-        
-        # Generate plans dynamically using PlanLimits service
-        plan_limits_service = get_global_plan_limits()
-        
-        for plan_name in [PlanName.FREE, PlanName.STUDENT, PlanName.PRO]:
-            limits = plan_limits_service.get_plan_limit(plan_name)
-            metadata = plan_metadata[plan_name]
-            
-            plan_data = {
-                **metadata,
-                "pricing": {
-                    "monthly_twd": limits.monthly_price_twd,
-                    "annual_twd": limits.annual_price_twd,
-                    "monthly_usd": limits.monthly_price_usd,
-                    "annual_usd": limits.annual_price_usd,
-                },
-                "limits": {
-                    "max_total_minutes": limits.max_minutes,
-                    "max_file_size_mb": limits.max_file_size_mb,
-                },
-                "is_active": True,
-            }
-            plans_data.append(plan_data)
+        # Use plan retrieval use case to get all plans
+        plans_data = plan_retrieval_use_case.get_all_plans()
 
-        plans = [PlanResponse(**plan) for plan in plans_data]
-        logger.info(f"Retrieved {len(plans)} plans for user {current_user.id}")
-        return PlansListResponse(plans=plans, total=len(plans))
+        # Convert to PlanResponse format
+        converted_plans = []
+        for plan_data in plans_data:
+            # Convert the use case format to API response format
+            plan_response = PlanResponse(
+                id=str(plan_data["id"]).upper(),
+                name=plan_data["name"],
+                display_name=plan_data["display_name"],
+                description=plan_data["description"],
+                pricing=PlanPricing(
+                    monthly_twd=int(plan_data["pricing"]["monthly_twd"] * 100),  # Convert to cents
+                    annual_twd=int(plan_data["pricing"]["annual_twd"] * 100),
+                    monthly_usd=int(plan_data["pricing"]["monthly_usd"] * 100),
+                    annual_usd=int(plan_data["pricing"]["annual_usd"] * 100),
+                ),
+                features=plan_data.get("features", {}).get("list", []) if isinstance(plan_data.get("features"), dict) else plan_data.get("features", []),
+                limits=PlanLimits(
+                    max_total_minutes=plan_data["limits"]["maxTotalMinutes"] if plan_data["limits"]["maxTotalMinutes"] != "unlimited" else -1,
+                    max_file_size_mb=plan_data["limits"]["maxFileSizeMb"],
+                ),
+                is_active=plan_data.get("is_active", True),
+                sort_order=plan_data.get("sort_order", 999),
+            )
+            converted_plans.append(plan_response)
+
+        logger.info(f"Retrieved {len(converted_plans)} plans for user {current_user.id}")
+        return PlansListResponse(plans=converted_plans, total=len(converted_plans))
 
     except Exception as e:
         logger.error(f"Failed to get available plans: {e}")
@@ -412,24 +215,38 @@ async def get_current_plan_status(
             "nextReset": current_usage.get("period_start"),  # Use period info from use case
         }
 
-        # Add upgrade suggestion if approaching limits (simplified logic)
+        # Add upgrade suggestion if approaching limits using Clean Architecture
         if (
             any(usage_status["approachingLimits"].values())
             and _get_plan_value(current_user.plan) != UserPlan.ENTERPRISE.value
         ):
-            suggested_plan = (
-                UserPlan.PRO
-                if _get_plan_value(current_user.plan) == UserPlan.FREE.value
-                else UserPlan.ENTERPRISE
-            )
-            suggested_config = PLAN_CONFIGS[suggested_plan]
-            usage_status["upgradeSuggestion"] = {
-                "suggestedPlan": suggested_config["planName"],
-                "displayName": suggested_config["displayName"],
-                "keyBenefits": _get_upgrade_benefits(current_user.plan, suggested_plan),
-                "pricing": suggested_config["pricing"],
-                "tagline": suggested_config["tagline"],
-            }
+            try:
+                # Get all plans to find the suggested upgrade plan
+                all_plans = plan_retrieval_use_case.get_all_plans()
+                suggested_plan_id = (
+                    "PRO"
+                    if _get_plan_value(current_user.plan) == UserPlan.FREE.value
+                    else "ENTERPRISE"
+                )
+
+                # Find the suggested plan from the available plans
+                suggested_config = None
+                for plan in all_plans:
+                    if plan["id"] == suggested_plan_id:
+                        suggested_config = plan
+                        break
+
+                if suggested_config:
+                    usage_status["upgradeSuggestion"] = {
+                        "suggestedPlan": suggested_config["name"],
+                        "displayName": suggested_config["display_name"],
+                        "keyBenefits": _get_upgrade_benefits(current_user.plan, getattr(UserPlan, suggested_plan_id)),
+                        "pricing": suggested_config["pricing"],
+                        "tagline": suggested_config.get("tagline", "Upgrade for more features"),
+                    }
+            except Exception as e:
+                logger.warning(f"Could not generate upgrade suggestion: {e}")
+                # Continue without upgrade suggestion
 
         # Build subscription info from actual subscription data
         subscription_info = {
@@ -504,58 +321,85 @@ async def get_current_plan_status(
 @router.get("/compare")
 async def compare_plans(
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
+    plan_retrieval_use_case: PlanRetrievalUseCase = Depends(get_plan_retrieval_use_case),
 ) -> Dict[str, Any]:
     """Get plan comparison focused on upgrade paths."""
     logger.info(f"📊 User {current_user.id} requesting plan comparison")
 
-    # Get all plans
-    all_plans_response = await get_available_plans_legacy(db)
-    all_plans = all_plans_response["plans"]
+    try:
+        # Get all plans using the use case
+        all_plans_response = await get_available_plans_legacy(plan_retrieval_use_case)
+        all_plans = all_plans_response["plans"]
 
-    # Mark current plan
-    for plan in all_plans:
-        if plan["planName"] == _get_plan_value(current_user.plan).lower().replace(
-            "enterprise", "business"
-        ):
-            plan["isCurrent"] = True
-        else:
-            plan["isCurrent"] = False
+        # Mark current plan
+        current_plan_value = _get_plan_value(current_user.plan).lower()
+        for plan in all_plans:
+            plan_name = plan["planName"].lower()
+            # Handle enterprise/business naming variation
+            if current_plan_value == "enterprise":
+                current_plan_value = "business"
 
-    # Get upgrade suggestion
-    recommended_upgrade = None
-    if _get_plan_value(current_user.plan) != UserPlan.ENTERPRISE.value:
-        suggested_plan = (
-            UserPlan.PRO
-            if _get_plan_value(current_user.plan) == UserPlan.FREE.value
-            else UserPlan.ENTERPRISE
-        )
-        suggested_config = PLAN_CONFIGS[suggested_plan]
-        recommended_upgrade = {
-            "suggestedPlan": suggested_config["planName"],
-            "displayName": suggested_config["displayName"],
-            "keyBenefits": _get_upgrade_benefits(current_user.plan, suggested_plan),
-            "pricing": suggested_config["pricing"],
-            "tagline": suggested_config["tagline"],
+            plan["isCurrent"] = plan_name == current_plan_value
+
+        # Get comparison data through use case
+        comparison_data = plan_retrieval_use_case.compare_plans()
+        logger.debug(f"Retrieved comparison data with {comparison_data.get('total_plans', 0)} plans")
+
+        # Simple upgrade recommendation based on current plan
+        recommended_upgrade = None
+        current_plan_enum = getattr(current_user.plan, 'value', current_user.plan) if hasattr(current_user.plan, 'value') else current_user.plan
+
+        if current_plan_enum != "ENTERPRISE":
+            # Find next tier plan for upgrade suggestion
+            if current_plan_enum == "FREE":
+                suggested_plan_name = "PRO"
+                suggested_display_name = "Pro Plan"
+                key_benefits = [
+                    "10x more sessions",
+                    "10x more audio time",
+                    "All export formats",
+                    "Priority support"
+                ]
+            else:  # PRO or other
+                suggested_plan_name = "ENTERPRISE"
+                suggested_display_name = "Enterprise Plan"
+                key_benefits = [
+                    "Unlimited sessions and audio",
+                    "Advanced export formats",
+                    "Premium support"
+                ]
+
+            recommended_upgrade = {
+                "suggestedPlan": suggested_plan_name.lower(),
+                "displayName": suggested_display_name,
+                "keyBenefits": key_benefits,
+                "pricing": {"monthlyUsd": 29.99 if suggested_plan_name == "PRO" else 99.99},
+                "tagline": "Best choice for professional coaches"
+            }
+
+        return {
+            "currentPlan": current_plan_value,
+            "plans": all_plans,
+            "recommendedUpgrade": recommended_upgrade,
         }
-
-    return {
-        "currentPlan": _get_plan_value(current_user.plan),
-        "plans": all_plans,
-        "recommendedUpgrade": recommended_upgrade,
-    }
+    except Exception as e:
+        logger.error(f"Failed to compare plans: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve plan comparison"
+        )
 
 
 @router.get("/{plan_id}", response_model=PlanResponse)
 async def get_plan_by_id(
     plan_id: str,
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
+    plan_retrieval_use_case: PlanRetrievalUseCase = Depends(get_plan_retrieval_use_case),
 ):
     """Get specific plan by ID."""
     try:
         # Get all plans and find the requested one
-        plans_response = await get_available_plans_v1(current_user, db)
+        plans_response = await get_available_plans_v1(current_user, plan_retrieval_use_case)
 
         for plan in plans_response.plans:
             if plan.id == plan_id.upper():
@@ -578,39 +422,63 @@ async def get_plan_by_id(
 
 # Legacy API Endpoints (original plan system - for backwards compatibility)
 @router.get("/legacy")
-async def get_available_plans_legacy(db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_available_plans_legacy(
+    plan_retrieval_use_case: PlanRetrievalUseCase = Depends(get_plan_retrieval_use_case),
+) -> Dict[str, Any]:
     """Get all available billing plans with features and pricing (Legacy API)."""
-    logger.info("📋 Fetching available plans from database")
+    logger.info("📋 Fetching available plans using Clean Architecture")
 
-    plans = []
-    for plan_enum in [UserPlan.FREE, UserPlan.PRO, UserPlan.ENTERPRISE]:
-        config = get_plan_config_from_db(db, plan_enum)
-        # Convert unlimited values for frontend consistency
-        if config["limits"]["maxSessions"] == "unlimited":
-            config["limits"]["maxSessions"] = -1
-        if config["limits"]["maxTotalMinutes"] == "unlimited":
-            config["limits"]["maxTotalMinutes"] = -1
-        if config["limits"]["maxTranscriptionCount"] == "unlimited":
-            config["limits"]["maxTranscriptionCount"] = -1
-        if config["limits"]["retentionDays"] == "permanent":
-            config["limits"]["retentionDays"] = -1
-        plans.append(config)
+    try:
+        plans_data = plan_retrieval_use_case.get_all_plans()
 
-    return {
-        "plans": plans,
-        "currency": "TWD",  # Updated to TWD
-        "billingCycles": ["monthly", "annual"],
-        "featuresComparison": {
-            "sessions": "Number of coaching sessions you can upload per month",
-            "audioMinutes": "Total minutes of audio you can transcribe per month",
-            "transcriptionExports": "Number of transcript exports per month",
-            "fileSize": "Maximum size per audio file upload",
-            "exportFormats": "Available transcript export formats",
-            "concurrentProcessing": "Number of files you can transcribe simultaneously",
-            "prioritySupport": "Priority email support with faster response times",
-            "dataRetention": "How long your data is stored on our platform",
-        },
-    }
+        # Convert to legacy format for backward compatibility
+        legacy_plans = []
+        for plan_data in plans_data:
+            legacy_format = {
+                "planName": plan_data["name"].lower(),
+                "displayName": plan_data["display_name"],
+                "description": plan_data["description"],
+                "tagline": plan_data.get("tagline", ""),
+                "limits": {
+                    "maxSessions": -1 if plan_data["limits"]["maxTotalMinutes"] == "unlimited" else 999,  # Legacy compatibility
+                    "maxTotalMinutes": -1 if plan_data["limits"]["maxTotalMinutes"] == "unlimited" else plan_data["limits"]["maxTotalMinutes"],
+                    "maxTranscriptionCount": -1,  # Unlimited in new system
+                    "maxFileSizeMb": plan_data["limits"]["maxFileSizeMb"],
+                    "exportFormats": plan_data["limits"].get("exportFormats", ["json", "txt"]),
+                    "concurrentProcessing": plan_data["limits"].get("concurrentProcessing", 1),
+                    "retentionDays": plan_data["limits"].get("retentionDays", 30),
+                },
+                "features": plan_data.get("features", {}),
+                "pricing": plan_data["pricing"],
+                "display": {
+                    "isPopular": plan_data.get("sort_order") == 2,  # Assume middle plan is popular
+                    "colorScheme": "blue",
+                    "sortOrder": plan_data.get("sort_order", 999),
+                },
+            }
+            legacy_plans.append(legacy_format)
+
+        return {
+            "plans": legacy_plans,
+            "currency": "TWD",
+            "billingCycles": ["monthly", "annual"],
+            "featuresComparison": {
+                "sessions": "Number of coaching sessions you can upload per month",
+                "audioMinutes": "Total minutes of audio you can transcribe per month",
+                "transcriptionExports": "Number of transcript exports per month",
+                "fileSize": "Maximum size per audio file upload",
+                "exportFormats": "Available transcript export formats",
+                "concurrentProcessing": "Number of files you can transcribe simultaneously",
+                "prioritySupport": "Priority email support with faster response times",
+                "dataRetention": "How long your data is stored on our platform",
+            },
+        }
+    except Exception as e:
+        logger.error(f"Failed to get legacy plans: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve plans"
+        )
 
 
 
@@ -618,106 +486,74 @@ async def get_available_plans_legacy(db: Session = Depends(get_db)) -> Dict[str,
 async def validate_action(
     request: Dict[str, Any],
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
+    plan_validation_use_case: PlanValidationUseCase = Depends(get_plan_validation_use_case),
 ) -> Dict[str, Any]:
-    """Validate if user can perform action within plan limits."""
+    """Validate if user can perform action within plan limits using Clean Architecture."""
     action = request.get("action")
     logger.info(f"🔍 Validating action '{action}' for user {current_user.id}")
 
-    # Get plan limits from database
-    plan_config = get_plan_config_from_db(db, current_user.plan)
-    limits = plan_config["limits"]
+    try:
+        # Use plan validation use case for business logic
+        if action == "upload_file":
+            file_size_mb = request.get("file_size_mb", 0)
+            file_validation = plan_validation_use_case.validate_file_size(current_user.id, file_size_mb)
 
-    validation_result = {
-        "allowed": True,
-        "message": "Action permitted",
-        "limitInfo": None,
-        "upgradeSuggestion": None,
-    }
+            validation_result = {
+                "allowed": file_validation["valid"],
+                "message": file_validation["message"],
+                "limitInfo": {
+                    "type": "maxFileSizeMb",
+                    "current": file_validation.get("actual", file_size_mb),
+                    "limit": file_validation.get("limit", 60),
+                } if not file_validation["valid"] else None,
+                "upgradeSuggestion": None,
+            }
+        else:
+            # For other actions, use general usage validation
+            usage_validation = plan_validation_use_case.validate_user_limits(current_user.id)
 
-    if action == "create_session":
-        max_sessions = limits["maxSessions"]
-        if (
-            max_sessions != "unlimited"
-            and max_sessions != -1
-            and current_user.session_count >= max_sessions
-        ):
-            validation_result.update(
-                {
-                    "allowed": False,
-                    "message": f"Session limit exceeded ({max_sessions} sessions per month)",
-                    "limitInfo": {
-                        "type": "maxSessions",
-                        "current": current_user.session_count,
-                        "limit": max_sessions,
-                    },
+            validation_result = {
+                "allowed": usage_validation["valid"],
+                "message": usage_validation.get("message", "Action permitted"),
+                "limitInfo": None,
+                "upgradeSuggestion": None,
+            }
+
+            # Add specific limit info based on action
+            if not usage_validation["valid"] and usage_validation["violations"]:
+                # Take the first violation for limit info
+                violation = usage_validation["violations"][0]
+                validation_result["limitInfo"] = {
+                    "type": violation["type"],
+                    "current": violation["current"],
+                    "limit": violation["limit"],
                 }
-            )
+                validation_result["message"] = violation["message"]
 
-    elif action == "upload_file":
-        file_size_mb = request.get("file_size_mb", 0)
-        if file_size_mb > limits["maxFileSizeMb"]:
-            validation_result.update(
-                {
-                    "allowed": False,
-                    "message": f"File size exceeds limit ({limits['maxFileSizeMb']}MB)",
-                    "limitInfo": {
-                        "type": "maxFileSizeMb",
-                        "current": file_size_mb,
-                        "limit": limits["maxFileSizeMb"],
-                    },
+        # Add upgrade suggestion if action is blocked
+        current_plan_value = _get_plan_value(current_user.plan)
+        if not validation_result["allowed"] and current_plan_value != UserPlan.ENTERPRISE.value:
+            if current_plan_value == UserPlan.FREE.value:
+                validation_result["upgradeSuggestion"] = {
+                    "suggestedPlan": "pro",
+                    "displayName": "Pro Plan",
+                    "pricing": {"monthlyUsd": 29.99},
                 }
-            )
-
-    elif action == "export_transcript":
-        export_format = request.get("format", "").lower()
-        if export_format not in limits["exportFormats"]:
-            validation_result.update(
-                {
-                    "allowed": False,
-                    "message": f"Export format '{export_format}' not available on {_get_plan_value(current_user.plan)} plan",
-                    "limitInfo": {
-                        "type": "exportFormats",
-                        "requested": export_format,
-                        "available": limits["exportFormats"],
-                    },
+            else:
+                validation_result["upgradeSuggestion"] = {
+                    "suggestedPlan": "enterprise",
+                    "displayName": "Enterprise Plan",
+                    "pricing": {"monthlyUsd": 99.99},
                 }
-            )
 
-    elif action == "transcribe":
-        max_transcriptions = limits["maxTranscriptionCount"]
-        if (
-            max_transcriptions != "unlimited"
-            and max_transcriptions != -1
-            and current_user.transcription_count >= max_transcriptions
-        ):
-            validation_result.update(
-                {
-                    "allowed": False,
-                    "message": f"Transcription limit exceeded ({max_transcriptions} transcriptions per month)",
-                    "limitInfo": {
-                        "type": "maxTranscriptionCount",
-                        "current": current_user.transcription_count,
-                        "limit": max_transcriptions,
-                    },
-                }
-            )
+        return validation_result
 
-    # Add upgrade suggestion if action is blocked
-    if (
-        not validation_result["allowed"]
-        and _get_plan_value(current_user.plan) != UserPlan.ENTERPRISE.value
-    ):
-        suggested_plan = (
-            UserPlan.PRO
-            if _get_plan_value(current_user.plan) == UserPlan.FREE.value
-            else UserPlan.ENTERPRISE
-        )
-        suggested_config = PLAN_CONFIGS[suggested_plan]
-        validation_result["upgradeSuggestion"] = {
-            "suggestedPlan": suggested_config["planName"],
-            "displayName": suggested_config["displayName"],
-            "pricing": suggested_config["pricing"],
+    except Exception as e:
+        logger.error(f"Error validating action for user {current_user.id}: {e}")
+        # Fail open - allow action on error for better UX
+        return {
+            "allowed": True,
+            "message": "Validation temporarily unavailable, action permitted",
+            "limitInfo": None,
+            "upgradeSuggestion": None,
         }
-
-    return validation_result
