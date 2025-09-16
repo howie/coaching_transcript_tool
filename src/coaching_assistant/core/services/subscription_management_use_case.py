@@ -5,6 +5,7 @@ operations. All external dependencies are injected through repository ports.
 """
 
 from __future__ import annotations
+import logging
 from typing import Dict, Any, Optional
 from uuid import UUID, uuid4
 from datetime import datetime, date
@@ -25,6 +26,8 @@ from ...models.ecpay_subscription import (
     ECPayAuthStatus,
 )
 from ...exceptions import DomainException
+
+logger = logging.getLogger(__name__)
 
 
 class SubscriptionCreationUseCase:
@@ -63,7 +66,7 @@ class SubscriptionCreationUseCase:
         # Validate user
         user = self.user_repo.get_by_id(user_id)
         if not user:
-            raise ValueError(f"User not found: {user_id}")
+            raise DomainException(f"User not found: {user_id}")
 
         # Validate plan and billing cycle
         if plan_id not in ["STUDENT", "PRO", "ENTERPRISE"]:
@@ -232,51 +235,73 @@ class SubscriptionRetrievalUseCase:
 
     def get_current_subscription(self, user_id: UUID) -> Dict[str, Any]:
         """Get current subscription for user.
-        
+
         Args:
             user_id: User ID
-            
+
         Returns:
             Dictionary with subscription and payment method info
         """
-        user = self.user_repo.get_by_id(user_id)
-        if not user:
-            raise ValueError(f"User not found: {user_id}")
+        try:
+            user = self.user_repo.get_by_id(user_id)
+            if not user:
+                raise DomainException(f"User not found: {user_id}")
 
-        subscription = self.subscription_repo.get_subscription_by_user_id(user_id)
-        authorization = self.subscription_repo.get_credit_authorization_by_user_id(user_id)
+            # Isolate subscription queries with explicit error handling
+            subscription = None
+            try:
+                subscription = self.subscription_repo.get_subscription_by_user_id(user_id)
+            except Exception as e:
+                logger.error(f"Failed to get subscription for user {user_id}: {e}")
+                # Continue with None subscription - this is recoverable
 
-        if not subscription:
+            authorization = None
+            try:
+                authorization = self.subscription_repo.get_credit_authorization_by_user_id(user_id)
+            except Exception as e:
+                logger.error(f"Failed to get authorization for user {user_id}: {e}")
+                # Continue with None authorization - this is recoverable
+
+            if not subscription:
+                return {
+                    "subscription": None,
+                    "payment_method": None,
+                    "status": "no_subscription",
+                }
+
+            subscription_data = {
+                "id": str(subscription.id),
+                "plan_id": subscription.plan_id,
+                "billing_cycle": subscription.billing_cycle,
+                "status": subscription.status.value if hasattr(subscription.status, 'value') else str(subscription.status),
+                "amount_cents": getattr(subscription, 'amount_twd', 0),
+                "currency": subscription.currency,
+                "created_at": subscription.created_at.isoformat(),
+                "next_billing_date": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+            }
+
+            payment_method_data = None
+            if authorization:
+                payment_method_data = {
+                    "auth_id": authorization.merchant_member_id,
+                    "auth_status": authorization.auth_status.value if hasattr(authorization.auth_status, 'value') else str(authorization.auth_status),
+                    "created_at": authorization.created_at.isoformat(),
+                }
+
+            return {
+                "subscription": subscription_data,
+                "payment_method": payment_method_data,
+                "status": subscription.status.value if hasattr(subscription.status, 'value') else str(subscription.status),
+            }
+
+        except Exception as e:
+            logger.error(f"Critical error in get_current_subscription for user {user_id}: {e}")
+            # Return safe fallback response
             return {
                 "subscription": None,
                 "payment_method": None,
-                "status": "no_subscription",
+                "status": "error",
             }
-
-        subscription_data = {
-            "id": str(subscription.id),
-            "plan_id": subscription.plan_id,
-            "billing_cycle": subscription.billing_cycle,
-            "status": subscription.status.value if hasattr(subscription.status, 'value') else str(subscription.status),
-            "amount_cents": getattr(subscription, 'amount_twd', 0),
-            "currency": subscription.currency,
-            "created_at": subscription.created_at.isoformat(),
-            "next_billing_date": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
-        }
-
-        payment_method_data = None
-        if authorization:
-            payment_method_data = {
-                "auth_id": authorization.merchant_member_id,
-                "auth_status": authorization.auth_status.value if hasattr(authorization.auth_status, 'value') else str(authorization.auth_status),
-                "created_at": authorization.created_at.isoformat(),
-            }
-
-        return {
-            "subscription": subscription_data,
-            "payment_method": payment_method_data,
-            "status": subscription.status.value if hasattr(subscription.status, 'value') else str(subscription.status),
-        }
 
     def get_subscription_payments(self, user_id: UUID) -> Dict[str, Any]:
         """Get payment history for user's subscription.

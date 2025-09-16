@@ -29,6 +29,7 @@ from ...models import (
     SubscriptionPayment,
 )
 from ...models.ecpay_subscription import PaymentStatus
+from ...exceptions import DomainException
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +173,18 @@ async def get_current_subscription(
             status="active" if subscription_info else "no_subscription",
         )
 
+    except DomainException as e:
+        logger.warning(f"User not found when retrieving subscription: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    except RuntimeError as e:
+        logger.error(f"Database connection error for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection error"
+        )
     except Exception as e:
         logger.error(f"Failed to get current subscription: {e}")
         raise HTTPException(

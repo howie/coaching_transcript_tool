@@ -34,10 +34,19 @@
 - FastAPI dependency injection module created (`api/v1/dependencies.py`)
 - 13+ API files reorganized for consistency
 
-**Phase 2.1: READY TO START** 🔄
-- Migrate Priority 1 APIs to Clean Architecture (sessions, plans, subscriptions)
-- Remove direct Session dependencies from API endpoints
-- Implement use case pattern with dependency injection
+**Phase 2.1: COMPLETED** ✅ **ALL CRITICAL FIXES APPLIED** (2025-09-16)
+- ✅ Migrated Priority 1 APIs to Clean Architecture (sessions, plans, subscriptions)
+- ✅ Implemented use case pattern with dependency injection
+- ✅ **CRITICAL FIX 1**: User repository updated to use legacy User model temporarily (2025-09-15)
+  - **Issue**: Database connection errors due to ORM model registry mismatch
+  - **Solution**: Hybrid approach maintaining Clean Architecture with legacy compatibility
+- ✅ **CRITICAL FIX 2**: Transaction error eliminated (2025-09-16)
+  - **Issue**: `psycopg2.errors.InFailedSqlTransaction` in `/api/plans/current` endpoint
+  - **Root Cause**: Circular reference in factories.py causing infinite recursion
+  - **Solution**: Fixed subscription repository factory implementation
+  - **Verification**: 15 new tests passing, comprehensive testing completed
+- ✅ **Status**: All API endpoints now functional with proper transaction management
+- 📋 **Next**: Phase 3 - Complete infrastructure model consolidation
 
 ## 🚀 Quick Start for Next Phase
 

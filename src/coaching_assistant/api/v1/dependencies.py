@@ -27,6 +27,11 @@ from ...core.services.session_management_use_case import (
     SessionStatusRetrievalUseCase,
     SessionTranscriptUploadUseCase,
 )
+from ...core.services.speaker_role_management_use_case import (
+    SpeakerRoleAssignmentUseCase,
+    SegmentRoleAssignmentUseCase,
+    SpeakerRoleRetrievalUseCase,
+)
 from ...core.services.plan_management_use_case import (
     PlanRetrievalUseCase,
     PlanValidationUseCase,
@@ -195,3 +200,27 @@ async def get_current_user_with_permissions(
 ):
     """Dependency to get current user with permission context."""
     return current_user
+
+
+# Speaker Role Management Use Case Dependencies
+def get_speaker_role_assignment_use_case(
+    db: Session = Depends(get_db),
+) -> SpeakerRoleAssignmentUseCase:
+    """Dependency to get SpeakerRoleAssignmentUseCase with repository injection."""
+    session_repo = SessionServiceFactory.create_session_repository(db)
+    return SpeakerRoleAssignmentUseCase(session_repo)
+
+
+def get_segment_role_assignment_use_case(
+    db: Session = Depends(get_db),
+) -> SegmentRoleAssignmentUseCase:
+    """Dependency to get SegmentRoleAssignmentUseCase with repository injection."""
+    session_repo = SessionServiceFactory.create_session_repository(db)
+    return SegmentRoleAssignmentUseCase(session_repo)
+
+
+def get_speaker_role_retrieval_use_case(
+    db: Session = Depends(get_db),
+) -> SpeakerRoleRetrievalUseCase:
+    """Dependency to get SpeakerRoleRetrievalUseCase with repository injection."""
+    return SessionServiceFactory.create_speaker_role_retrieval_use_case(db)

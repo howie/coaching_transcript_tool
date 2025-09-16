@@ -32,6 +32,11 @@ from ..core.services.subscription_management_use_case import (
     SubscriptionRetrievalUseCase,
     SubscriptionModificationUseCase,
 )
+from ..core.services.speaker_role_management_use_case import (
+    SpeakerRoleAssignmentUseCase,
+    SegmentRoleAssignmentUseCase,
+    SpeakerRoleRetrievalUseCase,
+)
 from ..core.repositories.ports import (
     UserRepoPort,
     UsageLogRepoPort,
@@ -39,6 +44,8 @@ from ..core.repositories.ports import (
     PlanConfigurationRepoPort,
     SubscriptionRepoPort,
     TranscriptRepoPort,
+    SpeakerRoleRepoPort,
+    SegmentRoleRepoPort,
 )
 from .db.repositories.user_repository import create_user_repository
 from .db.repositories.usage_log_repository import create_usage_log_repository
@@ -46,6 +53,10 @@ from .db.repositories.session_repository import create_session_repository
 from .db.repositories.plan_configuration_repository import create_plan_configuration_repository
 from .db.repositories.subscription_repository import create_subscription_repository
 from .db.repositories.transcript_repository import create_transcript_repository
+from .db.repositories.speaker_role_repository import (
+    create_speaker_role_repository,
+    create_segment_role_repository,
+)
 
 
 class UsageTrackingServiceFactory:
@@ -144,14 +155,15 @@ class RepositoryFactory:
     @staticmethod
     def create_subscription_repository(db_session: Session) -> SubscriptionRepoPort:
         """Create a subscription repository instance.
-        
+
         Args:
             db_session: SQLAlchemy database session
-            
+
         Returns:
             SubscriptionRepoPort implementation
         """
-        return create_subscription_repository(db_session)
+        from .db.repositories.subscription_repository import SubscriptionRepository
+        return SubscriptionRepository(db_session)
 
     @staticmethod
     def create_transcript_repository(db_session: Session) -> TranscriptRepoPort:
@@ -273,6 +285,29 @@ class SessionServiceFactory:
             session_repo=session_repo,
             transcript_repo=transcript_repo,
         )
+
+    @staticmethod
+    def create_speaker_role_retrieval_use_case(db_session: Session) -> SpeakerRoleRetrievalUseCase:
+        """Create a SpeakerRoleRetrievalUseCase with all dependencies injected."""
+        session_repo = create_session_repository(db_session)
+        speaker_role_repo = create_speaker_role_repository(db_session)
+        segment_role_repo = create_segment_role_repository(db_session)
+
+        return SpeakerRoleRetrievalUseCase(
+            session_repo=session_repo,
+            speaker_role_repo=speaker_role_repo,
+            segment_role_repo=segment_role_repo,
+        )
+
+    @staticmethod
+    def create_speaker_role_repository(db_session: Session) -> SpeakerRoleRepoPort:
+        """Create a speaker role repository instance."""
+        return create_speaker_role_repository(db_session)
+
+    @staticmethod
+    def create_segment_role_repository(db_session: Session) -> SegmentRoleRepoPort:
+        """Create a segment role repository instance."""
+        return create_segment_role_repository(db_session)
 
 
 class PlanServiceFactory:
