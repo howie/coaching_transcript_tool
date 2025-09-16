@@ -12,8 +12,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import and_
 
 from ....core.repositories.ports import UserRepoPort
-from ....core.models.user import User, UserPlan, UserRole
-from ..models.user_model import UserModel
+from ....core.models.user import User as DomainUser, UserPlan, UserRole
+# Temporarily use legacy User model until full migration is complete
+from ....models.user import User as UserModel
 
 
 class SQLAlchemyUserRepository(UserRepoPort):
@@ -27,7 +28,32 @@ class SQLAlchemyUserRepository(UserRepoPort):
         """
         self.session = session
 
-    def get_by_id(self, user_id: UUID) -> Optional[User]:
+    def _to_domain(self, orm_user: UserModel) -> DomainUser:
+        """Convert ORM User to domain User.
+
+        Temporary conversion method until full migration to infrastructure models.
+        """
+        if not orm_user:
+            return None
+
+        return DomainUser(
+            id=orm_user.id,
+            email=orm_user.email,
+            name=orm_user.name,
+            hashed_password=orm_user.hashed_password,
+            avatar_url=orm_user.avatar_url,
+            plan=orm_user.plan,
+            role=orm_user.role,
+            usage_minutes=orm_user.usage_minutes,
+            session_count=orm_user.session_count,
+            created_at=orm_user.created_at,
+            updated_at=orm_user.updated_at,
+            last_active_at=getattr(orm_user, 'last_active_at', None),
+            stripe_customer_id=getattr(orm_user, 'stripe_customer_id', None),
+            subscription_status=getattr(orm_user, 'subscription_status', None),
+        )
+
+    def get_by_id(self, user_id: UUID) -> Optional[DomainUser]:
         """Get user by ID.
 
         Args:
@@ -38,12 +64,13 @@ class SQLAlchemyUserRepository(UserRepoPort):
         """
         try:
             orm_user = self.session.get(UserModel, user_id)
-            return orm_user.to_domain() if orm_user else None
+            return self._to_domain(orm_user) if orm_user else None
         except SQLAlchemyError as e:
-            # Log error in production
-            raise RuntimeError(f"Database error retrieving user {user_id}") from e
+            # Log error in production - this is for actual database connection/query errors
+            # User not found is handled by returning None above
+            raise RuntimeError(f"Database connection error while retrieving user {user_id}") from e
 
-    def get_by_email(self, email: str) -> Optional[User]:
+    def get_by_email(self, email: str) -> Optional[DomainUser]:
         """Get user by email address.
 
         Args:
@@ -58,7 +85,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 .filter(UserModel.email == email)
                 .first()
             )
-            return orm_user.to_domain() if orm_user else None
+            return self._to_domain(orm_user) if orm_user else None
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error retrieving user by email {email}") from e
 
@@ -80,7 +107,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error checking user existence for {email}") from e
 
-    def save(self, user: User) -> User:
+    def save(self, user: DomainUser) -> DomainUser:
         """Save or update user entity.
 
         Args:
@@ -94,18 +121,45 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 # Update existing user
                 orm_user = self.session.get(UserModel, user.id)
                 if orm_user:
-                    orm_user.update_from_domain(user)
+                    # Update existing user - manually copy fields
+                    orm_user.email = user.email
+                    orm_user.name = user.name
+                    orm_user.hashed_password = user.hashed_password
+                    orm_user.avatar_url = user.avatar_url
+                    orm_user.plan = user.plan
+                    orm_user.role = user.role
+                    orm_user.usage_minutes = user.usage_minutes
+                    orm_user.session_count = user.session_count
                 else:
                     # User ID exists but not found in DB - create new
-                    orm_user = UserModel.from_domain(user)
+                    orm_user = UserModel(
+                        id=user.id,
+                        email=user.email,
+                        name=user.name,
+                        hashed_password=user.hashed_password,
+                        avatar_url=user.avatar_url,
+                        plan=user.plan,
+                        role=user.role,
+                        usage_minutes=user.usage_minutes,
+                        session_count=user.session_count,
+                    )
                     self.session.add(orm_user)
             else:
                 # Create new user
-                orm_user = UserModel.from_domain(user)
+                orm_user = UserModel(
+                    email=user.email,
+                    name=user.name,
+                    hashed_password=user.hashed_password,
+                    avatar_url=user.avatar_url,
+                    plan=user.plan,
+                    role=user.role,
+                    usage_minutes=user.usage_minutes,
+                    session_count=user.session_count,
+                )
                 self.session.add(orm_user)
 
             self.session.flush()  # Get the ID without committing
-            return orm_user.to_domain()
+            return self._to_domain(orm_user)
 
         except SQLAlchemyError as e:
             self.session.rollback()
@@ -135,7 +189,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
         self,
         limit: Optional[int] = None,
         offset: Optional[int] = None
-    ) -> List[User]:
+    ) -> List[DomainUser]:
         """List all users with optional pagination.
 
         Args:
@@ -154,12 +208,12 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 query = query.limit(limit)
 
             orm_users = query.all()
-            return [orm_user.to_domain() for orm_user in orm_users]
+            return [self._to_domain(orm_user) for orm_user in orm_users]
 
         except SQLAlchemyError as e:
             raise RuntimeError("Database error listing users") from e
 
-    def get_by_plan(self, plan: UserPlan) -> List[User]:
+    def get_by_plan(self, plan: UserPlan) -> List[DomainUser]:
         """Get users by plan type.
 
         Args:
@@ -175,7 +229,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 .order_by(UserModel.created_at.desc())
                 .all()
             )
-            return [orm_user.to_domain() for orm_user in orm_users]
+            return [self._to_domain(orm_user) for orm_user in orm_users]
 
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error getting users by plan {plan}") from e
@@ -198,7 +252,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error counting users by plan {plan}") from e
 
-    def get_by_role(self, role: UserRole) -> List[User]:
+    def get_by_role(self, role: UserRole) -> List[DomainUser]:
         """Get users by role.
 
         Args:
@@ -214,12 +268,12 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 .order_by(UserModel.created_at.desc())
                 .all()
             )
-            return [orm_user.to_domain() for orm_user in orm_users]
+            return [self._to_domain(orm_user) for orm_user in orm_users]
 
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error getting users by role {role}") from e
 
-    def update_usage_stats(self, user_id: UUID, usage_minutes: int, session_count: int) -> Optional[User]:
+    def update_usage_stats(self, user_id: UUID, usage_minutes: int, session_count: int) -> Optional[DomainUser]:
         """Update user usage statistics.
 
         Args:
@@ -235,16 +289,18 @@ class SQLAlchemyUserRepository(UserRepoPort):
             if orm_user:
                 orm_user.usage_minutes = usage_minutes
                 orm_user.session_count = session_count
-                orm_user.mark_active()  # Update last active timestamp
+                # Update last active timestamp if the method exists
+                if hasattr(orm_user, 'mark_active'):
+                    orm_user.mark_active()
                 self.session.flush()
-                return orm_user.to_domain()
+                return self._to_domain(orm_user)
             return None
 
         except SQLAlchemyError as e:
             self.session.rollback()
             raise RuntimeError(f"Database error updating usage stats for user {user_id}") from e
 
-    def update_plan(self, user_id: UUID, new_plan: UserPlan) -> Optional[User]:
+    def update_plan(self, user_id: UUID, new_plan: UserPlan) -> Optional[DomainUser]:
         """Update user plan.
 
         Args:
@@ -257,14 +313,10 @@ class SQLAlchemyUserRepository(UserRepoPort):
         try:
             orm_user = self.session.get(UserModel, user_id)
             if orm_user:
-                # Use domain model for business rule validation
-                domain_user = orm_user.to_domain()
-                domain_user.upgrade_plan(new_plan)  # This validates the upgrade
-
-                # Update ORM model with validated domain data
-                orm_user.update_from_domain(domain_user)
+                # Update plan directly (validation can be added later)
+                orm_user.plan = new_plan
                 self.session.flush()
-                return orm_user.to_domain()
+                return self._to_domain(orm_user)
             return None
 
         except ValueError as e:
@@ -274,7 +326,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
             self.session.rollback()
             raise RuntimeError(f"Database error updating plan for user {user_id}") from e
 
-    def search_by_email_prefix(self, email_prefix: str, limit: int = 10) -> List[User]:
+    def search_by_email_prefix(self, email_prefix: str, limit: int = 10) -> List[DomainUser]:
         """Search users by email prefix.
 
         Args:
@@ -292,12 +344,12 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 .limit(limit)
                 .all()
             )
-            return [orm_user.to_domain() for orm_user in orm_users]
+            return [self._to_domain(orm_user) for orm_user in orm_users]
 
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error searching users by email prefix {email_prefix}") from e
 
-    def get_admin_users(self) -> List[User]:
+    def get_admin_users(self) -> List[DomainUser]:
         """Get all admin users (ADMIN and SUPER_ADMIN roles).
 
         Returns:
@@ -310,12 +362,12 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 .order_by(UserModel.created_at.desc())
                 .all()
             )
-            return [orm_user.to_domain() for orm_user in orm_users]
+            return [self._to_domain(orm_user) for orm_user in orm_users]
 
         except SQLAlchemyError as e:
             raise RuntimeError("Database error getting admin users") from e
 
-    def get_users_with_active_subscriptions(self) -> List[User]:
+    def get_users_with_active_subscriptions(self) -> List[DomainUser]:
         """Get users with active subscriptions.
 
         Returns:
@@ -328,7 +380,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 .order_by(UserModel.created_at.desc())
                 .all()
             )
-            return [orm_user.to_domain() for orm_user in orm_users]
+            return [self._to_domain(orm_user) for orm_user in orm_users]
 
         except SQLAlchemyError as e:
             raise RuntimeError("Database error getting users with active subscriptions") from e

@@ -14,13 +14,13 @@ from ....core.models.session import Session, SessionStatus
 class SessionModel(BaseModel):
     """ORM model for Session entity with SQLAlchemy mappings."""
 
-    __tablename__ = 'sessions'
+    __tablename__ = 'session'
 
     # Basic info
     title = Column(String(255), nullable=False)
     user_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey("user.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

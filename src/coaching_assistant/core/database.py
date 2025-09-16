@@ -18,6 +18,9 @@ def create_database_engine(database_url: str, **kwargs):
         "pool_pre_ping": True,
         "pool_recycle": 3600,  # Recycle connections every hour
         "pool_timeout": 20,  # Timeout for getting connection from pool
+        "pool_size": 10,       # Number of connections to maintain
+        "max_overflow": 20,    # Additional connections allowed
+        "echo": settings.DEBUG,  # Log SQL queries in debug mode
         "connect_args": {},
         **kwargs,
     }
@@ -61,11 +64,15 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def get_db():
     """
     FastAPI dependency to get a database session.
-    Ensures the session is closed after the request.
+    Ensures the session is closed after the request and rollback on errors.
     """
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        # Rollback any failed transaction to clear the aborted state
+        db.rollback()
+        raise
     finally:
         db.close()
 

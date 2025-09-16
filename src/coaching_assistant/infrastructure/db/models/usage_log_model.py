@@ -19,13 +19,13 @@ class UsageLogModel(BaseModel):
     # Core relationships
     session_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("sessions.id", ondelete="CASCADE"),
+        ForeignKey("session.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     user_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey("user.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

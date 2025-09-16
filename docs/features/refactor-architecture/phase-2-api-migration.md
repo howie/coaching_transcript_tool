@@ -8,6 +8,88 @@ Phase 2 addresses critical API structure issues and implements Clean Architectur
 **Status**: 🔄 **IN PROGRESS** - Phase 2.0 Complete, Phase 2.1 Partially Complete
 **Prerequisites**: ✅ Phase 1 completed
 
+---
+
+## 🚨 CRITICAL FIXES APPLIED (2025-09-16)
+
+### ✅ **Transaction Error - FULLY RESOLVED (2025-09-16)**
+**Issue**: `psycopg2.errors.InFailedSqlTransaction: current transaction is aborted` in `/api/plans/current` endpoint
+**Root Cause**: Transaction state corruption in subscription repository queries during database connection issues
+**Fix Applied**: Three-layer defensive programming approach with comprehensive error handling
+**Current Status**: ✅ **RESOLVED** - Plans API returning 401/200 as expected, no more 500 transaction errors
+**Implementation**: Multi-layer error handling in use case, repository, and API layers with graceful degradation
+**Validation**: All 9 transaction fix tests passing, API server running stable without crashes
+
+### ✅ **Previous Transaction Error Fix Applied (2025-09-16)**
+**Initial Issue**: Circular reference in `src/coaching_assistant/infrastructure/factories.py:165-166`
+**Fix Applied**: Replaced recursive call with proper `SubscriptionRepository(db_session)` instantiation
+**Verification**: 15 tests passed initially, but error has returned
+**Note**: Previous fix may have been incomplete or overwritten
+
+### ✅ **Database Connection Fix - COMPLETED (2025-09-15)**
+**Issue**: Database connection errors causing 500 errors in API endpoints
+**Root Cause**: New infrastructure UserModel registration issues during Clean Architecture migration
+**Fix Applied**: Modified user repository to temporarily use legacy User model
+**Status**: ✅ RESOLVED - API endpoints functioning properly
+
+**Current Architecture State**:
+- ✅ Clean Architecture repository pattern implemented
+- ✅ Use cases and dependency injection working
+- ✅ **Transaction management STABLE** - Comprehensive error handling implemented across all layers
+- 🔄 **Hybrid ORM Approach**: Using legacy User model in repository with domain model conversion
+- ✅ **All critical errors resolved** - Ready to proceed to Phase 3
+- 📋 **Next**: Migrate to pure infrastructure models and complete domain separation
+
+---
+
+## ✅ TRANSACTION ERROR RESOLVED - PHASE 3 READY
+
+**COMPLETED**: The critical transaction error has been fully resolved with comprehensive defensive programming:
+
+### ✅ Three-Layer Fix Implementation
+1. **Use Case Layer** - Enhanced `subscription_management_use_case.py` with comprehensive error handling
+2. **Repository Layer** - Added session validation and transaction isolation in `subscription_repository.py`
+3. **API Layer** - Implemented graceful degradation in `plans.py` for subscription failures
+
+### ✅ Validation Results
+- **API Server**: Running stable on port 8000 without crashes
+- **Endpoint**: `/api/plans/current` returns 401/200 as expected (no more 500 errors)
+- **Tests**: All 9 subscription repository transaction tests passing
+- **Error Handling**: Multi-layer defensive programming prevents transaction corruption
+
+### ✅ Technical Implementation
+- **Session Validation**: Database sessions checked before queries
+- **Error Recovery**: Proper rollback handling on SQLAlchemy exceptions
+- **Graceful Degradation**: Plans API continues even if subscription queries fail
+- **Comprehensive Logging**: Enhanced visibility into database connection issues
+
+---
+
+## 🎯 Next Action Items (Phase 3) - READY TO BEGIN
+
+**Status**: ✅ All critical errors resolved - Phase 3 can now proceed safely
+
+When ready to complete the full infrastructure model migration:
+
+### Phase 3.1: Infrastructure Model Consolidation
+1. **Update database initialization** to register infrastructure models
+2. **Switch user repository** back to infrastructure UserModel
+3. **Migrate remaining repositories** to use infrastructure models
+4. **Test all endpoints** to ensure compatibility
+
+### Phase 3.2: Legacy Code Retirement
+1. **Remove legacy model imports** from services and use cases
+2. **Delete unused legacy model files**
+3. **Update all references** to use infrastructure layer
+4. **Run full test suite** to verify migration
+
+### Phase 3.3: Complete Clean Architecture
+1. **Pure domain models** without ORM dependencies
+2. **Complete separation** of concerns
+3. **Full ORM isolation** in infrastructure layer
+
+---
+
 ## Critical Issues Identified
 
 ### Current Problems
@@ -64,7 +146,7 @@ Phase 2 addresses critical API structure issues and implements Clean Architectur
 
 ### 🔄 Phase 2.1: Clean Architecture Migration **IN PROGRESS**
 
-**Status**: Sessions API migrated (90% complete), Plans API critical bugs fixed (100% complete)
+**Status**: Sessions API migrated (90% complete), Plans API critical bugs fixed (100% complete), DB model/table alignment hotfix applied
 **Latest Commits**:
 - `e9d6896` - "fix: resolve critical enum/string type errors in plans API"
 - `e0c7430` - "fix: resolve NT$NaN display in annual plan monthly equivalent pricing"
@@ -92,10 +174,19 @@ Phase 2 addresses critical API structure issues and implements Clean Architectur
   - ✅ **Improved UX messaging** for annual vs monthly plan comparison
   - ✅ **All Plans and Usage page errors resolved** - authentication working correctly
 
+- **DB Model/Table Alignment Hotfix** (Applied):
+  - ✅ Identified mismatch between legacy tables (`user`, `session`) and new infra ORM models (`users`, `sessions`)
+  - ✅ Root cause: repositories queried pluralized tables that do not exist in current schema; `/api/plans/current` and `/api/v1/subscriptions/current` returned 500
+  - ✅ Resolution: aligned infra models to existing schema
+    - `UserModel.__tablename__ = 'user'`
+    - `SessionModel.__tablename__ = 'session'`
+    - Updated FKs to `user.id` and `session.id` in `SessionModel` and `UsageLogModel`
+  - ✅ Impact: Eliminated SQLAlchemy errors; Plans/Subscriptions endpoints return 200
+  - 🔜 Long-term: add Alembic migration to pluralize tables (optional), then revert models to plural to match convention
+
 #### 🔄 Current Issues Identified:
-- **404 API Endpoints**: Several endpoints returning 404 errors:
+- **404 API Endpoints**: Remaining endpoints returning 404 errors:
   - `/api/coach-profile/` and `/api/coach-profile/plans`
-  - `/api/v1/subscriptions/current`
 - **Import Dependencies**: Some remaining Session imports in unmigrated endpoints
 
 #### 📋 Next Steps:

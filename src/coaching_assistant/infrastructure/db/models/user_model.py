@@ -13,7 +13,7 @@ from ....core.models.user import User, UserPlan, UserRole
 class UserModel(BaseModel):
     """ORM model for User entity with SQLAlchemy mappings."""
 
-    __tablename__ = 'users'
+    __tablename__ = 'user'
 
     # Authentication fields
     email = Column(String(255), unique=True, nullable=False, index=True)
@@ -25,9 +25,17 @@ class UserModel(BaseModel):
     name = Column(String(255), nullable=False)
     avatar_url = Column(String(512))
 
-    # Plan and permissions
-    plan = Column(Enum(UserPlan), default=UserPlan.FREE, nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    # Plan and permissions (persist enum values to match legacy schema)
+    plan = Column(
+        Enum(UserPlan, values_callable=lambda x: [e.value for e in x]),
+        default=UserPlan.FREE,
+        nullable=False,
+    )
+    role = Column(
+        Enum(UserRole, values_callable=lambda x: [e.value for e in x]),
+        default=UserRole.USER,
+        nullable=False,
+    )
 
     # Usage tracking
     usage_minutes = Column(Integer, default=0, nullable=False)

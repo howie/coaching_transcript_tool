@@ -397,3 +397,39 @@ class UnitOfWorkPort(Protocol):
     def subscriptions(self) -> SubscriptionRepoPort:
         """Get subscription repository."""
         ...
+
+
+class SpeakerRoleRepoPort(Protocol):
+    """Repository interface for SessionRole entity operations (speaker-level roles)."""
+
+    def get_by_session_id(self, session_id: UUID) -> List["SessionRole"]:
+        """Get all speaker role assignments for a session."""
+        ...
+
+    def save_speaker_roles(
+        self, session_id: UUID, speaker_roles: List["SessionRole"]
+    ) -> List["SessionRole"]:
+        """Save or update speaker role assignments for a session."""
+        ...
+
+    def delete_by_session_id(self, session_id: UUID) -> None:
+        """Delete all speaker role assignments for a session."""
+        ...
+
+
+class SegmentRoleRepoPort(Protocol):
+    """Repository interface for SegmentRole entity operations (segment-level roles)."""
+
+    def get_by_session_id(self, session_id: UUID) -> List["SegmentRole"]:
+        """Get all segment role assignments for a session."""
+        ...
+
+    def save_segment_roles(
+        self, session_id: UUID, segment_roles: List["SegmentRole"]
+    ) -> List["SegmentRole"]:
+        """Save or update segment role assignments for a session."""
+        ...
+
+    def delete_by_session_id(self, session_id: UUID) -> None:
+        """Delete all segment role assignments for a session."""
+        ...

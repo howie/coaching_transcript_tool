@@ -1,8 +1,10 @@
 """Subscription repository implementation using SQLAlchemy."""
 
+import logging
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from ....core.repositories.ports import SubscriptionRepoPort
 from ....models.ecpay_subscription import (
@@ -11,6 +13,8 @@ from ....models.ecpay_subscription import (
     ECPayCreditAuthorization,
     SubscriptionStatus,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class SubscriptionRepository(SubscriptionRepoPort):
@@ -21,13 +25,19 @@ class SubscriptionRepository(SubscriptionRepoPort):
 
     def get_subscription_by_user_id(self, user_id: UUID) -> Optional[SaasSubscription]:
         """Get active subscription for user."""
-        return (
-            self.db_session.query(SaasSubscription)
-            .filter(
-                SaasSubscription.user_id == user_id,
-                SaasSubscription.status.in_(
-                    [
-                        SubscriptionStatus.ACTIVE.value,
+        try:
+            # Validate session state before query
+            if not self.db_session.is_active:
+                logger.warning(f"Database session is not active for subscription query, user {user_id}")
+                return None
+
+            return (
+                self.db_session.query(SaasSubscription)
+                .filter(
+                    SaasSubscription.user_id == user_id,
+                    SaasSubscription.status.in_(
+                        [
+                            SubscriptionStatus.ACTIVE.value,
                         SubscriptionStatus.PAST_DUE.value,
                         SubscriptionStatus.UNPAID.value,
                         SubscriptionStatus.TRIALING.value,
@@ -36,39 +46,58 @@ class SubscriptionRepository(SubscriptionRepoPort):
             )
             .first()
         )
+        except SQLAlchemyError as e:
+            logger.error(f"Database error in get_subscription_by_user_id for user {user_id}: {e}")
+            self.db_session.rollback()
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in get_subscription_by_user_id for user {user_id}: {e}")
+            self.db_session.rollback()
+            raise
 
     def save_subscription(self, subscription: SaasSubscription) -> SaasSubscription:
         """Save or update subscription."""
         self.db_session.add(subscription)
-        self.db_session.commit()
-        self.db_session.refresh(subscription)
+        self.db_session.flush()  # Ensure ID is generated without committing
         return subscription
 
     def get_credit_authorization_by_user_id(
         self, user_id: UUID
     ) -> Optional[ECPayCreditAuthorization]:
         """Get credit authorization for user."""
-        return (
-            self.db_session.query(ECPayCreditAuthorization)
-            .filter(ECPayCreditAuthorization.user_id == user_id)
-            .order_by(ECPayCreditAuthorization.created_at.desc())
-            .first()
-        )
+        try:
+            # Validate session state before query
+            if not self.db_session.is_active:
+                logger.warning(f"Database session is not active for authorization query, user {user_id}")
+                return None
+
+            return (
+                self.db_session.query(ECPayCreditAuthorization)
+                .filter(ECPayCreditAuthorization.user_id == user_id)
+                .order_by(ECPayCreditAuthorization.created_at.desc())
+                .first()
+            )
+        except SQLAlchemyError as e:
+            logger.error(f"Database error in get_credit_authorization_by_user_id for user {user_id}: {e}")
+            self.db_session.rollback()
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in get_credit_authorization_by_user_id for user {user_id}: {e}")
+            self.db_session.rollback()
+            raise
 
     def save_credit_authorization(
         self, auth: ECPayCreditAuthorization
     ) -> ECPayCreditAuthorization:
         """Save or update credit authorization."""
         self.db_session.add(auth)
-        self.db_session.commit()
-        self.db_session.refresh(auth)
+        self.db_session.flush()  # Ensure ID is generated without committing
         return auth
 
     def save_payment(self, payment: SubscriptionPayment) -> SubscriptionPayment:
         """Save subscription payment record."""
         self.db_session.add(payment)
-        self.db_session.commit()
-        self.db_session.refresh(payment)
+        self.db_session.flush()  # Ensure ID is generated without committing
         return payment
 
     def get_payments_for_subscription(
@@ -97,8 +126,7 @@ class SubscriptionRepository(SubscriptionRepoPort):
         
         # Persist enum value as string
         subscription.status = status.value if hasattr(status, "value") else status
-        self.db_session.commit()
-        self.db_session.refresh(subscription)
+        self.db_session.flush()  # Ensure changes are flushed without committing
         return subscription
 
 

@@ -38,6 +38,9 @@ from ...api.v1.dependencies import (
     get_session_export_use_case,
     get_session_status_retrieval_use_case,
     get_session_transcript_upload_use_case,
+    get_speaker_role_assignment_use_case,
+    get_segment_role_assignment_use_case,
+    get_speaker_role_retrieval_use_case,
 )
 from ...utils.gcs_uploader import GCSUploader
 from ...tasks.transcription_tasks import transcribe_audio
@@ -636,6 +639,7 @@ async def export_transcript(
     format: str = Query("json", pattern="^(json|vtt|srt|txt|xlsx)$"),
     current_user: User = Depends(get_current_user_dependency),
     export_use_case=Depends(get_session_export_use_case),
+    speaker_role_use_case=Depends(get_speaker_role_retrieval_use_case),
 ):
     """Export transcript in various formats."""
     from ...exceptions import DomainException
@@ -651,29 +655,25 @@ async def export_transcript(
         session = export_data["session"]
         segments = export_data["segments"]
 
-        # We need a database session for the export helper functions
-        # This is temporary until we refactor these into the use case
-        db = next(get_db())
-
         # Generate transcript content based on format
         if format == "json":
-            content = _export_json(session, segments, db)
+            content = _export_json(session, segments, speaker_role_use_case, current_user.id)
             media_type = "application/json"
             response_io = io.StringIO(content)
         elif format == "vtt":
-            content = _export_vtt(session, segments, db)
+            content = _export_vtt(session, segments, speaker_role_use_case, current_user.id)
             media_type = "text/vtt"
             response_io = io.StringIO(content)
         elif format == "srt":
-            content = _export_srt(session, segments, db)
+            content = _export_srt(session, segments, speaker_role_use_case, current_user.id)
             media_type = "text/srt"
             response_io = io.StringIO(content)
         elif format == "txt":
-            content = _export_txt(session, segments, db)
+            content = _export_txt(session, segments, speaker_role_use_case, current_user.id)
             media_type = "text/plain"
             response_io = io.StringIO(content)
         elif format == "xlsx":
-            excel_buffer = _export_xlsx(session, segments, db)
+            excel_buffer = _export_xlsx(session, segments, speaker_role_use_case, current_user.id)
             media_type = (
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
@@ -787,128 +787,60 @@ class SegmentRoleUpdateRequest(BaseModel):
 async def update_speaker_roles(
     session_id: UUID,
     request: SpeakerRoleUpdateRequest,
-    db: DBSession = Depends(get_db),  # Temporary until Phase 3 migration
     current_user: User = Depends(get_current_user_dependency),
-    transcript_update_use_case=Depends(get_session_transcript_update_use_case),
+    speaker_role_use_case = Depends(get_speaker_role_assignment_use_case),
 ):
     """Update speaker role assignments for a session."""
-    session = (
-        db.query(Session)
-        .filter(Session.id == session_id, Session.user_id == current_user.id)
-        .first()
-    )
-
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    if session.status != SessionStatus.COMPLETED:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot update speaker roles. Session status: {session.status.value}",
+    try:
+        result = speaker_role_use_case.execute(
+            session_id=session_id,
+            user_id=current_user.id,
+            speaker_roles=request.speaker_roles,
         )
-
-    # Import here to avoid circular imports
-    from ...models.transcript import SessionRole, SpeakerRole
-
-    # Clear existing role assignments
-    db.query(SessionRole).filter(SessionRole.session_id == session_id).delete()
-
-    # Create new role assignments
-    for speaker_id, role_str in request.speaker_roles.items():
-        if role_str not in ["coach", "client"]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid role '{role_str}'. Must be 'coach' or 'client'",
-            )
-
-        role = SpeakerRole.COACH if role_str == "coach" else SpeakerRole.CLIENT
-        role_assignment = SessionRole(
-            session_id=session_id, speaker_id=int(speaker_id), role=role
-        )
-        db.add(role_assignment)
-
-    db.commit()
-
-    return {
-        "message": "Speaker roles updated successfully",
-        "speaker_roles": request.speaker_roles,
-    }
+        return result
+    except ValueError as e:
+        # Convert domain exceptions to appropriate HTTP exceptions
+        error_msg = str(e)
+        if "Session not found" in error_msg:
+            raise HTTPException(status_code=404, detail="Session not found")
+        elif "Access denied" in error_msg:
+            raise HTTPException(status_code=403, detail="Access denied")
+        elif "Cannot update speaker roles" in error_msg or "Session status" in error_msg:
+            raise HTTPException(status_code=400, detail=error_msg)
+        elif "Invalid" in error_msg:
+            raise HTTPException(status_code=400, detail=error_msg)
+        else:
+            raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.patch("/{session_id}/segment-roles")
 async def update_segment_roles(
     session_id: UUID,
     request: SegmentRoleUpdateRequest,
-    db: DBSession = Depends(get_db),  # Temporary until Phase 3 migration
     current_user: User = Depends(get_current_user_dependency),
+    segment_role_use_case = Depends(get_segment_role_assignment_use_case),
 ):
     """Update individual segment role assignments for a session."""
-    session = (
-        db.query(Session)
-        .filter(Session.id == session_id, Session.user_id == current_user.id)
-        .first()
-    )
-
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    if session.status != SessionStatus.COMPLETED:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot update segment roles. Session status: {session.status.value}",
+    try:
+        result = segment_role_use_case.execute(
+            session_id=session_id,
+            user_id=current_user.id,
+            segment_roles=request.segment_roles,
         )
-
-    # Import here to avoid circular imports
-    from ...models.transcript import SegmentRole, SpeakerRole
-    from uuid import UUID as PyUUID
-
-    # Clear existing segment role assignments
-    db.query(SegmentRole).filter(SegmentRole.session_id == session_id).delete()
-
-    # Create new segment role assignments
-    for segment_id_str, role_str in request.segment_roles.items():
-        if role_str not in ["coach", "client"]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid role '{role_str}'. Must be 'coach' or 'client'",
-            )
-
-        try:
-            segment_id = PyUUID(segment_id_str)
-        except ValueError:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid segment ID format: '{segment_id_str}'",
-            )
-
-        # Verify segment exists and belongs to this session
-        segment = (
-            db.query(TranscriptSegment)
-            .filter(
-                TranscriptSegment.id == segment_id,
-                TranscriptSegment.session_id == session_id,
-            )
-            .first()
-        )
-
-        if not segment:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Segment not found: '{segment_id_str}'",
-            )
-
-        role = SpeakerRole.COACH if role_str == "coach" else SpeakerRole.CLIENT
-        segment_role = SegmentRole(
-            session_id=session_id, segment_id=segment_id, role=role
-        )
-        db.add(segment_role)
-
-    db.commit()
-
-    return {
-        "message": "Segment roles updated successfully",
-        "segment_roles": request.segment_roles,
-    }
+        return result
+    except ValueError as e:
+        # Convert domain exceptions to appropriate HTTP exceptions
+        error_msg = str(e)
+        if "Session not found" in error_msg:
+            raise HTTPException(status_code=404, detail="Session not found")
+        elif "Access denied" in error_msg:
+            raise HTTPException(status_code=403, detail="Access denied")
+        elif "Cannot update segment roles" in error_msg or "Session status" in error_msg:
+            raise HTTPException(status_code=400, detail=error_msg)
+        elif "Invalid" in error_msg:
+            raise HTTPException(status_code=400, detail=error_msg)
+        else:
+            raise HTTPException(status_code=500, detail="Internal server error")
 
 
 def _create_default_status(
@@ -1022,30 +954,18 @@ def _update_processing_progress(
 
 
 def _export_json(
-    session: Session, segments: List[TranscriptSegment], db: DBSession
+    session: Session, segments: List[TranscriptSegment], speaker_role_use_case, user_id: UUID
 ) -> str:
     """Export transcript as JSON."""
-    # Get role assignments for this session (speaker-level)
-    from ...models.transcript import SessionRole, SegmentRole
-
-    role_assignments = {}
-    roles = (
-        db.query(SessionRole)
-        .filter(SessionRole.session_id == session.id)
-        .all()
+    # Get role assignments using the speaker role use case
+    role_assignments = speaker_role_use_case.get_session_speaker_roles(
+        session_id=session.id, user_id=user_id
     )
-    for role in roles:
-        role_assignments[role.speaker_id] = role.role.value
 
     # Get segment-level role assignments
-    segment_roles = {}
-    segment_role_assignments = (
-        db.query(SegmentRole)
-        .filter(SegmentRole.session_id == session.id)
-        .all()
+    segment_roles = speaker_role_use_case.get_segment_roles(
+        session_id=session.id, user_id=user_id
     )
-    for seg_role in segment_role_assignments:
-        segment_roles[str(seg_role.segment_id)] = seg_role.role.value
 
     data = {
         "session_id": str(session.id),
@@ -1075,34 +995,26 @@ def _export_json(
 
 
 def _export_vtt(
-    session: Session, segments: List[TranscriptSegment], db: DBSession
+    session: Session, segments: List[TranscriptSegment], speaker_role_use_case, user_id: UUID
 ) -> str:
     """Export transcript as WebVTT."""
-    from ...models.transcript import SessionRole, SegmentRole
-
-    # Get role assignments (both speaker and segment level)
-    role_assignments = {}
-    roles = (
-        db.query(SessionRole)
-        .filter(SessionRole.session_id == session.id)
-        .all()
+    # Get role assignments using the speaker role use case
+    role_assignments_raw = speaker_role_use_case.get_session_speaker_roles(
+        session_id=session.id, user_id=user_id
     )
-    for role in roles:
-        role_assignments[role.speaker_id] = (
-            "教練" if role.role.value == "coach" else "客戶"
-        )
+    role_assignments = {
+        speaker_id: ("教練" if role == "coach" else "客戶")
+        for speaker_id, role in role_assignments_raw.items()
+    }
 
     # Get segment-level role assignments
-    segment_roles = {}
-    segment_role_assignments = (
-        db.query(SegmentRole)
-        .filter(SegmentRole.session_id == session.id)
-        .all()
+    segment_roles_raw = speaker_role_use_case.get_segment_roles(
+        session_id=session.id, user_id=user_id
     )
-    for seg_role in segment_role_assignments:
-        segment_roles[str(seg_role.segment_id)] = (
-            "教練" if seg_role.role.value == "coach" else "客戶"
-        )
+    segment_roles = {
+        segment_id: ("教練" if role == "coach" else "客戶")
+        for segment_id, role in segment_roles_raw.items()
+    }
 
     lines = ["WEBVTT", f"NOTE {session.title}", ""]
 
@@ -1122,34 +1034,26 @@ def _export_vtt(
 
 
 def _export_srt(
-    session: Session, segments: List[TranscriptSegment], db: DBSession
+    session: Session, segments: List[TranscriptSegment], speaker_role_use_case, user_id: UUID
 ) -> str:
     """Export transcript as SRT."""
-    from ...models.transcript import SessionRole, SegmentRole
-
-    # Get role assignments (both speaker and segment level)
-    role_assignments = {}
-    roles = (
-        db.query(SessionRole)
-        .filter(SessionRole.session_id == session.id)
-        .all()
+    # Get role assignments using the speaker role use case
+    role_assignments_raw = speaker_role_use_case.get_session_speaker_roles(
+        session_id=session.id, user_id=user_id
     )
-    for role in roles:
-        role_assignments[role.speaker_id] = (
-            "教練" if role.role.value == "coach" else "客戶"
-        )
+    role_assignments = {
+        speaker_id: ("教練" if role == "coach" else "客戶")
+        for speaker_id, role in role_assignments_raw.items()
+    }
 
     # Get segment-level role assignments
-    segment_roles = {}
-    segment_role_assignments = (
-        db.query(SegmentRole)
-        .filter(SegmentRole.session_id == session.id)
-        .all()
+    segment_roles_raw = speaker_role_use_case.get_segment_roles(
+        session_id=session.id, user_id=user_id
     )
-    for seg_role in segment_role_assignments:
-        segment_roles[str(seg_role.segment_id)] = (
-            "教練" if seg_role.role.value == "coach" else "客戶"
-        )
+    segment_roles = {
+        segment_id: ("教練" if role == "coach" else "客戶")
+        for segment_id, role in segment_roles_raw.items()
+    }
 
     lines = []
 
@@ -1170,34 +1074,26 @@ def _export_srt(
 
 
 def _export_txt(
-    session: Session, segments: List[TranscriptSegment], db: DBSession
+    session: Session, segments: List[TranscriptSegment], speaker_role_use_case, user_id: UUID
 ) -> str:
     """Export transcript as plain text."""
-    from ...models.transcript import SessionRole, SegmentRole
-
-    # Get role assignments (both speaker and segment level)
-    role_assignments = {}
-    roles = (
-        db.query(SessionRole)
-        .filter(SessionRole.session_id == session.id)
-        .all()
+    # Get role assignments using the speaker role use case
+    role_assignments_raw = speaker_role_use_case.get_session_speaker_roles(
+        session_id=session.id, user_id=user_id
     )
-    for role in roles:
-        role_assignments[role.speaker_id] = (
-            "教練" if role.role.value == "coach" else "客戶"
-        )
+    role_assignments = {
+        speaker_id: ("教練" if role == "coach" else "客戶")
+        for speaker_id, role in role_assignments_raw.items()
+    }
 
     # Get segment-level role assignments
-    segment_roles = {}
-    segment_role_assignments = (
-        db.query(SegmentRole)
-        .filter(SegmentRole.session_id == session.id)
-        .all()
+    segment_roles_raw = speaker_role_use_case.get_segment_roles(
+        session_id=session.id, user_id=user_id
     )
-    for seg_role in segment_role_assignments:
-        segment_roles[str(seg_role.segment_id)] = (
-            "教練" if seg_role.role.value == "coach" else "客戶"
-        )
+    segment_roles = {
+        segment_id: ("教練" if role == "coach" else "客戶")
+        for segment_id, role in segment_roles_raw.items()
+    }
 
     lines = [f"Transcript: {session.title}", ""]
 
@@ -1221,34 +1117,27 @@ def _export_txt(
 
 
 def _export_xlsx(
-    session: Session, segments: List[TranscriptSegment], db: DBSession
+    session: Session, segments: List[TranscriptSegment], speaker_role_use_case, user_id: UUID
 ) -> io.BytesIO:
     """Export transcript as Excel file."""
-    from ...models.transcript import SessionRole, SegmentRole
-
-    # Get role assignments (both speaker and segment level)
-    role_assignments = {}
-    roles = (
-        db.query(SessionRole)
-        .filter(SessionRole.session_id == session.id)
-        .all()
+    # Get role assignments using the speaker role use case
+    role_assignments_raw = speaker_role_use_case.get_session_speaker_roles(
+        session_id=session.id, user_id=user_id
     )
-    for role in roles:
-        role_assignments[role.speaker_id] = (
-            "Coach" if role.role.value == "coach" else "Client"
-        )
+    # Normalize to English labels for the Excel dataset; map later to Chinese
+    role_assignments = {
+        speaker_id: ("Coach" if role == "coach" else "Client")
+        for speaker_id, role in role_assignments_raw.items()
+    }
 
     # Get segment-level role assignments
-    segment_roles = {}
-    segment_role_assignments = (
-        db.query(SegmentRole)
-        .filter(SegmentRole.session_id == session.id)
-        .all()
+    segment_roles_raw = speaker_role_use_case.get_segment_roles(
+        session_id=session.id, user_id=user_id
     )
-    for seg_role in segment_role_assignments:
-        segment_roles[str(seg_role.segment_id)] = (
-            "Coach" if seg_role.role.value == "coach" else "Client"
-        )
+    segment_roles = {
+        segment_id: ("Coach" if role == "coach" else "Client")
+        for segment_id, role in segment_roles_raw.items()
+    }
 
     # Prepare data for Excel export
     data = []

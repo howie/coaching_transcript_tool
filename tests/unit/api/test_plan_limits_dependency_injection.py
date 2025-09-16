@@ -7,17 +7,17 @@ import pytest
 from unittest.mock import Mock, patch
 from sqlalchemy.orm import Session
 
-from coaching_assistant.api.plan_limits import (
+from src.coaching_assistant.api.v1.plan_limits import (
     validate_action,
     get_current_usage,
     increment_usage,
 )
-from coaching_assistant.api.plan_limits import ValidateActionRequest
-from coaching_assistant.api.auth import (
+from src.coaching_assistant.api.v1.plan_limits import ValidateActionRequest
+from src.coaching_assistant.api.dependencies import (
     get_current_user_dependency,
-    UserResponse,
 )
-from coaching_assistant.models.user import User, UserPlan
+from src.coaching_assistant.api.v1.auth import UserResponse
+from src.coaching_assistant.models.user import User, UserPlan
 
 
 class TestDependencyInjectionCompatibility:

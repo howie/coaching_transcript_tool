@@ -223,10 +223,97 @@ The `coaching_assistant` package follows Clean Architecture principles:
 - **tasks/**: Asynchronous background processing (Celery)
 - **utils/**: Shared utilities and helper functions
 
-**🔄 Migration Status**: 
+**🔄 Migration Status** (Updated 2025-09-15):
 - ✅ **Phase 1 Complete**: Repository ports, infrastructure setup, pilot use case
-- 🚧 **Phase 2 In Progress**: API endpoints migration, full service layer
-- 📅 **Phase 3 Planned**: Pure domain models, complete ORM isolation
+- ✅ **Phase 2 Complete**: API endpoints migration, use case implementations - **CRITICAL FIX APPLIED**
+  - 🩹 **User Repository Fix**: Temporarily using legacy User model to resolve database connection errors
+  - 🚀 **API Functional**: All endpoints now working properly with Clean Architecture
+  - 📋 **Next**: Complete ORM model consolidation when time allows
+- 📅 **Phase 3 Planned**: Pure domain models, complete legacy model retirement
+
+### Clean Architecture Layer Differences 🔍
+
+**Understanding the different models and services in each layer is crucial for maintaining architectural consistency:**
+
+#### 📋 Models Comparison
+
+**🏛️ CORE MODELS** (`src/coaching_assistant/core/models/`)
+- **Purpose**: Pure domain entities representing business concepts
+- **Examples**: `User`, `Session`, `Transcript`, `UsageLog`
+- **Dependencies**: ZERO external dependencies - only Python standard library and domain logic
+- **Characteristics**: Rich domain behavior, business rule validation, pure Python classes
+- **Usage**: Used by use cases for business logic operations
+
+**🔧 INFRASTRUCTURE ORM MODELS** (`src/coaching_assistant/infrastructure/db/models/`)
+- **Purpose**: SQLAlchemy ORM entities for database persistence
+- **Examples**: `UserModel`, `SessionModel`, `UsageLogModel`
+- **Dependencies**: SQLAlchemy ORM, database-specific concerns
+- **Characteristics**:
+  - Contain `to_domain()` method to convert to core domain models
+  - Contain `from_domain()` method to create from core domain models
+  - Handle database-specific field mappings and relationships
+- **Usage**: Used only by repository implementations for data persistence
+
+**📁 LEGACY ROOT MODELS** (`src/coaching_assistant/models/`)
+- **Purpose**: Legacy SQLAlchemy models being migrated to infrastructure layer
+- **Migration Status**: 🚨 **Being phased out** - use infrastructure/db/models/ for new code
+- **Examples**: `PlanConfiguration`, `EcpaySubscription`, legacy ORM models
+- **Note**: Some models still used by legacy services during migration period
+
+#### ⚙️ Services Comparison
+
+**🏛️ CORE SERVICES** (`src/coaching_assistant/core/services/`)
+- **Purpose**: Use Cases - Pure business logic implementing application workflows
+- **Examples**: `PlanRetrievalUseCase`, `SessionCreationUseCase`, `UsageTrackingUseCase`
+- **Dependencies**: ONLY repository ports and domain models - NO infrastructure
+- **Characteristics**:
+  - 🚫 **FORBIDDEN**: SQLAlchemy imports, Session objects, direct database access
+  - ✅ **ALLOWED**: Repository port injection, domain model operations
+  - Single responsibility - one use case per class
+- **Usage**: Injected into API controllers via dependency injection
+
+**📁 LEGACY ROOT SERVICES** (`src/coaching_assistant/services/`)
+- **Purpose**: Legacy service classes with mixed concerns
+- **Migration Status**: 🚨 **Being migrated** to core/services/ (use cases) and infrastructure/
+- **Examples**: `GoogleSTT`, `TranscriptSmoother`, `BillingAnalyticsService`
+- **Issues**: Often contain both business logic AND infrastructure concerns
+- **Note**: Use existing services for now, but new features should use Clean Architecture
+
+#### 🔄 Model Transformation Flow
+
+```
+HTTP Request (Pydantic Schema)
+    ↓ (API Layer converts)
+Domain Model (Core)
+    ↓ (Repository converts)
+ORM Model (Infrastructure)
+    ↓ (Database persistence)
+```
+
+**Example User Model Flow:**
+1. **API receives**: Pydantic `UserCreateRequest`
+2. **API converts to**: Core domain `User` model
+3. **Use case processes**: Business logic with domain `User`
+4. **Repository converts**: Domain `User` → ORM `UserModel`
+5. **Database stores**: `UserModel` via SQLAlchemy
+
+#### 🎯 Key Guidelines for Layer Usage
+
+**When working with models:**
+- 📋 **Core domain models**: For business logic and validation
+- 🔧 **ORM models**: Only in repository implementations
+- 📁 **Legacy models**: Avoid for new features, migrate when touching existing code
+
+**When creating services:**
+- 🏛️ **Use cases**: For new business logic - inject repository ports
+- 📁 **Legacy services**: Only maintain existing, don't create new ones
+- Always ensure **dependency direction**: Core ← Infrastructure
+
+**Migration Strategy:**
+1. Create new features using Clean Architecture (core/services/, infrastructure/)
+2. When modifying legacy code, consider migrating to new structure
+3. Keep business logic pure in use cases
+4. Use repository pattern for all data access
 
 ## Development Methodology: Test-Driven Development (TDD)
 

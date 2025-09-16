@@ -12,17 +12,21 @@ from .auth import get_current_user_dependency
 from .dependencies import (
     get_plan_retrieval_use_case,
     get_plan_validation_use_case,
+    get_subscription_retrieval_use_case,
 )
 from ...models import User
 from ...models.user import UserPlan
 from ...models.plan_configuration import PlanConfiguration
-from ...models.ecpay_subscription import SaasSubscription
 from ...services.usage_tracking import PlanLimits as UsagePlanLimits
 from ...services.plan_limits import get_global_plan_limits, PlanName
 from ...core.services.plan_management_use_case import (
     PlanRetrievalUseCase,
     PlanValidationUseCase,
 )
+from ...core.services.subscription_management_use_case import (
+    SubscriptionRetrievalUseCase,
+)
+from ...exceptions import DomainException
 
 logger = logging.getLogger(__name__)
 
@@ -343,7 +347,7 @@ async def get_current_plan_status(
     current_user: User = Depends(get_current_user_dependency),
     plan_retrieval_use_case: PlanRetrievalUseCase = Depends(get_plan_retrieval_use_case),
     plan_validation_use_case: PlanValidationUseCase = Depends(get_plan_validation_use_case),
-    db: Session = Depends(get_db),  # Still needed for subscription query - will be migrated later
+    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(get_subscription_retrieval_use_case),
 ) -> Dict[str, Any]:
     """Get current user's plan details and usage status."""
     logger.info(f"📊 User {current_user.id} requesting current plan status")
@@ -437,45 +441,39 @@ async def get_current_plan_status(
             "stripeSubscriptionId": None,
         }
 
-        # Get actual subscription data if user has paid plan
+        # Get actual subscription data if user has paid plan with graceful error handling
         if _get_plan_value(current_user.plan) != UserPlan.FREE.value:
-            active_subscription = (
-                db.query(SaasSubscription)
-                .filter(
-                    SaasSubscription.user_id == current_user.id,
-                    SaasSubscription.status.in_(["active", "past_due"]),
-                )
-                .first()
-            )
+            try:
+                subscription_data = subscription_retrieval_use_case.get_current_subscription(current_user.id)
 
-            if active_subscription:
-                subscription_info.update(
-                    {
-                        "active": active_subscription.status == "active",
-                        "startDate": active_subscription.current_period_start.isoformat(),
-                        "endDate": active_subscription.current_period_end.isoformat(),
-                        "subscriptionId": str(active_subscription.id),
-                        "planId": active_subscription.plan_id,
-                        "billingCycle": active_subscription.billing_cycle,
-                        "status": active_subscription.status,
-                        "nextPaymentDate": None,
-                    }
-                )
-
-                # Get next payment date from authorization record
-                if (
-                    active_subscription.auth_record
-                    and active_subscription.auth_record.next_pay_date
-                ):
-                    subscription_info["nextPaymentDate"] = (
-                        active_subscription.auth_record.next_pay_date.isoformat()
+                if subscription_data.get("subscription"):
+                    sub = subscription_data["subscription"]
+                    subscription_info.update(
+                        {
+                            "active": sub.get("status") in ["active", "past_due"],
+                            "startDate": sub.get("created_at"),
+                            "endDate": sub.get("next_billing_date"),
+                            "subscriptionId": sub.get("id"),
+                            "planId": sub.get("plan_id"),
+                            "billingCycle": sub.get("billing_cycle"),
+                            "status": sub.get("status"),
+                            "nextPaymentDate": sub.get("next_billing_date"),
+                        }
                     )
-            else:
-                # User has paid plan in database but no active subscription
+                else:
+                    # User has paid plan in database but no active subscription
+                    subscription_info["active"] = False
+                    logger.warning(
+                        f"User {current_user.id} has plan {_get_plan_value(current_user.plan)} but no active subscription"
+                    )
+            except DomainException as e:
+                logger.warning(f"Subscription service returned domain error for user {current_user.id}: {e}")
                 subscription_info["active"] = False
-                logger.warning(
-                    f"User {current_user.id} has plan {_get_plan_value(current_user.plan)} but no active subscription"
-                )
+                # Continue with basic plan info - subscription error is not critical
+            except Exception as e:
+                logger.error(f"Critical error retrieving subscription for user {current_user.id}: {e}")
+                subscription_info["active"] = False
+                # Continue with basic plan info - subscription error should not break plans endpoint
 
         return {
             "currentPlan": plan_info,
@@ -483,6 +481,18 @@ async def get_current_plan_status(
             "subscriptionInfo": subscription_info,
         }
 
+    except DomainException as e:
+        logger.warning(f"User not found when retrieving plan status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    except RuntimeError as e:
+        logger.error(f"Database connection error for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection error"
+        )
     except Exception as e:
         logger.error(f"Failed to get current plan status for user {current_user.id}: {e}")
         raise HTTPException(

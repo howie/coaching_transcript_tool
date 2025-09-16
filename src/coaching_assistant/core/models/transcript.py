@@ -125,3 +125,111 @@ class TranscriptSegment:
             role_indicator = "[客戶] "
 
         return f"{self.format_timestamp()} {role_indicator}{self.content}"
+
+
+@dataclass
+class SessionRole:
+    """Pure domain model for SessionRole entity (speaker-level role assignment)."""
+
+    # Core identity
+    id: Optional[UUID] = None
+    session_id: Optional[UUID] = None
+
+    # Speaker role assignment
+    speaker_id: int = 1  # From STT diarization
+    role: SpeakerRole = SpeakerRole.UNKNOWN
+
+    # Metadata
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    def __post_init__(self):
+        """Initialize default values after dataclass creation."""
+        if self.id is None:
+            from uuid import uuid4
+            self.id = uuid4()
+        if self.created_at is None:
+            self.created_at = datetime.utcnow()
+        if self.updated_at is None:
+            self.updated_at = datetime.utcnow()
+
+    def validate(self) -> None:
+        """Validate the session role data."""
+        if self.speaker_id < 1:
+            raise ValueError("speaker_id must be positive")
+
+        if not isinstance(self.role, SpeakerRole):
+            raise ValueError("role must be a SpeakerRole enum value")
+
+        if self.session_id is None:
+            raise ValueError("session_id cannot be None")
+
+    def assign_role(self, new_role: SpeakerRole) -> None:
+        """Business rule: Assign new role to speaker."""
+        if not isinstance(new_role, SpeakerRole):
+            raise ValueError("role must be a SpeakerRole enum value")
+
+        self.role = new_role
+        self.updated_at = datetime.utcnow()
+
+    def is_coach_role(self) -> bool:
+        """Check if this is assigned to coach role."""
+        return self.role == SpeakerRole.COACH
+
+    def is_client_role(self) -> bool:
+        """Check if this is assigned to client role."""
+        return self.role == SpeakerRole.CLIENT
+
+
+@dataclass
+class SegmentRole:
+    """Pure domain model for SegmentRole entity (segment-level role assignment)."""
+
+    # Core identity
+    id: Optional[UUID] = None
+    session_id: Optional[UUID] = None
+    segment_id: Optional[UUID] = None
+
+    # Role assignment
+    role: SpeakerRole = SpeakerRole.UNKNOWN
+
+    # Metadata
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    def __post_init__(self):
+        """Initialize default values after dataclass creation."""
+        if self.id is None:
+            from uuid import uuid4
+            self.id = uuid4()
+        if self.created_at is None:
+            self.created_at = datetime.utcnow()
+        if self.updated_at is None:
+            self.updated_at = datetime.utcnow()
+
+    def validate(self) -> None:
+        """Validate the segment role data."""
+        if not isinstance(self.role, SpeakerRole):
+            raise ValueError("role must be a SpeakerRole enum value")
+
+        if self.session_id is None:
+            raise ValueError("session_id cannot be None")
+
+        if self.segment_id is None:
+            raise ValueError("segment_id cannot be None")
+
+    def assign_role(self, new_role: SpeakerRole) -> None:
+        """Business rule: Assign new role to segment."""
+        if not isinstance(new_role, SpeakerRole):
+            raise ValueError("role must be a SpeakerRole enum value")
+
+        self.role = new_role
+        self.updated_at = datetime.utcnow()
+
+    def is_coach_speaking(self) -> bool:
+        """Check if this segment is coach speaking."""
+        return self.role == SpeakerRole.COACH
+
+    def is_client_speaking(self) -> bool:
+        """Check if this segment is client speaking."""
+        return self.role == SpeakerRole.CLIENT

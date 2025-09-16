@@ -52,32 +52,32 @@ class PlanRetrievalUseCase:
 
     def get_user_current_plan(self, user_id: UUID) -> Dict[str, Any]:
         """Get current plan for a user with detailed information.
-        
+
         Args:
             user_id: User ID
-            
+
         Returns:
             Dictionary with current plan information
-            
+
         Raises:
-            ValueError: If user not found
+            DomainException: If user not found
         """
         user = self.user_repo.get_by_id(user_id)
         if not user:
-            raise ValueError(f"User not found: {user_id}")
+            raise DomainException(f"User not found: {user_id}")
 
         plan_config = self.plan_config_repo.get_by_plan_type(user.plan)
         if not plan_config:
             # Return fallback plan info if config not found
             return self._get_fallback_plan_info(user.plan)
 
-        # Get subscription details if available
-        subscription = self.subscription_repo.get_subscription_by_user_id(user_id)
-        
+        # Note: subscription details fetched separately by subscription use case
+        # to avoid duplicate queries within same transaction
+
         plan_info = self._format_plan_config(plan_config)
         plan_info.update({
             "user_plan": _get_plan_value(user.plan),
-            "subscription": self._format_subscription_info(subscription) if subscription else None,
+            "subscription": None,  # Set separately by caller if needed
             "is_current_plan": True,
         })
 
@@ -260,7 +260,7 @@ class PlanValidationUseCase:
         """
         user = self.user_repo.get_by_id(user_id)
         if not user:
-            raise ValueError(f"User not found: {user_id}")
+            raise DomainException(f"User not found: {user_id}")
 
         plan_config = self.plan_config_repo.get_by_plan_type(user.plan)
         if not plan_config:
@@ -339,7 +339,7 @@ class PlanValidationUseCase:
         """
         user = self.user_repo.get_by_id(user_id)
         if not user:
-            raise ValueError(f"User not found: {user_id}")
+            raise DomainException(f"User not found: {user_id}")
 
         plan_config = self.plan_config_repo.get_by_plan_type(user.plan)
         if not plan_config:
