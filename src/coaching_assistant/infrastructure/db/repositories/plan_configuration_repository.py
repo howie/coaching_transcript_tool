@@ -1,42 +1,61 @@
-"""Plan configuration repository implementation using SQLAlchemy."""
+"""Plan configuration repository implementation using SQLAlchemy with Clean Architecture."""
 
 from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from ....core.repositories.ports import PlanConfigurationRepoPort
-from ....models.plan_configuration import PlanConfiguration
-from ....models.user import UserPlan
+from ....core.models.plan_configuration import PlanConfiguration
+from ....core.models.user import UserPlan
+from ..models.plan_configuration_model import PlanConfigurationModel
 
 
 class PlanConfigurationRepository(PlanConfigurationRepoPort):
-    """SQLAlchemy implementation of PlanConfigurationRepoPort."""
+    """SQLAlchemy implementation of PlanConfigurationRepoPort using infrastructure models."""
 
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
     def get_by_plan_type(self, plan_type: UserPlan) -> Optional[PlanConfiguration]:
         """Get plan configuration by plan type."""
-        return (
-            self.db_session.query(PlanConfiguration)
-            .filter(PlanConfiguration.plan_type == plan_type)
+        orm_plan = (
+            self.db_session.query(PlanConfigurationModel)
+            .filter(PlanConfigurationModel.plan_type == plan_type)
             .first()
         )
+        return orm_plan.to_domain() if orm_plan else None
 
     def get_all_active_plans(self) -> List[PlanConfiguration]:
         """Get all active plan configurations."""
-        return (
-            self.db_session.query(PlanConfiguration)
-            .filter(PlanConfiguration.is_active == True)
-            .order_by(PlanConfiguration.sort_order)
+        orm_plans = (
+            self.db_session.query(PlanConfigurationModel)
+            .filter(PlanConfigurationModel.is_active == True)
+            .order_by(PlanConfigurationModel.sort_order)
             .all()
         )
+        return [plan.to_domain() for plan in orm_plans]
 
     def save(self, plan_config: PlanConfiguration) -> PlanConfiguration:
         """Save or update plan configuration."""
-        self.db_session.add(plan_config)
-        self.db_session.commit()
-        self.db_session.refresh(plan_config)
-        return plan_config
+        # Check if plan already exists
+        existing = (
+            self.db_session.query(PlanConfigurationModel)
+            .filter(PlanConfigurationModel.id == plan_config.id)
+            .first()
+        )
+
+        if existing:
+            # Update existing plan
+            existing.update_from_domain(plan_config)
+            self.db_session.flush()
+            self.db_session.refresh(existing)
+            return existing.to_domain()
+        else:
+            # Create new plan
+            orm_plan = PlanConfigurationModel.from_domain(plan_config)
+            self.db_session.add(orm_plan)
+            self.db_session.flush()
+            self.db_session.refresh(orm_plan)
+            return orm_plan.to_domain()
 
 
 def create_plan_configuration_repository(db_session: Session) -> PlanConfigurationRepoPort:
