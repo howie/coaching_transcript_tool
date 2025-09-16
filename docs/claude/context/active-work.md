@@ -187,23 +187,41 @@
     - **解決方案**: 修正 import 語句 `from datetime import datetime, timedelta`
     - **狀態**: ✅ **已完成** - 修復了 AttributeError 和會話狀態更新錯誤
 
-### 下一階段: UI/UX 調整與雙認證系統實作 (待續)
+### Phase 9: Clean Architecture WP3 - Subscriptions Vertical Slice (已完成) ✅
 
-1.  **簡化首頁 (`apps/web/app/page.tsx`)**
-    - **任務**: 移除行銷內容，專注於單一登入入口
+1.  **訂閱 API 層重構完成**
+    - **任務**: 移除直接 SQLAlchemy 依賴，實現 Clean Architecture 合規
+    - **狀態**: ✅ **已完成** - API 層現在僅處理 HTTP 請求/響應，所有商業邏輯透過 use case 處理
+
+2.  **訂閱管理 Use Case 強化完成**
+    - **任務**: 實現 SubscriptionCreationUseCase, SubscriptionRetrievalUseCase, SubscriptionModificationUseCase
+    - **狀態**: ✅ **已完成** - 完整的商業邏輯封裝，支援交易安全與錯誤處理
+
+3.  **Repository 層優化完成**
+    - **任務**: 增強 SubscriptionRepository 的交易安全性與錯誤處理
+    - **狀態**: ✅ **已完成** - 僅使用 flush() 避免自動提交，完善的回滾機制
+
+4.  **測試覆蓋完整化完成**
+    - **任務**: 新增單元測試、整合測試、E2E 測試覆蓋完整訂閱流程
+    - **狀態**: ✅ **已完成** - 20個單元測試案例，真實資料庫整合測試，完整流程 E2E 測試
+
+5.  **架構合規性驗證完成**
+    - **任務**: 確保 API → Use Case → Repository → Infrastructure 層級清楚切分
+    - **狀態**: ✅ **已完成** - 移除 ~200 行 API 層商業邏輯，新增 ~600 行測試程式碼
+
+### 下一階段: Clean Architecture 持續重構與 UI/UX 改善
+
+1.  **WP4: Sessions 垂直切片**
+    - **任務**: 重構會話管理相關 API，實現 Clean Architecture 合規
     - **狀態**: 📝 **待開始**
 
-2.  **建立認證頁面**
-    - **任務**: 建立 `/login` 和 `/signup` 頁面，包含表單和 Google SSO 按鈕
+2.  **統一 Domain Events 機制**
+    - **任務**: 建立跨模組的事件驅動架構
     - **狀態**: 📝 **待開始**
 
-3.  **更新 Dashboard 導航**
-    - **任務**: 在用戶下拉選單中新增「帳戶設定」和「Billing」連結
-    - **狀態**: 📝 **待開始**
-
-4.  **建立 Billing 頁面**
-    - **任務**: 根據提供的設計稿，在 `/dashboard/billing` 建立新的收費方案頁面
+3.  **UI/UX 調整與雙認證系統實作**
+    - **任務**: 簡化首頁、建立認證頁面、更新 Dashboard 導航、建立 Billing 頁面
     - **狀態**: 📝 **待開始**
 
 ---
-**上次更新時間:** 2025-08-14 16:30
+**上次更新時間:** 2025-09-16 19:59 (Claude Code - WP3 completion update)

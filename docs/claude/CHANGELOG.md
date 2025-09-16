@@ -5,6 +5,51 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.0] - 2025-09-16
+
+### 🏛️ Clean Architecture Milestone
+
+#### WP3: Subscriptions Vertical Slice Completion
+- **Clean Architecture Refactor**: Successfully completed WP3 subscriptions vertical slice migration
+  - **API Layer Refactoring**: Removed direct SQLAlchemy Session dependencies from subscription endpoints
+    - ✅ `POST /subscriptions/authorize` - Authorization through use case
+    - ✅ `GET /subscriptions/current` - Status queries via repository pattern
+    - ✅ `POST /subscriptions/upgrade|downgrade|cancel|reactivate` - All operations through use cases
+    - ✅ `GET /subscriptions/billing-history` - History queries via repository
+    - ✅ `GET /subscriptions/payment/{id}/receipt` - Receipt generation through clean architecture
+  - **Use Case Layer Implementation**: Created comprehensive business logic encapsulation
+    - ✅ `SubscriptionCreationUseCase` - Handles authorization and subscription creation
+    - ✅ `SubscriptionRetrievalUseCase` - Manages subscription data queries
+    - ✅ `SubscriptionModificationUseCase` - Processes subscription changes
+  - **Repository Layer Enhancement**: Improved transaction safety and error handling
+    - ✅ Database session state validation
+    - ✅ Explicit flush() usage to avoid auto-commits
+    - ✅ Comprehensive rollback mechanisms
+  - **Testing Coverage**: Established comprehensive test suite
+    - ✅ **Unit Tests**: 20 test cases covering all use cases with mock injection
+    - ✅ **Integration Tests**: Real database operation tests with transaction integrity
+    - ✅ **E2E Tests**: Complete subscription flow testing (auth → subscribe → modify → cancel)
+  - **Architecture Compliance**: Achieved Clean Architecture Lite standards
+    - ✅ API layer: Pure HTTP protocol handling, zero business logic
+    - ✅ Use Case layer: Pure business logic, zero infrastructure dependencies
+    - ✅ Repository layer: Encapsulated data access with transaction safety
+    - ✅ Dependency injection: Clean separation of concerns
+  - **Migration Results**:
+    - ✅ Removed ~200 lines of business logic from API layer
+    - ✅ Added ~600 lines of test code for comprehensive coverage
+    - ✅ Enhanced transaction safety with explicit flush/rollback control
+    - ✅ Unified error handling mechanism with 5 distinct HTTP status codes
+  - **Files Modified**:
+    - `/src/coaching_assistant/api/v1/subscriptions.py` - API layer refactored to Clean Architecture
+    - `/src/coaching_assistant/core/services/subscription_management_use_case.py` - Business logic encapsulation
+    - `/src/coaching_assistant/infrastructure/db/repositories/subscription_repository.py` - Enhanced repository
+    - `/tests/unit/services/test_subscription_management_use_case.py` - Comprehensive unit tests
+    - `/tests/integration/test_subscription_repository.py` - Integration test suite
+    - `/tests/e2e/test_subscription_flows_e2e.py` - End-to-end workflow tests
+    - `/docs/features/refactor-architecture/wp3-subscriptions-vertical.md` - Implementation documentation
+
+---
+
 ## [2.18.2] - 2025-09-11
 
 ### 💰 Billing UI Enhancement
