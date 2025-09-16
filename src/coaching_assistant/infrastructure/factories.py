@@ -162,8 +162,7 @@ class RepositoryFactory:
         Returns:
             SubscriptionRepoPort implementation
         """
-        from .db.repositories.subscription_repository import SubscriptionRepository
-        return SubscriptionRepository(db_session)
+        return create_subscription_repository(db_session)
 
     @staticmethod
     def create_transcript_repository(db_session: Session) -> TranscriptRepoPort:
@@ -310,6 +309,62 @@ class SessionServiceFactory:
         return create_segment_role_repository(db_session)
 
 
+class SpeakerRoleServiceFactory:
+    """Factory for speaker role management use cases."""
+
+    @staticmethod
+    def create_speaker_role_assignment_use_case(db_session: Session) -> SpeakerRoleAssignmentUseCase:
+        """Create a SpeakerRoleAssignmentUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured SpeakerRoleAssignmentUseCase
+        """
+        session_repo = create_session_repository(db_session)
+
+        return SpeakerRoleAssignmentUseCase(
+            session_repo=session_repo,
+        )
+
+    @staticmethod
+    def create_segment_role_assignment_use_case(db_session: Session) -> SegmentRoleAssignmentUseCase:
+        """Create a SegmentRoleAssignmentUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured SegmentRoleAssignmentUseCase
+        """
+        session_repo = create_session_repository(db_session)
+
+        return SegmentRoleAssignmentUseCase(
+            session_repo=session_repo,
+        )
+
+    @staticmethod
+    def create_speaker_role_retrieval_use_case(db_session: Session) -> SpeakerRoleRetrievalUseCase:
+        """Create a SpeakerRoleRetrievalUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured SpeakerRoleRetrievalUseCase
+        """
+        session_repo = create_session_repository(db_session)
+        speaker_role_repo = create_speaker_role_repository(db_session)
+        segment_role_repo = create_segment_role_repository(db_session)
+
+        return SpeakerRoleRetrievalUseCase(
+            session_repo=session_repo,
+            speaker_role_repo=speaker_role_repo,
+            segment_role_repo=segment_role_repo,
+        )
+
+
 class PlanServiceFactory:
     """Factory for plan management use cases."""
 
@@ -384,16 +439,20 @@ class SubscriptionServiceFactory:
 
 
 # Convenience functions for backward compatibility during migration
+# TODO: Remove after all API endpoints migrate to factory pattern (WP2-WP4)
 def get_usage_tracking_service(db_session: Session) -> CreateUsageLogUseCase:
     """Get usage tracking service (legacy compatibility function).
-    
+
     This function provides backward compatibility during the migration
     from the old UsageTrackingService to the new use case architecture.
-    
+
+    DEPRECATED: Use UsageTrackingServiceFactory.create_usage_log_use_case directly.
+
     Args:
         db_session: SQLAlchemy database session
-        
+
     Returns:
         CreateUsageLogUseCase instance
     """
+    # TODO: Add deprecation warning once API migration is complete
     return UsageTrackingServiceFactory.create_usage_log_use_case(db_session)

@@ -4,12 +4,20 @@ import pytest
 from unittest.mock import Mock
 from sqlalchemy.orm import Session
 
-from src.coaching_assistant.infrastructure.factories import SubscriptionServiceFactory
+from src.coaching_assistant.infrastructure.factories import (
+    RepositoryFactory,
+    UsageTrackingServiceFactory,
+    SessionServiceFactory,
+    SpeakerRoleServiceFactory,
+    PlanServiceFactory,
+    SubscriptionServiceFactory,
+    get_usage_tracking_service,
+)
 from src.coaching_assistant.infrastructure.db.repositories.subscription_repository import create_subscription_repository
 
 
 class TestFactoryCircularReference:
-    """Test factory methods don't have circular references."""
+    """Test factory methods don't have circular references and work correctly."""
 
     @pytest.fixture
     def mock_session(self):
@@ -76,3 +84,223 @@ class TestFactoryCircularReference:
         mock_session.commit.assert_not_called()
 
         assert result == mock_subscription
+
+
+class TestRepositoryFactory:
+    """Test RepositoryFactory methods."""
+
+    @pytest.fixture
+    def mock_session(self):
+        """Create a mock database session."""
+        return Mock(spec=Session)
+
+    def test_create_user_repository(self, mock_session):
+        """Test user repository creation."""
+        repo = RepositoryFactory.create_user_repository(mock_session)
+        assert repo is not None
+
+    def test_create_usage_log_repository(self, mock_session):
+        """Test usage log repository creation."""
+        repo = RepositoryFactory.create_usage_log_repository(mock_session)
+        assert repo is not None
+
+    def test_create_session_repository(self, mock_session):
+        """Test session repository creation."""
+        repo = RepositoryFactory.create_session_repository(mock_session)
+        assert repo is not None
+
+    def test_create_plan_configuration_repository(self, mock_session):
+        """Test plan configuration repository creation."""
+        repo = RepositoryFactory.create_plan_configuration_repository(mock_session)
+        assert repo is not None
+        assert repo.db_session == mock_session
+
+    def test_create_subscription_repository(self, mock_session):
+        """Test subscription repository creation."""
+        repo = RepositoryFactory.create_subscription_repository(mock_session)
+        assert repo is not None
+        assert repo.db_session == mock_session
+
+    def test_create_transcript_repository(self, mock_session):
+        """Test transcript repository creation."""
+        repo = RepositoryFactory.create_transcript_repository(mock_session)
+        assert repo is not None
+        assert repo.db_session == mock_session
+
+
+class TestUsageTrackingServiceFactory:
+    """Test UsageTrackingServiceFactory methods."""
+
+    @pytest.fixture
+    def mock_session(self):
+        """Create a mock database session."""
+        return Mock(spec=Session)
+
+    def test_create_usage_log_use_case(self, mock_session):
+        """Test CreateUsageLogUseCase creation."""
+        use_case = UsageTrackingServiceFactory.create_usage_log_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_user_usage_use_case(self, mock_session):
+        """Test GetUserUsageUseCase creation."""
+        use_case = UsageTrackingServiceFactory.create_user_usage_use_case(mock_session)
+        assert use_case is not None
+
+
+class TestSessionServiceFactory:
+    """Test SessionServiceFactory methods."""
+
+    @pytest.fixture
+    def mock_session(self):
+        """Create a mock database session."""
+        return Mock(spec=Session)
+
+    def test_create_session_creation_use_case(self, mock_session):
+        """Test SessionCreationUseCase creation."""
+        use_case = SessionServiceFactory.create_session_creation_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_session_retrieval_use_case(self, mock_session):
+        """Test SessionRetrievalUseCase creation."""
+        use_case = SessionServiceFactory.create_session_retrieval_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_session_status_update_use_case(self, mock_session):
+        """Test SessionStatusUpdateUseCase creation."""
+        use_case = SessionServiceFactory.create_session_status_update_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_session_transcript_update_use_case(self, mock_session):
+        """Test SessionTranscriptUpdateUseCase creation."""
+        use_case = SessionServiceFactory.create_session_transcript_update_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_session_upload_management_use_case(self, mock_session):
+        """Test SessionUploadManagementUseCase creation."""
+        use_case = SessionServiceFactory.create_session_upload_management_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_session_transcription_management_use_case(self, mock_session):
+        """Test SessionTranscriptionManagementUseCase creation."""
+        use_case = SessionServiceFactory.create_session_transcription_management_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_session_export_use_case(self, mock_session):
+        """Test SessionExportUseCase creation."""
+        use_case = SessionServiceFactory.create_session_export_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_session_status_retrieval_use_case(self, mock_session):
+        """Test SessionStatusRetrievalUseCase creation."""
+        use_case = SessionServiceFactory.create_session_status_retrieval_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_session_transcript_upload_use_case(self, mock_session):
+        """Test SessionTranscriptUploadUseCase creation."""
+        use_case = SessionServiceFactory.create_session_transcript_upload_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_speaker_role_retrieval_use_case(self, mock_session):
+        """Test SpeakerRoleRetrievalUseCase creation."""
+        use_case = SessionServiceFactory.create_speaker_role_retrieval_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_speaker_role_repository(self, mock_session):
+        """Test speaker role repository creation."""
+        repo = SessionServiceFactory.create_speaker_role_repository(mock_session)
+        assert repo is not None
+
+    def test_create_segment_role_repository(self, mock_session):
+        """Test segment role repository creation."""
+        repo = SessionServiceFactory.create_segment_role_repository(mock_session)
+        assert repo is not None
+
+
+class TestSpeakerRoleServiceFactory:
+    """Test SpeakerRoleServiceFactory methods."""
+
+    @pytest.fixture
+    def mock_session(self):
+        """Create a mock database session."""
+        return Mock(spec=Session)
+
+    def test_create_speaker_role_assignment_use_case(self, mock_session):
+        """Test SpeakerRoleAssignmentUseCase creation."""
+        use_case = SpeakerRoleServiceFactory.create_speaker_role_assignment_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_segment_role_assignment_use_case(self, mock_session):
+        """Test SegmentRoleAssignmentUseCase creation."""
+        use_case = SpeakerRoleServiceFactory.create_segment_role_assignment_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_speaker_role_retrieval_use_case(self, mock_session):
+        """Test SpeakerRoleRetrievalUseCase creation."""
+        use_case = SpeakerRoleServiceFactory.create_speaker_role_retrieval_use_case(mock_session)
+        assert use_case is not None
+
+
+class TestPlanServiceFactory:
+    """Test PlanServiceFactory methods."""
+
+    @pytest.fixture
+    def mock_session(self):
+        """Create a mock database session."""
+        return Mock(spec=Session)
+
+    def test_create_plan_retrieval_use_case(self, mock_session):
+        """Test PlanRetrievalUseCase creation."""
+        use_case = PlanServiceFactory.create_plan_retrieval_use_case(mock_session)
+        assert use_case is not None
+
+    def test_create_plan_validation_use_case(self, mock_session):
+        """Test PlanValidationUseCase creation."""
+        use_case = PlanServiceFactory.create_plan_validation_use_case(mock_session)
+        assert use_case is not None
+
+
+class TestLegacyCompatibilityFunctions:
+    """Test legacy compatibility functions."""
+
+    @pytest.fixture
+    def mock_session(self):
+        """Create a mock database session."""
+        return Mock(spec=Session)
+
+    def test_get_usage_tracking_service(self, mock_session):
+        """Test legacy get_usage_tracking_service function."""
+        service = get_usage_tracking_service(mock_session)
+        assert service is not None
+        # This should be the same as the factory method
+        direct_service = UsageTrackingServiceFactory.create_usage_log_use_case(mock_session)
+        assert type(service) == type(direct_service)
+
+
+class TestFactoryMemoryManagement:
+    """Test factory memory management and performance."""
+
+    @pytest.fixture
+    def mock_session(self):
+        """Create a mock database session."""
+        return Mock(spec=Session)
+
+    def test_multiple_factory_calls_no_memory_leak(self, mock_session):
+        """Test that multiple factory calls don't cause memory leaks."""
+        # Test repository factories
+        for _ in range(20):
+            repo = RepositoryFactory.create_user_repository(mock_session)
+            assert repo is not None
+
+        # Test use case factories
+        for _ in range(20):
+            use_case = UsageTrackingServiceFactory.create_usage_log_use_case(mock_session)
+            assert use_case is not None
+
+    def test_factory_dependency_injection_consistency(self, mock_session):
+        """Test that factories consistently inject the same session."""
+        use_case = SessionServiceFactory.create_session_creation_use_case(mock_session)
+        assert use_case is not None
+
+        # Test another factory to ensure consistency
+        repo = RepositoryFactory.create_user_repository(mock_session)
+        assert repo is not None

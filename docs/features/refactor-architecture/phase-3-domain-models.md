@@ -13,7 +13,8 @@ Last Updated: 2025-09-16 5:32 pm by ChatGPT
 ## 0. 共同原則與前置作業
 
 1. **分支策略**：每個工作包使用獨立 feature branch，命名格式 `feature/ca-lite/<work-package>`。
-2. **TDD 驗證流程**（每包至少一次）：
+2. **平行作業**：工作包預設可平行進行，僅需在介面變更時同步契約；若需要資源調度，由整合人每週協調。
+3. **TDD 驗證流程**（每包至少一次）：
    - `make lint`
    - `make test-unit`
    - `make test-integration`
@@ -23,8 +24,10 @@ Last Updated: 2025-09-16 5:32 pm by ChatGPT
      - `npm run lint`
      - `npm run test`
      - `npm run dev` → 手動 smoke：登入、Plans/Subscriptions/Sessions 主流程載入
-3. **文件同步**：完成後更新本檔案與對應 feature 子文件，標註日期與狀態。
-4. **觀測點**：保留現有日誌級別，新增/調整時需經過 code review。
+4. **使用者價值導向的 E2E**：每次 E2E 執行需記錄覆蓋的關鍵使用者旅程與觀測到的價值（例如：成功完成方案升級流程）。
+5. **文件同步**：完成後更新本檔案與對應 feature 子文件，標註日期與狀態。
+6. **觀測點**：保留現有日誌級別，新增/調整時需經過 code review。
+7. **本機驗證能力**：允許在開發機上執行上述測試，確保每個工作包在提交前完成本機自我驗證。
 
 ---
 
@@ -87,6 +90,7 @@ Last Updated: 2025-09-16 5:32 pm by ChatGPT
    - `pytest tests/e2e/test_plan_limits_e2e.py`
    - 前端 `npm run test`（需要新增/更新 Plans 頁面測試）
    - 手動 smoke：切換方案、查看可用度。
+   - 產出簡短紀錄：此輪 E2E 驗證到的使用者價值與異常觀察。
 
 **交付物**
 - `docs/features/refactor-architecture/wp2-plans-vertical.md`
@@ -112,6 +116,7 @@ Last Updated: 2025-09-16 5:32 pm by ChatGPT
    - `pytest tests/e2e/test_payment_comprehensive_e2e.py`
    - `pytest tests/e2e/test_plan_upgrade_e2e.py`
    - 若需新案例（例如退款），請新增檔案並標註 `@pytest.mark.slow`。
+   - 產出簡短紀錄：此輪 E2E 驗證到的使用者價值與異常觀察。
 5. 前端：
    - `npm run lint`
    - `npm run test`（補齊 Billing 組件測試）
@@ -141,6 +146,7 @@ Last Updated: 2025-09-16 5:32 pm by ChatGPT
    - 新增 `tests/unit/services/test_session_management_use_case.py`
    - `pytest tests/integration/api/test_sessions_*`
    - 新增 E2E：`tests/e2e/test_session_workflow_e2e.py`（上傳 → 等待完成 → 下載）
+   - 產出簡短紀錄：此輪 E2E 驗證到的使用者價值與異常觀察。
 5. 前端：手動錄音上傳流程、轉錄結果顯示。
 
 **交付物**
@@ -151,8 +157,6 @@ Last Updated: 2025-09-16 5:32 pm by ChatGPT
 ## WP5. Domain ↔ ORM 收斂與 Schema Migration
 
 **目的**：完成 domain model 與 ORM 的最終切分與資料庫 schema 更新，移除 hybride 依賴。
-
-**前置依賴**：WP1~WP4.
 
 **範圍**
 - `src/coaching_assistant/core/models/*`
@@ -168,6 +172,7 @@ Last Updated: 2025-09-16 5:32 pm by ChatGPT
    - `alembic upgrade head`（dev DB）
    - `pytest tests/integration`、`pytest tests/e2e`
    - 若 schema 變動影響前端，更新 `apps/web` 對應 DTO。
+   - 產出簡短紀錄：此輪 E2E 驗證到的使用者價值與異常觀察。
 4. 整理文件：更新 `critical-schema-migration-guide.md` 為實際操作紀錄。
 
 **交付物**
@@ -189,6 +194,7 @@ Last Updated: 2025-09-16 5:32 pm by ChatGPT
 - 完整跑 `make lint`, `make test`, `pytest tests/e2e`
 - 前端 `npm run lint`, `npm run test`, `npm run build`
 - 若有 staging，執行 smoke 測試並更新 `tests/e2e/E2E_TEST_SUMMARY.md`
+ - 產出簡短紀錄：此輪 E2E 驗證到的使用者價值與異常觀察。
 
 **交付物**
 - `docs/features/refactor-architecture/wp6-cleanup.md`
