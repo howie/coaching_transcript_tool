@@ -136,3 +136,41 @@ class Session(BaseModel):
         """Mark session as failed with error message."""
         self.status = SessionStatus.FAILED
         self.error_message = error_message
+
+    @classmethod
+    def from_domain(cls, domain_session):
+        """Create ORM instance from domain model.
+
+        TEMPORARY: Support domain model conversion during migration period.
+        """
+        return cls(
+            id=domain_session.id,
+            user_id=domain_session.user_id,
+            title=domain_session.title,
+            language=domain_session.language,
+            audio_filename=domain_session.audio_filename,
+            duration_seconds=domain_session.duration_seconds,
+            status=SessionStatus(domain_session.status.value) if domain_session.status else SessionStatus.UPLOADING,
+            error_message=domain_session.error_message,
+            gcs_audio_path=domain_session.gcs_audio_path,
+            stt_provider=domain_session.stt_provider,
+            transcription_job_id=domain_session.transcription_job_id,
+            created_at=domain_session.created_at,
+            updated_at=domain_session.updated_at,
+        )
+
+    def update_from_domain(self, domain_session):
+        """Update ORM instance from domain model.
+
+        TEMPORARY: Support domain model conversion during migration period.
+        """
+        self.title = domain_session.title
+        self.language = domain_session.language
+        self.audio_filename = domain_session.audio_filename
+        self.duration_seconds = domain_session.duration_seconds
+        self.status = SessionStatus(domain_session.status.value) if domain_session.status else SessionStatus.UPLOADING
+        self.error_message = domain_session.error_message
+        self.gcs_audio_path = domain_session.gcs_audio_path
+        self.stt_provider = domain_session.stt_provider
+        self.transcription_job_id = domain_session.transcription_job_id
+        self.updated_at = domain_session.updated_at

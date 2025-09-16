@@ -14,7 +14,9 @@ from sqlalchemy import func, desc, and_
 
 from ....core.repositories.ports import SessionRepoPort
 from ....core.models.session import Session, SessionStatus
-from ..models.session_model import SessionModel
+# TEMPORARY FIX: Use legacy model until database migration is complete
+# from ..models.session_model import SessionModel
+from ....models.session import Session as SessionModel
 
 
 class SQLAlchemySessionRepository(SessionRepoPort):
@@ -39,7 +41,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
         """
         try:
             orm_session = self.session.get(SessionModel, session_id)
-            return orm_session.to_domain() if orm_session else None
+            return self._legacy_to_domain(orm_session) if orm_session else None
         except SQLAlchemyError as e:
             # Log error in production
             raise RuntimeError(f"Database error retrieving session {session_id}") from e
@@ -78,7 +80,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
                 .limit(limit)
                 .all()
             )
-            return [orm_session.to_domain() for orm_session in orm_sessions]
+            return [self._legacy_to_domain(orm_session) for orm_session in orm_sessions]
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error retrieving sessions for user {user_id}") from e
 
@@ -107,7 +109,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
                 self.session.add(orm_session)
 
             self.session.flush()  # Get the ID without committing
-            return orm_session.to_domain()
+            return self._legacy_to_domain(orm_session)
 
         except SQLAlchemyError as e:
             self.session.rollback()
@@ -133,14 +135,14 @@ class SQLAlchemySessionRepository(SessionRepoPort):
                 raise ValueError(f"Session {session_id} not found")
 
             # Use domain model for business rule validation if needed
-            domain_session = orm_session.to_domain()
+            domain_session = self._legacy_to_domain(orm_session)
             domain_session.status = status
             domain_session.updated_at = datetime.utcnow()
 
             # Update ORM model with validated domain data
             orm_session.update_from_domain(domain_session)
             self.session.flush()
-            return orm_session.to_domain()
+            return self._legacy_to_domain(orm_session)
         except ValueError:
             # Re-raise business rule violations
             raise
@@ -177,7 +179,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
                 .order_by(SessionModel.created_at)
                 .all()
             )
-            return [orm_session.to_domain() for orm_session in orm_sessions]
+            return [self._legacy_to_domain(orm_session) for orm_session in orm_sessions]
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error retrieving sessions by date range for user {user_id}") from e
 
@@ -234,6 +236,44 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             return int(total_seconds / 60)  # Convert to minutes
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error calculating total duration for user {user_id}") from e
+
+    def _legacy_to_domain(self, orm_session: SessionModel) -> Session:
+        """Convert legacy ORM model to domain model.
+
+        TEMPORARY: This method handles conversion from legacy Session ORM model
+        to domain Session model until database migration is complete.
+        """
+        from ....models.session import SessionStatus as LegacySessionStatus
+
+        domain_session = Session(
+            id=UUID(str(orm_session.id)) if orm_session.id else None,
+            user_id=UUID(str(orm_session.user_id)) if orm_session.user_id else None,
+            title=orm_session.title or "",
+            language=orm_session.language or "auto",
+            audio_filename=orm_session.audio_filename,
+            duration_seconds=orm_session.duration_seconds,
+            status=SessionStatus(orm_session.status.value) if orm_session.status else SessionStatus.UPLOADING,
+            error_message=orm_session.error_message,
+            progress_percentage=0,  # Not in legacy model, default to 0
+            gcs_audio_path=orm_session.gcs_audio_path,
+            gcs_transcript_path=None,  # Not in legacy model
+            stt_provider=orm_session.stt_provider or "google",
+            transcription_job_id=orm_session.transcription_job_id,
+            assemblyai_transcript_id=None,  # Not in legacy model
+            transcript_text=None,  # Legacy model stores in segments
+            speaker_count=None,  # Not in legacy model
+            confidence_score=None,  # Not in legacy model
+            created_at=orm_session.created_at,
+            updated_at=orm_session.updated_at,
+            transcription_started_at=None,  # Not in legacy model
+            transcription_completed_at=None,  # Not in legacy model
+        )
+
+        # TEMPORARY: Add legacy fields for backward compatibility
+        domain_session.stt_cost_usd = orm_session.stt_cost_usd
+        domain_session.provider_metadata = getattr(orm_session, 'provider_metadata', {})
+
+        return domain_session
 
 
 def create_session_repository(session: DBSession) -> SessionRepoPort:
