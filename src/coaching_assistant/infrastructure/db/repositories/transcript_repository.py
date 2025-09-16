@@ -1,69 +1,86 @@
-"""Transcript repository implementation using SQLAlchemy."""
+"""Transcript repository implementation using SQLAlchemy with Clean Architecture."""
 
 from typing import List, Dict
 from uuid import UUID
 from sqlalchemy.orm import Session
 
 from ....core.repositories.ports import TranscriptRepoPort
-from ....models.transcript import TranscriptSegment
+from ....core.models.transcript import TranscriptSegment
+from ..models.transcript_model import TranscriptSegmentModel
 
 
 class TranscriptRepository(TranscriptRepoPort):
-    """SQLAlchemy implementation of TranscriptRepoPort."""
+    """SQLAlchemy implementation of TranscriptRepoPort using infrastructure models."""
 
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
     def get_by_session_id(self, session_id: UUID) -> List[TranscriptSegment]:
         """Get all transcript segments for a session."""
-        return (
-            self.db_session.query(TranscriptSegment)
-            .filter(TranscriptSegment.session_id == session_id)
-            .order_by(TranscriptSegment.start_seconds)
+        orm_segments = (
+            self.db_session.query(TranscriptSegmentModel)
+            .filter(TranscriptSegmentModel.session_id == session_id)
+            .order_by(TranscriptSegmentModel.start_seconds)
             .all()
         )
+        return [segment.to_domain() for segment in orm_segments]
 
     def save_segments(self, segments: List[TranscriptSegment]) -> List[TranscriptSegment]:
         """Save multiple transcript segments."""
+        orm_segments = []
         for segment in segments:
-            self.db_session.add(segment)
-        
-        self.db_session.commit()
-        
-        # Refresh all segments
-        for segment in segments:
-            self.db_session.refresh(segment)
-            
-        return segments
+            orm_segment = TranscriptSegmentModel.from_domain(segment)
+            self.db_session.add(orm_segment)
+            orm_segments.append(orm_segment)
+
+        self.db_session.flush()
+
+        # Refresh all ORM segments
+        for orm_segment in orm_segments:
+            self.db_session.refresh(orm_segment)
+
+        return [orm_segment.to_domain() for orm_segment in orm_segments]
 
     def update_speaker_roles(
         self, session_id: UUID, role_mappings: Dict[str, str]
     ) -> List[TranscriptSegment]:
         """Update speaker roles for session segments."""
-        segments = self.get_by_session_id(session_id)
-        
-        updated_segments = []
-        for segment in segments:
-            if segment.speaker in role_mappings:
-                segment.speaker_role = role_mappings[segment.speaker]
-                updated_segments.append(segment)
-        
-        if updated_segments:
-            self.db_session.commit()
-            for segment in updated_segments:
-                self.db_session.refresh(segment)
-        
-        return segments  # Return all segments, including unchanged ones
+        orm_segments = (
+            self.db_session.query(TranscriptSegmentModel)
+            .filter(TranscriptSegmentModel.session_id == session_id)
+            .all()
+        )
+
+        updated_orm_segments = []
+        for orm_segment in orm_segments:
+            speaker_key = str(orm_segment.speaker_id)  # Convert to string for mapping lookup
+            if speaker_key in role_mappings:
+                # Convert string role to enum
+                from ....core.models.transcript import SpeakerRole
+                try:
+                    new_role = SpeakerRole(role_mappings[speaker_key])
+                    orm_segment.speaker_role = new_role
+                    updated_orm_segments.append(orm_segment)
+                except ValueError:
+                    # Invalid role value, skip this segment
+                    continue
+
+        if updated_orm_segments:
+            self.db_session.flush()
+            for orm_segment in updated_orm_segments:
+                self.db_session.refresh(orm_segment)
+
+        return [orm_segment.to_domain() for orm_segment in orm_segments]
 
     def delete_by_session_id(self, session_id: UUID) -> bool:
         """Delete all segments for a session."""
         deleted_count = (
-            self.db_session.query(TranscriptSegment)
-            .filter(TranscriptSegment.session_id == session_id)
+            self.db_session.query(TranscriptSegmentModel)
+            .filter(TranscriptSegmentModel.session_id == session_id)
             .delete()
         )
-        
-        self.db_session.commit()
+
+        self.db_session.flush()
         return deleted_count > 0
 
 

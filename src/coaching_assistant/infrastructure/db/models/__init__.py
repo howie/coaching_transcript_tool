@@ -9,6 +9,7 @@ from .user_model import UserModel
 from .session_model import SessionModel
 from .usage_log_model import UsageLogModel
 from .plan_configuration_model import PlanConfigurationModel
+from .transcript_model import TranscriptSegmentModel, SessionRoleModel, SegmentRoleModel
 
 __all__ = [
     "Base",
@@ -17,4 +18,7 @@ __all__ = [
     "SessionModel",
     "UsageLogModel",
     "PlanConfigurationModel",
+    "TranscriptSegmentModel",
+    "SessionRoleModel",
+    "SegmentRoleModel",
 ]
