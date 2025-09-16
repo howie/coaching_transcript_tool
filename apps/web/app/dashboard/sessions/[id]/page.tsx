@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { PencilIcon, TrashIcon, ArrowLeftIcon, DocumentArrowDownIcon, MicrophoneIcon, DocumentTextIcon, ChartBarIcon, ChatBubbleLeftRightIcon, DocumentMagnifyingGlassIcon, CloudArrowUpIcon, ExclamationTriangleIcon, ArrowUpIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
@@ -137,7 +137,6 @@ const SessionDetailPage = () => {
   const [transcript, setTranscript] = useState<TranscriptData | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [exportFormat, setExportFormat] = useState<'txt' | 'xlsx'>('xlsx');
-  const [speakingStats, setSpeakingStats] = useState<SpeakingStats | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   const [currentMessage, setCurrentMessage] = useState('');
@@ -228,49 +227,81 @@ const SessionDetailPage = () => {
     }
   }, [transcriptionSession?.status, transcriptionSessionId, transcript]);
 
-  // Define calculateSpeakingStats function before using it
-  const calculateSpeakingStats = useCallback((segments: TranscriptSegment[]): SpeakingStats => {
+  useEffect(() => {
+    if (!transcript || !transcript.segments || transcript.segments.length === 0) {
+      setTempRoleAssignments({});
+      setTempSegmentRoles({});
+      return;
+    }
+
+    if (transcript.role_assignments) {
+      setTempRoleAssignments(transcript.role_assignments);
+    } else {
+      const speakerIds = transcript.segments.map(s => s.speaker_id);
+      const uniqueSpeakers = Array.from(new Set(speakerIds));
+      const defaultAssignments: { [speakerId: number]: 'coach' | 'client' } = {};
+      uniqueSpeakers.forEach((speakerId, index) => {
+        defaultAssignments[speakerId] = index === 0 ? 'coach' : 'client';
+      });
+      setTempRoleAssignments(defaultAssignments);
+    }
+
+    const segmentRoles: { [segmentId: string]: 'coach' | 'client' } = {};
+    transcript.segments.forEach((segment) => {
+      const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+      if (transcript.segment_roles && transcript.segment_roles[segmentId]) {
+        segmentRoles[segmentId] = transcript.segment_roles[segmentId];
+      } else if (transcript.role_assignments && transcript.role_assignments[segment.speaker_id]) {
+        segmentRoles[segmentId] = transcript.role_assignments[segment.speaker_id];
+      } else {
+        const role = getSpeakerRoleFromSegment(segment, transcript.role_assignments);
+        segmentRoles[segmentId] = role === SpeakerRole.COACH ? 'coach' : 'client';
+      }
+    });
+    setTempSegmentRoles(segmentRoles);
+  }, [transcript]);
+
+  const speakingStats = useMemo<SpeakingStats | null>(() => {
+    if (!transcript || !transcript.segments || transcript.segments.length === 0) {
+      return null;
+    }
+
     let coachTime = 0;
     let clientTime = 0;
-    
-    segments.forEach(segment => {
+
+    transcript.segments.forEach(segment => {
       const duration = segment.end_sec - segment.start_sec;
       const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
-      
-      // Determine role using safe priority logic
-      let roleString: string;
+
+      let roleString: 'coach' | 'client';
       if (tempSegmentRoles[segmentId]) {
         roleString = tempSegmentRoles[segmentId];
       } else if (tempRoleAssignments[segment.speaker_id]) {
         roleString = tempRoleAssignments[segment.speaker_id];
       } else {
-        // Use safe fallback
-        const defaultRole = getSpeakerRoleFromSegment(segment, transcript?.role_assignments);
+        const defaultRole = getSpeakerRoleFromSegment(segment, transcript.role_assignments);
         roleString = defaultRole === SpeakerRole.COACH ? 'coach' : 'client';
       }
-      
-      if (roleString === 'coach' || roleString === SpeakerRole.COACH) {
+
+      if (roleString === 'coach') {
         coachTime += duration;
       } else {
         clientTime += duration;
       }
     });
-    
+
     const totalSpeaking = coachTime + clientTime;
-    
-    // Improved duration calculation: use the actual time span from first to last segment
+
     let totalDuration = 0;
-    if (segments.length > 0) {
-      const sortedSegments = segments.slice().sort((a, b) => a.start_sec - b.start_sec);
+    if (transcript.segments.length > 0) {
+      const sortedSegments = transcript.segments.slice().sort((a, b) => a.start_sec - b.start_sec);
       const firstStart = sortedSegments[0].start_sec;
-      const lastEnd = Math.max(...segments.map(s => s.end_sec));
+      const lastEnd = Math.max(...transcript.segments.map(s => s.end_sec));
       totalDuration = lastEnd - firstStart;
     }
-    
-    // Calculate silence time more accurately
-    // Silence time = total duration - sum of actual speaking segments
-    let silenceTime = Math.max(0, totalDuration - totalSpeaking);
-    
+
+    const silenceTime = Math.max(0, totalDuration - totalSpeaking);
+
     return {
       coach_speaking_time: coachTime,
       client_speaking_time: clientTime,
@@ -279,46 +310,7 @@ const SessionDetailPage = () => {
       client_percentage: totalSpeaking > 0 ? (clientTime / totalSpeaking) * 100 : 0,
       silence_time: silenceTime
     };
-  }, [tempRoleAssignments, tempSegmentRoles, transcript?.role_assignments]);
-
-  useEffect(() => {
-    // Calculate speaking stats when transcript is available
-    if (transcript && transcript.segments && transcript.segments.length > 0) {
-      const stats = calculateSpeakingStats(transcript.segments);
-      setSpeakingStats(stats);
-      
-      // Initialize role assignments from transcript data (keep for compatibility)
-      if (transcript.role_assignments) {
-        setTempRoleAssignments(transcript.role_assignments);
-      } else {
-        // Default assignments if none exist
-        const speakerIds = transcript.segments.map(s => s.speaker_id);
-        const uniqueSpeakers = Array.from(new Set(speakerIds));
-        const defaultAssignments: { [speakerId: number]: 'coach' | 'client' } = {};
-        uniqueSpeakers.forEach((speakerId, index) => {
-          defaultAssignments[speakerId] = index === 0 ? 'coach' : 'client';
-        });
-        setTempRoleAssignments(defaultAssignments);
-      }
-      
-      // Initialize segment-level role assignments
-      const segmentRoles: { [segmentId: string]: 'coach' | 'client' } = {};
-      transcript.segments.forEach((segment) => {
-        const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
-        // Use existing segment roles if available, otherwise use speaker role assignments, or default
-        if (transcript.segment_roles && transcript.segment_roles[segmentId]) {
-          segmentRoles[segmentId] = transcript.segment_roles[segmentId];
-        } else if (transcript.role_assignments && transcript.role_assignments[segment.speaker_id]) {
-          segmentRoles[segmentId] = transcript.role_assignments[segment.speaker_id];
-        } else {
-          // Use safe fallback with segment role detection
-          const role = getSpeakerRoleFromSegment(segment, transcript.role_assignments);
-          segmentRoles[segmentId] = role === SpeakerRole.COACH ? 'coach' : 'client';
-        }
-      });
-      setTempSegmentRoles(segmentRoles);
-    }
-  }, [transcript, calculateSpeakingStats]);
+  }, [transcript, tempRoleAssignments, tempSegmentRoles]);
 
   const checkUsageLimits = useCallback(async () => {
     try {
@@ -633,12 +625,6 @@ ${t('sessions.aiChatFollowUp')}`;
       } : null);
       
       setEditingTranscript(false);
-      
-      // Recalculate stats with new role assignments
-      if (transcript) {
-        const stats = calculateSpeakingStats(transcript.segments);
-        setSpeakingStats(stats);
-      }
     } catch (error) {
       console.error('Failed to save transcript changes:', error);
       alert(t('sessions.saveTranscriptError') || 'Failed to save transcript changes');
@@ -1207,10 +1193,6 @@ ${t('sessions.aiChatFollowUp')}`;
     setTranscript(smoothedTranscript);
     setShowComparisonModal(false);
     setSmoothingResult(null);
-    
-    // Recalculate stats with smoothed transcript
-    const stats = calculateSpeakingStats(smoothedTranscript.segments);
-    setSpeakingStats(stats);
   };
 
   const handleAcceptSmoothedVersion = () => {
