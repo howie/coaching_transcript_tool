@@ -22,7 +22,6 @@ import re
 
 from ...core.database import get_db  # Still needed for role management endpoints
 from ...core.models.session import SessionStatus
-from ...models.processing_status import ProcessingStatus
 # TEMPORARY: Still needed for legacy endpoints that haven't been migrated to Clean Architecture
 from ...models.session import Session
 from ...models.transcript import TranscriptSegment
@@ -723,52 +722,32 @@ async def get_session_status(
 ):
     """Get detailed processing status for a session."""
     try:
-        # Use case validates session ownership and gets session info
+        # Use case validates session ownership and provides processing status
         status_data = status_retrieval_use_case.get_detailed_status(
             session_id=session_id,
             user_id=current_user.id,
         )
 
         session = status_data["session"]
-
-        # For now, we still need database access for ProcessingStatus
-        # TODO: Move ProcessingStatus logic to use case in future iteration
-        from ...core.database import get_db
-        db = next(get_db())
-
-        # Get the processing status (should be only one per session)
-        latest_status = (
-            db.query(ProcessingStatus)
-            .filter(ProcessingStatus.session_id == session_id)
-            .first()
-        )
-
-        # If no status exists, create a basic one based on session status
-        if not latest_status:
-            latest_status = _create_default_status(session, db)
-
-        # Update progress calculation if processing
-        # NOTE: This should only estimate progress if not already set by Celery task
-        if session.status == SessionStatus.PROCESSING:
-            _update_processing_progress(session, latest_status, db)
+        processing_status = status_data["processing_status"]
 
         response = SessionStatusResponse(
             session_id=session.id,
             status=session.status,
-            progress=latest_status.progress_percentage,
-            message=latest_status.message,
-            duration_processed=latest_status.duration_processed,
-            duration_total=latest_status.duration_total,
-            started_at=latest_status.started_at,
-            estimated_completion=latest_status.estimated_completion,
-            processing_speed=latest_status.processing_speed,
-            created_at=latest_status.created_at,
-            updated_at=latest_status.updated_at,
+            progress=processing_status["progress_percentage"],
+            message=processing_status["message"],
+            duration_processed=processing_status["duration_processed"],
+            duration_total=processing_status["duration_total"],
+            started_at=processing_status["started_at"],
+            estimated_completion=processing_status["estimated_completion"],
+            processing_speed=processing_status["processing_speed"],
+            created_at=session.created_at,
+            updated_at=session.updated_at,
         )
 
         # Debug logging
         logger.info(
-            f"🔍 STATUS API DEBUG - Session {session_id}: progress={latest_status.progress_percentage}%, status={session.status}, message='{latest_status.message}'"
+            f"🔍 STATUS API DEBUG - Session {session_id}: progress={processing_status['progress_percentage']}%, status={session.status}, message='{processing_status['message']}'"
         )
 
         return response
@@ -848,114 +827,6 @@ async def update_segment_roles(
             raise HTTPException(status_code=500, detail="Internal server error")
 
 
-def _create_default_status(
-    session: Session, db: DBSession
-) -> ProcessingStatus:
-    """Create default processing status based on session status."""
-    status_map = {
-        SessionStatus.UPLOADING: ("pending", 0, "Waiting for file upload"),
-        SessionStatus.PENDING: (
-            "pending",
-            5,
-            "File uploaded, queued for processing",
-        ),
-        SessionStatus.PROCESSING: ("processing", 10, "Processing audio..."),
-        SessionStatus.COMPLETED: ("completed", 100, "Transcription complete!"),
-        SessionStatus.FAILED: (
-            "failed",
-            0,
-            session.error_message or "Processing failed",
-        ),
-        SessionStatus.CANCELLED: ("failed", 0, "Processing cancelled"),
-    }
-
-    status_str, progress, message = status_map.get(
-        session.status, ("pending", 0, "Unknown status")
-    )
-
-    processing_status = ProcessingStatus(
-        session_id=session.id,
-        status=status_str,
-        progress=progress,
-        message=message,
-        duration_total=session.duration_seconds,
-        started_at=(
-            session.created_at
-            if session.status == SessionStatus.PROCESSING
-            else None
-        ),
-    )
-
-    db.add(processing_status)
-    db.commit()
-    db.refresh(processing_status)
-
-    return processing_status
-
-
-def _update_processing_progress(
-    session: Session, status: ProcessingStatus, db: DBSession
-):
-    """Update progress calculation for processing sessions."""
-    if not status.started_at:
-        status.started_at = datetime.utcnow()
-
-    # Calculate elapsed time since processing started
-    elapsed_seconds = (datetime.utcnow() - status.started_at).total_seconds()
-
-    # Log current progress before any updates
-    logger.debug(
-        f"Current progress before update: {status.progress}% for session {session.id}"
-    )
-
-    # Only estimate progress if we don't have actual progress from Celery task
-    # The Celery task sets actual progress, so we should NOT override it here
-    if session.duration_seconds and (
-        status.progress is None or status.progress == 0
-    ):
-        # Only set time-based estimate if progress hasn't been set by the actual task
-        expected_processing_time = session.duration_seconds * 4  # 4x real-time
-        time_based_progress = min(
-            95, (elapsed_seconds / expected_processing_time) * 100
-        )
-        status.progress = int(time_based_progress)
-
-        # Update message only if not already set by task
-        if not status.message or status.message == "Processing...":
-            if status.progress < 25:
-                status.message = "Starting audio processing..."
-            elif status.progress < 50:
-                status.message = "Processing audio segments..."
-            elif status.progress < 75:
-                status.message = "Analyzing speech patterns..."
-            elif status.progress < 95:
-                status.message = "Finalizing transcription..."
-            else:
-                status.message = "Almost done..."
-
-        logger.debug(f"Set time-based progress estimate: {status.progress}%")
-    else:
-        # Log that we're keeping the existing progress
-        logger.debug(f"Keeping existing progress: {status.progress}%")
-
-    # Calculate processing speed if we have data
-    if status.duration_processed and elapsed_seconds > 0:
-        status.processing_speed = status.duration_processed / elapsed_seconds
-
-    # Update estimated completion based on current progress
-    current_progress = status.progress or 0
-    if session.duration_seconds and current_progress < 95:
-        expected_processing_time = session.duration_seconds * 4  # 4x real-time
-        remaining_percentage = (100 - current_progress) / 100.0
-        remaining_time = expected_processing_time * remaining_percentage
-        status.estimated_completion = datetime.utcnow() + timedelta(
-            seconds=remaining_time
-        )
-    elif current_progress >= 95:
-        status.estimated_completion = datetime.utcnow() + timedelta(minutes=1)
-
-    # Commit the updates
-    db.commit()
 
 
 def _export_json(

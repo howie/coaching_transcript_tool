@@ -765,7 +765,7 @@ class SessionStatusRetrievalUseCase:
             user_id: User ID for ownership validation
 
         Returns:
-            Dictionary with detailed status information
+            Dictionary with detailed status information including processing status
 
         Raises:
             ValueError: If session not found or not owned by user
@@ -775,9 +775,167 @@ class SessionStatusRetrievalUseCase:
         if not session or session.user_id != user_id:
             raise ValueError("Session not found or access denied")
 
+        # Create processing status info based on session status
+        processing_status = self._create_processing_status(session)
+
         return {
             "session": session,
+            "processing_status": processing_status,
         }
+
+    def _create_processing_status(self, session: Session) -> Dict[str, Any]:
+        """Create processing status based on session status.
+
+        Args:
+            session: Session domain model
+
+        Returns:
+            Dictionary with processing status information
+        """
+        # Map session status to processing status information
+        status_map = {
+            SessionStatus.UPLOADING: {
+                "progress_percentage": 0,
+                "message": "Waiting for file upload",
+                "started_at": None,
+                "estimated_completion": None,
+                "processing_speed": None,
+                "duration_processed": None,
+                "duration_total": session.duration_seconds,
+            },
+            SessionStatus.PENDING: {
+                "progress_percentage": 5,
+                "message": "File uploaded, queued for processing",
+                "started_at": None,
+                "estimated_completion": None,
+                "processing_speed": None,
+                "duration_processed": None,
+                "duration_total": session.duration_seconds,
+            },
+            SessionStatus.PROCESSING: {
+                "progress_percentage": self._calculate_processing_progress(session),
+                "message": self._get_processing_message(session),
+                "started_at": session.transcription_started_at or session.updated_at,
+                "estimated_completion": self._estimate_completion_time(session),
+                "processing_speed": self._calculate_processing_speed(session),
+                "duration_processed": self._get_duration_processed(session),
+                "duration_total": session.duration_seconds,
+            },
+            SessionStatus.COMPLETED: {
+                "progress_percentage": 100,
+                "message": "Transcription complete!",
+                "started_at": session.transcription_started_at or session.updated_at,
+                "estimated_completion": session.transcription_completed_at or session.updated_at,
+                "processing_speed": None,
+                "duration_processed": session.duration_seconds,
+                "duration_total": session.duration_seconds,
+            },
+            SessionStatus.FAILED: {
+                "progress_percentage": 0,
+                "message": session.error_message or "Processing failed",
+                "started_at": session.transcription_started_at,
+                "estimated_completion": None,
+                "processing_speed": None,
+                "duration_processed": None,
+                "duration_total": session.duration_seconds,
+            },
+            SessionStatus.CANCELLED: {
+                "progress_percentage": 0,
+                "message": "Processing cancelled",
+                "started_at": None,
+                "estimated_completion": None,
+                "processing_speed": None,
+                "duration_processed": None,
+                "duration_total": session.duration_seconds,
+            },
+        }
+
+        return status_map.get(session.status, {
+            "progress_percentage": 0,
+            "message": "Unknown status",
+            "started_at": None,
+            "estimated_completion": None,
+            "processing_speed": None,
+            "duration_processed": None,
+            "duration_total": session.duration_seconds,
+        })
+
+    def _calculate_processing_progress(self, session: Session) -> int:
+        """Calculate processing progress percentage for processing sessions."""
+        if session.status != SessionStatus.PROCESSING:
+            return 0
+
+        # If we have actual progress from session, use it
+        if hasattr(session, 'progress_percentage') and session.progress_percentage > 0:
+            return min(95, session.progress_percentage)  # Cap at 95% until complete
+
+        # Time-based progress estimate
+        if session.transcription_started_at and session.duration_seconds:
+            elapsed = (datetime.utcnow() - session.transcription_started_at).total_seconds()
+            # Assume 4x real-time processing speed
+            expected_total = session.duration_seconds * 4
+            if expected_total > 0:
+                progress = min(95, int((elapsed / expected_total) * 100))
+                return max(10, progress)  # Always show at least 10% if processing
+
+        return 10  # Default progress for processing sessions
+
+    def _get_processing_message(self, session: Session) -> str:
+        """Get appropriate processing message based on progress."""
+        progress = self._calculate_processing_progress(session)
+
+        if progress < 25:
+            return "Starting audio processing..."
+        elif progress < 50:
+            return "Processing audio segments..."
+        elif progress < 75:
+            return "Analyzing speech patterns..."
+        elif progress < 95:
+            return "Finalizing transcription..."
+        else:
+            return "Almost done..."
+
+    def _estimate_completion_time(self, session: Session) -> Optional[datetime]:
+        """Estimate completion time for processing sessions."""
+        if session.status != SessionStatus.PROCESSING or not session.duration_seconds:
+            return None
+
+        if session.transcription_started_at:
+            elapsed = (datetime.utcnow() - session.transcription_started_at).total_seconds()
+            # Assume 4x real-time processing
+            estimated_total = session.duration_seconds * 4
+            remaining = max(60, estimated_total - elapsed)  # At least 1 minute remaining
+            return datetime.utcnow() + timedelta(seconds=remaining)
+        else:
+            # No start time, estimate 2 hours max
+            return datetime.utcnow() + timedelta(hours=2)
+
+    def _calculate_processing_speed(self, session: Session) -> Optional[float]:
+        """Calculate processing speed if available."""
+        if (session.status != SessionStatus.PROCESSING or
+            not session.transcription_started_at or
+            not session.duration_seconds):
+            return None
+
+        elapsed = (datetime.utcnow() - session.transcription_started_at).total_seconds()
+        if elapsed > 0:
+            # Rough estimate: assume we've processed proportionally to elapsed time
+            progress_ratio = self._calculate_processing_progress(session) / 100.0
+            processed_duration = session.duration_seconds * progress_ratio
+            if processed_duration > 0:
+                return processed_duration / elapsed
+
+        return None
+
+    def _get_duration_processed(self, session: Session) -> Optional[int]:
+        """Get duration processed based on progress."""
+        if session.status == SessionStatus.COMPLETED:
+            return session.duration_seconds
+        elif session.status == SessionStatus.PROCESSING and session.duration_seconds:
+            progress_ratio = self._calculate_processing_progress(session) / 100.0
+            return int(session.duration_seconds * progress_ratio)
+
+        return None
 
 
 class SessionTranscriptUploadUseCase:
