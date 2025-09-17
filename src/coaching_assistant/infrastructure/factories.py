@@ -323,9 +323,11 @@ class SpeakerRoleServiceFactory:
             Fully configured SpeakerRoleAssignmentUseCase
         """
         session_repo = create_session_repository(db_session)
+        speaker_role_repo = create_speaker_role_repository(db_session)
 
         return SpeakerRoleAssignmentUseCase(
             session_repo=session_repo,
+            speaker_role_repo=speaker_role_repo,
         )
 
     @staticmethod
@@ -339,9 +341,11 @@ class SpeakerRoleServiceFactory:
             Fully configured SegmentRoleAssignmentUseCase
         """
         session_repo = create_session_repository(db_session)
+        segment_role_repo = create_segment_role_repository(db_session)
 
         return SegmentRoleAssignmentUseCase(
             session_repo=session_repo,
+            segment_role_repo=segment_role_repo,
         )
 
     @staticmethod
@@ -456,3 +460,52 @@ def get_usage_tracking_service(db_session: Session) -> CreateUsageLogUseCase:
     """
     # TODO: Add deprecation warning once API migration is complete
     return UsageTrackingServiceFactory.create_usage_log_use_case(db_session)
+    # Create ECPay HTTP client
+    ecpay_client = ECPayAPIClient(
+        merchant_id=settings.ECPAY_MERCHANT_ID,
+        hash_key=settings.ECPAY_HASH_KEY,
+        hash_iv=settings.ECPAY_HASH_IV,
+        environment=settings.ECPAY_ENVIRONMENT
+    )
+
+    # Create notification service
+    notification_service = EmailNotificationService()
+
+    return ECPaySubscriptionService(
+        db=db_session,
+        settings=settings,
+        ecpay_client=ecpay_client,
+        notification_service=notification_service
+    )
+
+
+def create_notification_service() -> "NotificationService":
+    """Create notification service for email sending.
+
+    Returns:
+        NotificationService instance
+    """
+    from .http.notification_service import EmailNotificationService
+
+    # In production, this would use actual SMTP settings
+    # For now, using the mock implementation
+    return EmailNotificationService()
+
+
+def create_ecpay_client() -> "ECPayAPIClient":
+    """Create ECPay HTTP client.
+
+    Returns:
+        ECPayAPIClient instance
+    """
+    from .http.ecpay_client import ECPayAPIClient
+    from ..core.config import Settings
+
+    settings = Settings()
+
+    return ECPayAPIClient(
+        merchant_id=settings.ECPAY_MERCHANT_ID,
+        hash_key=settings.ECPAY_HASH_KEY,
+        hash_iv=settings.ECPAY_HASH_IV,
+        environment=settings.ECPAY_ENVIRONMENT
+    )
