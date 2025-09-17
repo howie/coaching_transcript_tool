@@ -23,6 +23,7 @@ from ..models.user import User, UserPlan
 from ..models.usage_log import UsageLog, TranscriptionType
 from ..models.transcript import TranscriptSegment
 from ...exceptions import DomainException
+from ..config import settings
 import logging
 import json
 import re
@@ -30,6 +31,15 @@ import io
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
+
+
+def _replace_session(session: Session, **changes: Any) -> Session:
+    """Create an updated Session instance, guarding against bad field names."""
+    invalid_fields = set(changes) - session.__dataclass_fields__.keys()
+    if invalid_fields:
+        invalid_list = ", ".join(sorted(invalid_fields))
+        raise ValueError(f"Invalid session fields for replace: {invalid_list}")
+    return replace(session, **changes)
 
 
 class SessionCreationUseCase:
@@ -75,13 +85,22 @@ class SessionCreationUseCase:
         # Check plan limits
         self._validate_plan_limits(user)
 
+        # Determine which STT provider should be used for this session
+        requested_provider = (stt_provider or "").strip().lower()
+        default_provider = settings.STT_PROVIDER
+
+        if requested_provider and requested_provider != "auto":
+            provider_to_use = requested_provider
+        else:
+            provider_to_use = default_provider
+
         # Create session domain model
         session = Session(
             id=uuid4(),
             user_id=user_id,
             title=title,
             language=language,
-            stt_provider=stt_provider if stt_provider != "auto" else None,
+            stt_provider=provider_to_use,
             status=SessionStatus.UPLOADING,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
@@ -97,18 +116,21 @@ class SessionCreationUseCase:
             return
 
         limits = plan_config.limits
-        max_sessions = limits.get("maxSessions", -1)
-        max_minutes = limits.get("maxMinutes", -1)
+        max_sessions = limits.max_sessions if limits else -1
+        max_minutes = limits.max_total_minutes if limits else -1
+
+        # Use current billing period for all limits (avoids counting historical usage)
+        billing_period_start = user.current_month_start
 
         # Check session count limit
         if max_sessions > 0:
-            current_session_count = self.session_repo.count_user_sessions(user.id)
+            current_session_count = self.session_repo.count_user_sessions(user.id, since=billing_period_start)
             if current_session_count >= max_sessions:
                 raise DomainException(f"Session limit exceeded: {max_sessions}")
 
         # Check total minutes limit
         if max_minutes > 0:
-            current_total_minutes = self.session_repo.get_total_duration_minutes(user.id)
+            current_total_minutes = self.session_repo.get_total_duration_minutes(user.id, since=billing_period_start)
             if current_total_minutes >= max_minutes:
                 raise DomainException(f"Total minutes limit exceeded: {max_minutes}")
 
@@ -263,6 +285,7 @@ class SessionStatusUpdateUseCase:
         # Use reasonable default cost calculation (could be enhanced later)
         cost_cents = duration_minutes * 10  # 10 cents per minute as default
 
+        default_provider = settings.STT_PROVIDER
         usage_log = UsageLog(
             id=uuid4(),
             user_id=session.user_id,
@@ -271,7 +294,7 @@ class SessionStatusUpdateUseCase:
             duration_minutes=duration_minutes,
             cost_cents=cost_cents,
             currency="TWD",
-            stt_provider=session.stt_provider or "google",
+            stt_provider=session.stt_provider or default_provider,
             billable=True,
             created_at=datetime.utcnow(),
         )
@@ -320,7 +343,7 @@ class SessionTranscriptUpdateUseCase:
         )
 
         # Update session metadata if needed
-        updated_session = session.replace(updated_at=datetime.utcnow())
+        updated_session = _replace_session(session, updated_at=datetime.utcnow())
         self.session_repo.save(updated_session)
 
         return updated_segments
@@ -363,7 +386,7 @@ class SessionTranscriptUpdateUseCase:
         updated_fields["updated_at"] = datetime.utcnow()
 
         # Create new session instance with updated fields
-        updated_session = session.replace(**updated_fields)
+        updated_session = _replace_session(session, **updated_fields)
         return self.session_repo.save(updated_session)
 
 
@@ -408,8 +431,8 @@ class SessionUploadManagementUseCase:
             raise ValueError(f"User not found: {user_id}")
 
         plan_config = self.plan_config_repo.get_by_plan_type(user.plan)
-        if plan_config:
-            max_file_size = plan_config.limits.get("maxFileSizeMB", 60)
+        if plan_config and plan_config.limits:
+            max_file_size = plan_config.limits.max_file_size_mb
             if file_size_mb > max_file_size:
                 raise DomainException(
                     f"File size {file_size_mb:.1f}MB exceeds plan limit of {max_file_size}MB"
@@ -428,13 +451,13 @@ class SessionUploadManagementUseCase:
 
         # Reset failed session to uploading state
         if session.status == SessionStatus.FAILED:
-            session = replace(
+            session = _replace_session(
                 session,
                 status=SessionStatus.UPLOADING,
                 error_message=None,
                 audio_filename=None,
                 gcs_audio_path=None,
-                transcription_job_id=None
+                transcription_job_id=None,
             )
             session = self.session_repo.save(session)
 
@@ -497,10 +520,11 @@ class SessionUploadManagementUseCase:
         if not session or session.user_id != user_id:
             raise ValueError("Session not found or access denied")
 
-        updated_session = session.replace(
+        updated_session = _replace_session(
+            session,
             audio_filename=audio_filename,
             gcs_audio_path=gcs_audio_path,
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
 
         return self.session_repo.save(updated_session)
@@ -527,10 +551,10 @@ class SessionUploadManagementUseCase:
             raise ValueError("Session not found or access denied")
 
         if session.status == SessionStatus.UPLOADING:
-            session = replace(
+            session = _replace_session(
                 session,
                 status=SessionStatus.PENDING,
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
             )
             session = self.session_repo.save(session)
 

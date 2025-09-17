@@ -433,3 +433,43 @@ class SegmentRoleRepoPort(Protocol):
     def delete_by_session_id(self, session_id: UUID) -> None:
         """Delete all segment role assignments for a session."""
         ...
+
+
+class NotificationPort(Protocol):
+    """Port interface for notification services following Clean Architecture."""
+
+    async def send_payment_failure_notification(self, user_email: str, payment_details: Dict[str, Any]) -> bool:
+        """Send payment failure notification."""
+        ...
+
+    async def send_payment_retry_notification(self, user_email: str, retry_details: Dict[str, Any]) -> bool:
+        """Send payment retry notification."""
+        ...
+
+    async def send_subscription_cancellation_notification(self, user_email: str, cancellation_details: Dict[str, Any]) -> bool:
+        """Send subscription cancellation notification."""
+        ...
+
+    async def send_plan_downgrade_notification(self, user_email: str, downgrade_details: Dict[str, Any]) -> bool:
+        """Send plan downgrade notification."""
+        ...
+
+
+class ECPayClientPort(Protocol):
+    """Port interface for ECPay API client following Clean Architecture."""
+
+    async def cancel_credit_authorization(self, auth_code: str, merchant_trade_no: str) -> Dict[str, Any]:
+        """Cancel ECPay credit card authorization."""
+        ...
+
+    async def retry_payment(self, auth_code: str, merchant_trade_no: str, amount: int) -> Dict[str, Any]:
+        """Retry payment for failed ECPay transaction."""
+        ...
+
+    async def process_payment(self, merchant_trade_no: str, amount: int, item_name: str) -> Dict[str, Any]:
+        """Process new payment via ECPay."""
+        ...
+
+    def calculate_refund_amount(self, original_amount: int, days_used: int, total_days: int) -> int:
+        """Calculate prorated refund amount."""
+        ...

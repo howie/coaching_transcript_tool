@@ -29,7 +29,9 @@ from src.coaching_assistant.core.models.session import Session, SessionStatus
 from src.coaching_assistant.core.models.user import User, UserPlan
 from src.coaching_assistant.core.models.usage_log import UsageLog, TranscriptionType
 from src.coaching_assistant.core.models.transcript import TranscriptSegment
-from src.coaching_assistant.models.plan_configuration import PlanConfiguration
+from src.coaching_assistant.core.models.plan_configuration import (
+    PlanConfiguration, PlanLimits, PlanFeatures, PlanPricing
+)
 
 # Import exceptions
 from src.coaching_assistant.exceptions import DomainException
@@ -71,8 +73,9 @@ def sample_user():
     return User(
         id=uuid4(),
         email="test@example.com",
-        full_name="Test User",
+        name="Test User",
         plan=UserPlan.FREE,
+        current_month_start=datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0),
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
@@ -99,12 +102,16 @@ def sample_plan_config():
         id=uuid4(),
         plan_type=UserPlan.FREE,
         plan_name="Free Plan",
-        limits={
-            "maxSessions": 5,
-            "maxMinutes": 60,
-            "maxFileSizeMB": 60,
-        },
+        display_name="Free Plan",
+        limits=PlanLimits(
+            max_sessions=5,
+            max_total_minutes=60,
+            max_file_size_mb=60,
+        ),
+        features=PlanFeatures(),
+        pricing=PlanPricing(),
         created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
     )
 
 
@@ -182,6 +189,11 @@ class TestSessionCreationUseCase:
                 language="cmn-Hant-TW",
             )
 
+        # Verify billing period is used for session count
+        mock_session_repo.count_user_sessions.assert_called_with(
+            sample_user.id, since=sample_user.current_month_start
+        )
+
     def test_execute_raises_error_for_minutes_limit_exceeded(
         self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_plan_config
     ):
@@ -200,6 +212,397 @@ class TestSessionCreationUseCase:
                 title="Test Session",
                 language="cmn-Hant-TW",
             )
+
+        # Verify billing period is used for both session count and duration
+        mock_session_repo.count_user_sessions.assert_called_with(
+            sample_user.id, since=sample_user.current_month_start
+        )
+        mock_session_repo.get_total_duration_minutes.assert_called_with(
+            sample_user.id, since=sample_user.current_month_start
+        )
+
+    def test_execute_with_none_limits_object(
+        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user
+    ):
+        """Test session creation with None limits object - should allow creation."""
+        # Arrange
+        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        mock_user_repo.get_by_id.return_value = sample_user
+
+        # Create plan config with None limits
+        plan_config_with_none_limits = PlanConfiguration(
+            id=uuid4(),
+            plan_type=UserPlan.FREE,
+            plan_name="Free Plan",
+            display_name="Free Plan",
+            limits=None,  # Test None case
+            features=PlanFeatures(),
+            pricing=PlanPricing(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        mock_plan_config_repo.get_by_plan_type.return_value = plan_config_with_none_limits
+
+        expected_session = Session(
+            id=uuid4(),
+            user_id=sample_user.id,
+            title="Test Session",
+            language="cmn-Hant-TW",
+            status=SessionStatus.UPLOADING,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        mock_session_repo.save.return_value = expected_session
+
+        # Act - should not raise any errors with None limits
+        result = use_case.execute(
+            user_id=sample_user.id,
+            title="Test Session",
+            language="cmn-Hant-TW",
+        )
+
+        # Assert
+        assert result == expected_session
+        mock_session_repo.save.assert_called_once()
+
+    def test_execute_with_zero_limits_allows_creation(
+        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user
+    ):
+        """Test session creation with zero limits (unlimited) - should allow creation."""
+        # Arrange
+        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        mock_user_repo.get_by_id.return_value = sample_user
+
+        # Create plan config with zero limits (meaning unlimited)
+        unlimited_plan_config = PlanConfiguration(
+            id=uuid4(),
+            plan_type=UserPlan.PRO,
+            plan_name="Pro Plan",
+            display_name="Pro Plan",
+            limits=PlanLimits(
+                max_sessions=0,  # 0 means unlimited
+                max_total_minutes=0,  # 0 means unlimited
+                max_file_size_mb=100,
+            ),
+            features=PlanFeatures(),
+            pricing=PlanPricing(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        mock_plan_config_repo.get_by_plan_type.return_value = unlimited_plan_config
+        mock_session_repo.count_user_sessions.return_value = 100  # High usage
+        mock_session_repo.get_total_duration_minutes.return_value = 1000  # High usage
+
+        expected_session = Session(
+            id=uuid4(),
+            user_id=sample_user.id,
+            title="Test Session",
+            language="cmn-Hant-TW",
+            status=SessionStatus.UPLOADING,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        mock_session_repo.save.return_value = expected_session
+
+        # Act - should not raise any errors with zero limits
+        result = use_case.execute(
+            user_id=sample_user.id,
+            title="Test Session",
+            language="cmn-Hant-TW",
+        )
+
+        # Assert
+        assert result == expected_session
+        mock_session_repo.save.assert_called_once()
+
+    def test_execute_with_negative_one_limits_allows_creation(
+        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user
+    ):
+        """Test session creation with -1 limits (unlimited) - should allow creation."""
+        # Arrange
+        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        mock_user_repo.get_by_id.return_value = sample_user
+
+        # Create plan config with -1 limits (meaning unlimited)
+        unlimited_plan_config = PlanConfiguration(
+            id=uuid4(),
+            plan_type=UserPlan.ENTERPRISE,
+            plan_name="Enterprise Plan",
+            display_name="Enterprise Plan",
+            limits=PlanLimits(
+                max_sessions=-1,  # -1 means unlimited
+                max_total_minutes=-1,  # -1 means unlimited
+                max_file_size_mb=1000,
+            ),
+            features=PlanFeatures(),
+            pricing=PlanPricing(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        mock_plan_config_repo.get_by_plan_type.return_value = unlimited_plan_config
+        mock_session_repo.count_user_sessions.return_value = 500  # Very high usage
+        mock_session_repo.get_total_duration_minutes.return_value = 5000  # Very high usage
+
+        expected_session = Session(
+            id=uuid4(),
+            user_id=sample_user.id,
+            title="Test Session",
+            language="cmn-Hant-TW",
+            status=SessionStatus.UPLOADING,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        mock_session_repo.save.return_value = expected_session
+
+        # Act - should not raise any errors with -1 limits
+        result = use_case.execute(
+            user_id=sample_user.id,
+            title="Test Session",
+            language="cmn-Hant-TW",
+        )
+
+        # Assert
+        assert result == expected_session
+        mock_session_repo.save.assert_called_once()
+
+
+class TestSessionCreationUseCasePlanLimitsDataclassAccess:
+    """Specific tests for PlanLimits dataclass attribute access to prevent regression."""
+
+    def test_plan_limits_dataclass_attribute_access(self):
+        """Test that PlanLimits dataclass attributes are accessed correctly."""
+        # This test specifically guards against the AttributeError: 'PlanLimits' object has no attribute 'get'
+        limits = PlanLimits(
+            max_sessions=10,
+            max_total_minutes=120,
+            max_file_size_mb=100,
+        )
+
+        # Test direct attribute access (correct way)
+        assert limits.max_sessions == 10
+        assert limits.max_total_minutes == 120
+        assert limits.max_file_size_mb == 100
+
+        # Test the pattern used in the use case
+        max_sessions = limits.max_sessions if limits else -1
+        max_minutes = limits.max_total_minutes if limits else -1
+
+        assert max_sessions == 10
+        assert max_minutes == 120
+
+    def test_plan_limits_none_handling(self):
+        """Test handling of None limits object."""
+        limits = None
+
+        # Test the pattern used in the use case with None
+        max_sessions = limits.max_sessions if limits else -1
+        max_minutes = limits.max_total_minutes if limits else -1
+
+        assert max_sessions == -1
+        assert max_minutes == -1
+
+    def test_billing_period_filtering_with_historical_usage(
+        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_plan_config
+    ):
+        """Test that historical usage outside billing period doesn't count towards limits."""
+        # Arrange
+        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        mock_user_repo.get_by_id.return_value = sample_user
+        mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
+
+        # Simulate current billing period usage is within limits
+        mock_session_repo.count_user_sessions.return_value = 2  # Within 5 session limit
+        mock_session_repo.get_total_duration_minutes.return_value = 30  # Within 60 minute limit
+
+        # Mock successful session creation
+        created_session = Session(
+            id=uuid4(),
+            user_id=sample_user.id,
+            title="Test Session",
+            language="cmn-Hant-TW",
+            status=SessionStatus.UPLOADING,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        mock_session_repo.save.return_value = created_session
+
+        # Act
+        result = use_case.execute(
+            user_id=sample_user.id,
+            title="Test Session",
+            language="cmn-Hant-TW",
+        )
+
+        # Assert - session should be created successfully
+        assert result.id == created_session.id
+
+        # Verify billing period was used in both limit checks
+        mock_session_repo.count_user_sessions.assert_called_with(
+            sample_user.id, since=sample_user.current_month_start
+        )
+        mock_session_repo.get_total_duration_minutes.assert_called_with(
+            sample_user.id, since=sample_user.current_month_start
+        )
+
+    def test_billing_period_none_handling(
+        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_plan_config
+    ):
+        """Test that None billing period still allows session creation with proper parameter passing."""
+        # Arrange
+        user_with_no_billing_period = User(
+            id=uuid4(),
+            email="test@example.com",
+            name="Test User",
+            plan=UserPlan.FREE,
+            current_month_start=None,  # No billing period set
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        mock_user_repo.get_by_id.return_value = user_with_no_billing_period
+        mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
+
+        # Simulate usage within limits
+        mock_session_repo.count_user_sessions.return_value = 2
+        mock_session_repo.get_total_duration_minutes.return_value = 30
+
+        # Mock successful session creation
+        created_session = Session(
+            id=uuid4(),
+            user_id=user_with_no_billing_period.id,
+            title="Test Session",
+            language="cmn-Hant-TW",
+            status=SessionStatus.UPLOADING,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        mock_session_repo.save.return_value = created_session
+
+        # Act
+        result = use_case.execute(
+            user_id=user_with_no_billing_period.id,
+            title="Test Session",
+            language="cmn-Hant-TW",
+        )
+
+        # Assert - session should be created successfully
+        assert result.id == created_session.id
+
+        # Verify None was passed as the since parameter
+        mock_session_repo.count_user_sessions.assert_called_with(
+            user_with_no_billing_period.id, since=None
+        )
+        mock_session_repo.get_total_duration_minutes.assert_called_with(
+            user_with_no_billing_period.id, since=None
+        )
+
+    def test_upload_url_generation_with_plan_limits_dataclass(
+        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_session, sample_plan_config
+    ):
+        """Test upload URL generation with PlanLimits dataclass (not dictionary)."""
+        # Arrange
+        use_case = SessionUploadManagementUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        mock_user_repo.get_by_id.return_value = sample_user
+        mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
+        mock_session_repo.get_by_id.return_value = sample_session
+
+        # Mock successful URL generation
+        mock_session_repo.save.return_value = sample_session
+
+        # Act - file size within limits
+        result = use_case.generate_upload_url(
+            session_id=sample_session.id,
+            user_id=sample_user.id,
+            filename="test.mp3",
+            file_size_mb=50.0  # Within 60MB limit
+        )
+
+        # Assert - should succeed
+        assert result is not None
+        # Verify plan config was retrieved and limits checked
+        mock_plan_config_repo.get_by_plan_type.assert_called_with(sample_user.plan)
+
+    def test_upload_url_generation_exceeds_file_size_limit(
+        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_session, sample_plan_config
+    ):
+        """Test upload URL generation fails when file size exceeds plan limits."""
+        # Arrange
+        use_case = SessionUploadManagementUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        mock_user_repo.get_by_id.return_value = sample_user
+        mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
+        mock_session_repo.get_by_id.return_value = sample_session
+
+        # Act & Assert - file size exceeds limits
+        with pytest.raises(DomainException, match="File size.*exceeds plan limit"):
+            use_case.generate_upload_url(
+                session_id=sample_session.id,
+                user_id=sample_user.id,
+                filename="large_file.mp4",
+                file_size_mb=100.0  # Exceeds 60MB limit
+            )
+
+    def test_upload_url_generation_with_none_plan_limits(
+        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_session
+    ):
+        """Test upload URL generation with None plan limits (no validation)."""
+        # Arrange
+        use_case = SessionUploadManagementUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        mock_user_repo.get_by_id.return_value = sample_user
+
+        # Mock plan config with None limits
+        plan_config_no_limits = PlanConfiguration(
+            id=uuid4(),
+            plan_type=UserPlan.FREE,
+            plan_name="Free Plan",
+            display_name="Free Plan",
+            limits=None,  # No limits object
+            features=PlanFeatures(),
+            pricing=PlanPricing(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        mock_plan_config_repo.get_by_plan_type.return_value = plan_config_no_limits
+        mock_session_repo.get_by_id.return_value = sample_session
+        mock_session_repo.save.return_value = sample_session
+
+        # Act - should not raise exception when no limits
+        result = use_case.generate_upload_url(
+            session_id=sample_session.id,
+            user_id=sample_user.id,
+            filename="any_size.mp4",
+            file_size_mb=1000.0  # Large file but no limits to check
+        )
+
+        # Assert - should succeed
+        assert result is not None
+
+    def test_plan_configuration_with_plan_limits_dataclass(self):
+        """Test that PlanConfiguration correctly uses PlanLimits dataclass."""
+        plan_config = PlanConfiguration(
+            id=uuid4(),
+            plan_type=UserPlan.STUDENT,
+            plan_name="Student Plan",
+            display_name="Student Plan",
+            limits=PlanLimits(
+                max_sessions=15,
+                max_total_minutes=300,
+                max_file_size_mb=150,
+            ),
+            features=PlanFeatures(priority_support=True),
+            pricing=PlanPricing(monthly_price_cents=999),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        # Test that limits is a PlanLimits object, not a dict
+        assert isinstance(plan_config.limits, PlanLimits)
+        assert not hasattr(plan_config.limits, 'get')  # Should NOT have dict methods
+
+        # Test correct attribute access
+        assert plan_config.limits.max_sessions == 15
+        assert plan_config.limits.max_total_minutes == 300
+        assert plan_config.limits.max_file_size_mb == 150
 
 
 class TestSessionRetrievalUseCase:

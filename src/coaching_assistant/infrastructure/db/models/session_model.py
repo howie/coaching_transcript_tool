@@ -9,6 +9,7 @@ from typing import Optional
 
 from .base import BaseModel
 from ....core.models.session import Session, SessionStatus
+from ....core.config import settings
 
 
 class SessionModel(BaseModel):
@@ -86,7 +87,10 @@ class SessionModel(BaseModel):
             progress_percentage=self.progress_percentage or 0,
             gcs_audio_path=self.gcs_audio_path,
             gcs_transcript_path=self.gcs_transcript_path,
-            stt_provider=self.stt_provider or "google",
+            stt_provider=(
+                (self.stt_provider or "").strip().lower()
+                or settings.STT_PROVIDER
+            ),
             transcription_job_id=self.transcription_job_id,
             assemblyai_transcript_id=self.assemblyai_transcript_id,
             transcript_text=self.transcript_text,

@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from .user import User
 from .session import Session
+from ..config import settings
 
 
 class TranscriptionType(enum.Enum):
@@ -40,7 +41,7 @@ class UsageLog:
     currency: str = "TWD"
 
     # Processing details
-    stt_provider: str = "google"
+    stt_provider: Optional[str] = None
     processing_time_seconds: Optional[int] = None
     confidence_score: Optional[float] = None
 
@@ -88,12 +89,17 @@ class UsageLog:
 
         duration_minutes = max(1, int(session.duration_seconds / 60))  # Round up to nearest minute
 
+        default_provider = settings.STT_PROVIDER
+        session_provider = (session.stt_provider or "").strip().lower()
+
+        provider_for_log = session_provider or default_provider
+
         usage_log = cls(
             session_id=session.id,
             user_id=user.id,
             duration_minutes=duration_minutes,
             transcription_type=transcription_type,
-            stt_provider=session.stt_provider or "google",
+            stt_provider=provider_for_log,
             confidence_score=session.confidence_score,
             speaker_count=session.speaker_count,
         )

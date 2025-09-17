@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
 from ..config import Settings
+from ..repositories.ports import NotificationPort, ECPayClientPort
 from ...models import (
     User,
     ECPayCreditAuthorization,
@@ -24,19 +25,27 @@ logger = logging.getLogger(__name__)
 
 
 class ECPaySubscriptionService:
-    """ECPay subscription service for SaaS billing."""
+    """ECPay subscription service for SaaS billing following Clean Architecture."""
 
-    def __init__(self, db: Session, settings: Settings):
+    def __init__(
+        self,
+        db: Session,
+        settings: Settings,
+        ecpay_client: ECPayClientPort,
+        notification_service: NotificationPort
+    ):
         self.db = db
         self.settings = settings
+        self.ecpay_client = ecpay_client
+        self.notification_service = notification_service
 
-        # ECPay configuration
+        # ECPay configuration (keeping for backwards compatibility)
         self.merchant_id = settings.ECPAY_MERCHANT_ID
         self.hash_key = settings.ECPAY_HASH_KEY
         self.hash_iv = settings.ECPAY_HASH_IV
         self.environment = settings.ECPAY_ENVIRONMENT
 
-        # API URLs
+        # API URLs (keeping for backwards compatibility)
         if self.environment == "sandbox":
             self.aio_url = (
                 "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5"
@@ -402,9 +411,11 @@ class ECPaySubscriptionService:
                 auth_record.exec_times += 1
 
                 # Send success notifications
-                self._handle_payment_success_notifications(
+                # Schedule notifications in background
+                import asyncio
+                asyncio.create_task(self._handle_payment_success_notifications(
                     subscription, payment_record
-                )
+                ))
 
                 logger.info(
                     f"Payment successful: {gwsr}, subscription extended"
@@ -418,9 +429,11 @@ class ECPaySubscriptionService:
                 self._handle_failed_payment(subscription, payment_record)
 
                 # Send failure notifications
-                self._handle_payment_failure_notifications(
+                # Schedule notifications in background
+                import asyncio
+                asyncio.create_task(self._handle_payment_failure_notifications(
                     subscription, payment_record
-                )
+                ))
 
                 logger.warning(
                     f"Payment failed: {gwsr}, reason: {payment_record.failure_reason}"
@@ -621,7 +634,7 @@ class ECPaySubscriptionService:
         else:
             logger.warning(f"⚠️ Max retries reached for payment {payment.id}")
 
-    def _send_payment_failure_notification(
+    async def _send_payment_failure_notification(
         self,
         subscription: SaasSubscription,
         payment: SubscriptionPayment,
@@ -669,9 +682,24 @@ class ECPaySubscriptionService:
             "urgency": urgency,
         }
 
-        # TODO: Queue email notification (integrate with existing email system)
+        # Send email notification via notification service
+        try:
+            await self.notification_service.send_payment_failure_notification(
+                user_email=user.email,
+                payment_details={
+                    "amount": subscription.amount_twd,
+                    "plan_name": subscription.plan_id,
+                    "failure_count": notification_data.get("failure_count", 0),
+                    "next_retry_date": payment.next_retry_at.strftime("%Y-%m-%d") if payment.next_retry_at else "N/A",
+                    "grace_period_ends": subscription.grace_period_ends_at.strftime("%Y-%m-%d") if subscription.grace_period_ends_at else "N/A"
+                }
+            )
+            logger.info(f"📧 Payment failure notification sent to {user.email}")
+        except Exception as e:
+            logger.error(f"❌ Failed to send payment failure notification: {e}")
+
         logger.info(
-            f"📧 Payment failure notification queued: {notification_type} for {user.email}"
+            f"📧 Payment failure notification processed: {notification_type} for {user.email}"
         )
 
     def _handle_payment_failure_notifications(
@@ -745,7 +773,7 @@ class ECPaySubscriptionService:
 
         return received_mac.upper() == calculated_mac.upper()
 
-    def cancel_authorization(self, auth_id: str) -> bool:
+    async def cancel_authorization(self, auth_id: str) -> bool:
         """Cancel ECPay credit card authorization."""
 
         try:
@@ -758,9 +786,24 @@ class ECPaySubscriptionService:
             if not auth_record:
                 return False
 
-            # TODO: Call ECPay API to cancel authorization
-            # For now, just mark as cancelled locally
-            auth_record.auth_status = ECPayAuthStatus.CANCELLED.value
+            # Call ECPay API to cancel authorization
+            try:
+                cancel_result = await self.ecpay_client.cancel_credit_authorization(
+                    auth_code=auth_record.auth_code,
+                    merchant_trade_no=auth_record.merchant_trade_no
+                )
+
+                if cancel_result.get("success"):
+                    logger.info(f"✅ ECPay authorization cancelled successfully: {auth_record.auth_code}")
+                    auth_record.auth_status = ECPayAuthStatus.CANCELLED.value
+                else:
+                    logger.error(f"❌ ECPay cancel failed: {cancel_result.get('message')}")
+                    return False
+
+            except Exception as e:
+                logger.error(f"❌ ECPay API call failed: {e}")
+                # Still mark as cancelled locally for data consistency
+                auth_record.auth_status = ECPayAuthStatus.CANCELLED.value
 
             # Cancel associated subscriptions
             subscriptions = (
@@ -786,7 +829,7 @@ class ECPaySubscriptionService:
             self.db.rollback()
             return False
 
-    def check_and_handle_expired_subscriptions(self):
+    async def check_and_handle_expired_subscriptions(self):
         """Check for expired subscriptions and handle them appropriately."""
 
         try:
@@ -817,7 +860,20 @@ class ECPaySubscriptionService:
                     logger.info(
                         f"📧 Sending downgrade notification to {user.email}"
                     )
-                    # TODO: Queue downgrade notification email
+                    # Send downgrade notification email
+                    try:
+                        await self.notification_service.send_plan_downgrade_notification(
+                            user_email=user.email,
+                            downgrade_details={
+                                "old_plan": subscription.plan_name,
+                                "new_plan": "FREE",
+                                "effective_date": datetime.now().strftime("%Y-%m-%d"),
+                                "reason": "Payment failure after grace period"
+                            }
+                        )
+                        logger.info(f"📧 Downgrade notification sent to {user.email}")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to send downgrade notification: {e}")
 
             if expired_subscriptions:
                 self.db.commit()
@@ -832,7 +888,7 @@ class ECPaySubscriptionService:
             self.db.rollback()
             return False
 
-    def retry_failed_payments(self):
+    async def retry_failed_payments(self):
         """Process scheduled payment retries."""
 
         try:
@@ -878,10 +934,40 @@ class ECPaySubscriptionService:
                     )
                     continue
 
-                # TODO: Implement ECPay manual retry API call
-                # For now, we'll mark retry as attempted and schedule next retry
-                payment.retry_count += 1
-                payment.last_retry_at = datetime.now()
+                # Implement ECPay manual retry API call
+                try:
+                    retry_result = await self.ecpay_client.retry_payment(
+                        auth_code=auth_record.auth_code,
+                        merchant_trade_no=auth_record.merchant_trade_no,
+                        amount=subscription.amount_twd
+                    )
+
+                    payment.retry_count += 1
+                    payment.last_retry_at = datetime.now()
+
+                    if retry_result.get("success"):
+                        logger.info(f"✅ ECPay payment retry successful for subscription {subscription.id}")
+                        payment.status = PaymentStatus.PAID.value
+                        subscription.status = SubscriptionStatus.ACTIVE.value
+
+                        # Send success notification
+                        await self.notification_service.send_payment_retry_notification(
+                            user_email=user.email,
+                            retry_details={
+                                "amount": subscription.amount_twd,
+                                "plan_name": subscription.plan_id,
+                                "payment_date": datetime.now().strftime("%Y-%m-%d"),
+                                "retry_count": payment.retry_count
+                            }
+                        )
+                        continue
+                    else:
+                        logger.error(f"❌ ECPay retry failed: {retry_result.get('message')}")
+
+                except Exception as e:
+                    logger.error(f"❌ ECPay retry API call failed: {e}")
+                    payment.retry_count += 1
+                    payment.last_retry_at = datetime.now()
 
                 if payment.retry_count < payment.max_retries:
                     # Schedule next retry
@@ -977,7 +1063,7 @@ class ECPaySubscriptionService:
             "effective_date": datetime.now().isoformat(),
         }
 
-    def upgrade_subscription(
+    async def upgrade_subscription(
         self,
         subscription: SaasSubscription,
         new_plan_id: str,
@@ -996,13 +1082,43 @@ class ECPaySubscriptionService:
                 new_plan_id, new_billing_cycle
             )
 
-            # TODO: If there's a net charge, process payment via ECPay
-            # For now, we'll assume payment is successful
+            # Process net charge via ECPay if required
             if proration["net_charge"] > 0:
                 logger.info(
-                    f"Prorated charge required: {proration['net_charge']} cents"
+                    f"💳 Processing prorated charge: {proration['net_charge']} cents"
                 )
-                # In production, this would trigger an ECPay payment request
+
+                try:
+                    # Process the additional charge via ECPay
+                    merchant_trade_no = f"UPGRADE_{subscription.id}_{int(datetime.now().timestamp())}"
+                    payment_result = await self.ecpay_client.process_payment(
+                        merchant_trade_no=merchant_trade_no,
+                        amount=proration["net_charge"],
+                        item_name=f"Plan upgrade to {new_plan_id}"
+                    )
+
+                    if payment_result.get("success"):
+                        logger.info(f"✅ Prorated payment processed successfully")
+
+                        # Create payment record
+                        payment = SubscriptionPayment(
+                            subscription_id=subscription.id,
+                            merchant_trade_no=merchant_trade_no,
+                            amount_twd=proration["net_charge"],
+                            status=PaymentStatus.PAID.value,
+                            payment_date=datetime.now(),
+                            retry_count=0,
+                            max_retries=3
+                        )
+                        self.db.add(payment)
+
+                    else:
+                        logger.error(f"❌ Prorated payment failed: {payment_result.get('message')}")
+                        raise Exception("Payment processing failed")
+
+                except Exception as e:
+                    logger.error(f"❌ Failed to process prorated payment: {e}")
+                    raise Exception(f"Payment processing failed: {str(e)}")
 
             # Update subscription immediately
             subscription.plan_id = new_plan_id
@@ -1083,7 +1199,7 @@ class ECPaySubscriptionService:
             self.db.rollback()
             raise
 
-    def cancel_subscription(
+    async def cancel_subscription(
         self,
         subscription: SaasSubscription,
         immediate: bool = False,
@@ -1106,11 +1222,37 @@ class ECPaySubscriptionService:
                         ECPayAuthStatus.CANCELLED.value
                     )
 
-                # TODO: In production, call ECPay API to cancel authorization
-                # self._cancel_ecpay_authorization(subscription.auth_record.merchant_member_id)
+                # Call ECPay API to cancel authorization
+                try:
+                    cancel_result = await self.ecpay_client.cancel_credit_authorization(
+                        auth_code=auth_record.auth_code,
+                        merchant_trade_no=auth_record.merchant_trade_no
+                    )
+
+                    if cancel_result.get("success"):
+                        logger.info(f"✅ ECPay authorization cancelled successfully for subscription {subscription.id}")
+                    else:
+                        logger.error(f"❌ ECPay cancel failed: {cancel_result.get('message')}")
+
+                except Exception as e:
+                    logger.error(f"❌ ECPay API call failed during cancellation: {e}")
 
                 effective_date = datetime.now()
-                refund_amount = 0  # TODO: Calculate refund if applicable
+
+                # Calculate refund if applicable
+                if subscription.billing_cycle == "monthly":
+                    days_in_cycle = 30
+                elif subscription.billing_cycle == "yearly":
+                    days_in_cycle = 365
+                else:
+                    days_in_cycle = 30  # default
+
+                days_since_renewal = (effective_date - subscription.current_period_start).days
+                refund_amount = self.ecpay_client.calculate_refund_amount(
+                    original_amount=subscription.amount_twd,
+                    days_used=days_since_renewal,
+                    total_days=days_in_cycle
+                )
 
             else:
                 # Period-end cancellation
@@ -1138,7 +1280,7 @@ class ECPaySubscriptionService:
             self.db.rollback()
             raise
 
-    def send_payment_notification(
+    async def send_payment_notification(
         self,
         user_id: str,
         notification_type: str,
@@ -1195,24 +1337,38 @@ class ECPaySubscriptionService:
             )
             logger.info(f"📊 Notification data: {notification_data}")
 
-            # TODO: Implement actual notification sending
-            # - Email via SendGrid/AWS SES
-            # - In-app notifications
-            # - SMS for critical alerts
+            # Send actual notification via notification service
+            try:
+                if subscription.status == SubscriptionStatus.CANCELLED.value:
+                    await self.notification_service.send_subscription_cancellation_notification(
+                        user_email=user.email,
+                        cancellation_details={
+                            "plan_name": subscription.plan_name,
+                            "effective_date": effective_date.strftime("%Y-%m-%d"),
+                            "refund_amount": refund_amount,
+                            "reason": subscription.cancellation_reason or "User requested"
+                        }
+                    )
+                    logger.info(f"📧 Cancellation notification sent to {user.email}")
+                else:
+                    logger.info(f"📧 Notification skipped - subscription not cancelled")
+
+            except Exception as e:
+                logger.error(f"❌ Failed to send cancellation notification: {e}")
 
         except Exception as e:
             logger.error(
                 f"Failed to send notification {notification_type} to user {user_id}: {e}"
             )
 
-    def _handle_payment_success_notifications(
+    async def _handle_payment_success_notifications(
         self, subscription: SaasSubscription, payment: SubscriptionPayment
     ):
         """Handle notifications for successful payments."""
 
         try:
             # Send payment success notification
-            self.send_payment_notification(
+            await self.send_payment_notification(
                 subscription.user_id,
                 "payment_success",
                 subscription=subscription,
@@ -1220,7 +1376,7 @@ class ECPaySubscriptionService:
             )
 
             # Send subscription renewal notification
-            self.send_payment_notification(
+            await self.send_payment_notification(
                 subscription.user_id,
                 "subscription_renewed",
                 subscription=subscription,
@@ -1234,14 +1390,14 @@ class ECPaySubscriptionService:
         except Exception as e:
             logger.error(f"Failed to send payment success notifications: {e}")
 
-    def _handle_payment_failure_notifications(
+    async def _handle_payment_failure_notifications(
         self, subscription: SaasSubscription, payment: SubscriptionPayment
     ):
         """Handle notifications for failed payments."""
 
         try:
             # Send payment failure notification
-            self.send_payment_notification(
+            await self.send_payment_notification(
                 subscription.user_id,
                 "payment_failed",
                 subscription=subscription,
@@ -1250,7 +1406,7 @@ class ECPaySubscriptionService:
 
             # Check if this triggers grace period
             if payment.retry_count >= 3:
-                self.send_payment_notification(
+                await self.send_payment_notification(
                     subscription.user_id,
                     "subscription_past_due",
                     subscription=subscription,
@@ -1259,7 +1415,7 @@ class ECPaySubscriptionService:
 
             # Send retry notification if applicable
             if payment.retry_count < 3:
-                self.send_payment_notification(
+                await self.send_payment_notification(
                     subscription.user_id,
                     "payment_retry_scheduled",
                     subscription=subscription,

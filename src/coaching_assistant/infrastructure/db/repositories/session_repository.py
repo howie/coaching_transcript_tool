@@ -14,6 +14,7 @@ from sqlalchemy import func, desc, and_
 
 from ....core.repositories.ports import SessionRepoPort
 from ....core.models.session import Session, SessionStatus
+from ....core.config import settings
 # TEMPORARY FIX: Use legacy model until database migration is complete
 # from ..models.session_model import SessionModel
 from ....models.session import Session as SessionModel
@@ -108,7 +109,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
                 orm_session = SessionModel.from_domain(session)
                 self.session.add(orm_session)
 
-            self.session.flush()  # Get the ID without committing
+            self.session.commit()  # Commit the transaction to make it visible to other requests
             return self._legacy_to_domain(orm_session)
 
         except SQLAlchemyError as e:
@@ -141,7 +142,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
 
             # Update ORM model with validated domain data
             orm_session.update_from_domain(domain_session)
-            self.session.flush()
+            self.session.commit()
             return self._legacy_to_domain(orm_session)
         except ValueError:
             # Re-raise business rule violations
@@ -257,7 +258,10 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             progress_percentage=0,  # Not in legacy model, default to 0
             gcs_audio_path=orm_session.gcs_audio_path,
             gcs_transcript_path=None,  # Not in legacy model
-            stt_provider=orm_session.stt_provider or "google",
+            stt_provider=(
+                (orm_session.stt_provider or "").strip().lower()
+                or settings.STT_PROVIDER
+            ),
             transcription_job_id=orm_session.transcription_job_id,
             assemblyai_transcript_id=None,  # Not in legacy model
             transcript_text=None,  # Legacy model stores in segments

@@ -93,6 +93,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
             role=role,
             usage_minutes=orm_user.usage_minutes,
             session_count=orm_user.session_count,
+            current_month_start=getattr(orm_user, 'current_month_start', None),
             created_at=orm_user.created_at,
             updated_at=orm_user.updated_at,
             last_active_at=getattr(orm_user, 'last_active_at', None),
@@ -121,6 +122,8 @@ class SQLAlchemyUserRepository(UserRepoPort):
         )
 
         # Set optional fields if they exist in the legacy model
+        if hasattr(orm_user, 'current_month_start'):
+            orm_user.current_month_start = user.current_month_start
         if hasattr(orm_user, 'last_active_at'):
             orm_user.last_active_at = user.last_active_at
         if hasattr(orm_user, 'stripe_customer_id'):
@@ -211,6 +214,8 @@ class SQLAlchemyUserRepository(UserRepoPort):
                     orm_user.role = role_value
                     orm_user.usage_minutes = user.usage_minutes
                     orm_user.session_count = user.session_count
+                    if hasattr(orm_user, 'current_month_start'):
+                        orm_user.current_month_start = user.current_month_start
                     if hasattr(orm_user, 'last_active_at'):
                         orm_user.last_active_at = user.last_active_at
                     if hasattr(orm_user, 'stripe_customer_id'):

@@ -99,6 +99,7 @@ class User:
     # Usage tracking
     usage_minutes: int = 0
     session_count: int = 0
+    current_month_start: Optional[datetime] = None  # Billing period start
 
     # Timestamps
     created_at: Optional[datetime] = None

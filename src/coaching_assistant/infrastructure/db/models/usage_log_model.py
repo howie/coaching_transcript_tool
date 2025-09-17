@@ -9,6 +9,7 @@ from typing import Optional
 
 from .base import BaseModel
 from ....core.models.usage_log import UsageLog, TranscriptionType
+from ....core.config import settings
 
 
 class UsageLogModel(BaseModel):
@@ -81,7 +82,10 @@ class UsageLogModel(BaseModel):
             billable=self.billable if self.billable is not None else True,
             cost_cents=self.cost_cents or 0,
             currency=self.currency or "TWD",
-            stt_provider=self.stt_provider or "google",
+            stt_provider=(
+                (self.stt_provider or "").strip().lower()
+                or settings.STT_PROVIDER
+            ),
             processing_time_seconds=self.processing_time_seconds,
             confidence_score=self.confidence_score,
             word_count=self.word_count,

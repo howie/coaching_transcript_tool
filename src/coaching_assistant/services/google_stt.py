@@ -108,6 +108,9 @@ class GoogleSTTProvider(STTProvider):
             logger.error(f"Failed to initialize Google STT client: {e}")
             raise STTProviderError(f"Failed to initialize Google STT: {e}")
 
+        # Cache resolved output bucket to avoid repeated lookups during a run
+        self._resolved_output_bucket: str | None = None
+
     def _create_storage_client(self):
         """Create GCS Storage client using same credentials as STT client."""
         from google.cloud import storage
@@ -133,6 +136,80 @@ class GoogleSTTProvider(STTProvider):
         except Exception as e:
             logger.error(f"Failed to create GCS Storage client: {e}")
             raise STTProviderError(f"Failed to create Storage client: {e}")
+
+    def _get_transcript_output_bucket(self) -> str:
+        """Return a usable GCS bucket for STT batch results, with fallbacks."""
+
+        if self._resolved_output_bucket:
+            return self._resolved_output_bucket
+
+        candidates: list[str] = []
+
+        def _append_candidate(name: str | None):
+            if name:
+                candidate = name.strip()
+                if candidate and candidate not in candidates:
+                    candidates.append(candidate)
+
+        _append_candidate(settings.TRANSCRIPT_STORAGE_BUCKET)
+        _append_candidate(settings.AUDIO_STORAGE_BUCKET)
+        _append_candidate(settings.GOOGLE_STORAGE_BUCKET)
+
+        if not candidates:
+            raise STTProviderError(
+                "No storage bucket configured for Google STT batch results"
+            )
+
+        storage_client = None
+        try:
+            storage_client = self._create_storage_client()
+        except STTProviderError as e:
+            logger.warning(
+                "Skipping bucket existence verification due to storage client issue: %s",
+                e,
+            )
+
+        for bucket_name in candidates:
+            if not storage_client:
+                # We already logged why verification was skipped; use first candidate
+                self._resolved_output_bucket = bucket_name
+                return self._resolved_output_bucket
+
+            try:
+                bucket = storage_client.lookup_bucket(bucket_name)
+            except gcp_exceptions.NotFound:
+                logger.warning(
+                    "Transcript output bucket '%s' not found; trying next candidate",
+                    bucket_name,
+                )
+                continue
+            except gcp_exceptions.Forbidden:
+                logger.warning(
+                    "Permission denied when checking bucket '%s'; trying next candidate",
+                    bucket_name,
+                )
+                continue
+            except Exception as exc:
+                logger.warning(
+                    "Error looking up bucket '%s': %s; trying next candidate",
+                    bucket_name,
+                    exc,
+                )
+                continue
+
+            if bucket is not None:
+                self._resolved_output_bucket = bucket_name
+                return self._resolved_output_bucket
+
+        # If every lookup failed, fall back to first configured bucket to preserve behaviour
+        fallback_bucket = candidates[0]
+        logger.warning(
+            "Falling back to configured bucket '%s' despite lookup failures;"
+            " verify that this bucket exists and is accessible",
+            fallback_bucket,
+        )
+        self._resolved_output_bucket = fallback_bucket
+        return self._resolved_output_bucket
 
     def _wait_for_operation_with_progress(
         self, operation, timeout_minutes=120, progress_callback=None
@@ -935,7 +1012,8 @@ class GoogleSTTProvider(STTProvider):
         # batchRecognize requires output configuration - results saved to GCS
         import uuid
 
-        output_prefix = f"gs://{settings.TRANSCRIPT_STORAGE_BUCKET or settings.AUDIO_STORAGE_BUCKET}/batch-results/{uuid.uuid4()}/"
+        output_bucket = self._get_transcript_output_bucket()
+        output_prefix = f"gs://{output_bucket}/batch-results/{uuid.uuid4()}/"
         logger.info(f"Output will be written to folder: {output_prefix}")
 
         request = {

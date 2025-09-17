@@ -34,7 +34,13 @@ class STTProviderFactory:
         """
         # Use provider from settings if not specified
         if provider_type is None:
-            provider_type = getattr(settings, "STT_PROVIDER", "google").lower()
+            provider_type = settings.STT_PROVIDER
+        else:
+            if not isinstance(provider_type, str):
+                raise ValueError("provider_type must be a string")
+            provider_type = provider_type.strip().lower()
+            if not provider_type:
+                raise ValueError("provider_type cannot be empty")
 
         logger.info(f"Creating STT provider: {provider_type}")
 
@@ -76,9 +82,7 @@ class STTProviderFactory:
             STT provider instance
         """
         if primary_provider is None:
-            primary_provider = getattr(
-                settings, "STT_PROVIDER", "google"
-            ).lower()
+            primary_provider = settings.STT_PROVIDER
 
         try:
             logger.info(

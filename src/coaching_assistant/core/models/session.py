@@ -44,7 +44,7 @@ class Session:
     gcs_transcript_path: Optional[str] = None
 
     # STT provider info
-    stt_provider: str = "google"
+    stt_provider: Optional[str] = None
     transcription_job_id: Optional[str] = None
     assemblyai_transcript_id: Optional[str] = None
 

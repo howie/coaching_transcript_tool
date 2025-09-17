@@ -9,6 +9,7 @@ from fastapi import (
     Query,
     UploadFile,
     File as FastAPIFile,
+    status,
 )
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session as DBSession  # Still needed for role management endpoints
@@ -167,13 +168,47 @@ async def create_session(
     session_creation_use_case=Depends(get_session_creation_use_case),
 ):
     """Create a new transcription session."""
-    session = session_creation_use_case.execute(
-        user_id=current_user.id,
-        title=session_data.title,
-        language=session_data.language,
-        stt_provider=session_data.stt_provider,
-    )
-    return SessionResponse.from_session(session)
+    from ...exceptions import DomainException
+
+    try:
+        session = session_creation_use_case.execute(
+            user_id=current_user.id,
+            title=session_data.title,
+            language=session_data.language,
+            stt_provider=session_data.stt_provider,
+        )
+        return SessionResponse.from_session(session)
+    except DomainException as e:
+        # Handle plan limit exceeded errors
+        error_message = str(e)
+        if "Session limit exceeded" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "session_limit_exceeded",
+                    "message": error_message,
+                    "plan": current_user.plan.value,
+                    "current_usage": getattr(current_user, 'session_count', 0),
+                    "limit": int(error_message.split(": ")[-1]) if ": " in error_message else None
+                }
+            )
+        elif "Total minutes limit exceeded" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "transcription_limit_exceeded",
+                    "message": error_message,
+                    "plan": current_user.plan.value,
+                    "current_usage": getattr(current_user, 'usage_minutes', 0),
+                    "limit": int(error_message.split(": ")[-1]) if ": " in error_message else None
+                }
+            )
+        else:
+            # Generic business rule violation
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message
+            )
 
 
 @router.get("/providers", response_model=ProvidersResponse)

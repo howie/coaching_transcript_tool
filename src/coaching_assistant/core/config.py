@@ -115,7 +115,7 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = ""
 
     # STT (Speech-to-Text) 設定
-    STT_PROVIDER: str = "assemblyai"  # "google" or "assemblyai"
+    STT_PROVIDER: str  # 必須設定，避免預設值 silently fallback
     SPEECH_API_VERSION: str = "v2"  # Google Speech-to-Text API version
     GOOGLE_STT_MODEL: str = (
         "chirp_2"  # Default model (chirp supports more languages)
@@ -195,6 +195,28 @@ class Settings(BaseSettings):
         # 只在非 production 環境載入 .env 檔案，避免覆蓋 Render.com 環境變數
         env_file = ".env" if os.getenv("ENVIRONMENT") != "production" else None
         case_sensitive = True
+
+    @field_validator("STT_PROVIDER", mode="before")
+    @classmethod
+    def validate_stt_provider(cls, value: str) -> str:
+        if value is None:
+            raise ValueError("STT_PROVIDER 必須設定，請提供有效的 STT provider")
+
+        if not isinstance(value, str):
+            raise ValueError("STT_PROVIDER 必須是字串")
+
+        normalized = value.strip().lower()
+        if not normalized:
+            raise ValueError("STT_PROVIDER 不可為空白")
+
+        allowed_providers = {"google", "google_stt_v2", "assemblyai", "whisper"}
+        if normalized not in allowed_providers:
+            raise ValueError(
+                "STT_PROVIDER 必須為以下其中之一: "
+                + ", ".join(sorted(allowed_providers))
+            )
+
+        return normalized
 
 
 settings = Settings()

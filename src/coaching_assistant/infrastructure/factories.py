@@ -456,3 +456,76 @@ def get_usage_tracking_service(db_session: Session) -> CreateUsageLogUseCase:
     """
     # TODO: Add deprecation warning once API migration is complete
     return UsageTrackingServiceFactory.create_usage_log_use_case(db_session)
+
+
+# ECPay and Notification Service Factories for WP6-Cleanup-2
+
+def create_ecpay_service(db_session: Session = None) -> "ECPaySubscriptionService":
+    """Create ECPay service with proper dependency injection.
+
+    Args:
+        db_session: SQLAlchemy database session
+
+    Returns:
+        ECPaySubscriptionService instance with HTTP client and notification service
+    """
+    from ..core.services.ecpay_service import ECPaySubscriptionService
+    from ..core.config import Settings
+    from .http.ecpay_client import ECPayAPIClient
+    from .http.notification_service import EmailNotificationService
+
+    if db_session is None:
+        from .db.session import get_db_session
+        db_session = next(get_db_session())
+
+    settings = Settings()
+
+    # Create ECPay HTTP client
+    ecpay_client = ECPayAPIClient(
+        merchant_id=settings.ECPAY_MERCHANT_ID,
+        hash_key=settings.ECPAY_HASH_KEY,
+        hash_iv=settings.ECPAY_HASH_IV,
+        environment=settings.ECPAY_ENVIRONMENT
+    )
+
+    # Create notification service
+    notification_service = EmailNotificationService()
+
+    return ECPaySubscriptionService(
+        db=db_session,
+        settings=settings,
+        ecpay_client=ecpay_client,
+        notification_service=notification_service
+    )
+
+
+def create_notification_service() -> "NotificationService":
+    """Create notification service for email sending.
+
+    Returns:
+        NotificationService instance
+    """
+    from .http.notification_service import EmailNotificationService
+
+    # In production, this would use actual SMTP settings
+    # For now, using the mock implementation
+    return EmailNotificationService()
+
+
+def create_ecpay_client() -> "ECPayAPIClient":
+    """Create ECPay HTTP client.
+
+    Returns:
+        ECPayAPIClient instance
+    """
+    from .http.ecpay_client import ECPayAPIClient
+    from ..core.config import Settings
+
+    settings = Settings()
+
+    return ECPayAPIClient(
+        merchant_id=settings.ECPAY_MERCHANT_ID,
+        hash_key=settings.ECPAY_HASH_KEY,
+        hash_iv=settings.ECPAY_HASH_IV,
+        environment=settings.ECPAY_ENVIRONMENT
+    )
