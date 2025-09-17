@@ -67,6 +67,54 @@ class PlansListResponse(BaseModel):
 # Direct database access functions removed - use injected use cases instead
 
 
+def _convert_features_to_list(features) -> List[str]:
+    """Convert features from various formats to a list of strings."""
+    if features is None:
+        return []
+
+    # Handle PlanFeatures dataclass
+    if hasattr(features, '__dataclass_fields__'):
+        # This is a dataclass (like PlanFeatures)
+        feature_list = []
+        if getattr(features, 'priority_support', False):
+            feature_list.append("Priority support")
+        if getattr(features, 'team_collaboration', False):
+            feature_list.append("Team collaboration")
+        if getattr(features, 'api_access', False):
+            feature_list.append("API access")
+        if getattr(features, 'sso', False):
+            feature_list.append("Single sign-on")
+        if getattr(features, 'custom_branding', False):
+            feature_list.append("Custom branding")
+        return feature_list
+
+    # Handle dict with "list" key
+    if isinstance(features, dict) and "list" in features:
+        return features["list"]
+
+    # Handle direct list
+    if isinstance(features, list):
+        return features
+
+    # Handle dict (convert values to list if they're truthy)
+    if isinstance(features, dict):
+        feature_list = []
+        feature_mapping = {
+            'priority_support': "Priority support",
+            'team_collaboration': "Team collaboration",
+            'api_access': "API access",
+            'sso': "Single sign-on",
+            'custom_branding': "Custom branding",
+        }
+        for key, display_name in feature_mapping.items():
+            if features.get(key):
+                feature_list.append(display_name)
+        return feature_list
+
+    # Fallback
+    return []
+
+
 def _get_upgrade_benefits(current_plan: UserPlan, suggested_plan: UserPlan) -> List[str]:
     """Get key benefits of upgrading to suggested plan."""
     benefits = {
@@ -124,7 +172,7 @@ async def get_available_plans_v1(
                     monthly_usd=int(plan_data["pricing"]["monthly_usd"] * 100),
                     annual_usd=int(plan_data["pricing"]["annual_usd"] * 100),
                 ),
-                features=plan_data.get("features", {}).get("list", []) if isinstance(plan_data.get("features"), dict) else plan_data.get("features", []),
+                features=_convert_features_to_list(plan_data.get("features")),
                 limits=PlanLimits(
                     max_total_minutes=plan_data["limits"]["maxTotalMinutes"] if plan_data["limits"]["maxTotalMinutes"] != "unlimited" else -1,
                     max_file_size_mb=plan_data["limits"]["maxFileSizeMb"],
