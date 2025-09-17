@@ -21,7 +21,7 @@ import json
 
 from ...core.database import get_db
 from ...models import CoachingSession, Client, User, SessionSource
-from ...models.session import Session, SessionStatus
+from ...models.session import Session as TranscriptionSession, SessionStatus
 from ...models.transcript import TranscriptSegment, SpeakerRole, SessionRole
 from .auth import get_current_user_dependency
 from ...utils.chinese_converter import convert_to_traditional
@@ -79,8 +79,8 @@ def get_transcription_session_summary(
         return None
 
     transcription_session = (
-        db.query(Session)
-        .filter(Session.id == transcription_session_id)
+        db.query(TranscriptionSession)
+        .filter(TranscriptionSession.id == transcription_session_id)
         .first()
     )
     if transcription_session:
@@ -167,7 +167,7 @@ async def list_coaching_sessions(
         db.query(CoachingSession)
         .join(Client, CoachingSession.client_id == Client.id)
         .outerjoin(
-            Session, CoachingSession.transcription_session_id == Session.id
+            TranscriptionSession, CoachingSession.transcription_session_id == TranscriptionSession.id
         )
         .filter(query_filter)
     )
@@ -272,8 +272,8 @@ async def get_coaching_session(
     if session.transcription_session_id:
         # Query for the transcription session
         transcription_session = (
-            db.query(Session)
-            .filter(Session.id == session.transcription_session_id)
+            db.query(TranscriptionSession)
+            .filter(TranscriptionSession.id == session.transcription_session_id)
             .first()
         )
         if transcription_session:
@@ -685,7 +685,7 @@ async def upload_session_transcript(
 
         # Create a transcription session for this manual upload
         transcription_session_id = uuid4()
-        transcription_session = Session(
+        transcription_session = TranscriptionSession(
             id=transcription_session_id,
             user_id=current_user.id,
             title=f"Manual Upload - {session.session_date}",

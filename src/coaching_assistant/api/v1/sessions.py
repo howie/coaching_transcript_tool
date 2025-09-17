@@ -712,6 +712,12 @@ async def export_transcript(
             raise HTTPException(status_code=404, detail="Session not found")
         else:
             raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error in export_transcript for session {session_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while exporting transcript"
+        )
 
 
 @router.get("/{session_id}/status", response_model=SessionStatusResponse)
