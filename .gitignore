@@ -239,3 +239,5 @@ logs/
 tmp/
 
 uv.lock
+
+.worktrees/
