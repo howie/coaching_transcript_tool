@@ -106,8 +106,8 @@
 ```typescript
 // Endpoints integrated
 GET /api/plans/          // Available plans
-GET /api/plans/current   // Current usage
-GET /api/plans/compare   // Plan comparison
+GET /api/v1/plans/current   // Current usage
+GET /api/v1/plans/compare   // Plan comparison
 POST /api/plans/validate // Action validation
 ```
 

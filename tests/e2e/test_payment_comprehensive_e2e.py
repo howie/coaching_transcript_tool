@@ -61,7 +61,7 @@ class TestPaymentFlowsE2E:
         for plan in subscription_test_data["plans"]:
             for cycle in subscription_test_data["cycles"]:
                 # Step 1: Check user's current plan limits
-                response = test_client.get("/api/plans/current", headers=headers)
+                response = test_client.get("/api/v1/plans/current", headers=headers)
                 if response.status_code == 200:
                     current_plan = response.json()
                     assert current_plan["plan"] in ["FREE", "PRO", "ENTERPRISE"]
@@ -520,7 +520,7 @@ class TestMultiBrowserCompatibility:
 
         for user_agent in user_agents:
             response = requests.get(
-                f"{API_BASE_URL}/api/plans/current",
+                f"{API_BASE_URL}/api/v1/plans/current",
                 headers={"User-Agent": user_agent}
             )
             

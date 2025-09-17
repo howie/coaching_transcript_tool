@@ -80,7 +80,7 @@ def test_plans_endpoint():
     """測試方案端點"""
     print("\n🔍 測試方案端點...")
     
-    url = f"{API_BASE_URL}/api/plans/current"
+    url = f"{API_BASE_URL}/api/v1/plans/current"
     
     print(f"📡 調用: {url}")
     print("⚠️  需要認證 - 跳過 HTTP 測試")

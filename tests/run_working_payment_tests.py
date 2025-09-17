@@ -123,7 +123,7 @@ def demonstrate_api_endpoints():
     
     endpoints_to_test = [
         ("Health Check", "GET", "/api/webhooks/health"),
-        ("Plans Compare", "GET", "/api/plans/compare"), 
+        ("Plans Compare", "GET", "/api/v1/plans/compare"), 
         ("Current Subscription", "GET", "/api/v1/subscriptions/current"),
         ("Webhook Statistics", "GET", "/api/webhooks/stats"),
     ]

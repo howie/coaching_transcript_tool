@@ -356,7 +356,7 @@ class TestAPICompatibility:
         assert response.status_code == 200, f"Health check failed for user agent: {user_agent}"
         
         # Test plans endpoint (public)
-        response = requests.get(f"{API_BASE_URL}/api/plans/compare", headers=headers)
+        response = requests.get(f"{API_BASE_URL}/api/v1/plans/compare", headers=headers)
         assert response.status_code in [200, 404], f"Plans endpoint failed for user agent: {user_agent}"
 
     def test_cors_headers_compatibility(self):
@@ -376,7 +376,7 @@ class TestAPICompatibility:
             }
             
             # Test preflight request
-            response = requests.options(f"{API_BASE_URL}/api/plans/compare", headers=headers)
+            response = requests.options(f"{API_BASE_URL}/api/v1/plans/compare", headers=headers)
             
             # Should handle CORS appropriately (allow or deny consistently)
             assert response.status_code in [200, 204, 404, 405], f"CORS preflight failed for origin: {origin}"

@@ -63,7 +63,7 @@ Core plan management features (other features moved to separate systems)
 - [ ] **Analytics Service**: Advanced usage and billing analytics
 
 ### API Endpoints
-- [x] **Plan Management**: `/api/plans/`, `/api/plans/current`, `/api/plans/compare`
+- [x] **Plan Management**: `/api/v1/plans/`, `/api/v1/plans/current`, `/api/v1/plans/compare`
 - [x] **Plan Validation**: `/api/plans/validate` and `/api/v1/plan/validate-action` endpoints
 - [x] **Usage Analytics**: `/api/usage/current-month`, `/api/usage/summary`
 - [x] **Usage History**: `/api/usage/history` endpoint

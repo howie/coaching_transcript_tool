@@ -43,8 +43,8 @@
 ### Existing Endpoints
 These endpoints actually exist and can be tested:
 - `GET /api/plans/` - Get available plans
-- `GET /api/plans/current` - Get current plan status
-- `GET /api/plans/compare` - Compare plans
+- `GET /api/v1/plans/current` - Get current plan status
+- `GET /api/v1/plans/compare` - Compare plans
 - `POST /api/plans/validate` - Validate actions
 - `GET /api/v1/plan/current-usage` - Get current usage
 - `POST /api/v1/plan/validate-action` - Validate specific actions

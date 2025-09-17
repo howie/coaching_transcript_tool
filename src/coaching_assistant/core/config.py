@@ -4,10 +4,12 @@ Configuration management for the Coaching Transcript Tool Backend API.
 統一的配置管理系統，支援環境變數和設定檔。
 """
 
-from pydantic_settings import BaseSettings
-from pydantic import field_validator
-from typing import List, Union
+import json
 import os
+from typing import List, Union
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -31,8 +33,33 @@ class Settings(BaseSettings):
     @classmethod
     def parse_allowed_origins(cls, v):
         if isinstance(v, str):
-            # 處理逗號分隔的字串
-            return [origin.strip() for origin in v.split(",")]
+            raw_value = v.strip()
+
+            if not raw_value:
+                return []
+
+            # Try to parse JSON formatted strings first
+            try:
+                parsed_json = json.loads(raw_value)
+            except json.JSONDecodeError:
+                parsed_json = None
+
+            if isinstance(parsed_json, list):
+                return [str(origin).strip() for origin in parsed_json if str(origin).strip()]
+            if isinstance(parsed_json, str):
+                return [parsed_json.strip()]
+
+            # Support quoted single origin strings ("origin")
+            if (
+                (raw_value.startswith('"') and raw_value.endswith('"'))
+                or (raw_value.startswith("'") and raw_value.endswith("'"))
+            ):
+                inner_value = raw_value[1:-1].strip()
+                return [inner_value] if inner_value else []
+
+            # 處理以逗號分隔的字串
+            return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
+
         return v
 
     # 資料庫設定

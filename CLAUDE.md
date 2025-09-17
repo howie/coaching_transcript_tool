@@ -506,6 +506,94 @@ pre-commit install         # Set up automated checks
 - **No flake8 warnings** in production code
 - **All imports sorted** with isort
 
+## API Testing & Verification Standards
+
+### 🚫 CRITICAL RULE: Never Claim API Fixes Without Real Verification
+
+**FORBIDDEN Claims:**
+- ❌ "The API now returns 401 instead of 500, so the fix works"
+- ❌ "Both endpoints correctly respond with authentication required"
+- ❌ "The enum bug is fixed" (based only on status code changes)
+
+**REQUIRED Verification for API Fix Claims:**
+
+#### 1. **Authenticate with Real Tokens**
+```bash
+# Create temporary test token or use existing test user
+# Test with actual authentication headers
+curl -H "Authorization: Bearer <real_token>" http://localhost:8000/api/v1/plans/current
+```
+
+#### 2. **Verify Real Data Responses**
+```bash
+# Must show actual JSON response data, not just status codes
+# Example acceptable evidence:
+{
+  "currentPlan": {
+    "display_name": "學習方案",
+    "id": "STUDENT"
+  },
+  "usageStatus": {
+    "plan": "student",
+    "planLimits": {...}
+  }
+}
+```
+
+#### 3. **Test Multiple User Types**
+- Test with users having different plans (FREE, STUDENT, PRO)
+- Verify each plan type returns correct data
+- Document which users were tested and their plan types
+
+#### 4. **Evidence-Based Claims Only**
+```markdown
+✅ ACCEPTABLE: "Tested with user howie.yu@gmail.com (STUDENT plan) - API returns complete plan data with display_name '學習方案'"
+
+❌ UNACCEPTABLE: "Both endpoints now correctly return 401 instead of 500 errors"
+```
+
+#### 5. **Use Test Automation When Possible**
+```python
+# Create temporary auth tokens in test scripts
+# Verify complete request/response cycles
+# Test actual business logic, not just HTTP status
+```
+
+### Testing Token Management
+
+**For API Testing:**
+- Create temporary test tokens with limited scope
+- Use test user accounts with known plan types
+- Document which authentication method was used
+- Clean up test tokens after verification
+
+**Authentication Testing Levels:**
+1. **Unauthenticated**: Should return 401
+2. **Authenticated but wrong plan**: Should return appropriate data/limits
+3. **Authenticated with test plan**: Should return real plan configuration data
+
+### Mandatory Documentation for API Claims
+
+When claiming an API fix works, provide:
+```markdown
+## API Fix Verification
+
+**Endpoint Tested**: `/api/v1/plans/current`
+**User Tested**: test.user@example.com (STUDENT plan)
+**Authentication**: JWT token (expires: 2025-01-17T10:00:00Z)
+**Response Status**: 200 OK
+**Response Data**:
+{
+  "currentPlan": {...actual data...},
+  "usageStatus": {...actual limits...}
+}
+
+**Before Fix**: 500 Internal Server Error "UserPlan.STUDENT not in enum"
+**After Fix**: 200 OK with complete plan data
+```
+
+This ensures all API fix claims are backed by real evidence, not assumptions.
+
 ## Testing Philosophy
 
 - Follow TDD methodology strictly (Red → Green → Refactor)
@@ -641,7 +729,7 @@ The platform enforces different limits based on user subscription plans:
 
 ### Session & Transcription Limits
 - **Database-driven**: All plan limits are stored in PostgreSQL and dynamically loaded
-- **API Integration**: `/api/plans/current` endpoint provides real-time limit information
+- **API Integration**: `/api/v1/plans/current` endpoint provides real-time limit information
 - **Frontend Validation**: File upload component shows dynamic size limits based on user's plan
 - **Backend Enforcement**: Plan validation occurs before processing to prevent overuse
 

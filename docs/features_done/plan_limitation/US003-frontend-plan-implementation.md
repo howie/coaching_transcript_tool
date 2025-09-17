@@ -38,8 +38,8 @@
 
 ### 5. API Integration
 - [ ] Fetch plans from `/api/plans/`
-- [ ] Get current usage from `/api/plans/current`
-- [ ] Compare plans via `/api/plans/compare`
+- [ ] Get current usage from `/api/v1/plans/current`
+- [ ] Compare plans via `/api/v1/plans/compare`
 - [ ] Validate actions before execution
 - [ ] Handle API errors gracefully
 
@@ -154,7 +154,7 @@ class PlanService {
       stripeSubscriptionId: string | null;
     };
   }> {
-    return this.apiClient.get('/api/plans/current');
+    return this.apiClient.get('/api/v1/plans/current');
   }
 
   async comparePlans(): Promise<{
@@ -162,7 +162,7 @@ class PlanService {
     plans: PlanConfig[];
     recommendedUpgrade: any;
   }> {
-    return this.apiClient.get('/api/plans/compare');
+    return this.apiClient.get('/api/v1/plans/compare');
   }
 
   async validateAction(action: string, params?: any): Promise<ValidationResult> {

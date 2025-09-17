@@ -17,8 +17,8 @@ from ..repositories.ports import (
     SessionRepoPort,
 )
 from ...models.user import User, UserPlan
-from ...models.session import Session as SessionModel
-from ...models.usage_log import UsageLog, TranscriptionType
+from ..models.session import Session as SessionModel, SessionStatus
+from ..models.usage_log import UsageLog, TranscriptionType
 
 logger = logging.getLogger(__name__)
 

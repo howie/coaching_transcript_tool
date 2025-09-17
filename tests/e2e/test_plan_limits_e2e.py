@@ -41,14 +41,14 @@ class TestPlanLimitsE2E:
         self.auth.override_auth_dependency(app, user)
         
         # Get available plans (no auth required for public endpoint)
-        response = self.client.get("/api/plans/")
+        response = self.client.get("/api/v1/plans/")
         assert response.status_code == 200
         data = response.json()
         assert "plans" in data
         assert len(data["plans"]) >= 3  # Free, Pro, Business
         
         # Get plan comparison (auth required)
-        response = self.client.get("/api/plans/compare")
+        response = self.client.get("/api/v1/plans/compare")
         assert response.status_code == 200
         data = response.json()
         assert "currentPlan" in data
@@ -68,7 +68,7 @@ class TestPlanLimitsE2E:
         
         self.auth.override_auth_dependency(app, free_user)
         
-        response = self.client.get("/api/plans/current")
+        response = self.client.get("/api/v1/plans/current")
         assert response.status_code == 200
         data = response.json()
         
@@ -82,7 +82,7 @@ class TestPlanLimitsE2E:
         pro_user = self.auth.create_test_user(self.db, "pro_status@test.com", UserPlan.PRO)
         self.auth.override_auth_dependency(app, pro_user)
         
-        response = self.client.get("/api/plans/current")
+        response = self.client.get("/api/v1/plans/current")
         assert response.status_code == 200
         data = response.json()
         assert data["currentPlan"]["planName"] == "pro"
@@ -94,7 +94,7 @@ class TestPlanLimitsE2E:
         
         # Test session creation validation - should be allowed
         response = self.client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "create_session"}
         )
         assert response.status_code == 200
@@ -107,7 +107,7 @@ class TestPlanLimitsE2E:
         
         # Test session creation validation - should be blocked
         response = self.client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "create_session"}
         )
         assert response.status_code == 200
@@ -204,7 +204,7 @@ class TestPlanLimitsE2E:
         
         # Validate before creating 10th session
         response = self.client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "create_session"}
         )
         assert response.status_code == 200
@@ -216,7 +216,7 @@ class TestPlanLimitsE2E:
         
         # Validate creating 11th session - should fail
         response = self.client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "create_session"}
         )
         assert response.status_code == 200
@@ -232,7 +232,7 @@ class TestPlanLimitsE2E:
         
         # Test allowed format for free user
         response = self.client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={
                 "action": "export_transcript",
                 "format": "txt"
@@ -244,7 +244,7 @@ class TestPlanLimitsE2E:
         
         # Test restricted format for free user
         response = self.client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={
                 "action": "export_transcript",
                 "format": "xlsx"
@@ -259,7 +259,7 @@ class TestPlanLimitsE2E:
         self.auth.override_auth_dependency(app, pro_user)
         
         response = self.client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={
                 "action": "export_transcript",
                 "format": "vtt"
@@ -281,7 +281,7 @@ class TestPlanLimitsE2E:
         
         self.auth.override_auth_dependency(app, user)
         
-        response = self.client.get("/api/plans/current")
+        response = self.client.get("/api/v1/plans/current")
         assert response.status_code == 200
         data = response.json()
         
@@ -307,7 +307,7 @@ class TestPlanLimitsE2E:
         
         # Should still be able to create sessions
         response = self.client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "create_session"}
         )
         assert response.status_code == 200
@@ -316,7 +316,7 @@ class TestPlanLimitsE2E:
         # Should have access to all export formats
         for format in ["txt", "json", "vtt", "srt", "xlsx"]:
             response = self.client.post(
-                "/api/plans/validate",
+                "/api/v1/plans/validate",
                 json={
                     "action": "export_transcript",
                     "format": format
@@ -334,7 +334,7 @@ class TestPlanLimitsE2E:
         for plan_name, user in users.items():
             self.auth.override_auth_dependency(app, user)
             
-            response = self.client.get("/api/plans/current")
+            response = self.client.get("/api/v1/plans/current")
             assert response.status_code == 200
             data = response.json()
             
@@ -361,7 +361,7 @@ class TestPlanLimitsE2E:
         self.auth.override_auth_dependency(app, user)
         
         # Verify the API recognizes approaching limits
-        response = self.client.get("/api/plans/current")
+        response = self.client.get("/api/v1/plans/current")
         assert response.status_code == 200
         data = response.json()
         

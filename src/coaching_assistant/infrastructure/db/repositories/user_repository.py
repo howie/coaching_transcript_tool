@@ -32,6 +32,56 @@ class SQLAlchemyUserRepository(UserRepoPort):
         if not orm_user:
             return None
 
+        # Convert plan to core domain UserPlan enum (handling both string and legacy enum)
+        plan_value = orm_user.plan
+        if isinstance(plan_value, str):
+            # Map lowercase database values to core UserPlan enum
+            plan_mapping = {
+                "free": UserPlan.FREE,
+                "student": UserPlan.STUDENT,
+                "pro": UserPlan.PRO,
+                "enterprise": UserPlan.ENTERPRISE,
+                "coaching_school": UserPlan.COACHING_SCHOOL,
+            }
+            plan = plan_mapping.get(plan_value.lower(), UserPlan.FREE)
+        elif hasattr(plan_value, 'value'):
+            # Convert legacy enum to core enum by value
+            plan_mapping = {
+                "free": UserPlan.FREE,
+                "student": UserPlan.STUDENT,
+                "pro": UserPlan.PRO,
+                "enterprise": UserPlan.ENTERPRISE,
+                "coaching_school": UserPlan.COACHING_SCHOOL,
+            }
+            plan = plan_mapping.get(plan_value.value.lower(), UserPlan.FREE)
+        else:
+            # Fallback to FREE if unknown type
+            plan = UserPlan.FREE
+
+        # Convert role to core domain UserRole enum (handling both string and legacy enum)
+        role_value = orm_user.role
+        if isinstance(role_value, str):
+            # Map role strings to core UserRole enum
+            role_mapping = {
+                "user": UserRole.USER,
+                "staff": UserRole.STAFF,
+                "admin": UserRole.ADMIN,
+                "super_admin": UserRole.SUPER_ADMIN,
+            }
+            role = role_mapping.get(role_value.lower(), UserRole.USER)
+        elif hasattr(role_value, 'value'):
+            # Convert legacy enum to core enum by value
+            role_mapping = {
+                "user": UserRole.USER,
+                "staff": UserRole.STAFF,
+                "admin": UserRole.ADMIN,
+                "super_admin": UserRole.SUPER_ADMIN,
+            }
+            role = role_mapping.get(role_value.value.lower(), UserRole.USER)
+        else:
+            # Fallback to USER if unknown type
+            role = UserRole.USER
+
         # Manual conversion from legacy ORM to domain model
         return DomainUser(
             id=orm_user.id,
@@ -39,8 +89,8 @@ class SQLAlchemyUserRepository(UserRepoPort):
             name=orm_user.name,
             hashed_password=orm_user.hashed_password,
             avatar_url=orm_user.avatar_url,
-            plan=orm_user.plan,
-            role=orm_user.role,
+            plan=plan,
+            role=role,
             usage_minutes=orm_user.usage_minutes,
             session_count=orm_user.session_count,
             created_at=orm_user.created_at,
@@ -52,14 +102,18 @@ class SQLAlchemyUserRepository(UserRepoPort):
 
     def _create_orm_user(self, user: DomainUser) -> UserModel:
         """Create ORM user from domain user."""
+        # Convert domain enums to string values for SQLAlchemy (Clean Architecture: domain → infrastructure conversion)
+        plan_value = user.plan.value if isinstance(user.plan, UserPlan) else user.plan
+        role_value = user.role.value if isinstance(user.role, UserRole) else user.role
+
         orm_user = UserModel(
             id=user.id,
             email=user.email,
             name=user.name,
             hashed_password=user.hashed_password,
             avatar_url=user.avatar_url,
-            plan=user.plan,
-            role=user.role,
+            plan=plan_value,
+            role=role_value,
             usage_minutes=user.usage_minutes,
             session_count=user.session_count,
             created_at=user.created_at,
@@ -145,12 +199,16 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 orm_user = self.session.get(UserModel, user.id)
                 if orm_user:
                     # Update existing user fields manually
+                    # Convert domain enums to string values for SQLAlchemy (Clean Architecture: domain → infrastructure conversion)
+                    plan_value = user.plan.value if isinstance(user.plan, UserPlan) else user.plan
+                    role_value = user.role.value if isinstance(user.role, UserRole) else user.role
+
                     orm_user.email = user.email
                     orm_user.name = user.name
                     orm_user.hashed_password = user.hashed_password
                     orm_user.avatar_url = user.avatar_url
-                    orm_user.plan = user.plan
-                    orm_user.role = user.role
+                    orm_user.plan = plan_value
+                    orm_user.role = role_value
                     orm_user.usage_minutes = user.usage_minutes
                     orm_user.session_count = user.session_count
                     if hasattr(orm_user, 'last_active_at'):
@@ -234,9 +292,11 @@ class SQLAlchemyUserRepository(UserRepoPort):
             List of User domain entities with the specified plan
         """
         try:
+            # Convert enum to string value for SQLAlchemy query (Clean Architecture: domain → infrastructure conversion)
+            plan_value = plan.value if isinstance(plan, UserPlan) else plan
             orm_users = (
                 self.session.query(UserModel)
-                .filter(UserModel.plan == plan)
+                .filter(UserModel.plan == plan_value)
                 .order_by(UserModel.created_at.desc())
                 .all()
             )
@@ -255,9 +315,11 @@ class SQLAlchemyUserRepository(UserRepoPort):
             Number of users with the specified plan
         """
         try:
+            # Convert enum to string value for SQLAlchemy query (Clean Architecture: domain → infrastructure conversion)
+            plan_value = plan.value if isinstance(plan, UserPlan) else plan
             return (
                 self.session.query(UserModel)
-                .filter(UserModel.plan == plan)
+                .filter(UserModel.plan == plan_value)
                 .count()
             )
         except SQLAlchemyError as e:
@@ -273,9 +335,11 @@ class SQLAlchemyUserRepository(UserRepoPort):
             List of User domain entities with the specified role
         """
         try:
+            # Convert enum to string value for SQLAlchemy query (Clean Architecture: domain → infrastructure conversion)
+            role_value = role.value if isinstance(role, UserRole) else role
             orm_users = (
                 self.session.query(UserModel)
-                .filter(UserModel.role == role)
+                .filter(UserModel.role == role_value)
                 .order_by(UserModel.created_at.desc())
                 .all()
             )
@@ -324,8 +388,10 @@ class SQLAlchemyUserRepository(UserRepoPort):
         try:
             orm_user = self.session.get(UserModel, user_id)
             if orm_user:
+                # Convert enum to string value for SQLAlchemy (Clean Architecture: domain → infrastructure conversion)
+                plan_value = new_plan.value if isinstance(new_plan, UserPlan) else new_plan
                 # Update plan directly (validation can be added later)
-                orm_user.plan = new_plan
+                orm_user.plan = plan_value
                 self.session.flush()
                 return self._to_domain(orm_user)
             return None
@@ -367,9 +433,11 @@ class SQLAlchemyUserRepository(UserRepoPort):
             List of User domain entities with admin privileges
         """
         try:
+            # Convert enum values to string values for SQLAlchemy query (Clean Architecture: domain → infrastructure conversion)
+            admin_roles = [UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value]
             orm_users = (
                 self.session.query(UserModel)
-                .filter(UserModel.role.in_([UserRole.ADMIN, UserRole.SUPER_ADMIN]))
+                .filter(UserModel.role.in_(admin_roles))
                 .order_by(UserModel.created_at.desc())
                 .all()
             )

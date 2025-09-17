@@ -114,17 +114,17 @@ class PlanRetrievalUseCase:
 
     def _format_plan_config(self, config: PlanConfiguration) -> Dict[str, Any]:
         """Format plan configuration for API response."""
-        limits = config.limits.copy()
-        
-        # Format limits for frontend display
+        limits = config.limits
+
+        # Format limits for frontend display (accessing dataclass fields directly)
         formatted_limits = {
-            "maxSessions": self._format_limit_value(limits.get("maxSessions", -1)),
-            "maxTotalMinutes": self._format_limit_value(limits.get("maxMinutes", -1)),
-            "maxTranscriptionCount": self._format_limit_value(limits.get("maxTranscriptions", -1)),
-            "maxFileSizeMb": limits.get("maxFileSize", 60),
-            "exportFormats": limits.get("exportFormats", ["json", "txt"]),
-            "concurrentProcessing": limits.get("concurrentJobs", 1),
-            "retentionDays": self._format_retention_days(limits.get("retentionDays", 30)),
+            "maxSessions": self._format_limit_value(limits.max_sessions),
+            "maxTotalMinutes": self._format_limit_value(limits.max_total_minutes),
+            "maxTranscriptionCount": self._format_limit_value(limits.max_transcription_count),
+            "maxFileSizeMb": limits.max_file_size_mb,
+            "exportFormats": limits.export_formats,
+            "concurrentProcessing": limits.concurrent_processing,
+            "retentionDays": self._format_retention_days(limits.retention_days),
         }
 
         return {
@@ -141,13 +141,14 @@ class PlanRetrievalUseCase:
         }
 
     def _get_pricing_dict(self, config) -> Dict[str, Any]:
-        """Build pricing dictionary from PlanConfiguration fields."""
+        """Build pricing dictionary from PlanConfiguration pricing dataclass."""
+        pricing = config.pricing
         return {
-            "monthly_usd": config.monthly_price_cents / 100,
-            "annual_usd": config.annual_price_cents / 100,
-            "monthly_twd": config.monthly_price_twd_cents / 100,
-            "annual_twd": config.annual_price_twd_cents / 100,
-            "currency": config.currency,
+            "monthly_usd": pricing.monthly_price_cents / 100,
+            "annual_usd": pricing.annual_price_cents / 100,
+            "monthly_twd": pricing.monthly_price_twd_cents / 100,
+            "annual_twd": pricing.annual_price_twd_cents / 100,
+            "currency": pricing.currency,
         }
 
     def _format_limit_value(self, value: int) -> str | int:
@@ -278,16 +279,27 @@ class PlanValidationUseCase:
         limits = plan_config.limits
         current_usage = self._get_current_usage(user_id)
         
+        # Convert PlanLimits dataclass to dictionary for API compatibility
+        limits_dict = {
+            "maxSessions": limits.max_sessions,
+            "maxMinutes": limits.max_total_minutes,
+            "maxTranscriptions": limits.max_transcription_count,
+            "maxFileSize": limits.max_file_size_mb,
+            "exportFormats": limits.export_formats,
+            "concurrentJobs": limits.concurrent_processing,
+            "retentionDays": limits.retention_days,
+        }
+
         validation_results = {
             "valid": True,
-            "limits": limits,
+            "limits": limits_dict,
             "current_usage": current_usage,
             "violations": [],
             "warnings": [],
         }
 
         # Check session count limit
-        max_sessions = limits.get("maxSessions", -1)
+        max_sessions = limits.max_sessions
         if max_sessions > 0 and current_usage["session_count"] >= max_sessions:
             validation_results["valid"] = False
             validation_results["violations"].append({
@@ -298,7 +310,7 @@ class PlanValidationUseCase:
             })
 
         # Check total minutes limit
-        max_minutes = limits.get("maxMinutes", -1)
+        max_minutes = limits.max_total_minutes
         if max_minutes > 0 and current_usage["total_minutes"] >= max_minutes:
             validation_results["valid"] = False
             validation_results["violations"].append({
@@ -345,7 +357,7 @@ class PlanValidationUseCase:
         if not plan_config:
             return {"valid": True, "message": "No file size limits configured"}
 
-        max_file_size = plan_config.limits.get("maxFileSize", 60)  # Default 60MB
+        max_file_size = plan_config.limits.max_file_size_mb  # Access dataclass field directly
         
         if file_size_mb > max_file_size:
             return {

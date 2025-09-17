@@ -298,6 +298,7 @@ export const billingTranslations = {
     'billing.invoiceHistory': 'Invoice History',
     'billing.proPlan': 'Pro Plan',
     'billing.monthlyFee': 'Monthly Fee',
+    'billing.monthlyEquivalent': 'Monthly equivalent',
     'billing.paid': 'Paid',
     'billing.download': 'Download',
     'billing.saveSettings': 'Save Settings',

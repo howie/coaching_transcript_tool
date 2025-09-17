@@ -16,10 +16,10 @@ Many endpoints referenced in the tests don't exist in the actual implementation:
 - `/api/v1/sessions/{id}/export`
 
 **Actual Endpoints (Correct):**
-- `/api/plans/current`
+- `/api/v1/plans/current`
 - `/api/usage/current-month` (needs implementation)
-- `/api/sessions` 
-- `/api/sessions/{id}/transcript`
+- `/api/v1/sessions`
+- `/api/v1/sessions/{id}/transcript`
 - `/api/v1/plan/validate-action` (this one exists)
 - `/api/v1/plan/current-usage` (this one exists)
 

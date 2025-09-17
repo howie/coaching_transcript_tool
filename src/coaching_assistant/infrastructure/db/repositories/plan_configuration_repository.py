@@ -17,9 +17,11 @@ class PlanConfigurationRepository(PlanConfigurationRepoPort):
 
     def get_by_plan_type(self, plan_type: UserPlan) -> Optional[PlanConfiguration]:
         """Get plan configuration by plan type."""
+        # Convert enum to string value for SQLAlchemy query (Clean Architecture: domain → infrastructure conversion)
+        plan_value = plan_type.value if isinstance(plan_type, UserPlan) else plan_type
         orm_plan = (
             self.db_session.query(PlanConfigurationModel)
-            .filter(PlanConfigurationModel.plan_type == plan_type)
+            .filter(PlanConfigurationModel.plan_type == plan_value)
             .first()
         )
         return orm_plan.to_domain() if orm_plan else None

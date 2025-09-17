@@ -104,8 +104,6 @@ app.include_router(coach_profile.router, prefix="/api/coach-profile", tags=["coa
 app.include_router(usage.router, prefix="/api/usage", tags=["usage"])
 app.include_router(usage_history.router, prefix="/api/v1/usage", tags=["usage-history"])
 app.include_router(plans.router, prefix="/api/v1/plans", tags=["plans"])
-# Legacy compatibility route for frontend
-app.include_router(plans.router, prefix="/api/plans", tags=["plans-legacy"])
 app.include_router(plan_limits.router, prefix="/api/v1/plan", tags=["plan-limits"])
 app.include_router(transcript_smoothing.router, prefix="/api/v1/transcript", tags=["transcript-smoothing"])
 app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["subscriptions"])

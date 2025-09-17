@@ -640,7 +640,7 @@ def test_current_plan_endpoint():
     user.session_count = 25
     
     with authenticate_as(user):
-        response = client.get("/api/plans/current")
+        response = client.get("/api/v1/plans/current")
         assert response.status_code == 200
         
         data = response.json()

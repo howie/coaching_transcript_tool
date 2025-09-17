@@ -1,4 +1,4 @@
-"""Integration tests for the /api/plans/current endpoint transaction fix."""
+"""Integration tests for the /api/v1/plans/current endpoint transaction fix."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,7 +13,7 @@ from tests.conftest import get_test_db_session
 
 
 class TestPlansCurrentTransactionFix:
-    """Integration tests for the /api/plans/current endpoint transaction management."""
+    """Integration tests for the /api/v1/plans/current endpoint transaction management."""
 
     @pytest.fixture
     def client(self):
@@ -57,7 +57,7 @@ class TestPlansCurrentTransactionFix:
 
         try:
             # Act - call the endpoint
-            response = client.get("/api/plans/current", headers=authenticated_headers)
+            response = client.get("/api/v1/plans/current", headers=authenticated_headers)
 
             # Assert - should succeed even without subscription
             assert response.status_code == 200
@@ -104,7 +104,7 @@ class TestPlansCurrentTransactionFix:
 
         try:
             # Act - call the endpoint
-            response = client.get("/api/plans/current", headers=authenticated_headers)
+            response = client.get("/api/v1/plans/current", headers=authenticated_headers)
 
             # Assert - should succeed with subscription data
             assert response.status_code == 200
@@ -137,7 +137,7 @@ class TestPlansCurrentTransactionFix:
 
         try:
             # Act - call the endpoint (should not cause transaction errors)
-            response = client.get("/api/plans/current", headers=authenticated_headers)
+            response = client.get("/api/v1/plans/current", headers=authenticated_headers)
 
             # Assert - should either succeed or fail gracefully (no 500 from transaction issues)
             assert response.status_code in [200, 404, 500]
@@ -169,7 +169,7 @@ class TestPlansCurrentTransactionFix:
             # Act - make multiple requests simulating concurrent access
             responses = []
             for i in range(5):
-                response = client.get("/api/plans/current", headers=authenticated_headers)
+                response = client.get("/api/v1/plans/current", headers=authenticated_headers)
                 responses.append(response)
 
             # Assert - all requests should succeed without transaction errors

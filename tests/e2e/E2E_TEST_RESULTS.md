@@ -85,7 +85,7 @@ user = auth_helper.create_test_user(db, "test@example.com", UserPlan.PRO)
 auth_helper.override_auth_dependency(app, user)
 
 # Run your tests with authenticated user
-response = client.get("/api/plans/current")
+response = client.get("/api/v1/plans/current")
 
 # Cleanup
 auth_helper.clear_auth_override(app)

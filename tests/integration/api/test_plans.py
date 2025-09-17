@@ -14,8 +14,8 @@ class TestPlansAPI:
     """Test suite for plan management endpoints."""
     
     def test_get_available_plans(self, client: TestClient, db_session: Session):
-        """Test GET /api/plans/ returns all available plans."""
-        response = client.get("/api/plans/")
+        """Test GET /api/v1/plans/ returns all available plans."""
+        response = client.get("/api/v1/plans/")
         assert response.status_code == 200
         
         data = response.json()
@@ -42,7 +42,7 @@ class TestPlansAPI:
     def test_get_current_plan_status_free_user(
         self, authenticated_client: TestClient, test_user: User, db_session: Session
     ):
-        """Test GET /api/plans/current for free tier user."""
+        """Test GET /api/v1/plans/current for free tier user."""
         # Set user to free plan with some usage
         test_user.plan = UserPlan.FREE
         test_user.session_count = 5
@@ -51,7 +51,7 @@ class TestPlansAPI:
         test_user.current_month_start = datetime.now().replace(day=1)
         db_session.commit()
 
-        response = authenticated_client.get("/api/plans/current")
+        response = authenticated_client.get("/api/v1/plans/current")
         assert response.status_code == 200
 
         data = response.json()
@@ -106,7 +106,7 @@ class TestPlansAPI:
         test_user.transcription_count = 18  # 90% of limit
         db_session.commit()
         
-        response = authenticated_client.get("/api/plans/current")
+        response = authenticated_client.get("/api/v1/plans/current")
         assert response.status_code == 200
         
         data = response.json()
@@ -118,14 +118,14 @@ class TestPlansAPI:
     def test_get_current_plan_status_pro_user(
         self, authenticated_client: TestClient, test_user: User, db_session: Session
     ):
-        """Test GET /api/plans/current for pro tier user."""
+        """Test GET /api/v1/plans/current for pro tier user."""
         test_user.plan = UserPlan.PRO
         test_user.session_count = 50
         test_user.usage_minutes = 600
         test_user.transcription_count = 100
         db_session.commit()
         
-        response = authenticated_client.get("/api/plans/current")
+        response = authenticated_client.get("/api/v1/plans/current")
         assert response.status_code == 200
         
         data = response.json()
@@ -136,14 +136,14 @@ class TestPlansAPI:
     def test_get_current_plan_status_enterprise_user(
         self, authenticated_client: TestClient, test_user: User, db_session: Session
     ):
-        """Test GET /api/plans/current for enterprise user with unlimited limits."""
+        """Test GET /api/v1/plans/current for enterprise user with unlimited limits."""
         test_user.plan = UserPlan.ENTERPRISE
         test_user.session_count = 1000
         test_user.usage_minutes = 10000
         test_user.transcription_count = 5000
         db_session.commit()
         
-        response = authenticated_client.get("/api/plans/current")
+        response = authenticated_client.get("/api/v1/plans/current")
         assert response.status_code == 200
         
         data = response.json()
@@ -155,11 +155,11 @@ class TestPlansAPI:
     def test_compare_plans(
         self, authenticated_client: TestClient, test_user: User, db_session: Session
     ):
-        """Test GET /api/plans/compare endpoint."""
+        """Test GET /api/v1/plans/compare endpoint."""
         test_user.plan = UserPlan.FREE
         db_session.commit()
         
-        response = authenticated_client.get("/api/plans/compare")
+        response = authenticated_client.get("/api/v1/plans/compare")
         assert response.status_code == 200
         
         data = response.json()
@@ -180,13 +180,13 @@ class TestPlansAPI:
     def test_validate_action_create_session_allowed(
         self, authenticated_client: TestClient, test_user: User, db_session: Session
     ):
-        """Test POST /api/plans/validate for allowed session creation."""
+        """Test POST /api/v1/plans/validate for allowed session creation."""
         test_user.plan = UserPlan.FREE
         test_user.session_count = 5  # Under limit of 10
         db_session.commit()
         
         response = authenticated_client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "create_session"}
         )
         assert response.status_code == 200
@@ -198,13 +198,13 @@ class TestPlansAPI:
     def test_validate_action_create_session_blocked(
         self, authenticated_client: TestClient, test_user: User, db_session: Session
     ):
-        """Test POST /api/plans/validate for blocked session creation."""
+        """Test POST /api/v1/plans/validate for blocked session creation."""
         test_user.plan = UserPlan.FREE
         test_user.session_count = 10  # At limit
         db_session.commit()
         
         response = authenticated_client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "create_session"}
         )
         assert response.status_code == 200
@@ -220,13 +220,13 @@ class TestPlansAPI:
     def test_validate_action_upload_file_size_check(
         self, authenticated_client: TestClient, test_user: User, db_session: Session
     ):
-        """Test POST /api/plans/validate for file size validation."""
+        """Test POST /api/v1/plans/validate for file size validation."""
         test_user.plan = UserPlan.FREE
         db_session.commit()
         
         # Test file too large
         response = authenticated_client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "upload_file", "file_size_mb": 100}  # Free limit is 50MB
         )
         assert response.status_code == 200
@@ -238,7 +238,7 @@ class TestPlansAPI:
         
         # Test file within limit
         response = authenticated_client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "upload_file", "file_size_mb": 30}
         )
         assert response.status_code == 200
@@ -249,13 +249,13 @@ class TestPlansAPI:
     def test_validate_action_export_format_check(
         self, authenticated_client: TestClient, test_user: User, db_session: Session
     ):
-        """Test POST /api/plans/validate for export format validation."""
+        """Test POST /api/v1/plans/validate for export format validation."""
         test_user.plan = UserPlan.FREE
         db_session.commit()
         
         # Test unavailable format
         response = authenticated_client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "export_transcript", "format": "xlsx"}  # Not available in free
         )
         assert response.status_code == 200
@@ -267,7 +267,7 @@ class TestPlansAPI:
         
         # Test available format
         response = authenticated_client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "export_transcript", "format": "json"}
         )
         assert response.status_code == 200
@@ -278,13 +278,13 @@ class TestPlansAPI:
     def test_validate_action_transcribe_limit(
         self, authenticated_client: TestClient, test_user: User, db_session: Session
     ):
-        """Test POST /api/plans/validate for transcription limit."""
+        """Test POST /api/v1/plans/validate for transcription limit."""
         test_user.plan = UserPlan.FREE
         test_user.transcription_count = 20  # At limit
         db_session.commit()
         
         response = authenticated_client.post(
-            "/api/plans/validate",
+            "/api/v1/plans/validate",
             json={"action": "transcribe"}
         )
         assert response.status_code == 200
@@ -296,7 +296,7 @@ class TestPlansAPI:
     def test_validate_action_enterprise_unlimited(
         self, authenticated_client: TestClient, test_user: User, db_session: Session
     ):
-        """Test POST /api/plans/validate for enterprise user with unlimited limits."""
+        """Test POST /api/v1/plans/validate for enterprise user with unlimited limits."""
         test_user.plan = UserPlan.ENTERPRISE
         test_user.session_count = 10000
         test_user.transcription_count = 50000
@@ -312,7 +312,7 @@ class TestPlansAPI:
         
         for action_data in actions:
             response = authenticated_client.post(
-                "/api/plans/validate",
+                "/api/v1/plans/validate",
                 json=action_data
             )
             assert response.status_code == 200
@@ -347,7 +347,7 @@ class TestPlansAPI:
         test_user.current_month_start = datetime(2025, 8, 1)
         db_session.commit()
         
-        response = authenticated_client.get("/api/plans/current")
+        response = authenticated_client.get("/api/v1/plans/current")
         assert response.status_code == 200
         
         data = response.json()
@@ -357,8 +357,8 @@ class TestPlansAPI:
     def test_unauthorized_access(self, client: TestClient):
         """Test that endpoints require authentication."""
         endpoints = [
-            "/api/plans/current",
-            "/api/plans/compare"
+            "/api/v1/plans/current",
+            "/api/v1/plans/compare"
         ]
         
         for endpoint in endpoints:
@@ -366,5 +366,5 @@ class TestPlansAPI:
             assert response.status_code == 401
         
         # Test POST endpoint
-        response = client.post("/api/plans/validate", json={"action": "create_session"})
+        response = client.post("/api/v1/plans/validate", json={"action": "create_session"})
         assert response.status_code == 401

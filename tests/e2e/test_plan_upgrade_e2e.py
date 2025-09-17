@@ -46,7 +46,7 @@ class TestPlanUpgradeE2E:
         auth_headers = {"Authorization": f"Bearer {user.id}"}
         
         # Step 2: User checks current plan
-        response = self.client.get("/api/plans/current", headers=auth_headers)
+        response = self.client.get("/api/v1/plans/current", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["plan"] == "FREE"
@@ -92,7 +92,7 @@ class TestPlanUpgradeE2E:
         assert "limit" in error.get("detail", "").lower()
         
         # Step 7: User views plan comparison
-        response = self.client.get("/api/plans/compare")
+        response = self.client.get("/api/v1/plans/compare")
         assert response.status_code == 200
         plans = response.json()
         pro_plan = next(p for p in plans if p["name"] == "PRO")
@@ -108,7 +108,7 @@ class TestPlanUpgradeE2E:
             )
             
             response = self.client.post(
-                "/api/plans/upgrade",
+                "/api/v1/plans/upgrade",
                 json={
                     "target_plan": "PRO",
                     "payment_method": "pm_test123"
@@ -122,7 +122,7 @@ class TestPlanUpgradeE2E:
                 self.db.commit()
         
         # Step 9: Verify upgrade successful
-        response = self.client.get("/api/plans/current", headers=auth_headers)
+        response = self.client.get("/api/v1/plans/current", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["plan"] == "PRO"
@@ -179,7 +179,7 @@ class TestPlanUpgradeE2E:
         auth_headers = {"Authorization": f"Bearer {user.id}"}
         
         # Pro user needs team features
-        response = self.client.get("/api/plans/compare")
+        response = self.client.get("/api/v1/plans/compare")
         assert response.status_code == 200
         plans = response.json()
         
@@ -196,7 +196,7 @@ class TestPlanUpgradeE2E:
             )
             
             response = self.client.post(
-                "/api/plans/upgrade",
+                "/api/v1/plans/upgrade",
                 json={
                     "target_plan": "BUSINESS",
                     "payment_method": "pm_business123"
@@ -209,7 +209,7 @@ class TestPlanUpgradeE2E:
                 self.db.commit()
         
         # Verify Business features enabled
-        response = self.client.get("/api/plans/current", headers=auth_headers)
+        response = self.client.get("/api/v1/plans/current", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["plan"] == "BUSINESS"
@@ -226,7 +226,7 @@ class TestPlanUpgradeE2E:
             mock_payment.side_effect = Exception("Card declined")
             
             response = self.client.post(
-                "/api/plans/upgrade",
+                "/api/v1/plans/upgrade",
                 json={
                     "target_plan": "PRO",
                     "payment_method": "pm_declined"
@@ -241,7 +241,7 @@ class TestPlanUpgradeE2E:
                    "declined" in error.get("detail", "").lower()
         
         # Verify user still on Free plan
-        response = self.client.get("/api/plans/current", headers=auth_headers)
+        response = self.client.get("/api/v1/plans/current", headers=auth_headers)
         assert response.status_code == 200
         assert response.json()["plan"] == "FREE"
 
@@ -394,7 +394,7 @@ class TestPlanUpgradeE2E:
         
         # Attempt downgrade to Free
         response = self.client.post(
-            "/api/plans/downgrade",
+            "/api/v1/plans/downgrade",
             json={"target_plan": "FREE"},
             headers=auth_headers
         )
