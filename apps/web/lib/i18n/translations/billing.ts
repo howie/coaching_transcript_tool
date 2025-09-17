@@ -299,6 +299,8 @@ export const billingTranslations = {
     'billing.proPlan': 'Pro Plan',
     'billing.monthlyFee': 'Monthly Fee',
     'billing.monthlyEquivalent': 'Monthly equivalent',
+    'billing.annualSave': 'Annual save',
+    'billing.monthlyFullYear': 'Monthly full year',
     'billing.paid': 'Paid',
     'billing.download': 'Download',
     'billing.saveSettings': 'Save Settings',

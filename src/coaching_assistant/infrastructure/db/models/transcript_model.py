@@ -41,12 +41,12 @@ class TranscriptSegmentModel(BaseModel):
     content = Column(Text, nullable=False)
     confidence = Column(Float)  # STT confidence score (0.0-1.0)
 
-    # Speaker role assignment
-    speaker_role = Column(
-        SQLEnum(SpeakerRole, values_callable=lambda x: [e.value for e in x]),
-        nullable=False,
-        default=SpeakerRole.UNKNOWN,
-    )
+    # Speaker role assignment (handled via relationship to SegmentRoleModel)
+    # speaker_role = Column(
+    #     SQLEnum(SpeakerRole, values_callable=lambda x: [e.value for e in x]),
+    #     nullable=False,
+    #     default=SpeakerRole.UNKNOWN,
+    # )
 
     # Relationships (commented out until Session model is properly set up)
     # session = relationship("SessionModel", back_populates="segments")
@@ -64,7 +64,7 @@ class TranscriptSegmentModel(BaseModel):
             end_seconds=self.end_seconds,
             content=self.content,
             confidence=self.confidence,
-            speaker_role=self.speaker_role,
+            speaker_role=SpeakerRole.UNKNOWN,  # Default value, role handled via separate table
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -80,7 +80,7 @@ class TranscriptSegmentModel(BaseModel):
             end_seconds=segment.end_seconds,
             content=segment.content,
             confidence=segment.confidence,
-            speaker_role=segment.speaker_role,
+            # speaker_role handled via separate SegmentRoleModel table
             created_at=segment.created_at,
             updated_at=segment.updated_at,
         )
@@ -92,7 +92,7 @@ class TranscriptSegmentModel(BaseModel):
         self.end_seconds = segment.end_seconds
         self.content = segment.content
         self.confidence = segment.confidence
-        self.speaker_role = segment.speaker_role
+        # speaker_role handled via separate SegmentRoleModel table
         self.updated_at = segment.updated_at
 
 
