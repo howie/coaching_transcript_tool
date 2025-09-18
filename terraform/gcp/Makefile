@@ -101,7 +101,7 @@ env-file: ## Create environment file from Terraform outputs
 	@echo "GCP_PROJECT_ID='$$(terraform output -raw project_id)'" >> .env.terraform
 	@echo "GCP_REGION='asia-east1'" >> .env.terraform
 	@echo "AUDIO_STORAGE_BUCKET='$$(terraform output -raw audio_storage_bucket)'" >> .env.terraform
-	@echo "TRANSCRIPT_STORAGE_BUCKET='$$(terraform output -raw transcript_storage_bucket)'" >> .env.terraform
+	# TRANSCRIPT_STORAGE_BUCKET removed - transcripts stored in database
 	@echo "SPEECH_API_VERSION='v2'" >> .env.terraform
 	@echo "Environment file created: .env.terraform"
 

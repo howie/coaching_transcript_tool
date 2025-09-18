@@ -17,7 +17,6 @@ locals {
 
       # Storage configuration
       AUDIO_STORAGE_BUCKET      = var.audio_storage_bucket
-      TRANSCRIPT_STORAGE_BUCKET = var.transcript_storage_bucket
 
       # STT configuration
       STT_PROVIDER        = var.stt_provider

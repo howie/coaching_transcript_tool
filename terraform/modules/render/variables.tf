@@ -299,10 +299,7 @@ variable "audio_storage_bucket" {
   type        = string
 }
 
-variable "transcript_storage_bucket" {
-  description = "Transcript storage bucket name"
-  type        = string
-}
+# transcript_storage_bucket variable removed - transcripts stored in database
 
 # STT Configuration
 variable "stt_provider" {

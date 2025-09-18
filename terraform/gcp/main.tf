@@ -24,13 +24,13 @@ data "google_project" "project" {
 # Enable required APIs
 resource "google_project_service" "apis" {
   for_each = toset(var.required_apis)
-  
+
   project = var.gcp_project_id
   service = each.value
-  
+
   # Prevent accidental deletion of APIs
   disable_dependent_services = false
-  disable_on_destroy = false
+  disable_on_destroy         = false
 }
 
 # Service Account for the application (import existing)
@@ -79,36 +79,11 @@ resource "google_storage_bucket" "audio_storage" {
 
   # Public access prevention
   uniform_bucket_level_access = true
-  public_access_prevention = "enforced"
+  public_access_prevention    = "enforced"
 }
 
-# Cloud Storage bucket for processed transcripts (optional)
-resource "google_storage_bucket" "transcript_storage" {
-  name          = "coaching-transcript-${var.environment}-asia"
-  location      = var.gcp_region
-  project       = var.gcp_project_id
-  force_destroy = false
-
-  # Enable versioning
-  versioning {
-    enabled = true
-  }
-
-  # Lifecycle rules for long-term storage
-  lifecycle_rule {
-    condition {
-      age = 90
-    }
-    action {
-      type          = "SetStorageClass"
-      storage_class = "COLDLINE"
-    }
-  }
-
-  # Public access prevention
-  uniform_bucket_level_access = true
-  public_access_prevention = "enforced"
-}
+# Transcript data is now stored in PostgreSQL database
+# STT batch results are temporarily stored in audio bucket under batch-results/
 
 # Production Cloud Storage bucket for audio files
 resource "google_storage_bucket" "audio_storage_prod" {
@@ -142,33 +117,7 @@ resource "google_storage_bucket" "audio_storage_prod" {
 
   # Public access prevention
   uniform_bucket_level_access = true
-  public_access_prevention = "enforced"
+  public_access_prevention    = "enforced"
 }
 
-# Production Cloud Storage bucket for processed transcripts
-resource "google_storage_bucket" "transcript_storage_prod" {
-  name          = "coaching-transcript-prod"
-  location      = var.gcp_region
-  project       = var.gcp_project_id
-  force_destroy = false
-
-  # Enable versioning
-  versioning {
-    enabled = true
-  }
-
-  # Lifecycle rules for long-term storage
-  lifecycle_rule {
-    condition {
-      age = 90
-    }
-    action {
-      type          = "SetStorageClass"
-      storage_class = "COLDLINE"
-    }
-  }
-
-  # Public access prevention
-  uniform_bucket_level_access = true
-  public_access_prevention = "enforced"
-}
+# Production transcript storage: Database only (no separate GCS bucket needed)

@@ -42,15 +42,7 @@ output "audio_storage_bucket_url" {
   value       = google_storage_bucket.audio_storage.url
 }
 
-output "transcript_storage_bucket" {
-  description = "The transcript storage bucket name"
-  value       = google_storage_bucket.transcript_storage.name
-}
-
-output "transcript_storage_bucket_url" {
-  description = "The transcript storage bucket URL"
-  value       = google_storage_bucket.transcript_storage.url
-}
+# Transcript storage bucket outputs removed - transcripts stored in database
 
 output "audio_storage_bucket_prod" {
   description = "The production audio storage bucket name"
@@ -62,15 +54,7 @@ output "audio_storage_bucket_prod_url" {
   value       = google_storage_bucket.audio_storage_prod.url
 }
 
-output "transcript_storage_bucket_prod" {
-  description = "The production transcript storage bucket name"
-  value       = google_storage_bucket.transcript_storage_prod.name
-}
-
-output "transcript_storage_bucket_prod_url" {
-  description = "The production transcript storage bucket URL"
-  value       = google_storage_bucket.transcript_storage_prod.url
-}
+# Production transcript storage bucket outputs removed - transcripts stored in database
 
 output "enabled_apis" {
   description = "List of enabled APIs"
@@ -93,12 +77,11 @@ output "env_vars_template" {
   description = "Environment variables template for application configuration"
   value = {
     GOOGLE_APPLICATION_CREDENTIALS_JSON = base64decode(google_service_account_key.coaching_storage_key.private_key)
-    GCP_PROJECT_ID                      = var.gcp_project_id
-    GCP_REGION                         = var.gcp_region
-    AUDIO_STORAGE_BUCKET               = google_storage_bucket.audio_storage.name
-    TRANSCRIPT_STORAGE_BUCKET          = google_storage_bucket.transcript_storage.name
-    SPEECH_API_VERSION                 = "v2"
-    ENVIRONMENT                        = var.environment == "dev" ? "development" : var.environment == "prod" ? "production" : var.environment
+    GOOGLE_PROJECT_ID                   = var.gcp_project_id
+    GCP_REGION                          = var.gcp_region
+    AUDIO_STORAGE_BUCKET                = google_storage_bucket.audio_storage.name
+    SPEECH_API_VERSION                  = "v2"
+    ENVIRONMENT                         = var.environment == "dev" ? "development" : var.environment == "prod" ? "production" : var.environment
   }
   sensitive = true
 }
