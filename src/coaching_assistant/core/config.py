@@ -73,8 +73,7 @@ class Settings(BaseSettings):
     # Google Cloud 設定
     GOOGLE_PROJECT_ID: str = ""
     GCP_REGION: str = "asia-southeast1"  # Default GCP region
-    AUDIO_STORAGE_BUCKET: str = ""
-    TRANSCRIPT_STORAGE_BUCKET: str = ""
+    AUDIO_STORAGE_BUCKET: str = ""  # Used for both audio files and batch results
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_APPLICATION_CREDENTIALS_JSON: str = ""  # JSON 格式的服務帳號憑證

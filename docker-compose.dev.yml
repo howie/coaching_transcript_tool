@@ -69,7 +69,6 @@ services:
       - REDIS_URL=redis://:redis_pass_dev@redis:6379/0
       - GOOGLE_APPLICATION_CREDENTIALS_JSON=${GOOGLE_APPLICATION_CREDENTIALS_JSON}
       - AUDIO_STORAGE_BUCKET=${AUDIO_STORAGE_BUCKET}
-      - TRANSCRIPT_STORAGE_BUCKET=${TRANSCRIPT_STORAGE_BUCKET}
     volumes:
       - ./src:/app/src
       - ./alembic:/app/alembic

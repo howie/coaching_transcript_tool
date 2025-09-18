@@ -138,7 +138,7 @@ class GoogleSTTProvider(STTProvider):
             raise STTProviderError(f"Failed to create Storage client: {e}")
 
     def _get_transcript_output_bucket(self) -> str:
-        """Return a usable GCS bucket for STT batch results, with fallbacks."""
+        """Return GCS bucket for STT batch results (simplified to use audio bucket)."""
 
         if self._resolved_output_bucket:
             return self._resolved_output_bucket
@@ -151,9 +151,9 @@ class GoogleSTTProvider(STTProvider):
                 if candidate and candidate not in candidates:
                     candidates.append(candidate)
 
-        _append_candidate(settings.TRANSCRIPT_STORAGE_BUCKET)
+        # Simplified: Use audio bucket for batch results (transcript buckets removed)
         _append_candidate(settings.AUDIO_STORAGE_BUCKET)
-        _append_candidate(settings.GOOGLE_STORAGE_BUCKET)
+        _append_candidate(settings.GOOGLE_STORAGE_BUCKET)  # Legacy fallback
 
         if not candidates:
             raise STTProviderError(
