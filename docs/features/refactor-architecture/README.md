@@ -31,19 +31,31 @@
 
 ## 📚 文件索引
 
+### 🔄 進行中工作包
+- [WP6 – Cleanup Series Master Plan](./wp6-cleanup-master-plan.md)
+- [WP6-Cleanup-1 – Speaker Roles](./wp6-cleanup-1-speaker-roles.md)
+- [WP6-Cleanup-3 – Factory Migration](./wp6-cleanup-3-factory-migration.md)
+- [WP6-Cleanup-4 – Analytics Exports](./wp6-cleanup-4-analytics-exports.md)
+- [WP6-Cleanup-5 – Frontend Features](./wp6-cleanup-5-frontend-features.md)
+- [WP6-Cleanup-6 – Infrastructure Polish](./wp6-cleanup-6-infrastructure-polish.md)
+
+### 📋 架構指引
 - [Architectural Rules](./architectural-rules.md)
 - [Success Metrics](./success-metrics.md)
 - [Phase 3: Clean Architecture Lite Roadmap](./phase-3-domain-models.md)
-- [WP1 – Ports & Factories](./wp1-ports-factories.md)
-- [WP2 – Plans Vertical](./wp2-plans-vertical.md)
-- [WP3 – Subscriptions Vertical](./wp3-subscriptions-vertical.md)
-- [WP4 – Sessions Vertical](./wp4-sessions-vertical.md)
-- [WP5 – Domain ↔ ORM 收斂](./wp5-domain-orm.md)
-- [WP6 – Regression & Cleanup](./wp6-cleanup.md)
-- 歷史紀錄：`./done/`
+- [WP6 – Regression & Cleanup Overview](./wp6-cleanup.md)
+
+### ✅ 已完成工作包
+所有已完成的工作包移至：`./done/`
+- **Phase 1-2**: Foundation, API Migration & Hotfixes
+- **WP1-WP5**: Ports & Factories → Domain ↔ ORM Convergence (完整垂直切片)
+- **WP6-Bug-Fixes**: 所有 P0/P1 關鍵錯誤修復
+- **WP6-Cleanup-2**: Payment Processing Vertical (v2.21.0)
+
+完整歷史紀錄：`./done/`
 
 ---
 
-**最新更新**：2025-09-18 08:00 CST - WP6-Cleanup-2 Payment Processing Vertical Complete
+**最新更新**：2025-09-18 09:00 CST - Completed WP1-WP6 Documentation Cleanup & Organization
 
 **聯絡窗口**：Development Team
