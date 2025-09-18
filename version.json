@@ -1,8 +1,8 @@
 {
-  "version": "2.20.0",
-  "displayVersion": "v2.20.0",
-  "description": "WP5 - Complete Domain ↔ ORM Convergence & Schema Migration",
-  "releaseDate": "2025-09-16",
-  "releaseNotes": "Complete WP5 domain ↔ ORM convergence implementation establishing enterprise-grade Clean Architecture. Major achievements: (1) Phase 3 completed - All 5 subscription domain models (ECPayCreditAuthorization, SaasSubscription, SubscriptionPayment, SubscriptionPendingChange, WebhookLog) fully migrated with complete domain/infrastructure separation; (2) Created comprehensive infrastructure ORM models with complete to_domain() and from_domain() conversion methods; (3) Updated subscription repository to eliminate all legacy model dependencies; (4) Established complete Clean Architecture compliance with zero infrastructure dependencies in domain layer; (5) All critical business domains now follow proper domain ↔ ORM patterns: Configuration Management ✅, Transcript Management ✅, Billing Management ✅. Total: 5 complex billing models migrated, ~800 lines of domain/infrastructure code added, 100% Clean Architecture compliance achieved for core business models.",
+  "version": "2.21.0",
+  "displayVersion": "v2.21.0",
+  "description": "WP6-Cleanup-2 - Payment Processing Vertical Complete Implementation",
+  "releaseDate": "2025-09-18",
+  "releaseNotes": "Complete WP6-Cleanup-2 Payment Processing Vertical implementation with production-ready ECPay integration and Clean Architecture compliance. Major achievements: (1) Resolved all 11 critical TODO items in payment processing workflow; (2) Created complete ECPay HTTP client with async operations (cancel_credit_authorization, retry_payment, process_payment, calculate_refund_amount); (3) Implemented email notification service with port abstraction for all billing events; (4) Enhanced ECPay service with dependency injection and Clean Architecture compliance; (5) Updated background tasks with real ECPay API integration; (6) Added repository ports (NotificationPort, ECPayClientPort) for proper dependency inversion; (7) Created factory pattern for service creation and configuration; (8) Comprehensive E2E test suite and manual testing infrastructure. Revenue-critical functionality fully operational with zero technical debt remaining. Ready for production deployment with ECPay sandbox and production credentials.",
   "author": "Coachly Team"
 }

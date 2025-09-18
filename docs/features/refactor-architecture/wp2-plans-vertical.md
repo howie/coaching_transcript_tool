@@ -12,10 +12,10 @@ Last Updated: 2025-09-16 by Claude Code
 
 ## 主要檢查項目
 - [x] `src/coaching_assistant/api/v1/plans.py` 僅負責 request/response 轉換。
-- [x] `PlanRetrievalUseCase`、`PlanValidationUseCase` 有完整單元測試（涵蓋成功/失敗）。
-- [x] Repositories 採用 domain DTO 輸出並保留必要的 legacy 轉換。
-- [x] Integration 測試覆蓋 `/api/v1/plans/*` 主要路徑。
-- [x] `src/coaching_assistant/api/v1/plan_limits.py` 完全遷移至 Clean Architecture。
+- [ ] `PlanRetrievalUseCase`、`PlanValidationUseCase` 單元測試涵蓋成功/失敗情境（尚未補齊，僅有 factory 建構測試）。
+- [x] Repository 透過 domain DTO 回傳並保留必要的 legacy 轉換邏輯。
+- [x] Integration 測試覆蓋 `/api/v1/plans/*` 主要路徑（`tests/integration/api/test_plan_integration.py`, `tests/integration/api/test_plans_current_transaction_fix.py`）。
+- [x] `src/coaching_assistant/api/v1/plan_limits.py` 已遷移至 Clean Architecture。
 - [x] 所有 plan 相關 endpoints 使用 dependency injection。
 
 ## 完成項目
@@ -32,15 +32,18 @@ Last Updated: 2025-09-16 by Claude Code
 - ✅ 依賴注入: 所有 use cases 透過 factory pattern 注入
 
 ### 3. 測試結果
-- **Unit Tests**: 34/34 passing (factory tests)
-- **Architecture Compliance**: 100% for plan endpoints
-- **Backward Compatibility**: 100% maintained
+- **Factory Tests**: `tests/unit/infrastructure/test_factory_circular_reference.py` 覆蓋所有 factory 建構。
+- **Integration Tests**: `tests/integration/api/test_plan_integration.py`, `tests/integration/api/test_plans_current_transaction_fix.py`。
+- **E2E Tests**: `tests/e2e/test_plan_limits_e2e.py`, `tests/e2e/test_plan_upgrade_e2e.py`。
+- **Use Case Unit Tests**: ⚠️ 待補；目前僅以 integration/e2e 驗證商業邏輯。
 
 ### 4. 程式碼品質
 - 移除約 300 行 legacy code
 - 消除硬編碼資料
 - 集中化商業邏輯
 - 提升可測試性
+
+> 註：use case 仍引用 legacy ORM enum (`core/services/plan_management_use_case.py:19`)，屬於 WP5 追蹤的 hybrid layer。
 
 ## 技術細節
 
@@ -75,6 +78,11 @@ async def get_available_plans_v1(
 - ✅ `PLAN_CONFIGS` 硬編碼已完全移除，改用 database-driven configuration
 - ✅ `_get_plan_value` helper 保留在 API 層作為轉換 utility
 - 🔄 未來優化: 建立 `BulkUsageResetUseCase` 處理 monthly reset operations
+
+## 待辦與後續建議
+1. 新增 `tests/unit/services/test_plan_management_use_case.py`，覆蓋成功/失敗案例。
+2. 將 use case 中對 legacy ORM enum 的依賴改為 core domain model（WP5）。
+3. 監控 `Depends(get_db)` 減量，確認後續端點持續依賴 factories。
 
 ## 交付物
 - [x] 程式碼更新與重構完成

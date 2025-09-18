@@ -1,304 +1,140 @@
 # Architectural Rules & Review Guidelines
 
 ## Overview
+This reference captures the Clean Architecture Lite guardrails for the coaching transcript tool. It documents the desired dependency flow, highlights the current hybrid exceptions, and outlines what reviewers should block during code review.
 
-This document defines the strict architectural rules and code review guidelines for our Clean Architecture implementation. These rules ensure proper separation of concerns and maintainable, testable code.
+## Current Snapshot (2025-09-17)
+- **Domain models** live in `src/coaching_assistant/core/models/` for sessions, usage logs, transcripts, and users. Plans / subscriptions use cases still import legacy ORM enums for compatibility (`src/coaching_assistant/core/services/plan_management_use_case.py:19`, `src/coaching_assistant/core/services/subscription_management_use_case.py:19`).
+- **Repository ports** in `core/repositories/ports.py` define the contracts; SQLAlchemy implementations in `infrastructure/db/repositories/` handle domain ↔ legacy conversion (e.g. `infrastructure/db/repositories/user_repository.py:12`).
+- **API layer**: Plans, plan-limits, subscriptions, and most session endpoints already depend on factories (`src/coaching_assistant/api/v1/plans.py:1`, `src/coaching_assistant/api/v1/subscriptions.py:1`), but there are still 88 direct `Depends(get_db)` injections across v1 endpoints (`rg "Depends(get_db" src/coaching_assistant/api/v1 | wc -l`).
+- **Known legacy services**: `core/services/admin_daily_report.py:9` and `core/services/ecpay_service.py:11` still depend on SQLAlchemy sessions and legacy ORM until WP5/WP6 removes them.
+- **Tests**: Factory, session, and subscription use cases have unit/integration/e2e coverage (`tests/unit/services/test_session_management_use_case.py`, `tests/unit/services/test_subscription_management_use_case.py`, `tests/e2e/test_subscription_flows_e2e.py`). Plans use cases lack dedicated unit tests; behaviour is guarded by integration/e2e suites.
 
 ## Architectural Boundaries
+| Layer | Allowed Dependencies | Current Notes |
+|-------|----------------------|---------------|
+| **Core services** (`core/services/`) | Domain models, repository ports, settings, Python stdlib | Do **not** add new SQLAlchemy or HTTP clients. Existing legacy exceptions limited to `admin_daily_report.py` and `ecpay_service.py` (must keep `# LEGACY` comment and cleanup task).
+| **Repository ports** (`core/repositories/ports.py`) | Domain models only | Contracts already reference domain dataclasses. Keep interfaces lean; add new ports before repositories.
+| **Infrastructure** (`infrastructure/db/*`) | SQLAlchemy, external clients, environment adapters | Responsible for domain ↔ ORM conversion. Commit/rollback must stay here.
+| **API (`api/v1`)** | FastAPI, Pydantic, injected use cases, response serializers | New endpoints must avoid `Depends(get_db)`; legacy endpoints may keep it temporarily but require a TODO to migrate and an entry in the relevant WP doc.
 
-### Dependency Rules
-
-1. **Core Layer Dependencies**
-   - `core/services/` (Use Cases) → ONLY depend on `core/repositories/ports.py` and domain models
-   - 🚫 **FORBIDDEN**: Direct SQLAlchemy imports, Session objects, ORM models
-   - 🚫 **FORBIDDEN**: Any infrastructure dependencies (HTTP clients, external APIs)
-   - ✅ **ALLOWED**: Domain models, repository ports, Python standard library
-
-2. **API Layer Dependencies**
-   - `api/` → Can depend on use cases, Pydantic schemas, but NOT infrastructure
-   - 🚫 **FORBIDDEN**: Direct database session injection
-   - 🚫 **FORBIDDEN**: Direct ORM model usage
-   - ✅ **ALLOWED**: FastAPI, Pydantic, dependency injection of use cases
-
-3. **Infrastructure Layer Dependencies**
-   - `infrastructure/` → Can depend on external libraries, implements ports
-   - ✅ **ALLOWED**: SQLAlchemy, Redis, HTTP clients, any external dependency
-   - ✅ **ALLOWED**: Repository port implementations
+### Known Legacy Exceptions
+| Path | Reason | Follow-up |
+|------|--------|-----------|
+| `src/coaching_assistant/core/services/admin_daily_report.py` | Generates analytics directly with SQLAlchemy queries. | Replace with reporting use case + repository queries (WP5/WP6).
+| `src/coaching_assistant/core/services/ecpay_service.py` | ECPay SDK still expects ORM objects & direct session access. | Introduce infrastructure client adapter during WP5, then swap service to use ports.
+| `src/coaching_assistant/api/v1/**` (88 matches) | Legacy endpoints keep direct DB access. | Each refactor should reduce this count; document exceptions inside the corresponding WP doc.
 
 ## Code Review Checklist
 
-### Critical Violations (❌ Reject Immediately)
-
+### Blocker Checks (❌ reject PR)
 ```bash
-# These patterns should NEVER appear in core/services/
-grep -r "from sqlalchemy" src/coaching_assistant/core/services/
-grep -r "Session" src/coaching_assistant/core/services/  
-grep -r "\.query\(" src/coaching_assistant/core/services/
-grep -r "\.filter\(" src/coaching_assistant/core/services/
-grep -r "\.commit\(\)" src/coaching_assistant/core/services/
+# Core services must not pull SQLAlchemy or direct ORM operations
+rg "from sqlalchemy" src/coaching_assistant/core/services
+rg "\.query\(" src/coaching_assistant/core/services
+rg "\.commit\(\)" src/coaching_assistant/core/services
 ```
+- [ ] No new SQLAlchemy imports or session parameters in `core/services/*` (legacy files must retain `# LEGACY` comment and open task).
+- [ ] Use cases never call `.query()`, `.add()`, `.commit()`, or external HTTP clients directly.
+- [ ] API endpoints do not introduce new ad-hoc business logic; domain exceptions are mapped to HTTP responses.
+- [ ] Repository implementations stay free of business rules and implement their port signatures.
 
-- [ ] **No SQLAlchemy imports** in `core/services/*`
-- [ ] **No Session objects** passed to use cases
-- [ ] **No ORM queries** in business logic
-- [ ] **No database commits** in use cases (handled by repositories)
-- [ ] **No external API calls** directly from use cases
+### API Layer Review
+- [ ] Prefer `api/v1/dependencies.py` factories for all new use case wiring.
+- [ ] Legacy endpoints that still inject `db: Session = Depends(get_db)` include a TODO pointing to the migration work package.
+- [ ] Incoming/outgoing DTOs are mapped at the API boundary (no ORM objects leaked).
 
-### API Layer Review (🔍 Required)
+### Repository Review
+- [ ] Implementation returns domain models (see `infrastructure/db/repositories/session_repository.py`).
+- [ ] Transactions use `session.flush()` where identity is needed; commits remain responsibility of the calling unit of work.
+- [ ] Exceptions are wrapped into domain/runtime errors before leaving the infrastructure layer.
 
-- [ ] Controllers only handle HTTP concerns (request/response)
-- [ ] Pydantic schemas converted to DTOs at boundary
-- [ ] No business logic in API endpoints
-- [ ] All use cases injected via dependency injection
-- [ ] Error handling converts domain exceptions to HTTP responses
+### Use Case Review
+- [ ] Single responsibility and clear inputs/outputs.
+- [ ] Dependencies injected by constructor (no global session access).
+- [ ] Business validations remain in use case/domain (e.g. plan limits in `core/services/session_management_use_case.py`).
 
-### Repository Review (🔍 Required)
-
-- [ ] All repositories implement their respective port interface
-- [ ] SQLAlchemy repositories handle all ORM concerns
-- [ ] In-memory repositories provided for testing
-- [ ] Repository exceptions properly handled and converted
-- [ ] No business logic in repository implementations
-
-### Use Case Review (🔍 Required)
-
-- [ ] Single responsibility principle followed
-- [ ] Clear input/output types defined
-- [ ] Business rules enforced within use case
-- [ ] Repository dependencies injected via constructor
-- [ ] No infrastructure concerns leaked
-
-## File Organization Rules
-
-### Directory Structure Enforcement
-
+## File Organisation Rules
 ```
 src/coaching_assistant/
 ├── core/
-│   ├── services/          # Use Cases - PURE business logic
-│   ├── repositories/      # Port interfaces ONLY
-│   │   └── ports.py       # Repository contracts
-│   └── models/            # Domain models (eventually)
+│   ├── models/            # Domain dataclasses & enums
+│   ├── repositories/      # Port definitions
+│   └── services/          # Use cases (pure business logic)
 ├── infrastructure/
-│   ├── db/
-│   │   ├── models/        # ORM models (future)
-│   │   ├── repositories/  # SQLAlchemy implementations
-│   │   └── session.py     # Database session management
-│   ├── memory_repositories.py  # In-memory test implementations
-│   └── factories.py       # Dependency injection factories
-└── api/                   # HTTP interface layer
+│   ├── db/repositories/   # SQLAlchemy adapters (domain ↔ ORM)
+│   ├── db/session.py      # DB session management helpers
+│   ├── factories.py       # Dependency injection factories
+│   └── memory_repositories.py
+└── api/
+    └── v1/                # FastAPI routers (HTTP only)
 ```
-
-### Naming Conventions
-
-- **Use Cases**: End with `UseCase` (e.g., `CreateUsageLogUseCase`)
-- **Repositories**: End with `Repository` (e.g., `SQLAlchemyUserRepository`)
-- **Ports**: End with `Port` (e.g., `UserRepoPort`)
-- **Factories**: End with `Factory` (e.g., `UsageTrackingServiceFactory`)
+| Naming | Convention |
+|--------|------------|
+| Use cases | `*UseCase` (e.g. `SessionCreationUseCase`) |
+| Repository implementations | `SQLAlchemy*Repository` |
+| Ports | `*Port` |
+| Factories | `*Factory` |
 
 ## Testing Requirements
+1. **Use case tests** must run with in-memory repositories or mocks (see `tests/unit/services/test_session_management_use_case.py`).
+2. **Repository tests** may use transactional database fixtures (`tests/integration/test_session_repository.py`).
+3. **API tests** should live under `tests/integration/api/` and exercise request/response contracts.
+4. **Unit suites** must not require a real database; fail-fast when a new dependency sneaks in.
 
-### Unit Test Rules
-
-1. **Use Case Tests** → MUST use in-memory repositories
-2. **Repository Tests** → Can use test database OR in-memory
-3. **API Tests** → Integration tests with real dependencies
-4. **No Database** → In unit tests for business logic
-
-### Test Structure Example
-
+Example:
 ```python
-# ✅ GOOD - Use case test with in-memory repos
-def test_create_usage_log_use_case():
-    user_repo = create_in_memory_user_repository()
-    usage_log_repo = create_in_memory_usage_log_repository()
-    session_repo = create_in_memory_session_repository()
-    
-    use_case = CreateUsageLogUseCase(
-        user_repo=user_repo,
-        usage_log_repo=usage_log_repo,
-        session_repo=session_repo,
-    )
-    
-    # Test business logic without database
+# ✅ GOOD: Pure use case test with in-memory repos
+use_case = SessionCreationUseCase(session_repo, user_repo, plan_config_repo)
+result = use_case.execute(user_id=user.id, title="Weekly sync")
 
-# ❌ BAD - Direct database dependency in unit test
-def test_create_usage_log_with_db(db_session):
-    service = UsageTrackingService(db_session)  # Violates isolation
+# ❌ BAD: Use case initialised with real Session
+use_case = SessionCreationUseCase(db_session)
 ```
 
 ## Migration Guidelines
+- **Phase 1** *(done, see `./done/phase-1-foundation-done.md`)*: established ports + pilot use case, kept APIs untouched.
+- **Phase 2** *(done, see `./done/phase-2-api-migration-done.md`)*: routed APIs through factories; many legacy endpoints still hold direct DB access.
+- **Phase 3** *(in progress – `phase-3-domain-models.md`)*: finishing domain ↔ ORM split, eliminating `Depends(get_db)` usage, and providing plan/subscription domain models.
+- **Phase 4–6**: track per work package (WP4 sessions vertical, WP5 domain/ORM convergence, WP6 cleanup & guardrails).
 
-### Phase-by-Phase Rules
+During migration keep compatibility wrappers (e.g. `infrastructure/factories.get_usage_tracking_service`) but mark them as deprecated and reference the sunset plan.
 
-**Phase 1** (Current):
-- ✅ Create ports and infrastructure
-- ✅ Migrate one service as pilot
-- 🚫 Do not change existing API endpoints yet
-
-**Phase 2** (Next):
-- ✅ Update API endpoints to use factories
-- ✅ Remove direct Session dependencies
-- 🚫 Do not change model imports yet
-
-**Phase 3** (Future):
-- ✅ Move ORM models to infrastructure
-- ✅ Create pure domain models
-- ✅ Complete separation
-
-### Backward Compatibility
-
-During migration, maintain backward compatibility:
-
-```python
-# ✅ GOOD - Compatibility wrapper during migration
-def get_usage_tracking_service(db_session: Session) -> CreateUsageLogUseCase:
-    """Legacy compatibility function."""
-    return UsageTrackingServiceFactory.create_usage_log_use_case(db_session)
-```
-
-## Code Quality Gates
-
-### Pre-commit Hooks
-
+## Quality Gates & Automation
 ```bash
-# Add these checks to .pre-commit-config.yaml
-- repo: local
-  hooks:
-  - id: architecture-check
-    name: Architecture boundary check
-    entry: scripts/check_architecture.py
-    language: python
-    files: ^src/coaching_assistant/(core|api|infrastructure)/
+# Suggested checks before merging
+make lint
+make test-unit
+make test-integration
+pytest tests/e2e -m "not slow"
+rg "Depends(get_db" src/coaching_assistant/api/v1   # ensure number trends downward
+rg "from sqlalchemy" src/coaching_assistant/core/services
 ```
+Add a pre-commit hook for architecture drift detection (`scripts/check_architecture.py`) when ready.
 
-### CI/CD Pipeline Checks
-
-```bash
-# Architecture validation in CI
-make architecture-check
-make test-unit  # Must pass without database
-make test-integration  # With database dependencies
-```
-
-## Violation Examples
-
-### ❌ BAD Examples
-
+## Examples
 ```python
-# VIOLATION: SQLAlchemy in use case
+# ❌ BAD: SQLAlchemy usage inside a new use case
 class CreateUsageLogUseCase:
-    def __init__(self, db: Session):  # ❌ Direct Session dependency
+    def __init__(self, db: Session):  # Direct session dependency
         self.db = db
-    
     def execute(self, session_data):
-        user = self.db.query(User).filter_by(id=user_id).first()  # ❌ Direct ORM
+        user = self.db.query(User).first()  # ORM logic leaks into business layer
 
-# VIOLATION: Business logic in API controller
-@router.post("/usage")
-def create_usage_log(request: UsageRequest, db: Session = Depends(get_db)):
-    if request.duration > plan_limits[user.plan]:  # ❌ Business logic in API
-        raise HTTPException(status_code=400, detail="Limit exceeded")
-    
-    user = db.query(User).filter_by(id=request.user_id).first()  # ❌ Direct DB query
-```
-
-### ✅ GOOD Examples
-
-```python
-# CORRECT: Clean use case with repository injection
+# ✅ GOOD: Use case depends on ports
 class CreateUsageLogUseCase:
     def __init__(self, user_repo: UserRepoPort, usage_log_repo: UsageLogRepoPort):
-        self.user_repo = user_repo  # ✅ Port dependency
+        self.user_repo = user_repo
         self.usage_log_repo = usage_log_repo
-    
-    def execute(self, session_data):
-        user = self.user_repo.get_by_id(user_id)  # ✅ Through repository
-
-# CORRECT: Clean API controller
-@router.post("/usage")
-def create_usage_log(
-    request: UsageRequest, 
-    use_case: CreateUsageLogUseCase = Depends(get_usage_log_use_case)
-):
-    try:
-        result = use_case.execute(request)  # ✅ Delegate to use case
-        return UsageResponse.from_domain(result)
-    except DomainException as e:
-        raise HTTPException(status_code=400, detail=str(e))
 ```
 
-## Review Process
-
-### Pull Request Template
-
-```markdown
-## Architecture Compliance ✅
-
-- [ ] Core services have no SQLAlchemy imports
-- [ ] API endpoints use dependency injection
-- [ ] All database operations go through repositories
-- [ ] Unit tests use in-memory repositories
-- [ ] No business logic in API controllers
-- [ ] Repository interfaces properly implemented
-
-## Migration Checklist
-
-- [ ] Backward compatibility maintained
-- [ ] Existing tests still pass
-- [ ] New tests added for use cases
-- [ ] Documentation updated
-```
-
-### Automated Checks
-
+### Legacy Bridge (allowed temporarily)
 ```python
-# scripts/check_architecture.py - Run in CI
-import ast
-import sys
-from pathlib import Path
-
-def check_core_dependencies():
-    """Ensure core services have no SQLAlchemy imports."""
-    core_services = Path("src/coaching_assistant/core/services").glob("*.py")
-    violations = []
-    
-    for file_path in core_services:
-        tree = ast.parse(file_path.read_text())
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                if node.module and "sqlalchemy" in node.module:
-                    violations.append(f"{file_path}:{node.lineno}")
-    
-    if violations:
-        print("❌ Architecture violations found:")
-        for violation in violations:
-            print(f"  {violation}")
-        sys.exit(1)
-    
-    print("✅ Architecture compliance verified")
-
-if __name__ == "__main__":
-    check_core_dependencies()
+# LEGACY: admin daily report still needs direct SQLAlchemy access.
+# Track removal in WP6.
+from sqlalchemy.orm import Session
+class AdminDailyReportService:
+    def __init__(self, db: Session, settings: Settings):
+        self.db = db
 ```
-
-## Enforcement Tools
-
-### Makefile Targets
-
-```makefile
-# Add to Makefile
-.PHONY: architecture-check
-architecture-check:
-	@echo "🔍 Checking architecture compliance..."
-	@python scripts/check_architecture.py
-	@echo "✅ Architecture rules verified"
-
-.PHONY: test-architecture
-test-architecture:
-	@echo "🧪 Running architecture tests..."
-	@pytest tests/architecture/ -v
-	@echo "✅ Architecture tests passed"
-```
-
-These rules ensure we maintain clean, testable, and maintainable architecture throughout the codebase evolution.
+Annotate such sections with `# LEGACY` and link to the follow-up item in the relevant work package.
