@@ -415,7 +415,7 @@ async def create_usage_snapshot(
 
 @router.get("/export")
 async def export_usage_data(
-    format: str = Query("csv", description="Export format: csv, json, pdf"),
+    format: str = Query("json", description="Export format: xlsx, txt, json"),
     period: str = Query("30d", description="Time period to export"),
     current_user: User = Depends(get_current_user_dependency),
     db: Session = Depends(get_db),
@@ -435,24 +435,104 @@ async def export_usage_data(
             current_user.id, period, "day"
         )
 
-        if format.lower() == "csv":
-            # TODO: Implement CSV export
+        if format.lower() == "xlsx":
+            # Create Excel export for usage data
+            def export_usage_to_excel(data):
+                """Convert usage trends data to Excel format."""
+                from openpyxl import Workbook
+                from openpyxl.styles import Font, PatternFill, Alignment
+                import io
+
+                wb = Workbook()
+                ws = wb.active
+                ws.title = "Usage History"
+
+                # Headers
+                headers = ["Date", "Sessions", "Minutes", "Transcriptions",
+                          "Exports", "Cost (USD)", "Storage (MB)"]
+                ws.append(headers)
+
+                # Style header
+                header_font = Font(bold=True, color="FFFFFF")
+                header_fill = PatternFill(start_color="366092", end_color="366092",
+                                        fill_type="solid")
+
+                for col_num, header in enumerate(headers, 1):
+                    cell = ws.cell(row=1, column=col_num)
+                    cell.font = header_font
+                    cell.fill = header_fill
+
+                # Add data rows
+                for item in data:
+                    ws.append([
+                        item.get('date', 'N/A'),
+                        item.get('sessions', 0),
+                        item.get('minutes', 0.0),
+                        item.get('transcriptions', 0),
+                        item.get('exports_generated', 0),
+                        item.get('cost', 0.0),
+                        item.get('storage_used_mb', 0.0)
+                    ])
+
+                # Auto-adjust column widths
+                for column in ws.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)
+                    ws.column_dimensions[column_letter].width = adjusted_width
+
+                # Save to buffer
+                buffer = io.BytesIO()
+                wb.save(buffer)
+                buffer.seek(0)
+                return buffer.getvalue()
+
+            excel_data = export_usage_to_excel(trends)
             return {
-                "message": "CSV export not yet implemented",
-                "data": trends,
+                "format": "xlsx",
+                "period": period,
+                "data": excel_data,
+                "filename": f"usage_history_{period}_{current_user.id}.xlsx"
+            }
+        elif format.lower() == "txt":
+            # Implement TXT export
+            def export_to_txt(data):
+                """Convert usage trends data to TXT format."""
+                lines = []
+                lines.append(f"Usage History Report - Period: {period}")
+                lines.append("=" * 50)
+                lines.append("")
+
+                for item in data:
+                    lines.append(f"Date: {item.get('date', 'N/A')}")
+                    lines.append(f"Sessions: {item.get('sessions', 0)}")
+                    lines.append(f"Minutes Processed: {item.get('minutes', 0):.1f}")
+                    lines.append(f"Transcriptions: {item.get('transcriptions', 0)}")
+                    lines.append(f"Exports Generated: {item.get('exports_generated', 0)}")
+                    lines.append(f"Cost (USD): ${item.get('cost', 0.0):.2f}")
+                    lines.append("-" * 30)
+
+                return "\n".join(lines)
+
+            txt_data = export_to_txt(trends)
+            return {
+                "format": "txt",
+                "period": period,
+                "data": txt_data,
+                "filename": f"usage_history_{period}_{current_user.id}.txt"
             }
         elif format.lower() == "json":
             return {"format": "json", "period": period, "data": trends}
-        elif format.lower() == "pdf":
-            # TODO: Implement PDF export
-            return {
-                "message": "PDF export not yet implemented",
-                "data": trends,
-            }
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Unsupported export format. Use csv, json, or pdf.",
+                detail="Unsupported export format. Use xlsx, txt, or json.",
             )
 
     except Exception as e:

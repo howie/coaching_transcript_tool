@@ -833,8 +833,12 @@ class BillingAnalyticsService:
                         float(record.total_minutes_processed)
                         for record in period_data
                     ),
-                    "new_signups": 0,  # TODO: Calculate actual new signups
-                    "churned_users": 0,  # TODO: Calculate actual churned users
+                    "new_signups": self._calculate_new_signups(
+                        current_date, next_date
+                    ),
+                    "churned_users": self._calculate_churned_users(
+                        current_date, next_date
+                    )
                 }
             )
 
@@ -854,13 +858,10 @@ class BillingAnalyticsService:
         # Add billing-specific calculations
         user = self.db.query(User).filter(User.id == user_id).first()
 
-        # Calculate revenue (simplified - would need actual billing integration)
-        revenue_data = {
-            "total_revenue": 0,  # TODO: Calculate from actual billing
-            "subscription_revenue": 0,
-            "overage_revenue": 0,
-            "one_time_fees": 0,
-        }
+        # Calculate revenue from usage data and user plan
+        revenue_data = self._calculate_revenue_data(
+            user, usage_data, period_start, period_end
+        )
 
         # User profile data
         user_profile = {
@@ -871,8 +872,8 @@ class BillingAnalyticsService:
                 else 0
             ),
             "segment": self._determine_user_segment(user_id),
-            "timezone": None,  # TODO: Get from user preferences
-            "country": None,  # TODO: Get from user profile
+            "timezone": self._get_user_timezone(user),
+            "country": self._get_user_country(user),
             "language": user.get_preferences().get("language", "en"),
         }
 
@@ -880,6 +881,111 @@ class BillingAnalyticsService:
         billing_data = {**usage_data, **revenue_data, **user_profile}
 
         return billing_data
+
+    def _calculate_new_signups(self, start_date: datetime, end_date: datetime) -> int:
+        """Calculate actual new signups for the period."""
+        new_users = (
+            self.db.query(User)
+            .filter(
+                and_(
+                    User.created_at >= start_date,
+                    User.created_at < end_date,
+                )
+            )
+            .count()
+        )
+        return new_users
+
+    def _calculate_churned_users(self, start_date: datetime, end_date: datetime) -> int:
+        """Calculate actual churned users for the period."""
+        # Define churn as users who had activity before this period but none during
+        # This is a simplified implementation - in practice, you'd want more
+        # sophisticated churn detection
+
+        # Users who were active before the period
+        active_before = (
+            self.db.query(User.id)
+            .join(UsageHistory)
+            .filter(UsageHistory.period_end < start_date)
+            .distinct()
+            .subquery()
+        )
+
+        # Users who were active during the period
+        active_during = (
+            self.db.query(User.id)
+            .join(UsageHistory)
+            .filter(
+                and_(
+                    UsageHistory.period_start >= start_date,
+                    UsageHistory.period_end < end_date,
+                )
+            )
+            .distinct()
+            .subquery()
+        )
+
+        # Churned users = active before but not active during
+        churned_count = (
+            self.db.query(User)
+            .filter(
+                and_(
+                    User.id.in_(self.db.query(active_before.c.id)),
+                    ~User.id.in_(self.db.query(active_during.c.id))
+                )
+            )
+            .count()
+        )
+
+        return churned_count
+
+    def _calculate_revenue_data(
+        self, user, usage_data, period_start: datetime, period_end: datetime
+    ) -> Dict[str, Any]:
+        """Calculate revenue data based on user plan and usage."""
+        from ..services.plan_limits import PlanLimitsService
+
+        plan_service = PlanLimitsService()
+        plan_config = plan_service.get_plan_limit(user.plan.value)
+
+        # Calculate subscription revenue based on plan
+        days_in_period = (period_end - period_start).days
+        monthly_price = getattr(plan_config, 'monthly_price_usd', 0) or 0
+
+        # Pro-rate for the period
+        subscription_revenue = (monthly_price * days_in_period) / 30
+
+        # Calculate overage revenue (simplified)
+        overage_revenue = 0
+        transcriptions_used = usage_data.get('transcriptions_completed', 0)
+        if transcriptions_used > plan_config.max_transcriptions:
+            overage_count = transcriptions_used - plan_config.max_transcriptions
+            overage_revenue = overage_count * 0.10  # $0.10 per overage
+
+        total_revenue = subscription_revenue + overage_revenue
+
+        return {
+            "total_revenue": round(total_revenue, 2),
+            "subscription_revenue": round(subscription_revenue, 2),
+            "overage_revenue": round(overage_revenue, 2),
+            "one_time_fees": 0,
+        }
+
+    def _get_user_timezone(self, user) -> str:
+        """Get user timezone from preferences or default."""
+        try:
+            preferences = user.get_preferences()
+            return preferences.get("timezone", "UTC")
+        except (AttributeError, TypeError):
+            return "UTC"
+
+    def _get_user_country(self, user) -> str:
+        """Get user country from profile or default."""
+        try:
+            preferences = user.get_preferences()
+            return preferences.get("country", "Unknown")
+        except (AttributeError, TypeError):
+            return "Unknown"
 
     def _determine_user_segment(self, user_id: UUID) -> str:
         """Determine user segment based on usage patterns."""
