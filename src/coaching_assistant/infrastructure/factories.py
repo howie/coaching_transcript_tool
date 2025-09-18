@@ -323,9 +323,11 @@ class SpeakerRoleServiceFactory:
             Fully configured SpeakerRoleAssignmentUseCase
         """
         session_repo = create_session_repository(db_session)
+        speaker_role_repo = create_speaker_role_repository(db_session)
 
         return SpeakerRoleAssignmentUseCase(
             session_repo=session_repo,
+            speaker_role_repo=speaker_role_repo,
         )
 
     @staticmethod
@@ -339,9 +341,11 @@ class SpeakerRoleServiceFactory:
             Fully configured SegmentRoleAssignmentUseCase
         """
         session_repo = create_session_repository(db_session)
+        segment_role_repo = create_segment_role_repository(db_session)
 
         return SegmentRoleAssignmentUseCase(
             session_repo=session_repo,
+            segment_role_repo=segment_role_repo,
         )
 
     @staticmethod
@@ -479,7 +483,6 @@ def create_ecpay_service(db_session: Session = None) -> "ECPaySubscriptionServic
         db_session = next(get_db_session())
 
     settings = Settings()
-
     # Create ECPay HTTP client
     ecpay_client = ECPayAPIClient(
         merchant_id=settings.ECPAY_MERCHANT_ID,
