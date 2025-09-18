@@ -1,22 +1,63 @@
-# WP6-Cleanup-3: Factory Pattern Migration - Complete Clean Architecture
+# WP6-Cleanup-3: Factory Pattern Migration - PARTIAL COMPLETION
 
-**Status**: 🔥 **Critical Priority** (Not Started)
-**Work Package**: WP6-Cleanup-3 - Factory Pattern Migration Complete
-**Epic**: Clean Architecture Cleanup Phase
+**Status**: ✅ PARTIAL IMPLEMENTATION COMPLETE (Phase 1 & 3)
+**Date**: 2025-09-18
+**Branch**: `feature/ca-lite/wp6-cleanup-3-factory-migration`
+**Version**: 2.15.5
 
-## Overview
+## Executive Summary
 
-Complete the factory pattern migration that is currently blocking Clean Architecture completion. This removes the last architectural violations and ensures proper dependency injection throughout the system.
+Successfully implemented **Phase 1** (API Dependencies Migration) and **Phase 3** (Factory Cleanup) of the factory pattern migration. **Phase 2** (Core Services Legacy Cleanup) has been deferred due to complex domain model requirements that exceed current scope.
 
-## User Value Statement
+## Completed Phases
 
-**As a developer**, I want **consistent dependency injection patterns across all API endpoints** so that **the codebase is maintainable, testable, and follows Clean Architecture principles**.
+### ✅ Phase 1: API Dependencies Migration (TDD)
+**Objective**: Migrate API layer from legacy models to domain models
 
-## Business Impact
+**Implementation**:
+- **File**: `src/coaching_assistant/api/v1/dependencies.py`
+- **Change**: Migrated `UserRole` import from legacy to domain model
+- **Before**: `from ...models.user import UserRole`
+- **After**: `from ...core.models.user import UserRole`
 
-- **Technical Debt**: Removes final architecture violations blocking completion
-- **Code Quality**: Enables proper testing and maintenance
-- **Development Velocity**: Consistent patterns improve development speed
+**Testing Results**:
+- ✅ All architecture compliance tests pass
+- ✅ Integration tests successful
+- ✅ API permission dependencies work correctly with domain models
+
+### ✅ Phase 3: Factory Cleanup and Architectural Compliance
+**Objective**: Remove deprecated legacy compatibility functions
+
+**Implementation**:
+- **File**: `src/coaching_assistant/infrastructure/factories.py`
+- **Removed**: `get_usage_tracking_service()` legacy compatibility function
+- **Removed**: Related TODO comments about legacy support
+- **Added**: Documentation comments explaining WP6-Cleanup-3 completion
+
+**Testing Results**:
+- ✅ All factory tests pass (test_factory_circular_reference.py)
+- ✅ No circular references or memory leaks
+- ✅ Clean Architecture principles maintained
+
+## Deferred Phase
+
+### 🚧 Phase 2: Core Services Legacy Cleanup (DEFERRED)
+**Reason for Deferral**: Complex domain model requirements
+
+**Issues Identified**:
+1. **Repository Ports Import Legacy Models**: Core layer still imports from legacy `models/*`
+2. **Missing Domain Models**: Need to create domain models for:
+   - `UsageHistory` (currently only legacy model exists)
+   - `UsageAnalytics` (complex analytics entity)
+   - Various other entities referenced in repository ports
+
+**Technical Complexity**:
+- Requires creating multiple new domain models
+- Needs comprehensive data transformation logic
+- Would require extensive testing of business logic migration
+- Exceeds scope of current factory migration work package
+
+**Recommendation**: Address in dedicated domain modeling work package (e.g., WP7-Domain-Models)
 
 ## Critical TODOs Being Resolved
 

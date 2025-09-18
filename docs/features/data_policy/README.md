@@ -131,11 +131,16 @@ GET    /api/compliance/retention-stats  # Retention statistics
 
 | Data Type | Free Plan | Pro Plan | Enterprise | Legal Minimum |
 |-----------|-----------|----------|------------|---------------|
+| **Audio Files** | 24 hours | 24 hours | 24 hours | 24 hours (auto-delete) |
+| **Transcript Segments** | User-controlled | User-controlled | User-controlled | Until deletion request |
+| **Coaching Sessions** | Permanent* | Permanent* | Permanent* | Until explicit deletion |
+| **Session Statistics** | Permanent | Permanent | Permanent | Permanent (anonymized) |
 | **Personal Data** | 30 days | 1 year | 2 years | Until deletion request |
 | **Usage Analytics** | Anonymized | Anonymized | Anonymized | Permanently (anonymized) |
 | **Billing Data** | 7 years | 7 years | 7 years | 7 years (legal requirement) |
-| **Session Content** | 30 days | 1 year | Permanent | Until deletion request |
 | **Audit Logs** | 1 year | 3 years | 7 years | 7 years (compliance) |
+
+*\*Coaching sessions preserved for accumulated coaching hours tracking - only deletable with explicit user confirmation*
 
 ## 🔐 Privacy by Design
 
