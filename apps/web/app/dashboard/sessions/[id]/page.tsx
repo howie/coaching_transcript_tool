@@ -607,8 +607,11 @@ ${t('sessions.aiChatFollowUp')}`;
       // Save segment-level role assignments via API
       await apiClient.updateSegmentRoles(transcriptionSessionId, tempSegmentRoles);
       
-      // TODO: Add API call to save content changes
-      // await apiClient.updateSegmentContent(transcriptionSessionId, tempSegmentContent);
+      // Save segment content changes via API
+      const contentResult = await apiClient.updateSegmentContent(transcriptionSessionId, tempSegmentContent);
+      if (!contentResult.success) {
+        console.warn('Content update not available:', contentResult.message);
+      }
       
       // Update local transcript data to include both roles and content changes
       setTranscript(prev => prev ? {
