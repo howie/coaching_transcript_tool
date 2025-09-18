@@ -123,7 +123,7 @@ def process_failed_payment_retry(self, payment_id: str):
             ecpay_service = create_ecpay_service()
 
             # Call the ECPay service retry method
-            retry_success = await ecpay_service.retry_failed_payments()
+            retry_success = ecpay_service.retry_failed_payments()
             success = retry_success
             logger.info(f"✅ ECPay retry service called successfully")
 
@@ -221,7 +221,7 @@ def send_payment_failure_notifications(self, notification_data: dict):
 
             # Send appropriate notification based on type
             if notification_data["notification_type"] == "payment_failure":
-                await notification_service.send_payment_failure_notification(
+                notification_service.send_payment_failure_notification(
                     user_email=notification_data["user_email"],
                     payment_details={
                         "amount": notification_data.get("amount_twd", 0),
