@@ -21,7 +21,7 @@ graph TB
     TF --> RENDER
     
     subgraph "GCP Resources"
-        GCS[Cloud Storage]
+        GCS["Simplified Storage<br/>(2 buckets total)"]
         STT[Speech-to-Text API]
         IAM[Service Accounts]
         SM[Secret Manager]
@@ -207,7 +207,9 @@ module "render" {
 Manages Google Cloud Platform resources with modular sub-components.
 
 **Features:**
-- Cloud Storage buckets with lifecycle policies
+- **Simplified Storage Architecture**: Unified audio bucket for both uploads and STT batch results
+- **Aggressive TTL Policies**: 1-day auto-deletion for GDPR compliance
+- **Database-First Transcripts**: All transcript data stored in PostgreSQL, not GCS
 - IAM service accounts and roles
 - Speech-to-Text API configuration
 - Secret Manager integration
@@ -217,13 +219,84 @@ Manages Google Cloud Platform resources with modular sub-components.
 ```hcl
 module "gcp" {
   source = "../../modules/gcp"
-  
+
   project_id  = "your-gcp-project"
   region      = "asia-southeast1"
   environment = "production"
-  
+
+  # Simplified storage configuration
+  # Only audio buckets needed - transcripts stored in database
+  enable_transcript_buckets = false  # Removed in v2.21.0
+
+  # Lifecycle policies
+  audio_bucket_ttl_days = 1  # GDPR compliance
+
   # Additional configuration...
 }
+```
+
+## 🗄️ Storage Architecture (Simplified)
+
+### Storage Bucket Consolidation
+
+Following the WP6 storage simplification, the infrastructure has been streamlined from **7 buckets to 2 buckets** (-71% reduction):
+
+#### Before: Complex Multi-Bucket Setup
+```
+coaching-audio-dev/          # Audio files (active)
+coaching-transcript-dev/     # Empty - removed
+coaching-audio-prod/         # Empty - removed
+coaching-transcript-prod/    # Empty - removed
+coaching-audio-prod-asia/    # Empty (prod bucket)
+coaching-transcript-prod-asia/ # Empty - removed
+coaching-transcript-terraform-state/ # State management only
+```
+
+#### After: Simplified Unified Architecture
+```
+coaching-audio-dev/
+├── audio-uploads/           # Original audio files (TTL: 1 day)
+└── batch-results/           # STT temporary results (TTL: 1 day)
+
+coaching-audio-prod-asia/
+├── audio-uploads/           # Original audio files (TTL: 1 day)
+└── batch-results/           # STT temporary results (TTL: 1 day)
+
+PostgreSQL Database          # All transcript data (permanent)
+```
+
+### Key Architecture Benefits
+
+✅ **Infrastructure Simplification**
+- 71% reduction in bucket count (7 → 2)
+- Unified lifecycle policies across all temporary files
+- Single bucket configuration per environment
+
+✅ **Operational Efficiency**
+- Simplified monitoring (2 buckets vs 7)
+- Reduced IAM complexity
+- Single TTL policy management
+
+✅ **Cost Optimization**
+- Eliminated unused bucket resources
+- Reduced Terraform resource count
+- Simplified backup and monitoring costs
+
+✅ **GDPR Compliance**
+- Aggressive 1-day TTL for all files
+- Transcript data safely in database
+- No personal data retention in cloud storage
+
+### Data Flow
+
+```
+Audio Upload → audio-uploads/{user_id}/{session_id}.{ext}
+     ↓
+STT Processing → batch-results/{uuid}/ (temporary)
+     ↓
+Transcript Data → PostgreSQL Database (permanent)
+     ↓
+File Cleanup → TTL removes all GCS files after 1 day
 ```
 
 ## 🌍 Environment Configurations
