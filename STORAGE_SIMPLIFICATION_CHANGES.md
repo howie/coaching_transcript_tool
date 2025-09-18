@@ -8,7 +8,7 @@
 
 ### 1. Removed TRANSCRIPT_STORAGE_BUCKET Dependency
 
-**Files Modified:**
+**Application Files Modified:**
 - `src/coaching_assistant/services/google_stt.py`
   - Updated `_get_transcript_output_bucket()` to use only `AUDIO_STORAGE_BUCKET`
   - Removed dependency on `TRANSCRIPT_STORAGE_BUCKET`
@@ -32,6 +32,28 @@
   - Removed `TRANSCRIPT_STORAGE_BUCKET` configuration
   - Updated comments to explain simplified architecture
   - Fixed bucket name to use existing `coaching-audio-dev`
+
+**Terraform Infrastructure Modified:**
+- `terraform/gcp/main.tf`
+  - Removed `google_storage_bucket.transcript_storage` resource
+  - Removed `google_storage_bucket.transcript_storage_prod` resource
+  - Added comments explaining database-only transcript storage
+
+- `terraform/gcp/outputs.tf`
+  - Removed all transcript bucket outputs
+  - Updated `env_vars_template` to exclude `TRANSCRIPT_STORAGE_BUCKET`
+
+- `terraform/gcp/iam.tf`
+  - Removed `google_storage_bucket_iam_member.transcript_storage_admin`
+
+- `terraform/modules/render/main.tf`
+  - Removed `TRANSCRIPT_STORAGE_BUCKET` from environment variables
+
+- `terraform/modules/render/variables.tf`
+  - Removed `transcript_storage_bucket` variable definition
+
+- `terraform/gcp/Makefile`
+  - Removed transcript bucket from environment file generation
 
 ### 2. Simplified Architecture
 
@@ -61,6 +83,8 @@ coaching-audio-prod-asia/
 1. **Syntax Check**: All modified files compile successfully
 2. **Import Test**: Configuration and services import without errors
 3. **Configuration**: Audio bucket correctly configured as `coaching-audio-dev-asia`
+4. **Terraform Validation**: `terraform validate` passes successfully
+5. **Infrastructure**: All transcript bucket resources removed from Terraform
 
 ## 📋 Impact Assessment
 
