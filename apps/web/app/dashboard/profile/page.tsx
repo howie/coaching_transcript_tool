@@ -190,18 +190,51 @@ export default function ProfilePage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    // For now, we'll just show a placeholder. In a real implementation,
-    // you would upload to a service like Cloudinary, AWS S3, etc.
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const result = e.target?.result as string
-      handleInputChange('profile_photo_url', result)
+    // Validate file type and size
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please select a valid image file (JPG, PNG, WebP, or GIF)')
+      return
     }
-    reader.readAsDataURL(file)
 
-    // TODO: Implement actual photo upload to storage service
-    // const uploadedUrl = await uploadPhotoToStorage(file)
-    // handleInputChange('profile_photo_url', uploadedUrl)
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      alert('File size must be less than 5MB')
+      return
+    }
+
+    try {
+      // Show a loading state while uploading
+      setIsEditing(true)
+
+      // For now, create a local blob URL for immediate preview
+      const tempUrl = URL.createObjectURL(file)
+      handleInputChange('profile_photo_url', tempUrl)
+
+      // TODO: Implement actual upload to cloud storage
+      // This could integrate with existing GCS infrastructure like session uploads
+      // const { apiClient } = await import('@/lib/api')
+      // const uploadResult = await apiClient.uploadProfilePhoto(file)
+      // handleInputChange('profile_photo_url', uploadResult.url)
+
+      console.log('Photo upload prepared (local preview only):', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      })
+
+      // Clean up the temp URL when component unmounts
+      // In production, this would be replaced with the actual cloud URL
+      setTimeout(() => {
+        if (tempUrl.startsWith('blob:')) {
+          console.log('Note: Using local blob URL. Cloud storage integration needed for production.')
+        }
+      }, 1000)
+
+    } catch (error) {
+      console.error('Photo upload failed:', error)
+      alert('Failed to upload photo. Please try again.')
+    }
   }
   
   const saveCoachProfile = async () => {

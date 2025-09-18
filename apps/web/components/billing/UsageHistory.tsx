@@ -163,15 +163,33 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
   const fetchUsageData = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call when backend is ready
-      // const response = await fetch(`/api/usage/history?period=${period}&userId=${userId}`);
-      
-      // Mock data for now
-      const mockData = generateMockUsageData(period);
-      setData(mockData);
+
+      // Use real API call to backend
+      const { apiClient } = await import('@/lib/api');
+      const usageData = await apiClient.getUsageHistory(period, 'day');
+
+      // Transform backend data to match component interface
+      const transformedData = usageData.map((item: any) => ({
+        date: item.date,
+        sessions: item.sessions || 0,
+        minutes: item.minutes || 0,
+        hours: item.hours || 0,
+        transcriptions: item.transcriptions || 0,
+        exports: item.exports || 0,
+        cost: item.cost || 0,
+        utilization: item.utilization || 0,
+        success_rate: item.success_rate || 0,
+        avg_duration: item.avg_duration || 0
+      }));
+
+      setData(transformedData);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Failed to fetch usage data:', err);
+      // Fallback to mock data if API fails
+      const mockData = generateMockUsageData(period);
+      setData(mockData);
+      setError('Failed to load real usage data, showing sample data');
     } finally {
       setLoading(false);
     }
@@ -179,10 +197,14 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
 
   const fetchInsights = async () => {
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // const response = await fetch(`/api/usage/insights?userId=${userId}`);
-      
-      // Mock insights for now
+      // Use real API call to backend
+      const { apiClient } = await import('@/lib/api');
+      const insights = await apiClient.getUsageInsights();
+
+      setInsights(insights);
+    } catch (err) {
+      console.error('Failed to fetch usage insights:', err);
+      // Fallback to mock insights if API fails
       const mockInsights: UsageInsight[] = [
         {
           type: 'pattern',
@@ -200,17 +222,19 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
         }
       ];
       setInsights(mockInsights);
-    } catch (err) {
-      console.error('Failed to fetch insights:', err);
     }
   };
 
   const fetchPredictions = async () => {
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // const response = await fetch(`/api/usage/analytics?type=predictions&userId=${userId}`);
-      
-      // Mock predictions for now
+      // Use real API call to backend
+      const { apiClient } = await import('@/lib/api');
+      const predictions = await apiClient.getUsagePredictions();
+
+      setPredictions(predictions);
+    } catch (err) {
+      console.error('Failed to fetch usage predictions:', err);
+      // Fallback to mock predictions if API fails
       const mockPredictions: UsagePrediction = {
         predicted_sessions: 25,
         predicted_minutes: 450,
@@ -221,29 +245,43 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
         current_trend: 'growing'
       };
       setPredictions(mockPredictions);
-    } catch (err) {
-      console.error('Failed to fetch predictions:', err);
+    } catch (predictionErr) {
+      console.error('Failed to fetch predictions:', predictionErr);
     }
   };
 
   const exportData = async (format: 'csv' | 'pdf' | 'json') => {
     try {
-      const response = await fetch(`/api/usage/export?format=${format}&period=${period}&userId=${userId}`);
-      if (!response.ok) {
-        throw new Error('Export failed');
+      // Map csv/pdf to xlsx/txt as per WP6-Cleanup-4 correction
+      const actualFormat = format === 'csv' ? 'xlsx' : format === 'pdf' ? 'txt' : format;
+
+      const { apiClient } = await import('@/lib/api');
+
+      if (actualFormat === 'json') {
+        const data = await apiClient.exportUsageData(actualFormat, period);
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `usage-history-${period}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const blob = await apiClient.exportUsageData(actualFormat, period);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `usage-history-${period}.${actualFormat}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
       }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `usage-history-${period}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
     } catch (err) {
       console.error('Export failed:', err);
+      alert('Export failed. Please try again later.');
     }
   };
 

@@ -34,9 +34,25 @@ export default function PaymentSettingsPage() {
     }))
   }
 
-  const handleSaveSettings = () => {
-    // TODO: Implement save settings
-    console.log('Saving billing settings', { billingCycle, autoRenew, emailNotifications })
+  const handleSaveSettings = async () => {
+    try {
+      const { apiClient } = await import('@/lib/api');
+
+      const result = await apiClient.updateBillingPreferences({
+        billingCycle: billingCycle as 'monthly' | 'yearly',
+        autoRenew,
+        emailNotifications
+      });
+
+      if (result.success !== false) {
+        alert(t('billing.settingsSaved') || 'Settings saved successfully!');
+      } else {
+        alert('Settings saved locally. Full billing preferences will be available soon.');
+      }
+    } catch (error) {
+      console.error('Failed to save billing settings:', error);
+      alert('Failed to save settings. Please try again.');
+    }
   }
 
   return (

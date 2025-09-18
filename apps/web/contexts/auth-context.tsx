@@ -206,6 +206,43 @@ const authStore = createStore<AuthState>((set, get) => ({
 const AuthContext = createContext<typeof authStore | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Function to attempt token refresh
+  const attemptTokenRefresh = async (refreshToken: string) => {
+    try {
+      console.log('AuthProvider: Attempting to refresh access token')
+      const { apiClient } = await import('@/lib/api')
+      const result = await apiClient.refreshAccessToken(refreshToken)
+
+      if (result.access_token) {
+        console.log('AuthProvider: Token refresh successful, logging in with new token')
+
+        // Store new tokens
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('token', result.access_token)
+          if (result.refresh_token) {
+            localStorage.setItem('refresh_token', result.refresh_token)
+          }
+        }
+
+        // Login with new token
+        authStore.getState().login(result.access_token)
+      } else {
+        throw new Error('No access token in refresh response')
+      }
+    } catch (error) {
+      console.error('AuthProvider: Token refresh failed:', error)
+
+      // Clear invalid tokens
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('refresh_token')
+      }
+
+      // Set not loading and force re-authentication
+      authStore.setState({ isLoading: false, user: null, token: null })
+    }
+  }
+
   useEffect(() => {
     let token: string | null = null
     let refreshToken: string | null = null
@@ -230,9 +267,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('AuthProvider: Attempting login with existing token')
       authStore.getState().login(token)
     } else if (refreshToken) {
-      console.log('AuthProvider: Have refresh token but no access token - user may need to re-authenticate')
-      // TODO: Implement refresh token flow here
-      authStore.setState({ isLoading: false })
+      console.log('AuthProvider: Have refresh token but no access token - attempting to refresh')
+      // Implement refresh token flow
+      attemptTokenRefresh(refreshToken)
     } else {
       console.log('AuthProvider: No tokens found, setting not loading')
       authStore.setState({ isLoading: false })
