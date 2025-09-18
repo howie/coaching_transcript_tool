@@ -442,24 +442,8 @@ class SubscriptionServiceFactory:
         )
 
 
-# Convenience functions for backward compatibility during migration
-# TODO: Remove after all API endpoints migrate to factory pattern (WP2-WP4)
-def get_usage_tracking_service(db_session: Session) -> CreateUsageLogUseCase:
-    """Get usage tracking service (legacy compatibility function).
-
-    This function provides backward compatibility during the migration
-    from the old UsageTrackingService to the new use case architecture.
-
-    DEPRECATED: Use UsageTrackingServiceFactory.create_usage_log_use_case directly.
-
-    Args:
-        db_session: SQLAlchemy database session
-
-    Returns:
-        CreateUsageLogUseCase instance
-    """
-    # TODO: Add deprecation warning once API migration is complete
-    return UsageTrackingServiceFactory.create_usage_log_use_case(db_session)
+# Legacy compatibility functions have been removed as part of WP6-Cleanup-3
+# All API endpoints now use factory pattern directly
 
 
 # ECPay and Notification Service Factories for WP6-Cleanup-2

@@ -4,24 +4,35 @@ This module contains use cases for managing speaker role assignments at both
 session level (speaker-based) and segment level (individual segment overrides).
 """
 
-from typing import Dict, List, Optional
+from typing import Dict
 from uuid import UUID
 
-from ..models.session import Session, SessionStatus
+from ..models.session import SessionStatus
 from ..models.transcript import SessionRole, SegmentRole, SpeakerRole
-from ..repositories.ports import SessionRepoPort, SpeakerRoleRepoPort, SegmentRoleRepoPort
+from ..repositories.ports import (
+    SessionRepoPort,
+    SpeakerRoleRepoPort,
+    SegmentRoleRepoPort,
+)
 
 
 class SpeakerRoleAssignmentUseCase:
     """Use case for managing speaker role assignments at session level."""
 
-    def __init__(self, session_repo: SessionRepoPort):
+    def __init__(
+        self,
+        session_repo: SessionRepoPort,
+        speaker_role_repo: SpeakerRoleRepoPort,
+    ):
         """Initialize with repository dependencies.
 
         Args:
             session_repo: Session repository port for session operations
+            speaker_role_repo: Speaker role repository port for role data
+                operations
         """
         self.session_repo = session_repo
+        self.speaker_role_repo = speaker_role_repo
 
     def execute(
         self,
@@ -53,7 +64,8 @@ class SpeakerRoleAssignmentUseCase:
         # Business rule: Can only update roles for completed sessions
         if session.status != SessionStatus.COMPLETED:
             raise ValueError(
-                f"Cannot update speaker roles. Session status: {session.status.value}. "
+                f"Cannot update speaker roles. Session status: "
+                f"{session.status.value}. "
                 f"Roles can only be updated for completed sessions."
             )
 
@@ -85,28 +97,29 @@ class SpeakerRoleAssignmentUseCase:
             session_role.validate()  # Domain validation
             session_roles.append(session_role)
 
-        # Here we would normally call a speaker role repository to save the assignments
-        # For now, we'll return the validated assignments
-        # TODO: Implement SpeakerRoleRepoPort and update this logic
+        # Save the speaker role assignments via repository
+        saved_roles = self.speaker_role_repo.save_speaker_roles(session_id, session_roles)
 
         return {
             "message": "Speaker roles updated successfully",
             "session_id": str(session_id),
             "speaker_roles": speaker_roles,
-            "assignments_count": len(session_roles)
+            "assignments_count": len(saved_roles)
         }
 
 
 class SegmentRoleAssignmentUseCase:
     """Use case for managing individual segment role assignments."""
 
-    def __init__(self, session_repo: SessionRepoPort):
+    def __init__(self, session_repo: SessionRepoPort, segment_role_repo: SegmentRoleRepoPort):
         """Initialize with repository dependencies.
 
         Args:
             session_repo: Session repository port for session operations
+            segment_role_repo: Segment role repository port for segment role data operations
         """
         self.session_repo = session_repo
+        self.segment_role_repo = segment_role_repo
 
     def execute(
         self,
@@ -168,15 +181,14 @@ class SegmentRoleAssignmentUseCase:
             segment_role.validate()  # Domain validation
             segment_role_assignments.append(segment_role)
 
-        # Here we would normally call a segment role repository to save the assignments
-        # For now, we'll return the validated assignments
-        # TODO: Implement SegmentRoleRepoPort and update this logic
+        # Save the segment role assignments via repository
+        saved_roles = self.segment_role_repo.save_segment_roles(session_id, segment_role_assignments)
 
         return {
             "message": "Segment roles updated successfully",
             "session_id": str(session_id),
             "segment_roles": segment_roles,
-            "assignments_count": len(segment_role_assignments)
+            "assignments_count": len(saved_roles)
         }
 
 

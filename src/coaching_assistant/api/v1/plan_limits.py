@@ -361,25 +361,28 @@ async def reset_monthly_usage(
         )
 
     try:
-        # TODO: Implement a dedicated UseCase for bulk usage reset operations
-        # For now, we'll log the intent but note that this functionality
-        # needs to be implemented in a proper use case
-        logger.warning(
-            "Monthly usage reset requested but not yet implemented in Clean Architecture. "
-            "This requires a dedicated BulkUsageResetUseCase implementation."
-        )
+        # Use dedicated BulkUsageResetUseCase for bulk operations
+        from ...core.services.bulk_operations_use_case import BulkUsageResetUseCase
+        from ...infrastructure.factories import RepositoryFactory
 
-        # Placeholder response - in a full implementation, we'd have:
-        # reset_result = bulk_usage_reset_use_case.reset_all_monthly_usage()
-        reset_count = 0  # Placeholder
+        # Create use case with repository dependencies
+        usage_history_repo = RepositoryFactory.create_usage_log_repository(db)
+        user_repo = RepositoryFactory.create_user_repository(db)
+        bulk_reset_use_case = BulkUsageResetUseCase(usage_history_repo, user_repo)
 
-        logger.info(f"Reset monthly usage for {reset_count} users")
+        # Execute bulk usage reset
+        reset_result = bulk_reset_use_case.reset_all_monthly_usage()
+
+        if reset_result["success"]:
+            logger.info(f"✅ Reset monthly usage for {reset_result['users_reset']} users")
+        else:
+            logger.error(f"❌ Bulk usage reset failed: {reset_result.get('error', 'Unknown error')}")
+
+        reset_count = reset_result.get("users_reset", 0)
 
         return {
-            "success": True,
-            "users_reset": reset_count,
-            "reset_time": datetime.utcnow().isoformat() + "Z",
-            "note": "Clean Architecture migration: BulkUsageResetUseCase implementation needed"
+            **reset_result,  # Include all results from use case
+            "reset_time": datetime.utcnow().isoformat() + "Z"
         }
 
     except Exception as e:

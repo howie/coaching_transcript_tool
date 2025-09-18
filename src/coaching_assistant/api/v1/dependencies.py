@@ -163,7 +163,7 @@ async def require_super_admin(
     current_user = Depends(get_current_user_dependency),
 ) -> None:
     """Dependency to ensure the current user has super admin permissions."""
-    from ...models.user import UserRole
+    from ...core.models.user import UserRole
     if not current_user or current_user.role != UserRole.SUPER_ADMIN:
         raise HTTPException(
             status_code=403,
@@ -175,7 +175,7 @@ async def require_admin(
     current_user = Depends(get_current_user_dependency),
 ) -> None:
     """Dependency to ensure the current user has admin permissions."""
-    from ...models.user import UserRole
+    from ...core.models.user import UserRole
     if not current_user or current_user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
         raise HTTPException(
             status_code=403,
@@ -187,7 +187,7 @@ async def require_staff(
     current_user = Depends(get_current_user_dependency),
 ) -> None:
     """Dependency to ensure the current user has staff permissions or higher."""
-    from ...models.user import UserRole
+    from ...core.models.user import UserRole
     if not current_user or current_user.role not in [UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN]:
         raise HTTPException(
             status_code=403,

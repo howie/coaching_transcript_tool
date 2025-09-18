@@ -460,17 +460,48 @@ class UsageAnalyticsService:
             "export_formats": plan_config.export_formats,
         }
 
+        # Calculate storage usage from session file sizes
+        storage_used_mb = sum(
+            getattr(session, 'audio_file_size_mb', 0) or 0
+            for session in sessions
+        )
+
+        # Track exports by format from usage logs
+        export_logs = [
+            log for log in usage_logs
+            if log.operation_type and 'export' in log.operation_type.lower()
+        ]
+        exports_by_format = {}
+        for log in export_logs:
+            # Extract format from operation_type (e.g., "export_csv" -> "csv")
+            if '_' in log.operation_type:
+                format_type = log.operation_type.split('_')[-1].lower()
+                current_count = exports_by_format.get(format_type, 0)
+                exports_by_format[format_type] = current_count + 1
+
+        # Track failed transcriptions from usage logs
+        failed_transcriptions = len([
+            log for log in usage_logs
+            if log.status and log.status.lower() in ['failed', 'error']
+        ])
+
+        # Calculate API calls from total usage log entries
+        api_calls_made = len(usage_logs)
+
+        # Calculate concurrent sessions peak
+        concurrent_peak = self._calculate_concurrent_sessions_peak(sessions)
+
         return {
             "sessions_created": len(sessions),
             "audio_minutes_processed": total_minutes,
             "transcriptions_completed": len(usage_logs),
-            "exports_generated": 0,  # TODO: Track exports separately
-            "storage_used_mb": 0,  # TODO: Calculate storage usage
+            "exports_generated": len(export_logs),
+            "storage_used_mb": storage_used_mb,
             "unique_clients": len(
                 set(log.client_id for log in usage_logs if log.client_id)
             ),
-            "api_calls_made": 0,  # TODO: Track API calls
-            "concurrent_sessions_peak": 1,  # TODO: Track concurrent sessions
+            "api_calls_made": api_calls_made,
+            "concurrent_sessions_peak": concurrent_peak,
             "plan_name": user.plan.value,
             "plan_limits": plan_limits_dict,
             "total_cost_usd": total_cost,
@@ -478,10 +509,44 @@ class UsageAnalyticsService:
             "free_retries": free_retries,
             "google_stt_minutes": google_minutes,
             "assemblyai_minutes": assemblyai_minutes,
-            "exports_by_format": {},  # TODO: Track export formats
+            "exports_by_format": exports_by_format,
             "avg_processing_time_seconds": avg_processing_time,
-            "failed_transcriptions": 0,  # TODO: Track failed transcriptions
+            "failed_transcriptions": failed_transcriptions,
         }
+
+    def _calculate_concurrent_sessions_peak(self, sessions) -> int:
+        """Calculate the peak number of concurrent sessions."""
+        if not sessions:
+            return 0
+
+        # Create timeline events for session start/end
+        events = []
+        for session in sessions:
+            if hasattr(session, 'created_at') and session.created_at:
+                events.append((session.created_at, 'start'))
+
+                # Use updated_at as end time if available, otherwise assume 1 hour duration
+                end_time = getattr(session, 'updated_at', None)
+                if not end_time:
+                    from datetime import timedelta
+                    end_time = session.created_at + timedelta(hours=1)
+                events.append((end_time, 'end'))
+
+        # Sort events by timestamp
+        events.sort(key=lambda x: x[0])
+
+        # Calculate peak concurrent sessions
+        current_concurrent = 0
+        peak_concurrent = 0
+
+        for timestamp, event_type in events:
+            if event_type == 'start':
+                current_concurrent += 1
+                peak_concurrent = max(peak_concurrent, current_concurrent)
+            else:  # end
+                current_concurrent -= 1
+
+        return peak_concurrent
 
     def _parse_period_to_date(self, period: str) -> datetime:
         """Parse period string to start date."""

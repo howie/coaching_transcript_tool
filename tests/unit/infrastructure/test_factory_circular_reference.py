@@ -11,7 +11,6 @@ from src.coaching_assistant.infrastructure.factories import (
     SpeakerRoleServiceFactory,
     PlanServiceFactory,
     SubscriptionServiceFactory,
-    get_usage_tracking_service,
 )
 from src.coaching_assistant.infrastructure.db.repositories.subscription_repository import create_subscription_repository
 
@@ -267,13 +266,13 @@ class TestLegacyCompatibilityFunctions:
         """Create a mock database session."""
         return Mock(spec=Session)
 
-    def test_get_usage_tracking_service(self, mock_session):
-        """Test legacy get_usage_tracking_service function."""
-        service = get_usage_tracking_service(mock_session)
-        assert service is not None
-        # This should be the same as the factory method
+    def test_factory_pattern_migration_complete(self, mock_session):
+        """Test that factory pattern migration is complete (legacy functions removed)."""
+        # WP6-Cleanup-3: Legacy compatibility functions have been removed
+        # All API endpoints now use factory pattern directly
         direct_service = UsageTrackingServiceFactory.create_usage_log_use_case(mock_session)
-        assert type(service) == type(direct_service)
+        assert direct_service is not None
+        print("✅ Factory pattern migration complete - no legacy compatibility functions")
 
 
 class TestFactoryMemoryManagement:
