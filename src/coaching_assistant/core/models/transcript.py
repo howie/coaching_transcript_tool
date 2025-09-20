@@ -10,9 +10,9 @@ from uuid import UUID
 class SpeakerRole(enum.Enum):
     """Speaker roles in coaching session."""
 
-    COACH = "coach"
-    CLIENT = "client"
-    UNKNOWN = "unknown"
+    COACH = "COACH"
+    CLIENT = "CLIENT"
+    UNKNOWN = "UNKNOWN"
 
 
 @dataclass

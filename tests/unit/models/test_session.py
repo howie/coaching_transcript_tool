@@ -230,7 +230,7 @@ class TestSessionMethods:
         db_session.add(role)
         db_session.commit()
 
-        assert sample_session.get_speaker_role(1) == "coach"
+        assert sample_session.get_speaker_role(1) == "COACH"
 
     def test_get_speaker_role_without_assigned_role(self, sample_session):
         """Test get_speaker_role method without assigned role."""

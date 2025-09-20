@@ -22,9 +22,8 @@ import logging
 import re
 
 from ...core.database import get_db  # Still needed for role management endpoints
-from ...core.models.session import SessionStatus
 # TEMPORARY: Still needed for legacy endpoints that haven't been migrated to Clean Architecture
-from ...models.session import Session
+from ...models.session import Session, SessionStatus
 from ...models.transcript import TranscriptSegment
 from ...models.user import User
 from .auth import get_current_user_dependency
@@ -71,7 +70,7 @@ class SessionCreate(BaseModel):
 class SessionResponse(BaseModel):
     id: UUID
     title: str
-    status: SessionStatus
+    status: str
     language: str
     stt_provider: Optional[str] = None
     audio_filename: Optional[str]
@@ -97,7 +96,7 @@ class SessionResponse(BaseModel):
         return cls(
             id=session.id,
             title=session.title,
-            status=session.status,
+            status=session.status.value,
             language=session.language,
             stt_provider=session.stt_provider,
             audio_filename=session.audio_filename,
@@ -133,7 +132,7 @@ class TranscriptExportResponse(BaseModel):
 
 class SessionStatusResponse(BaseModel):
     session_id: UUID
-    status: SessionStatus
+    status: str
     progress: int
     message: Optional[str]
     duration_processed: Optional[int]
@@ -774,7 +773,7 @@ async def get_session_status(
 
         response = SessionStatusResponse(
             session_id=session.id,
-            status=session.status,
+            status=session.status.value,
             progress=processing_status["progress_percentage"],
             message=processing_status["message"],
             duration_processed=processing_status["duration_processed"],
@@ -806,6 +805,10 @@ class SpeakerRoleUpdateRequest(BaseModel):
 
 class SegmentRoleUpdateRequest(BaseModel):
     segment_roles: dict[str, str]  # segment_id -> role
+
+
+class SegmentContentUpdateRequest(BaseModel):
+    segment_content: dict[str, str]  # segment_id -> content
 
 
 @router.patch("/{session_id}/speaker-roles")
@@ -868,6 +871,59 @@ async def update_segment_roles(
             raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@router.patch("/{session_id}/segment-content")
+async def update_segment_content(
+    session_id: UUID,
+    request: SegmentContentUpdateRequest,
+    current_user: User = Depends(get_current_user_dependency),
+    db: DBSession = Depends(get_db),
+):
+    """Update transcript segment content for a session."""
+    try:
+        # Verify session ownership and status
+        session = db.query(Session).filter(Session.id == session_id).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        if session.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied - session not owned by user")
+
+        if session.status != SessionStatus.COMPLETED:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot update segment content. Session status: {session.status.value}. Content can only be updated for completed sessions."
+            )
+
+        # Update segment content
+        updated_count = 0
+        for segment_id_str, new_content in request.segment_content.items():
+            try:
+                segment_id = UUID(segment_id_str)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid segment ID format: {segment_id_str}")
+
+            # Update the segment content
+            result = db.query(TranscriptSegment).filter(
+                TranscriptSegment.id == segment_id,
+                TranscriptSegment.session_id == session_id
+            ).update({"content": new_content})
+
+            updated_count += result
+
+        db.commit()
+
+        return {
+            "message": "Segment content updated successfully",
+            "session_id": str(session_id),
+            "segments_updated": updated_count
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected error updating segment content for session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 def _export_json(
@@ -920,7 +976,7 @@ def _export_vtt(
         session_id=session.id, user_id=user_id
     )
     role_assignments = {
-        speaker_id: ("教練" if role == "coach" else "客戶")
+        speaker_id: ("教練" if role.upper() == "COACH" else "客戶")
         for speaker_id, role in role_assignments_raw.items()
     }
 
@@ -929,7 +985,7 @@ def _export_vtt(
         session_id=session.id, user_id=user_id
     )
     segment_roles = {
-        segment_id: ("教練" if role == "coach" else "客戶")
+        segment_id: ("教練" if role.upper() == "COACH" else "客戶")
         for segment_id, role in segment_roles_raw.items()
     }
 
@@ -959,7 +1015,7 @@ def _export_srt(
         session_id=session.id, user_id=user_id
     )
     role_assignments = {
-        speaker_id: ("教練" if role == "coach" else "客戶")
+        speaker_id: ("教練" if role.upper() == "COACH" else "客戶")
         for speaker_id, role in role_assignments_raw.items()
     }
 
@@ -968,7 +1024,7 @@ def _export_srt(
         session_id=session.id, user_id=user_id
     )
     segment_roles = {
-        segment_id: ("教練" if role == "coach" else "客戶")
+        segment_id: ("教練" if role.upper() == "COACH" else "客戶")
         for segment_id, role in segment_roles_raw.items()
     }
 
@@ -999,7 +1055,7 @@ def _export_txt(
         session_id=session.id, user_id=user_id
     )
     role_assignments = {
-        speaker_id: ("教練" if role == "coach" else "客戶")
+        speaker_id: ("教練" if role.upper() == "COACH" else "客戶")
         for speaker_id, role in role_assignments_raw.items()
     }
 
@@ -1008,7 +1064,7 @@ def _export_txt(
         session_id=session.id, user_id=user_id
     )
     segment_roles = {
-        segment_id: ("教練" if role == "coach" else "客戶")
+        segment_id: ("教練" if role.upper() == "COACH" else "客戶")
         for segment_id, role in segment_roles_raw.items()
     }
 
@@ -1043,7 +1099,7 @@ def _export_xlsx(
     )
     # Normalize to English labels for the Excel dataset; map later to Chinese
     role_assignments = {
-        speaker_id: ("Coach" if role == "coach" else "Client")
+        speaker_id: ("Coach" if role.upper() == "COACH" else "Client")
         for speaker_id, role in role_assignments_raw.items()
     }
 
@@ -1052,7 +1108,7 @@ def _export_xlsx(
         session_id=session.id, user_id=user_id
     )
     segment_roles = {
-        segment_id: ("Coach" if role == "coach" else "Client")
+        segment_id: ("Coach" if role.upper() == "COACH" else "Client")
         for segment_id, role in segment_roles_raw.items()
     }
 
@@ -1064,7 +1120,7 @@ def _export_xlsx(
             str(seg.id), role_assignments.get(seg.speaker_id)
         )
 
-        # Convert role to proper Chinese labels with fallback
+        # Convert role to proper Chinese labels with explicit fallback
         if speaker_role == "Coach":
             speaker_label = "教練"
         elif speaker_role == "Client":
@@ -1074,8 +1130,11 @@ def _export_xlsx(
         elif speaker_role == "客戶":
             speaker_label = "客戶"
         else:
-            # Fallback: assume speaker_id 1 is coach, others are clients
-            speaker_label = "教練" if seg.speaker_id == 1 else "客戶"
+            # Explicit fallback: make it clear no role is assigned
+            speaker_label = f"Speaker {seg.speaker_id} (未指定角色)"
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"No role assigned for speaker {seg.speaker_id} in session {session.id}")
 
         # Format timestamp - only show start time
         start_time = _format_timestamp_vtt(seg.start_seconds)

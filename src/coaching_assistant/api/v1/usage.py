@@ -15,7 +15,7 @@ from ...services.usage_tracking import UsageTrackingService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/usage", tags=["usage"])
+router = APIRouter(tags=["usage"])
 
 
 @router.get("/summary")

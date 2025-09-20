@@ -162,12 +162,54 @@ class TestSpeakerRoleAssignmentUseCase:
         invalid_cases = [
             {"1": "teacher"},   # Wrong role
             {"1": ""},          # Empty role
-            {"1": "COACH"},     # Wrong case
+            {"1": "invalid"},   # Invalid role
         ]
 
         for invalid_speaker_roles in invalid_cases:
-            with pytest.raises(ValueError, match="Invalid role.*Must be 'coach' or 'client'"):
+            with pytest.raises(ValueError, match="Invalid role.*Must be 'coach' or 'client'.*case-insensitive"):
                 self.use_case.execute(self.session_id, self.user_id, invalid_speaker_roles)
+
+    def test_execute_case_insensitive_roles(self):
+        """Test that role validation is case-insensitive."""
+        # Arrange
+        self.session_repo.get_by_id.return_value = self.session
+
+        # Mock repository save to return the same roles
+        mock_saved_roles = [
+            SessionRole(
+                id=uuid4(),
+                session_id=self.session_id,
+                speaker_id=1,
+                role=SpeakerRole.COACH,
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            ),
+            SessionRole(
+                id=uuid4(),
+                session_id=self.session_id,
+                speaker_id=2,
+                role=SpeakerRole.CLIENT,
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            ),
+        ]
+        self.speaker_role_repo.save_speaker_roles.return_value = mock_saved_roles
+
+        # Test cases for case-insensitive valid roles
+        valid_cases = [
+            {"1": "coach", "2": "client"},      # lowercase
+            {"1": "COACH", "2": "CLIENT"},      # uppercase
+            {"1": "Coach", "2": "Client"},      # title case
+            {"1": "cOaCh", "2": "cLiEnT"},      # mixed case
+        ]
+
+        for speaker_roles in valid_cases:
+            # Act - should not raise an exception
+            result = self.use_case.execute(self.session_id, self.user_id, speaker_roles)
+
+            # Assert
+            assert result["message"] == "Speaker roles updated successfully"
+            assert result["session_id"] == str(self.session_id)
 
 
 class TestSegmentRoleAssignmentUseCase:
@@ -248,6 +290,63 @@ class TestSegmentRoleAssignmentUseCase:
         with pytest.raises(ValueError, match="Invalid segment ID format"):
             self.use_case.execute(self.session_id, self.user_id, invalid_segment_roles)
 
+    def test_execute_case_insensitive_roles(self):
+        """Test that segment role validation is case-insensitive."""
+        # Arrange
+        segment_id = str(uuid4())
+        segment_uuid = UUID(segment_id)
+        self.session_repo.get_by_id.return_value = self.session
+
+        # Mock repository save to return the same roles
+        mock_saved_roles = [
+            SegmentRole(
+                id=uuid4(),
+                session_id=self.session_id,
+                segment_id=segment_uuid,
+                role=SpeakerRole.COACH,
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            ),
+        ]
+        self.segment_role_repo.save_segment_roles.return_value = mock_saved_roles
+
+        # Test cases for case-insensitive valid roles
+        valid_cases = [
+            {segment_id: "coach"},      # lowercase
+            {segment_id: "COACH"},      # uppercase
+            {segment_id: "Coach"},      # title case
+            {segment_id: "cOaCh"},      # mixed case
+            {segment_id: "client"},     # lowercase
+            {segment_id: "CLIENT"},     # uppercase
+            {segment_id: "Client"},     # title case
+            {segment_id: "cLiEnT"},     # mixed case
+        ]
+
+        for segment_roles in valid_cases:
+            # Act - should not raise an exception
+            result = self.use_case.execute(self.session_id, self.user_id, segment_roles)
+
+            # Assert
+            assert result["message"] == "Segment roles updated successfully"
+            assert result["session_id"] == str(self.session_id)
+
+    def test_execute_invalid_role(self):
+        """Test error handling for invalid roles."""
+        # Arrange
+        segment_id = str(uuid4())
+        self.session_repo.get_by_id.return_value = self.session
+
+        # Test cases for invalid roles
+        invalid_cases = [
+            {segment_id: "teacher"},   # Wrong role
+            {segment_id: ""},          # Empty role
+            {segment_id: "invalid"},   # Invalid role
+        ]
+
+        for invalid_segment_roles in invalid_cases:
+            with pytest.raises(ValueError, match="Invalid role.*Must be 'coach' or 'client'.*case-insensitive"):
+                self.use_case.execute(self.session_id, self.user_id, invalid_segment_roles)
+
 
 class TestSpeakerRoleRetrievalUseCase:
     """Test cases for SpeakerRoleRetrievalUseCase."""
@@ -305,7 +404,7 @@ class TestSpeakerRoleRetrievalUseCase:
         result = self.use_case.get_session_speaker_roles(self.session_id, self.user_id)
 
         # Assert
-        expected = {1: "coach", 2: "client"}
+        expected = {1: "COACH", 2: "CLIENT"}
         assert result == expected
         self.session_repo.get_by_id.assert_called_once_with(self.session_id)
         self.speaker_role_repo.get_by_session_id.assert_called_once_with(self.session_id)
@@ -341,7 +440,7 @@ class TestSpeakerRoleRetrievalUseCase:
         result = self.use_case.get_segment_roles(self.session_id, self.user_id)
 
         # Assert
-        expected = {str(segment_id_1): "coach", str(segment_id_2): "client"}
+        expected = {str(segment_id_1): "COACH", str(segment_id_2): "CLIENT"}
         assert result == expected
         self.session_repo.get_by_id.assert_called_once_with(self.session_id)
         self.segment_role_repo.get_by_session_id.assert_called_once_with(self.session_id)

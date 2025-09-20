@@ -208,7 +208,7 @@ class TestSessionRoleModel:
             session_id=sample_session.id, speaker_id=2, role=SpeakerRole.CLIENT
         )
 
-        expected = f"<SessionRole(speaker_id=2, role=client)>"
+        expected = f"<SessionRole(speaker_id=2, role=CLIENT)>"
         assert str(role) == expected
 
     def test_role_session_foreign_key_constraint(self, db_session):
@@ -292,9 +292,9 @@ class TestSpeakerRoleEnum:
     @pytest.mark.parametrize(
         "role,expected_value",
         [
-            (SpeakerRole.COACH, "coach"),
-            (SpeakerRole.CLIENT, "client"),
-            (SpeakerRole.UNKNOWN, "unknown"),
+            (SpeakerRole.COACH, "COACH"),
+            (SpeakerRole.CLIENT, "CLIENT"),
+            (SpeakerRole.UNKNOWN, "UNKNOWN"),
         ],
     )
     def test_speaker_role_values(self, role, expected_value):
@@ -351,7 +351,7 @@ class TestIntegratedTranscriptFunctionality:
         db_session.commit()
 
         # Test that session can resolve speaker role
-        assert sample_session.get_speaker_role(1) == "coach"
+        assert sample_session.get_speaker_role(1) == "COACH"
         assert (
             sample_session.get_speaker_role(2) == "Speaker 2"
         )  # No role assigned
@@ -408,8 +408,8 @@ class TestIntegratedTranscriptFunctionality:
         assert len(sample_session.roles) == 2
 
         # Test speaker role resolution
-        assert sample_session.get_speaker_role(1) == "coach"
-        assert sample_session.get_speaker_role(2) == "client"
+        assert sample_session.get_speaker_role(1) == "COACH"
+        assert sample_session.get_speaker_role(2) == "CLIENT"
 
         # Test segment ordering (should be ordered by start_seconds)
         session_segments = sample_session.segments.all()

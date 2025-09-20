@@ -80,13 +80,14 @@ class SpeakerRoleAssignmentUseCase:
             except ValueError as e:
                 raise ValueError(f"Invalid speaker ID format: {speaker_id_str}") from e
 
-            # Validate and convert role
-            if role_str not in ["coach", "client"]:
+            # Validate and convert role (case-insensitive)
+            role_str_upper = role_str.upper()
+            if role_str_upper not in ["COACH", "CLIENT"]:
                 raise ValueError(
-                    f"Invalid role '{role_str}'. Must be 'coach' or 'client'."
+                    f"Invalid role '{role_str}'. Must be 'coach' or 'client' (case-insensitive)."
                 )
 
-            role = SpeakerRole.COACH if role_str == "coach" else SpeakerRole.CLIENT
+            role = SpeakerRole.COACH if role_str_upper == "COACH" else SpeakerRole.CLIENT
 
             # Create domain model for role assignment
             session_role = SessionRole(
@@ -164,13 +165,14 @@ class SegmentRoleAssignmentUseCase:
             except ValueError as e:
                 raise ValueError(f"Invalid segment ID format: {segment_id_str}") from e
 
-            # Validate and convert role
-            if role_str not in ["coach", "client"]:
+            # Validate and convert role (case-insensitive)
+            role_str_upper = role_str.upper()
+            if role_str_upper not in ["COACH", "CLIENT"]:
                 raise ValueError(
-                    f"Invalid role '{role_str}'. Must be 'coach' or 'client'."
+                    f"Invalid role '{role_str}'. Must be 'coach' or 'client' (case-insensitive)."
                 )
 
-            role = SpeakerRole.COACH if role_str == "coach" else SpeakerRole.CLIENT
+            role = SpeakerRole.COACH if role_str_upper == "COACH" else SpeakerRole.CLIENT
 
             # Create domain model for segment role assignment
             segment_role = SegmentRole(

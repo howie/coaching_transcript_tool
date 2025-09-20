@@ -510,18 +510,33 @@ pre-commit install         # Set up automated checks
 
 ### 🚫 CRITICAL RULE: Never Claim API Fixes Without Real Verification
 
+**🔥 MANDATORY AUTHENTICATION TESTING (User Requirement)**
+- **NEVER ACCEPTABLE**: Claiming API fixes based only on 401 authentication responses
+- **ALWAYS REQUIRED**: Use real JWT tokens with proper authentication for ALL testing
+- **User Quote**: "任何 API 測試，回覆 Now we're getting 401 (authentication required) 都是不能接受的，要測試就必須取得 token 測試!!!"
+
 **FORBIDDEN Claims:**
 - ❌ "The API now returns 401 instead of 500, so the fix works"
 - ❌ "Both endpoints correctly respond with authentication required"
 - ❌ "The enum bug is fixed" (based only on status code changes)
+- ❌ "Now we're getting 401 (authentication required)" (without real token testing)
 
 **REQUIRED Verification for API Fix Claims:**
 
-#### 1. **Authenticate with Real Tokens**
+#### 1. **Authenticate with Real Tokens** (MANDATORY)
 ```bash
-# Create temporary test token or use existing test user
-# Test with actual authentication headers
-curl -H "Authorization: Bearer <real_token>" http://localhost:8000/api/v1/plans/current
+# MUST create and use real JWT tokens for testing
+# NEVER test without proper authentication
+# Example with real token:
+curl -H "Authorization: Bearer <actual_jwt_token>" http://localhost:8000/api/v1/sessions/{session_id}
+
+# Required token format:
+{
+  "sub": "user_id",
+  "exp": timestamp,
+  "type": "access",
+  "email": "user@example.com"
+}
 ```
 
 #### 2. **Verify Real Data Responses**

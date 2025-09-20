@@ -14,6 +14,7 @@ from ...infrastructure.factories import (
     SessionServiceFactory,
     PlanServiceFactory,
     SubscriptionServiceFactory,
+    create_session_repository,
 )
 from ...core.services.usage_tracking_use_case import CreateUsageLogUseCase, GetUserUsageUseCase
 from ...core.services.session_management_use_case import (
@@ -207,7 +208,7 @@ def get_speaker_role_assignment_use_case(
     db: Session = Depends(get_db),
 ) -> SpeakerRoleAssignmentUseCase:
     """Dependency to get SpeakerRoleAssignmentUseCase with repository injection."""
-    session_repo = SessionServiceFactory.create_session_repository(db)
+    session_repo = create_session_repository(db)
     return SpeakerRoleAssignmentUseCase(session_repo)
 
 
@@ -215,8 +216,8 @@ def get_segment_role_assignment_use_case(
     db: Session = Depends(get_db),
 ) -> SegmentRoleAssignmentUseCase:
     """Dependency to get SegmentRoleAssignmentUseCase with repository injection."""
-    session_repo = SessionServiceFactory.create_session_repository(db)
-    return SegmentRoleAssignmentUseCase(session_repo)
+    from ...infrastructure.factories import SpeakerRoleServiceFactory
+    return SpeakerRoleServiceFactory.create_segment_role_assignment_use_case(db)
 
 
 def get_speaker_role_retrieval_use_case(

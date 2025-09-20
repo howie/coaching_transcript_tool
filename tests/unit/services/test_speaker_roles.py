@@ -12,9 +12,9 @@ def test_speaker_roles_update():
     # The actual API would require authentication setup which is complex in tests
 
     # Test the SpeakerRole enum
-    assert SpeakerRole.COACH.value == "coach"
-    assert SpeakerRole.CLIENT.value == "client"
-    assert SpeakerRole.UNKNOWN.value == "unknown"
+    assert SpeakerRole.COACH.value == "COACH"
+    assert SpeakerRole.CLIENT.value == "CLIENT"
+    assert SpeakerRole.UNKNOWN.value == "UNKNOWN"
 
     # Test SessionRole model creation
     role = SessionRole.create_assignment(

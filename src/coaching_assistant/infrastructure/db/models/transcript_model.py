@@ -144,7 +144,7 @@ class SessionRoleModel(BaseModel):
             id=session_role.id,
             session_id=session_role.session_id,
             speaker_id=session_role.speaker_id,
-            role=session_role.role,
+            role=session_role.role.value,
             created_at=session_role.created_at,
             updated_at=session_role.updated_at,
         )
@@ -152,7 +152,7 @@ class SessionRoleModel(BaseModel):
     def update_from_domain(self, session_role: SessionRole) -> None:
         """Update ORM model from domain model."""
         self.speaker_id = session_role.speaker_id
-        self.role = session_role.role
+        self.role = session_role.role.value
         self.updated_at = session_role.updated_at
 
 
@@ -213,7 +213,7 @@ class SegmentRoleModel(BaseModel):
             id=segment_role.id,
             session_id=segment_role.session_id,
             segment_id=segment_role.segment_id,
-            role=segment_role.role,
+            role=segment_role.role.value,
             created_at=segment_role.created_at,
             updated_at=segment_role.updated_at,
         )
@@ -221,5 +221,5 @@ class SegmentRoleModel(BaseModel):
     def update_from_domain(self, segment_role: SegmentRole) -> None:
         """Update ORM model from domain model."""
         self.segment_id = segment_role.segment_id
-        self.role = segment_role.role
+        self.role = segment_role.role.value
         self.updated_at = segment_role.updated_at

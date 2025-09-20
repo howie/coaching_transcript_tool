@@ -32,16 +32,27 @@ class SQLAlchemySpeakerRoleRepository(SpeakerRoleRepoPort):
             session_id: Session ID to retrieve roles for
 
         Returns:
-            List of SessionRole domain entities
+            List of SessionRole domain entities (empty list if no roles assigned)
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         try:
             orm_roles = (
                 self.session.query(SessionRoleModel)
                 .filter(SessionRoleModel.session_id == session_id)
                 .all()
             )
-            return [self._to_domain(orm_role) for orm_role in orm_roles]
+            domain_roles = [self._to_domain(orm_role) for orm_role in orm_roles]
+
+            if not domain_roles:
+                logger.info(f"No speaker roles found for session {session_id}")
+            else:
+                logger.debug(f"Retrieved {len(domain_roles)} speaker roles for session {session_id}")
+
+            return domain_roles
         except SQLAlchemyError as e:
+            logger.error(f"Database error retrieving speaker roles for session {session_id}: {e}")
             raise RuntimeError(f"Database error retrieving speaker roles for session {session_id}") from e
 
     def save_speaker_roles(
@@ -106,7 +117,7 @@ class SQLAlchemySpeakerRoleRepository(SpeakerRoleRepoPort):
             id=domain_role.id,
             session_id=domain_role.session_id,
             speaker_id=domain_role.speaker_id,
-            role=domain_role.role,
+            role=domain_role.role.value,
             created_at=domain_role.created_at,
             updated_at=domain_role.updated_at,
         )
@@ -130,16 +141,27 @@ class SQLAlchemySegmentRoleRepository(SegmentRoleRepoPort):
             session_id: Session ID to retrieve roles for
 
         Returns:
-            List of SegmentRole domain entities
+            List of SegmentRole domain entities (empty list if no roles assigned)
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         try:
             orm_roles = (
                 self.session.query(SegmentRoleModel)
                 .filter(SegmentRoleModel.session_id == session_id)
                 .all()
             )
-            return [self._to_domain(orm_role) for orm_role in orm_roles]
+            domain_roles = [self._to_domain(orm_role) for orm_role in orm_roles]
+
+            if not domain_roles:
+                logger.debug(f"No segment roles found for session {session_id}")
+            else:
+                logger.debug(f"Retrieved {len(domain_roles)} segment roles for session {session_id}")
+
+            return domain_roles
         except SQLAlchemyError as e:
+            logger.error(f"Database error retrieving segment roles for session {session_id}: {e}")
             raise RuntimeError(f"Database error retrieving segment roles for session {session_id}") from e
 
     def save_segment_roles(
@@ -204,7 +226,7 @@ class SQLAlchemySegmentRoleRepository(SegmentRoleRepoPort):
             id=domain_role.id,
             session_id=domain_role.session_id,
             segment_id=domain_role.segment_id,
-            role=domain_role.role,
+            role=domain_role.role.value,
             created_at=domain_role.created_at,
             updated_at=domain_role.updated_at,
         )
