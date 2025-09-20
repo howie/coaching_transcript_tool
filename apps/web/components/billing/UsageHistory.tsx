@@ -232,8 +232,6 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
         current_trend: 'growing'
       };
       setPredictions(mockPredictions);
-    } catch (predictionErr) {
-      console.error('Failed to fetch predictions:', predictionErr);
     }
   }, []);
 

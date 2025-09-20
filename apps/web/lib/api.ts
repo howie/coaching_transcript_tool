@@ -1553,9 +1553,7 @@ class ApiClient {
 
   async updateSegmentContent(sessionId: string, segmentContent: { [segmentId: string]: string }) {
     try {
-      // Note: This endpoint needs to be implemented in the backend
-      // For now, we'll attempt to call it but catch errors gracefully
-      const response = await this.fetcher(`${this.baseUrl}/sessions/${sessionId}/segment-content`, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/segment-content`, {
         method: 'PATCH',
         headers: await this.getHeaders(),
         body: JSON.stringify({
@@ -1564,18 +1562,14 @@ class ApiClient {
       })
 
       if (!response.ok) {
-        if (response.status === 404) {
-          console.warn('Segment content update endpoint not implemented yet')
-          return { success: false, message: 'Endpoint not implemented' }
-        }
-        throw new Error(`Update segment content failed: ${response.statusText}`)
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Update segment content failed')
       }
 
       return await response.json()
     } catch (error) {
       console.error('Update segment content error:', error)
-      // For now, return success to not break the UI while backend is being implemented
-      return { success: false, message: 'Endpoint not available' }
+      throw error
     }
   }
 
@@ -1858,7 +1852,7 @@ class ApiClient {
   // Usage History APIs
   async getUsageHistory(period: string = '30d', groupBy: string = 'day') {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/usage-history/trends?period=${period}&group_by=${groupBy}`)
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/usage/trends?period=${period}&group_by=${groupBy}`)
 
       if (!response.ok) {
         throw new Error(`Get usage history failed: ${response.statusText}`)
@@ -1873,7 +1867,7 @@ class ApiClient {
 
   async getUsageInsights() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/usage-history/insights`)
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/usage/insights`)
 
       if (!response.ok) {
         throw new Error(`Get usage insights failed: ${response.statusText}`)
@@ -1888,7 +1882,7 @@ class ApiClient {
 
   async getUsagePredictions() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/usage-history/predictions`)
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/usage/predictions`)
 
       if (!response.ok) {
         throw new Error(`Get usage predictions failed: ${response.statusText}`)
@@ -1903,7 +1897,7 @@ class ApiClient {
 
   async exportUsageData(format: string = 'json', period: string = '30d') {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/usage-history/export?format=${format}&period=${period}`)
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/usage/export?format=${format}&period=${period}`)
 
       if (!response.ok) {
         throw new Error(`Export usage data failed: ${response.statusText}`)

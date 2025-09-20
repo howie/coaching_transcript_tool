@@ -74,7 +74,8 @@ interface SpeakingStats {
 // Speaker role constants to avoid magic numbers
 enum SpeakerRole {
   COACH = 'coach',
-  CLIENT = 'client'
+  CLIENT = 'client',
+  UNKNOWN = 'unknown'
 }
 
 // Speaker role constants - using string enums for clarity
@@ -87,24 +88,36 @@ const SPEAKER_ROLES = {
 const getSpeakerRoleFromSegment = (segment: any, roleAssignments?: { [key: number]: 'coach' | 'client' }): SpeakerRole => {
   // First check if segment has direct role field (preferred)
   if (segment.role) {
-    return segment.role === 'coach' ? SpeakerRole.COACH : SpeakerRole.CLIENT;
+    // Convert to lowercase for case-insensitive comparison (API returns uppercase)
+    const roleStr = String(segment.role).toLowerCase();
+    return roleStr === 'coach' ? SpeakerRole.COACH : roleStr === 'client' ? SpeakerRole.CLIENT : SpeakerRole.UNKNOWN;
   }
-  
+
   // Fallback to role assignments from API
   if (roleAssignments && roleAssignments[segment.speaker_id]) {
-    return roleAssignments[segment.speaker_id] === 'coach' ? SpeakerRole.COACH : SpeakerRole.CLIENT;
+    // Convert to lowercase for case-insensitive comparison
+    const roleStr = String(roleAssignments[segment.speaker_id]).toLowerCase();
+    return roleStr === 'coach' ? SpeakerRole.COACH : roleStr === 'client' ? SpeakerRole.CLIENT : SpeakerRole.UNKNOWN;
   }
-  
-  // Last fallback: assume speaker_id 1 = coach, others = client
-  return segment.speaker_id === 1 ? SpeakerRole.COACH : SpeakerRole.CLIENT;
+
+
+  // Last fallback: return UNKNOWN instead of making assumptions
+  // This prevents incorrect role assignments when no data is available
+  return SpeakerRole.UNKNOWN;
 };
 
 const getRoleDisplayName = (role: SpeakerRole, t: any): string => {
-  return role === SpeakerRole.COACH ? t('sessions.coach') : t('sessions.client');
+  if (role === SpeakerRole.COACH) return t('sessions.coach');
+  if (role === SpeakerRole.CLIENT) return t('sessions.client');
+  // For UNKNOWN role, show neutral speaker label
+  return 'Speaker';
 };
 
 const getSpeakerColor = (role: SpeakerRole): string => {
-  return role === SpeakerRole.COACH ? 'text-blue-600' : 'text-green-600';
+  if (role === SpeakerRole.COACH) return 'text-blue-600';
+  if (role === SpeakerRole.CLIENT) return 'text-green-600';
+  // For UNKNOWN role, use a neutral color
+  return 'text-gray-600';
 };
 
 interface Client {
@@ -143,7 +156,7 @@ const SessionDetailPage = () => {
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
   const [editingTranscript, setEditingTranscript] = useState(false);
   const [tempRoleAssignments, setTempRoleAssignments] = useState<{ [speakerId: number]: 'coach' | 'client' }>({});
-  const [tempSegmentRoles, setTempSegmentRoles] = useState<{ [segmentId: string]: 'coach' | 'client' }>({});
+  const [tempSegmentRoles, setTempSegmentRoles] = useState<{ [segmentId: string]: 'coach' | 'client' | 'unknown' }>({});
   const [tempSegmentContent, setTempSegmentContent] = useState<{ [segmentId: string]: string }>({});
   const [uploadMode, setUploadMode] = useState<'audio' | 'transcript'>('audio');
   const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
@@ -235,7 +248,14 @@ const SessionDetailPage = () => {
     }
 
     if (transcript.role_assignments) {
-      setTempRoleAssignments(transcript.role_assignments);
+      // Convert uppercase roles from API to lowercase for frontend consistency
+      const convertedAssignments: { [speakerId: number]: 'coach' | 'client' } = {};
+      Object.entries(transcript.role_assignments).forEach(([speakerId, role]) => {
+        convertedAssignments[parseInt(speakerId)] = role.toLowerCase() as 'coach' | 'client';
+      });
+      // Debug: Log role conversion for troubleshooting
+      console.log('Role assignments converted:', transcript.role_assignments, '→', convertedAssignments);
+      setTempRoleAssignments(convertedAssignments);
     } else {
       const speakerIds = transcript.segments.map(s => s.speaker_id);
       const uniqueSpeakers = Array.from(new Set(speakerIds));
@@ -246,16 +266,19 @@ const SessionDetailPage = () => {
       setTempRoleAssignments(defaultAssignments);
     }
 
-    const segmentRoles: { [segmentId: string]: 'coach' | 'client' } = {};
+    const segmentRoles: { [segmentId: string]: 'coach' | 'client' | 'unknown' } = {};
     transcript.segments.forEach((segment) => {
       const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
       if (transcript.segment_roles && transcript.segment_roles[segmentId]) {
-        segmentRoles[segmentId] = transcript.segment_roles[segmentId];
+        // Convert uppercase roles from API to lowercase
+        segmentRoles[segmentId] = transcript.segment_roles[segmentId].toLowerCase() as 'coach' | 'client';
       } else if (transcript.role_assignments && transcript.role_assignments[segment.speaker_id]) {
-        segmentRoles[segmentId] = transcript.role_assignments[segment.speaker_id];
+        // Convert uppercase roles from API to lowercase
+        segmentRoles[segmentId] = transcript.role_assignments[segment.speaker_id].toLowerCase() as 'coach' | 'client';
       } else {
         const role = getSpeakerRoleFromSegment(segment, transcript.role_assignments);
-        segmentRoles[segmentId] = role === SpeakerRole.COACH ? 'coach' : 'client';
+        segmentRoles[segmentId] = role === SpeakerRole.COACH ? 'coach' :
+                                   role === SpeakerRole.CLIENT ? 'client' : 'unknown';
       }
     });
     setTempSegmentRoles(segmentRoles);
@@ -430,6 +453,19 @@ const SessionDetailPage = () => {
         const textContent = await response.text();
         try {
           const parsed = JSON.parse(textContent) as TranscriptData;
+
+          // Debug: Log what we received from API
+          console.log('=== DEBUG: Transcript Data from API ===');
+          console.log('role_assignments:', parsed.role_assignments);
+          console.log('segment_roles:', parsed.segment_roles);
+          if (parsed.segments && parsed.segments.length > 0) {
+            console.log('First 5 segments:');
+            parsed.segments.slice(0, 5).forEach((seg: any, idx: number) => {
+              console.log(`  Segment ${idx}: speaker_id=${seg.speaker_id}, role="${seg.role}"`);
+            });
+          }
+          console.log('=== END DEBUG ===');
+
           setTranscript(parsed);
         } catch (e) {
           console.error('Failed to parse transcript JSON:', e);
@@ -502,12 +538,16 @@ const SessionDetailPage = () => {
     // Create a fake segment object for compatibility
     const fakeSegment = { speaker_id: speakerId };
     const role = getSpeakerRoleFromSegment(fakeSegment, transcript?.role_assignments);
+
+    if (role === SpeakerRole.UNKNOWN) {
+      return `Speaker ${speakerId}`;
+    }
     return getRoleDisplayName(role, t);
   };
 
   const getSegmentSpeakerLabel = (segment: TranscriptSegment) => {
     const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
-    
+
     // Priority: segment-level role > speaker-level role > default convention
     let roleString: string;
     if (tempSegmentRoles[segmentId]) {
@@ -517,10 +557,12 @@ const SessionDetailPage = () => {
     } else {
       // Use safe fallback
       const defaultRole = getSpeakerRoleFromSegment(segment, transcript?.role_assignments);
-      roleString = defaultRole === SpeakerRole.COACH ? 'coach' : 'client';
+      roleString = defaultRole === SpeakerRole.COACH ? 'coach' :
+                   defaultRole === SpeakerRole.CLIENT ? 'client' : 'unknown';
     }
-    
-    const role = roleString === 'coach' ? SpeakerRole.COACH : SpeakerRole.CLIENT;
+
+    const role = roleString === 'coach' ? SpeakerRole.COACH :
+                 roleString === 'client' ? SpeakerRole.CLIENT : SpeakerRole.UNKNOWN;
     return getRoleDisplayName(role, t);
   };
 
@@ -635,26 +677,33 @@ ${t('sessions.aiChatFollowUp')}`;
   };
 
   const cancelTranscriptEditing = () => {
-    // Reset to original assignments
+    // Reset to original assignments (convert uppercase API values to lowercase)
     if (transcript?.role_assignments) {
-      setTempRoleAssignments(transcript.role_assignments);
+      const convertedAssignments: { [speakerId: number]: 'coach' | 'client' } = {};
+      Object.entries(transcript.role_assignments).forEach(([speakerId, role]) => {
+        convertedAssignments[parseInt(speakerId)] = role.toLowerCase() as 'coach' | 'client';
+      });
+      console.log('DEBUG cancelTranscriptEditing: Converting role_assignments:', transcript.role_assignments, '→', convertedAssignments);
+      setTempRoleAssignments(convertedAssignments);
     }
-    
+
     // Reset segment roles to original state
     if (transcript && transcript.segments) {
-      const originalSegmentRoles: { [segmentId: string]: 'coach' | 'client' } = {};
+      const originalSegmentRoles: { [segmentId: string]: 'coach' | 'client' | 'unknown' } = {};
       transcript.segments.forEach((segment) => {
         const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
         // Use saved segment roles if available, otherwise use speaker roles or default
         if (transcript.segment_roles && transcript.segment_roles[segmentId]) {
-          originalSegmentRoles[segmentId] = transcript.segment_roles[segmentId];
+          originalSegmentRoles[segmentId] = transcript.segment_roles[segmentId].toLowerCase() as 'coach' | 'client';
         } else if (transcript.role_assignments && transcript.role_assignments[segment.speaker_id]) {
-          originalSegmentRoles[segmentId] = transcript.role_assignments[segment.speaker_id];
+          originalSegmentRoles[segmentId] = transcript.role_assignments[segment.speaker_id].toLowerCase() as 'coach' | 'client';
         } else {
           const defaultRole = getSpeakerRoleFromSegment(segment, transcript?.role_assignments);
-          originalSegmentRoles[segmentId] = defaultRole === SpeakerRole.COACH ? 'coach' : 'client';
+          originalSegmentRoles[segmentId] = defaultRole === SpeakerRole.COACH ? 'coach' :
+                                            defaultRole === SpeakerRole.CLIENT ? 'client' : 'unknown';
         }
       });
+      console.log('DEBUG cancelTranscriptEditing: Setting originalSegmentRoles:', originalSegmentRoles);
       setTempSegmentRoles(originalSegmentRoles);
     }
     
@@ -2008,7 +2057,20 @@ ${t('sessions.aiChatFollowUp')}`;
                           <td className="px-4 py-3 whitespace-nowrap">
                             {editingTranscript ? (
                               <select
-                                value={tempSegmentRoles[segment.id || `${segment.speaker_id}-${segment.start_sec}`] || tempRoleAssignments[segment.speaker_id] || (getSpeakerRoleFromSegment(segment, transcript?.role_assignments) === SpeakerRole.COACH ? 'coach' : 'client')}
+                                value={(() => {
+                                  const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
+                                  const tempSegmentRole = tempSegmentRoles[segmentId];
+                                  const tempSpeakerRole = tempRoleAssignments[segment.speaker_id];
+
+                                  if (tempSegmentRole) return tempSegmentRole;
+                                  if (tempSpeakerRole) return tempSpeakerRole;
+
+                                  const roleFromSegment = getSpeakerRoleFromSegment(segment, transcript?.role_assignments);
+                                  if (roleFromSegment === SpeakerRole.COACH) return 'coach';
+                                  if (roleFromSegment === SpeakerRole.CLIENT) return 'client';
+                                  // For UNKNOWN role, default to 'client' for dropdown
+                                  return 'client';
+                                })()}
                                 onChange={(e) => {
                                   const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
                                   setTempSegmentRoles(prev => ({
@@ -2032,7 +2094,8 @@ ${t('sessions.aiChatFollowUp')}`;
                                     roleString = tempRoleAssignments[segment.speaker_id];
                                   } else {
                                     const defaultRole = getSpeakerRoleFromSegment(segment, transcript?.role_assignments);
-                                    roleString = defaultRole === SpeakerRole.COACH ? 'coach' : 'client';
+                                    roleString = defaultRole === SpeakerRole.COACH ? 'coach' :
+                                                 defaultRole === SpeakerRole.CLIENT ? 'client' : 'unknown';
                                   }
                                   return (roleString === 'coach' || roleString === SpeakerRole.COACH)
                                     ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
