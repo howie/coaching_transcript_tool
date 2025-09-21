@@ -16,8 +16,8 @@ from ..repositories.ports import (
     UserRepoPort,
     PlanConfigurationRepoPort,
 )
-from ...models.user import User, UserPlan
-from ...models.ecpay_subscription import (
+from ..models.user import User, UserPlan
+from ..models.subscription import (
     SaasSubscription,
     SubscriptionPayment,
     ECPayCreditAuthorization,

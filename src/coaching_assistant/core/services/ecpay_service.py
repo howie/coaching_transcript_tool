@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings
 from ..repositories.ports import NotificationPort, ECPayClientPort
-from ...models import (
-    User,
+from ..models.user import User
+from ..models.subscription import (
     ECPayCreditAuthorization,
     SaasSubscription,
     SubscriptionPayment,
@@ -291,7 +291,7 @@ class ECPaySubscriptionService:
                 )
                 if user:
                     # Map plan_id to UserPlan enum
-                    from ...models.user import UserPlan
+                    from ..models.user import UserPlan
 
                     plan_mapping = {
                         "PRO": UserPlan.PRO,

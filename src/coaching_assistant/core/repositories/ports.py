@@ -12,14 +12,14 @@ from datetime import datetime, date
 from decimal import Decimal
 from uuid import UUID
 
-# Domain types - now using pure domain models
+# Domain types - using pure domain models only (Clean Architecture compliant)
 from ..models.user import User, UserPlan, UserRole
 from ..models.session import Session, SessionStatus
 from ..models.usage_log import UsageLog, TranscriptionType
-from ...models.usage_history import UsageHistory
-from ...models.usage_analytics import UsageAnalytics
-from ...models.plan_configuration import PlanConfiguration
-from ...models.ecpay_subscription import (
+from ..models.usage_history import UsageHistory
+from ..models.usage_analytics import UsageAnalytics
+from ..models.plan_configuration import PlanConfiguration
+from ..models.subscription import (
     SaasSubscription,
     SubscriptionPayment,
     ECPayCreditAuthorization,
@@ -27,10 +27,10 @@ from ...models.ecpay_subscription import (
     PaymentStatus,
     ECPayAuthStatus,
 )
-from ...models.client import Client
-from ...models.coaching_session import CoachingSession
-from ...models.coach_profile import CoachProfile
-from ...models.transcript import TranscriptSegment
+from ..models.client import Client
+from ..models.coaching_session import CoachingSession
+from ..models.coach_profile import CoachProfile
+from ..models.transcript import TranscriptSegment
 
 
 class UserRepoPort(Protocol):

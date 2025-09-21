@@ -95,7 +95,7 @@ class TestDependencyInjectionCompatibility:
                 UserResponse, attr
             ), f"UserResponse should not have {attr}"
 
-    @patch("coaching_assistant.api.plan_limits.get_db")
+    @patch("coaching_assistant.api.v1.plan_limits.get_db")
     def test_validate_action_with_user_attributes(self, mock_get_db):
         """Test that validate_action can access User model attributes without AttributeError."""
         # Create a mock user with required attributes
@@ -115,9 +115,9 @@ class TestDependencyInjectionCompatibility:
         # This should NOT raise AttributeError
         # We'll patch the function to test just the attribute access
         with (
-            patch("coaching_assistant.api.plan_limits.UsageTracker"),
+            patch("coaching_assistant.api.v1.plan_limits.UsageTracker"),
             patch(
-                "coaching_assistant.api.plan_limits.PlanLimits.get_plan_limit"
+                "coaching_assistant.api.v1.plan_limits.PlanLimits.get_plan_limit"
             ),
         ):
 
@@ -215,7 +215,7 @@ class TestProductionErrorPrevention:
 
     def test_import_compatibility(self):
         """Test that we're importing the correct dependency function."""
-        from coaching_assistant.api.plan_limits import (
+        from coaching_assistant.api.v1.plan_limits import (
             get_current_user_dependency as imported_dependency,
         )
         from coaching_assistant.api.auth import (
@@ -227,7 +227,7 @@ class TestProductionErrorPrevention:
 
     def test_no_wrong_import(self):
         """Test that we're NOT importing get_current_user (which returns UserResponse)."""
-        import coaching_assistant.api.plan_limits as plan_limits_module
+        import coaching_assistant.api.v1.plan_limits as plan_limits_module
 
         # Should NOT have get_current_user imported
         assert not hasattr(plan_limits_module, "get_current_user")
@@ -235,8 +235,8 @@ class TestProductionErrorPrevention:
         # Should have get_current_user_dependency
         assert hasattr(plan_limits_module, "get_current_user_dependency")
 
-    @patch("coaching_assistant.api.plan_limits.get_current_user_dependency")
-    @patch("coaching_assistant.api.plan_limits.get_db")
+    @patch("coaching_assistant.api.v1.plan_limits.get_current_user_dependency")
+    @patch("coaching_assistant.api.v1.plan_limits.get_db")
     def test_validate_action_calls_with_user_model(
         self, mock_get_db, mock_get_current_user_dependency
     ):
@@ -256,9 +256,9 @@ class TestProductionErrorPrevention:
 
         # This should work without issues
         with (
-            patch("coaching_assistant.api.plan_limits.UsageTracker"),
+            patch("coaching_assistant.api.v1.plan_limits.UsageTracker"),
             patch(
-                "coaching_assistant.api.plan_limits.PlanLimits.get_plan_limit"
+                "coaching_assistant.api.v1.plan_limits.PlanLimits.get_plan_limit"
             ) as mock_plan_limits,
         ):
 

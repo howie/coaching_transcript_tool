@@ -428,7 +428,36 @@ async def get_current_user_dependency(
 ) -> User:
     """
     從 JWT token 中獲取當前用戶
+
+    如果 TEST_MODE=true，則返回測試用戶而不需要認證
     """
+    # TEST_MODE: 如果啟用測試模式，返回測試用戶
+    if settings.TEST_MODE:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning("🚨 TEST_MODE 已啟用 - 跳過認證檢查，使用測試用戶")
+
+        # 查找或創建測試用戶
+        test_email = "test@example.com"
+        stmt = select(User).where(User.email == test_email)
+        test_user = db.execute(stmt).scalar_one_or_none()
+
+        if not test_user:
+            # 創建測試用戶
+            test_user = User(
+                email=test_email,
+                name="Test User",
+                plan=UserPlan.PRO,  # 給予 PRO 權限以便測試所有功能
+                hashed_password="",  # 測試用戶不需要密碼
+            )
+            db.add(test_user)
+            db.commit()
+            db.refresh(test_user)
+            logger.info(f"📝 創建測試用戶: {test_email}")
+
+        return test_user
+
+    # 正常認證流程
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=401, detail="Missing or invalid authorization header"

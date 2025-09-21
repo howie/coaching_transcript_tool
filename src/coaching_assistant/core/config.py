@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     SECRET_KEY: str = "dev-secret-key"
 
+    # 測試模式設定 - 允許在不需要認證的情況下測試所有 API
+    # ⚠️ 警告：此模式僅適用於開發和測試環境，絕不可在生產環境中啟用
+    TEST_MODE: bool = False
+
     # API 設定
     API_V1_STR: str = "/api/v1"
     API_HOST: str = "0.0.0.0"
@@ -216,6 +220,17 @@ class Settings(BaseSettings):
             )
 
         return normalized
+
+    @field_validator("TEST_MODE")
+    @classmethod
+    def validate_test_mode(cls, value: bool, values) -> bool:
+        # 確保 TEST_MODE 在生產環境中不能啟用
+        environment = os.getenv("ENVIRONMENT", "development")
+        if value is True and environment == "production":
+            raise ValueError(
+                "TEST_MODE 不可在生產環境中啟用！這會造成嚴重的安全漏洞。"
+            )
+        return value
 
 
 settings = Settings()

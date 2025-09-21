@@ -9,9 +9,9 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, desc, DECIMAL
 
-from ...models.user import User, UserRole
-from ...models.session import Session as TranscriptSession, SessionStatus
-from ...models.ecpay_subscription import SaasSubscription
+from ..models.user import User, UserRole
+from ..models.session import Session as TranscriptSession, SessionStatus
+from ..models.subscription import SaasSubscription
 from ..config import Settings
 
 logger = logging.getLogger(__name__)

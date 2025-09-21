@@ -7,6 +7,11 @@ Following Clean Architecture principles, these models contain only business logi
 from .user import User, UserPlan, UserRole
 from .session import Session, SessionStatus
 from .usage_log import UsageLog, TranscriptionType
+from .usage_history import UsageHistory
+from .usage_analytics import UsageAnalytics
+from .client import Client
+from .coaching_session import CoachingSession, SessionSource
+from .coach_profile import CoachProfile, CoachingLanguage, CommunicationTool, CoachExperience
 
 __all__ = [
     "User",
@@ -16,4 +21,13 @@ __all__ = [
     "SessionStatus",
     "UsageLog",
     "TranscriptionType",
+    "UsageHistory",
+    "UsageAnalytics",
+    "Client",
+    "CoachingSession",
+    "SessionSource",
+    "CoachProfile",
+    "CoachingLanguage",
+    "CommunicationTool",
+    "CoachExperience",
 ]

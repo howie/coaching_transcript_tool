@@ -16,7 +16,7 @@ from ..repositories.ports import (
     UsageLogRepoPort,
     SessionRepoPort,
 )
-from ...models.user import User, UserPlan
+from ..models.user import User, UserPlan
 from ..models.session import Session as SessionModel, SessionStatus
 from ..models.usage_log import UsageLog, TranscriptionType
 

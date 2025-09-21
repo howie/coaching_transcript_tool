@@ -618,6 +618,34 @@ This ensures all API fix claims are backed by real evidence, not assumptions.
 - Write tests that describe behavior, not implementation
 - Use meaningful test names that explain the expected behavior
 
+### 🚀 **MANDATORY: Test Mode Verification for All Development**
+
+**After completing any feature development or bug fix, you MUST:**
+
+1. **啟動測試模式伺服器 (Start Test Mode Server)**:
+   ```bash
+   TEST_MODE=true uv run python apps/api-server/main.py
+   ```
+
+2. **驗證功能正常運作 (Verify Functionality)**:
+   - Test all modified API endpoints without authentication
+   - Verify data flows and business logic
+   - Check error handling and edge cases
+   - Use the test script: `python docs/features/test-improvement/examples/test-all-endpoints.py`
+
+3. **記錄測試結果 (Document Test Results)**:
+   - Screenshot successful API responses
+   - Note any issues or unexpected behavior
+   - Verify test user can access all required features
+
+**Why This is Critical:**
+- 🔍 **Real Environment Testing**: Tests actual API behavior in a realistic environment
+- 🚀 **Fast Iteration**: No need to manage JWT tokens or authentication setup
+- 🛡️ **Quality Assurance**: Catches integration issues that unit tests might miss
+- 📋 **Documentation**: Provides concrete evidence that features work as expected
+
+**Test Mode Documentation**: See `@docs/features/test-improvement/` for complete guides on configuration, usage, and security considerations.
+
 ### Test Organization
 ```
 tests/
