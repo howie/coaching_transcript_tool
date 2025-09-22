@@ -3,6 +3,7 @@ Database connection and session management.
 """
 
 from contextlib import contextmanager
+import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from .config import settings
@@ -20,7 +21,7 @@ def create_database_engine(database_url: str, **kwargs):
         "pool_timeout": 20,  # Timeout for getting connection from pool
         "pool_size": 10,       # Number of connections to maintain
         "max_overflow": 20,    # Additional connections allowed
-        "echo": settings.DEBUG,  # Log SQL queries in debug mode
+        "echo": settings.SQL_ECHO,  # Log SQL queries when enabled
         "connect_args": {},
         **kwargs,
     }
@@ -56,6 +57,16 @@ def create_database_engine(database_url: str, **kwargs):
 
 # Create the SQLAlchemy engine using the helper function
 engine = create_database_engine(settings.DATABASE_URL)
+
+# Configure SQLAlchemy logging independently from general logging
+if not settings.SQL_ECHO:
+    # Suppress SQLAlchemy's SQL query logs by setting logger level to WARNING
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+    logging.getLogger('sqlalchemy.engine.Engine').setLevel(logging.WARNING)
+else:
+    # Enable detailed SQL logging when SQL_ECHO is True
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    logging.getLogger('sqlalchemy.engine.Engine').setLevel(logging.INFO)
 
 # Create a configured "Session" class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

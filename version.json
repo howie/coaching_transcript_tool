@@ -1,8 +1,8 @@
 {
-  "version": "2.22.1",
-  "displayVersion": "v2.22.1",
-  "description": "Critical Dependency & Import Error Fixes",
+  "version": "2.22.2",
+  "displayVersion": "v2.22.2",
+  "description": "SQL Logging Control Enhancement",
   "releaseDate": "2025-09-22",
-  "releaseNotes": "Emergency hotfix addressing critical server startup issues: (1) Fixed missing AssemblyAI dependency causing ModuleNotFoundError on startup; (2) Resolved undefined variable errors in coaching_sessions.py by adding proper imports for Client model; (3) Removed non-existent module imports (TranscriptSegment, SpeakerRole) that caused import failures; (4) Added missing newline at end of dependencies.py to fix W292 linting issue; (5) Verified server startup and API functionality in TEST_MODE works correctly; (6) Confirmed /api/v1/plans/current endpoint returns proper JSON data. All critical functionality restored: server starts without errors, API endpoints respond correctly, TEST_MODE functions properly, database connectivity working.",
+  "releaseNotes": "Enhanced SQL logging configuration with independent control: (1) Added SQL_ECHO environment variable for dedicated SQL query logging control; (2) Separated SQL logging from general DEBUG setting for fine-grained control; (3) Configured SQLAlchemy engine loggers to suppress verbose SQL queries by default; (4) SQL queries now hidden by default unless explicitly enabled with SQL_ECHO=true; (5) Maintains existing colorized logging for application events while cleaning up SQL noise; (6) Verified configuration works correctly with TEST_MODE server. Improved developer experience: cleaner logs for debugging while preserving ability to enable SQL debugging when needed.",
   "author": "Coachly Team"
 }
