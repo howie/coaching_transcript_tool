@@ -52,6 +52,18 @@ from ..core.services.coaching_session_management_use_case import (
     CoachingSessionOptionsUseCase,
 )
 from ..core.services.transcript_upload_use_case import TranscriptUploadUseCase
+from ..core.services.billing_analytics_use_case import (
+    BillingAnalyticsOverviewUseCase,
+    BillingAnalyticsRevenueUseCase,
+    BillingAnalyticsSegmentationUseCase,
+    BillingAnalyticsUserDetailUseCase,
+    BillingAnalyticsCohortUseCase,
+    BillingAnalyticsChurnUseCase,
+    BillingAnalyticsPlanPerformanceUseCase,
+    BillingAnalyticsExportUseCase,
+    BillingAnalyticsRefreshUseCase,
+    BillingAnalyticsHealthScoreUseCase,
+)
 from ..core.repositories.ports import (
     UserRepoPort,
     UsageLogRepoPort,
@@ -586,11 +598,13 @@ class CoachingSessionServiceFactory:
         session_repo = create_coaching_session_repository(db_session)
         user_repo = create_user_repository(db_session)
         client_repo = create_client_repository(db_session)
+        transcription_session_repo = create_session_repository(db_session)
 
         return CoachingSessionRetrievalUseCase(
             session_repo=session_repo,
             user_repo=user_repo,
             client_repo=client_repo,
+            transcription_session_repo=transcription_session_repo,
         )
 
     @staticmethod
@@ -761,3 +775,127 @@ def create_ecpay_client() -> "ECPayAPIClient":
         hash_iv=settings.ECPAY_HASH_IV,
         environment=settings.ECPAY_ENVIRONMENT
     )
+
+
+class BillingAnalyticsServiceFactory:
+    """Factory for billing analytics use cases."""
+
+    @staticmethod
+    def create_billing_analytics_overview_use_case(db_session: Session) -> BillingAnalyticsOverviewUseCase:
+        """Create a BillingAnalyticsOverviewUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsOverviewUseCase
+        """
+        return BillingAnalyticsOverviewUseCase(db_session)
+
+    @staticmethod
+    def create_billing_analytics_revenue_use_case(db_session: Session) -> BillingAnalyticsRevenueUseCase:
+        """Create a BillingAnalyticsRevenueUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsRevenueUseCase
+        """
+        return BillingAnalyticsRevenueUseCase(db_session)
+
+    @staticmethod
+    def create_billing_analytics_segmentation_use_case(db_session: Session) -> BillingAnalyticsSegmentationUseCase:
+        """Create a BillingAnalyticsSegmentationUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsSegmentationUseCase
+        """
+        return BillingAnalyticsSegmentationUseCase(db_session)
+
+    @staticmethod
+    def create_billing_analytics_user_detail_use_case(db_session: Session) -> BillingAnalyticsUserDetailUseCase:
+        """Create a BillingAnalyticsUserDetailUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsUserDetailUseCase
+        """
+        return BillingAnalyticsUserDetailUseCase(db_session)
+
+    @staticmethod
+    def create_billing_analytics_cohort_use_case(db_session: Session) -> BillingAnalyticsCohortUseCase:
+        """Create a BillingAnalyticsCohortUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsCohortUseCase
+        """
+        return BillingAnalyticsCohortUseCase(db_session)
+
+    @staticmethod
+    def create_billing_analytics_churn_use_case(db_session: Session) -> BillingAnalyticsChurnUseCase:
+        """Create a BillingAnalyticsChurnUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsChurnUseCase
+        """
+        return BillingAnalyticsChurnUseCase(db_session)
+
+    @staticmethod
+    def create_billing_analytics_plan_performance_use_case(db_session: Session) -> BillingAnalyticsPlanPerformanceUseCase:
+        """Create a BillingAnalyticsPlanPerformanceUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsPlanPerformanceUseCase
+        """
+        return BillingAnalyticsPlanPerformanceUseCase(db_session)
+
+    @staticmethod
+    def create_billing_analytics_export_use_case(db_session: Session) -> BillingAnalyticsExportUseCase:
+        """Create a BillingAnalyticsExportUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsExportUseCase
+        """
+        return BillingAnalyticsExportUseCase(db_session)
+
+    @staticmethod
+    def create_billing_analytics_refresh_use_case(db_session: Session) -> BillingAnalyticsRefreshUseCase:
+        """Create a BillingAnalyticsRefreshUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsRefreshUseCase
+        """
+        return BillingAnalyticsRefreshUseCase(db_session)
+
+    @staticmethod
+    def create_billing_analytics_health_score_use_case(db_session: Session) -> BillingAnalyticsHealthScoreUseCase:
+        """Create a BillingAnalyticsHealthScoreUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsHealthScoreUseCase
+        """
+        return BillingAnalyticsHealthScoreUseCase(db_session)

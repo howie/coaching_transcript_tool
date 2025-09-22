@@ -4,13 +4,35 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from ...core.database import get_db
 from ...models.user import User
-from ...services.billing_analytics_service import BillingAnalyticsService
-from .dependencies import require_admin, require_staff
+from .dependencies import (
+    require_admin,
+    require_staff,
+    get_billing_analytics_overview_use_case,
+    get_billing_analytics_revenue_use_case,
+    get_billing_analytics_segmentation_use_case,
+    get_billing_analytics_user_detail_use_case,
+    get_billing_analytics_cohort_use_case,
+    get_billing_analytics_churn_use_case,
+    get_billing_analytics_plan_performance_use_case,
+    get_billing_analytics_export_use_case,
+    get_billing_analytics_refresh_use_case,
+    get_billing_analytics_health_score_use_case,
+)
+from ...core.services.billing_analytics_use_case import (
+    BillingAnalyticsOverviewUseCase,
+    BillingAnalyticsRevenueUseCase,
+    BillingAnalyticsSegmentationUseCase,
+    BillingAnalyticsUserDetailUseCase,
+    BillingAnalyticsCohortUseCase,
+    BillingAnalyticsChurnUseCase,
+    BillingAnalyticsPlanPerformanceUseCase,
+    BillingAnalyticsExportUseCase,
+    BillingAnalyticsRefreshUseCase,
+    BillingAnalyticsHealthScoreUseCase,
+)
 
 
 router = APIRouter(
@@ -122,7 +144,7 @@ async def get_billing_analytics_overview(
     period_count: int = Query(1, ge=1, le=12),
     end_date: Optional[datetime] = None,
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    overview_use_case: BillingAnalyticsOverviewUseCase = Depends(get_billing_analytics_overview_use_case),
 ):
     """
     Get comprehensive billing analytics overview for admin dashboard.
@@ -132,26 +154,19 @@ async def get_billing_analytics_overview(
     - **end_date**: End date for the analysis (defaults to now)
     """
 
-    service = BillingAnalyticsService(db)
+    result = overview_use_case.execute(
+        period_type=period_type,
+        period_count=period_count,
+        end_date=end_date,
+    )
 
-    if end_date is None:
-        end_date = datetime.utcnow()
-
-    # Calculate period start based on type and count
-    if period_type == "daily":
-        period_start = end_date - timedelta(days=period_count)
-    elif period_type == "weekly":
-        period_start = end_date - timedelta(weeks=period_count)
-    elif period_type == "monthly":
-        period_start = end_date - timedelta(days=period_count * 30)
-    elif period_type == "quarterly":
-        period_start = end_date - timedelta(days=period_count * 90)
-
-    overview = service.get_admin_overview(period_start, end_date, period_type)
+    period_start = result["period_start"]
+    period_end = result["period_end"]
+    overview = result["overview"]
 
     return AdminAnalyticsOverviewResponse(
         period_start=period_start,
-        period_end=end_date,
+        period_end=period_end,
         revenue_metrics=RevenueMetricsResponse(**overview["revenue_metrics"]),
         usage_metrics=UsageMetricsResponse(**overview["usage_metrics"]),
         customer_segments=[
@@ -173,7 +188,7 @@ async def get_revenue_trends(
     months: int = Query(12, ge=1, le=24),
     plan_filter: Optional[str] = Query(None, regex="^(free|pro|enterprise)$"),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    revenue_use_case: BillingAnalyticsRevenueUseCase = Depends(get_billing_analytics_revenue_use_case),
 ):
     """
     Get revenue trends over time with optional plan filtering.
@@ -183,15 +198,11 @@ async def get_revenue_trends(
     - **plan_filter**: Filter by specific plan type
     """
 
-    service = BillingAnalyticsService(db)
-    trends = service.get_revenue_trends(period_type, months, plan_filter)
-
-    return {
-        "period_type": period_type,
-        "months_included": months,
-        "plan_filter": plan_filter,
-        "data": trends,
-    }
+    return revenue_use_case.execute(
+        period_type=period_type,
+        months=months,
+        plan_filter=plan_filter,
+    )
 
 
 @router.get("/customer-segments")
@@ -200,7 +211,7 @@ async def get_customer_segmentation(
     period_end: Optional[datetime] = None,
     include_predictions: bool = Query(False),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    segmentation_use_case: BillingAnalyticsSegmentationUseCase = Depends(get_billing_analytics_segmentation_use_case),
 ):
     """
     Get customer segmentation analysis with usage patterns and revenue data.
@@ -210,15 +221,15 @@ async def get_customer_segmentation(
     - **include_predictions**: Include predictive analytics
     """
 
-    service = BillingAnalyticsService(db)
-
     if period_end is None:
         period_end = datetime.utcnow()
     if period_start is None:
         period_start = period_end - timedelta(days=90)  # Default to 3 months
 
-    segments = service.get_customer_segmentation(
-        period_start, period_end, include_predictions
+    segments = segmentation_use_case.execute(
+        period_start=period_start,
+        period_end=period_end,
+        include_predictions=include_predictions
     )
 
     return {
@@ -237,7 +248,7 @@ async def get_user_analytics_detail(
     include_insights: bool = Query(True),
     historical_months: int = Query(12, ge=1, le=24),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    user_detail_use_case: BillingAnalyticsUserDetailUseCase = Depends(get_billing_analytics_user_detail_use_case),
 ):
     """
     Get detailed analytics for a specific user including historical data and predictions.
@@ -248,17 +259,11 @@ async def get_user_analytics_detail(
     - **historical_months**: Number of months of historical data
     """
 
-    service = BillingAnalyticsService(db)
-
-    # Verify user exists
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    detail = service.get_user_analytics_detail(
-        user_id, include_predictions, include_insights, historical_months
+    detail = user_detail_use_case.execute(
+        user_id=user_id,
+        include_predictions=include_predictions,
+        include_insights=include_insights,
+        historical_months=historical_months
     )
 
     return UserAnalyticsDetailResponse(**detail)
@@ -270,7 +275,7 @@ async def get_cohort_analysis(
     cohort_size: int = Query(12, ge=3, le=24),
     metric: str = Query("revenue", regex="^(revenue|sessions|retention)$"),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    cohort_use_case: BillingAnalyticsCohortUseCase = Depends(get_billing_analytics_cohort_use_case),
 ):
     """
     Get cohort analysis showing user behavior patterns over time.
@@ -280,8 +285,11 @@ async def get_cohort_analysis(
     - **metric**: Primary metric to analyze
     """
 
-    service = BillingAnalyticsService(db)
-    cohort_data = service.get_cohort_analysis(cohort_type, cohort_size, metric)
+    cohort_data = cohort_use_case.execute(
+        cohort_type=cohort_type,
+        cohort_size=cohort_size,
+        metric=metric
+    )
 
     return {
         "cohort_type": cohort_type,
@@ -297,7 +305,7 @@ async def get_churn_analysis(
     period_months: int = Query(6, ge=1, le=12),
     include_predictions: bool = Query(True),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    churn_use_case: BillingAnalyticsChurnUseCase = Depends(get_billing_analytics_churn_use_case),
 ):
     """
     Get churn risk analysis with at-risk users and prevention recommendations.
@@ -307,13 +315,14 @@ async def get_churn_analysis(
     - **include_predictions**: Include predictive churn modeling
     """
 
-    service = BillingAnalyticsService(db)
-
     end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=period_months * 30)
 
-    churn_analysis = service.get_churn_analysis(
-        start_date, end_date, risk_threshold, include_predictions
+    churn_analysis = churn_use_case.execute(
+        start_date=start_date,
+        end_date=end_date,
+        risk_threshold=risk_threshold,
+        include_predictions=include_predictions
     )
 
     return {
@@ -337,7 +346,7 @@ async def get_plan_performance_analysis(
     period_months: int = Query(12, ge=1, le=24),
     include_forecasts: bool = Query(True),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    plan_performance_use_case: BillingAnalyticsPlanPerformanceUseCase = Depends(get_billing_analytics_plan_performance_use_case),
 ):
     """
     Get detailed performance analysis for each subscription plan.
@@ -346,13 +355,13 @@ async def get_plan_performance_analysis(
     - **include_forecasts**: Include revenue forecasts
     """
 
-    service = BillingAnalyticsService(db)
-
     end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=period_months * 30)
 
-    performance = service.get_plan_performance_analysis(
-        start_date, end_date, include_forecasts
+    performance = plan_performance_use_case.execute(
+        start_date=start_date,
+        end_date=end_date,
+        include_forecasts=include_forecasts
     )
 
     return {
@@ -377,7 +386,7 @@ async def export_billing_analytics(
     period_end: Optional[datetime] = None,
     include_user_details: bool = Query(False),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    export_use_case: BillingAnalyticsExportUseCase = Depends(get_billing_analytics_export_use_case),
 ):
     """
     Export billing analytics data in various formats.
@@ -388,15 +397,16 @@ async def export_billing_analytics(
     - **include_user_details**: Include detailed user information
     """
 
-    service = BillingAnalyticsService(db)
-
     if period_end is None:
         period_end = datetime.utcnow()
     if period_start is None:
         period_start = period_end - timedelta(days=90)
 
-    export_data = service.export_analytics_data(
-        format, period_start, period_end, include_user_details
+    export_data = export_use_case.execute(
+        format=format,
+        period_start=period_start,
+        period_end=period_end,
+        include_user_details=include_user_details
     )
 
     return export_data
@@ -408,7 +418,7 @@ async def refresh_billing_analytics(
     period_type: str = Query("monthly", regex="^(daily|monthly)$"),
     force_rebuild: bool = Query(False),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    refresh_use_case: BillingAnalyticsRefreshUseCase = Depends(get_billing_analytics_refresh_use_case),
 ):
     """
     Manually trigger billing analytics refresh for specific user or all users.
@@ -418,13 +428,13 @@ async def refresh_billing_analytics(
     - **force_rebuild**: Force complete rebuild of analytics data
     """
 
-    service = BillingAnalyticsService(db)
-
     try:
         if user_id:
             # Refresh specific user
-            result = service.refresh_user_analytics(
-                user_id, period_type, force_rebuild
+            result = refresh_use_case.execute(
+                user_id=user_id,
+                period_type=period_type,
+                force_rebuild=force_rebuild
             )
             return {
                 "success": True,
@@ -433,7 +443,11 @@ async def refresh_billing_analytics(
             }
         else:
             # Refresh all users
-            result = service.refresh_all_analytics(period_type, force_rebuild)
+            result = refresh_use_case.execute(
+                user_id=None,
+                period_type=period_type,
+                force_rebuild=force_rebuild
+            )
             return {
                 "success": True,
                 "message": "Analytics refreshed for all users",
@@ -450,14 +464,13 @@ async def refresh_billing_analytics(
 @router.get("/health-score-distribution")
 async def get_customer_health_score_distribution(
     current_user: User = Depends(require_staff),  # Staff can view this
-    db: Session = Depends(get_db),
+    health_score_use_case: BillingAnalyticsHealthScoreUseCase = Depends(get_billing_analytics_health_score_use_case),
 ):
     """
     Get distribution of customer health scores across the user base.
     """
 
-    service = BillingAnalyticsService(db)
-    distribution = service.get_health_score_distribution()
+    distribution = health_score_use_case.execute()
 
     return {
         "total_users": distribution["total_users"],
