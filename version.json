@@ -1,8 +1,8 @@
 {
-  "version": "2.22.0",
-  "displayVersion": "v2.22.0",
-  "description": "Cross-Domain Testing & Prevention Strategy Implementation",
+  "version": "2.22.1",
+  "displayVersion": "v2.22.1",
+  "description": "Critical Dependency & Import Error Fixes",
   "releaseDate": "2025-09-22",
-  "releaseNotes": "Comprehensive testing and prevention strategy to eliminate cross-domain data type errors and missing database session parameters. Major achievements: (1) Created enum conversion testing framework preventing SessionSource.CLIENT-style bugs; (2) Built repository layer validation tests ensuring proper domain ↔ database conversions; (3) Implemented API endpoint parameter validation detecting missing db session parameters; (4) Created architecture compliance checker script with 13 critical violation detection; (5) Enhanced Makefile with specialized testing commands (test-enum-conversions, test-repository-layers, test-api-parameters, check-architecture); (6) Updated refactor architecture documentation with prevention strategy; (7) Fixed audio upload UX issues (session ID display, faster polling, smooth transitions); (8) Resolved coaching session creation enum mismatch bug. Multi-layer protection system ensures future cross-domain issues are caught early in development lifecycle.",
+  "releaseNotes": "Emergency hotfix addressing critical server startup issues: (1) Fixed missing AssemblyAI dependency causing ModuleNotFoundError on startup; (2) Resolved undefined variable errors in coaching_sessions.py by adding proper imports for Client model; (3) Removed non-existent module imports (TranscriptSegment, SpeakerRole) that caused import failures; (4) Added missing newline at end of dependencies.py to fix W292 linting issue; (5) Verified server startup and API functionality in TEST_MODE works correctly; (6) Confirmed /api/v1/plans/current endpoint returns proper JSON data. All critical functionality restored: server starts without errors, API endpoints respond correctly, TEST_MODE functions properly, database connectivity working.",
   "author": "Coachly Team"
 }

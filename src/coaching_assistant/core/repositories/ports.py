@@ -109,6 +109,10 @@ class SessionRepoPort(Protocol):
         """Get total duration in minutes for user sessions."""
         ...
 
+    def get_completed_count_for_user(self, user_id: UUID) -> int:
+        """Get count of completed sessions for a user."""
+        ...
+
 
 class UsageLogRepoPort(Protocol):
     """Repository interface for UsageLog entity operations."""
@@ -312,6 +316,24 @@ class CoachingSessionRepoPort(Protocol):
         self, coach_id: UUID, client_id: UUID
     ) -> Optional[CoachingSession]:
         """Get the most recent coaching session for a specific client."""
+        ...
+
+    def get_total_minutes_for_user(self, user_id: UUID) -> int:
+        """Get total minutes from all coaching sessions for a user."""
+        ...
+
+    def get_monthly_minutes_for_user(self, user_id: UUID, year: int, month: int) -> int:
+        """Get total minutes for a user in a specific month."""
+        ...
+
+    def get_monthly_revenue_by_currency(
+        self, user_id: UUID, year: int, month: int
+    ) -> Dict[str, int]:
+        """Get revenue by currency for a user in a specific month."""
+        ...
+
+    def get_unique_clients_count_for_user(self, user_id: UUID) -> int:
+        """Get count of unique clients for a user."""
         ...
 
 

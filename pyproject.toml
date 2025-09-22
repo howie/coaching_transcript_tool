@@ -45,6 +45,7 @@ dependencies = [
     "redis>=5.0.0",
     "requests>=2.31.0",
     "sentry-sdk[flask]>=2.37.0",
+    "assemblyai>=0.44.3",
 ]
 
 [project.optional-dependencies]

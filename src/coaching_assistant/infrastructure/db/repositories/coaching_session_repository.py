@@ -37,8 +37,14 @@ class SQLAlchemyCoachingSessionRepository(CoachingSessionRepoPort):
         if not orm_session:
             return None
 
-        # Convert database enum to domain enum
-        domain_source = DomainSessionSource(orm_session.source.value) if isinstance(orm_session.source, DatabaseSessionSource) else DomainSessionSource(orm_session.source)
+        # Convert database enum to domain enum value
+        if isinstance(orm_session.source, DatabaseSessionSource):
+            domain_source = DomainSessionSource(orm_session.source.value)
+        elif isinstance(orm_session.source, str):
+            domain_source = DomainSessionSource(orm_session.source)
+        else:
+            # Fallback to value extraction
+            domain_source = DomainSessionSource(orm_session.source.value if hasattr(orm_session.source, 'value') else orm_session.source)
 
         return DomainCoachingSession(
             id=orm_session.id,
@@ -57,8 +63,14 @@ class SQLAlchemyCoachingSessionRepository(CoachingSessionRepoPort):
 
     def _create_orm_session(self, session: DomainCoachingSession) -> CoachingSessionModel:
         """Create ORM coaching session from domain coaching session."""
-        # Convert domain enum to database enum
-        database_source = DatabaseSessionSource(session.source.value) if isinstance(session.source, DomainSessionSource) else DatabaseSessionSource(session.source)
+        # Convert domain enum to database enum value
+        if isinstance(session.source, DomainSessionSource):
+            database_source = DatabaseSessionSource(session.source.value)
+        elif isinstance(session.source, str):
+            database_source = DatabaseSessionSource(session.source)
+        else:
+            # Fallback to value extraction
+            database_source = DatabaseSessionSource(session.source.value if hasattr(session.source, 'value') else session.source)
 
         orm_session = CoachingSessionModel(
             id=session.id,
@@ -167,8 +179,14 @@ class SQLAlchemyCoachingSessionRepository(CoachingSessionRepoPort):
                     orm_session.user_id = session.user_id
                     orm_session.client_id = session.client_id
                     orm_session.session_date = session.session_date
-                    # Convert domain enum to database enum
-                    orm_session.source = DatabaseSessionSource(session.source.value) if isinstance(session.source, DomainSessionSource) else DatabaseSessionSource(session.source)
+                    # Convert domain enum to database enum value
+                    if isinstance(session.source, DomainSessionSource):
+                        orm_session.source = DatabaseSessionSource(session.source.value)
+                    elif isinstance(session.source, str):
+                        orm_session.source = DatabaseSessionSource(session.source)
+                    else:
+                        # Fallback to value extraction
+                        orm_session.source = DatabaseSessionSource(session.source.value if hasattr(session.source, 'value') else session.source)
                     orm_session.duration_min = session.duration_min
                     orm_session.fee_currency = session.fee_currency
                     orm_session.fee_amount = session.fee_amount
@@ -352,6 +370,90 @@ class SQLAlchemyCoachingSessionRepository(CoachingSessionRepoPort):
             return self._to_domain(orm_session) if orm_session else None
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error getting last session for client {client_id}") from e
+
+    def get_total_minutes_for_user(self, user_id: UUID) -> int:
+        """Get total minutes from all coaching sessions for a user."""
+        try:
+            from sqlalchemy import func
+            result = (
+                self.session.query(
+                    func.coalesce(func.sum(CoachingSessionModel.duration_min), 0)
+                )
+                .filter(CoachingSessionModel.user_id == user_id)
+                .scalar()
+            )
+            return int(result or 0)
+        except SQLAlchemyError as e:
+            raise RuntimeError(f"Database error getting total minutes for user {user_id}") from e
+
+    def get_monthly_minutes_for_user(self, user_id: UUID, year: int, month: int) -> int:
+        """Get total minutes for a user in a specific month."""
+        try:
+            from sqlalchemy import func, extract
+            result = (
+                self.session.query(
+                    func.coalesce(func.sum(CoachingSessionModel.duration_min), 0)
+                )
+                .filter(
+                    and_(
+                        CoachingSessionModel.user_id == user_id,
+                        extract("year", CoachingSessionModel.session_date) == year,
+                        extract("month", CoachingSessionModel.session_date) == month,
+                    )
+                )
+                .scalar()
+            )
+            return int(result or 0)
+        except SQLAlchemyError as e:
+            raise RuntimeError(f"Database error getting monthly minutes for user {user_id}") from e
+
+    def get_monthly_revenue_by_currency(
+        self, user_id: UUID, year: int, month: int
+    ) -> dict[str, int]:
+        """Get revenue by currency for a user in a specific month."""
+        try:
+            from sqlalchemy import func, extract
+            revenue_by_currency = {}
+            revenue_results = (
+                self.session.query(
+                    CoachingSessionModel.fee_currency,
+                    func.coalesce(func.sum(CoachingSessionModel.fee_amount), 0).label(
+                        "total_amount"
+                    ),
+                )
+                .filter(
+                    and_(
+                        CoachingSessionModel.user_id == user_id,
+                        extract("year", CoachingSessionModel.session_date) == year,
+                        extract("month", CoachingSessionModel.session_date) == month,
+                    )
+                )
+                .group_by(CoachingSessionModel.fee_currency)
+                .all()
+            )
+
+            for currency, amount in revenue_results:
+                if currency:  # Skip None currencies
+                    revenue_by_currency[currency] = int(amount or 0)
+
+            return revenue_by_currency
+        except SQLAlchemyError as e:
+            raise RuntimeError(f"Database error getting monthly revenue for user {user_id}") from e
+
+    def get_unique_clients_count_for_user(self, user_id: UUID) -> int:
+        """Get count of unique clients for a user."""
+        try:
+            from sqlalchemy import func
+            result = (
+                self.session.query(
+                    func.count(func.distinct(CoachingSessionModel.client_id))
+                )
+                .filter(CoachingSessionModel.user_id == user_id)
+                .scalar()
+            )
+            return int(result or 0)
+        except SQLAlchemyError as e:
+            raise RuntimeError(f"Database error getting unique clients count for user {user_id}") from e
 
 
 # Factory function for dependency injection

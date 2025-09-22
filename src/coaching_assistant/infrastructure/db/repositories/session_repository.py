@@ -279,6 +279,24 @@ class SQLAlchemySessionRepository(SessionRepoPort):
 
         return domain_session
 
+    def get_completed_count_for_user(self, user_id: UUID) -> int:
+        """Get count of completed sessions for a user."""
+        try:
+            from ....models.session import SessionStatus as LegacySessionStatus
+            result = (
+                self.session.query(SessionModel)
+                .filter(
+                    and_(
+                        SessionModel.user_id == user_id,
+                        SessionModel.status == LegacySessionStatus.COMPLETED,
+                    )
+                )
+                .count()
+            )
+            return int(result or 0)
+        except SQLAlchemyError as e:
+            raise RuntimeError(f"Database error getting completed sessions count for user {user_id}") from e
+
 
 def create_session_repository(session: DBSession) -> SessionRepoPort:
     """Factory function to create a session repository.

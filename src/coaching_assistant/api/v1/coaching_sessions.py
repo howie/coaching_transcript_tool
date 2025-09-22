@@ -12,16 +12,21 @@ from fastapi import (
     File as FastAPIFile,
     Form,
 )
-from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 import logging
 import re
 import json
 
-from ...infrastructure.factories import CoachingSessionServiceFactory
-from ...core.database import get_db
+from sqlalchemy.orm import Session
+
 from ...core.models.user import User
 from ...core.models.coaching_session import SessionSource
+from ...core.models.session import SessionStatus
+from ...models.session import Session as TranscriptionSession
+from ...models.coaching_session import CoachingSession
+from ...models.transcript import SessionRole
+from ...models.client import Client
+from ...core.database import get_db
 from ...core.services.coaching_session_management_use_case import (
     CoachingSessionRetrievalUseCase,
     CoachingSessionCreationUseCase,
@@ -30,10 +35,15 @@ from ...core.services.coaching_session_management_use_case import (
     CoachingSessionOptionsUseCase,
 )
 from ...core.services.transcript_upload_use_case import TranscriptUploadUseCase
-from ...models import CoachingSession, Client
-from ...models.session import Session as TranscriptionSession, SessionStatus
-from ...models.transcript import TranscriptSegment, SpeakerRole, SessionRole
 from .auth import get_current_user_dependency
+from .dependencies import (
+    get_coaching_session_retrieval_use_case,
+    get_coaching_session_creation_use_case,
+    get_coaching_session_update_use_case,
+    get_coaching_session_deletion_use_case,
+    get_coaching_session_options_use_case,
+    get_transcript_upload_use_case,
+)
 from ...utils.chinese_converter import convert_to_traditional
 
 logger = logging.getLogger(__name__)
@@ -41,28 +51,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# Dependency injection factory functions
-def get_coaching_session_retrieval_use_case(db: Session = Depends(get_db)) -> CoachingSessionRetrievalUseCase:
-    return CoachingSessionServiceFactory.create_coaching_session_retrieval_use_case(db)
-
-def get_coaching_session_creation_use_case(db: Session = Depends(get_db)) -> CoachingSessionCreationUseCase:
-    return CoachingSessionServiceFactory.create_coaching_session_creation_use_case(db)
-
-def get_coaching_session_update_use_case(db: Session = Depends(get_db)) -> CoachingSessionUpdateUseCase:
-    return CoachingSessionServiceFactory.create_coaching_session_update_use_case(db)
-
-def get_coaching_session_deletion_use_case(db: Session = Depends(get_db)) -> CoachingSessionDeletionUseCase:
-    return CoachingSessionServiceFactory.create_coaching_session_deletion_use_case(db)
-
-def get_coaching_session_options_use_case() -> CoachingSessionOptionsUseCase:
-    return CoachingSessionServiceFactory.create_coaching_session_options_use_case()
-
-def get_transcript_upload_use_case(db: Session = Depends(get_db)) -> TranscriptUploadUseCase:
-    from ...infrastructure.factories import TranscriptServiceFactory
-    return TranscriptServiceFactory.create_transcript_upload_use_case(db)
-
-
-# Move function after class definitions
+# Dependency injection functions are imported from dependencies module
 
 
 # Pydantic models for request/response

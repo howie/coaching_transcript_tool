@@ -15,6 +15,8 @@ from ...infrastructure.factories import (
     PlanServiceFactory,
     SubscriptionServiceFactory,
     TranscriptServiceFactory,
+    ClientServiceFactory,
+    CoachingSessionServiceFactory,
     create_session_repository,
 )
 from ...core.services.usage_tracking_use_case import CreateUsageLogUseCase, GetUserUsageUseCase
@@ -44,6 +46,21 @@ from ...core.services.subscription_management_use_case import (
     SubscriptionModificationUseCase,
 )
 from ...core.services.transcript_upload_use_case import TranscriptUploadUseCase
+from ...core.services.client_management_use_case import (
+    ClientRetrievalUseCase,
+    ClientCreationUseCase,
+    ClientUpdateUseCase,
+    ClientDeletionUseCase,
+    ClientOptionsUseCase,
+)
+from ...core.services.coaching_session_management_use_case import (
+    CoachingSessionRetrievalUseCase,
+    CoachingSessionCreationUseCase,
+    CoachingSessionUpdateUseCase,
+    CoachingSessionDeletionUseCase,
+    CoachingSessionOptionsUseCase,
+)
+from ...core.services.dashboard_summary_use_case import DashboardSummaryUseCase
 
 
 def get_usage_log_use_case(
@@ -234,3 +251,88 @@ def get_transcript_upload_use_case(
 ) -> TranscriptUploadUseCase:
     """Dependency to get TranscriptUploadUseCase with repository injection."""
     return TranscriptServiceFactory.create_transcript_upload_use_case(db)
+
+
+# Client Management Dependencies
+def get_client_retrieval_use_case(
+    db: Session = Depends(get_db)
+) -> ClientRetrievalUseCase:
+    """Dependency to inject ClientRetrievalUseCase."""
+    return ClientServiceFactory.create_client_retrieval_use_case(db)
+
+
+def get_client_creation_use_case(
+    db: Session = Depends(get_db)
+) -> ClientCreationUseCase:
+    """Dependency to inject ClientCreationUseCase."""
+    return ClientServiceFactory.create_client_creation_use_case(db)
+
+
+def get_client_update_use_case(
+    db: Session = Depends(get_db)
+) -> ClientUpdateUseCase:
+    """Dependency to inject ClientUpdateUseCase."""
+    return ClientServiceFactory.create_client_update_use_case(db)
+
+
+def get_client_deletion_use_case(
+    db: Session = Depends(get_db)
+) -> ClientDeletionUseCase:
+    """Dependency to inject ClientDeletionUseCase."""
+    return ClientServiceFactory.create_client_deletion_use_case(db)
+
+
+def get_client_options_use_case() -> ClientOptionsUseCase:
+    """Dependency to inject ClientOptionsUseCase."""
+    return ClientServiceFactory.create_client_options_use_case()
+
+
+# Coaching Session Management Dependencies
+def get_coaching_session_retrieval_use_case(
+    db: Session = Depends(get_db)
+) -> CoachingSessionRetrievalUseCase:
+    """Dependency to inject CoachingSessionRetrievalUseCase."""
+    return CoachingSessionServiceFactory.create_coaching_session_retrieval_use_case(db)
+
+
+def get_coaching_session_creation_use_case(
+    db: Session = Depends(get_db)
+) -> CoachingSessionCreationUseCase:
+    """Dependency to inject CoachingSessionCreationUseCase."""
+    return CoachingSessionServiceFactory.create_coaching_session_creation_use_case(db)
+
+
+def get_coaching_session_update_use_case(
+    db: Session = Depends(get_db)
+) -> CoachingSessionUpdateUseCase:
+    """Dependency to inject CoachingSessionUpdateUseCase."""
+    return CoachingSessionServiceFactory.create_coaching_session_update_use_case(db)
+
+
+def get_coaching_session_deletion_use_case(
+    db: Session = Depends(get_db)
+) -> CoachingSessionDeletionUseCase:
+    """Dependency to inject CoachingSessionDeletionUseCase."""
+    return CoachingSessionServiceFactory.create_coaching_session_deletion_use_case(db)
+
+
+def get_coaching_session_options_use_case() -> CoachingSessionOptionsUseCase:
+    """Dependency to inject CoachingSessionOptionsUseCase."""
+    return CoachingSessionServiceFactory.create_coaching_session_options_use_case()
+
+
+# Dashboard Summary Dependencies
+def get_dashboard_summary_use_case(
+    db: Session = Depends(get_db)
+) -> DashboardSummaryUseCase:
+    """Dependency to inject DashboardSummaryUseCase."""
+    from ...infrastructure.db.repositories.coaching_session_repository import SQLAlchemyCoachingSessionRepository
+    from ...infrastructure.db.repositories.session_repository import SQLAlchemySessionRepository
+
+    coaching_session_repo = SQLAlchemyCoachingSessionRepository(db)
+    session_repo = SQLAlchemySessionRepository(db)
+
+    return DashboardSummaryUseCase(
+        coaching_session_repo=coaching_session_repo,
+        session_repo=session_repo,
+    )
