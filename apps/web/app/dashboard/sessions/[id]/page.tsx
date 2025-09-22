@@ -297,8 +297,8 @@ const SessionDetailPage = () => {
       const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
 
       let roleString: 'coach' | 'client';
-      if (tempSegmentRoles[segmentId]) {
-        roleString = tempSegmentRoles[segmentId];
+      if (tempSegmentRoles[segmentId] && tempSegmentRoles[segmentId] !== 'unknown') {
+        roleString = tempSegmentRoles[segmentId] as 'coach' | 'client';
       } else if (tempRoleAssignments[segment.speaker_id]) {
         roleString = tempRoleAssignments[segment.speaker_id];
       } else {
@@ -646,8 +646,11 @@ ${t('sessions.aiChatFollowUp')}`;
     if (!transcriptionSessionId) return;
     
     try {
-      // Save segment-level role assignments via API
-      await apiClient.updateSegmentRoles(transcriptionSessionId, tempSegmentRoles);
+      // Save segment-level role assignments via API (filter out 'unknown' values)
+      const filteredSegmentRoles = Object.fromEntries(
+        Object.entries(tempSegmentRoles).filter(([_, role]) => role !== 'unknown')
+      ) as { [segmentId: string]: 'coach' | 'client' };
+      await apiClient.updateSegmentRoles(transcriptionSessionId, filteredSegmentRoles);
       
       // Save segment content changes via API
       const contentResult = await apiClient.updateSegmentContent(transcriptionSessionId, tempSegmentContent);
@@ -659,7 +662,7 @@ ${t('sessions.aiChatFollowUp')}`;
       setTranscript(prev => prev ? {
         ...prev,
         role_assignments: tempRoleAssignments,  // Keep speaker-level for compatibility
-        segment_roles: tempSegmentRoles,  // Add segment-level roles
+        segment_roles: filteredSegmentRoles,  // Add segment-level roles (filtered)
         segments: prev.segments.map(segment => {
           const segmentId = segment.id || `${segment.speaker_id}-${segment.start_sec}`;
           return {

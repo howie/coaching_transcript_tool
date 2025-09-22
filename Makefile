@@ -335,6 +335,39 @@ lint: dev-setup
 	@echo "Lint logs will be saved to logs/lint.log"
 	$(PYTHON) -m flake8 src/ tests/ 2>&1 | tee logs/lint.log
 
+# Run architecture compliance checks
+check-architecture: dev-setup
+	@mkdir -p logs
+	@echo "Running Clean Architecture compliance checks..."
+	@echo "Architecture check logs will be saved to logs/architecture-check.log"
+	$(PYTHON) scripts/check_architecture.py 2>&1 | tee logs/architecture-check.log
+
+# Run enum conversion tests
+test-enum-conversions: dev-setup
+	@mkdir -p logs
+	@echo "Running enum conversion tests..."
+	@echo "📝 Testing domain ↔ database enum conversions"
+	pytest tests/unit/infrastructure/test_enum_conversions.py -v --color=yes 2>&1 | tee logs/test-enum-conversions.log
+
+# Run repository layer tests
+test-repository-layers: dev-setup
+	@mkdir -p logs
+	@echo "Running repository layer conversion tests..."
+	@echo "📝 Testing repository _to_domain() and _from_domain() methods"
+	pytest tests/integration/repositories/test_repository_conversions.py -v --color=yes 2>&1 | tee logs/test-repository-layers.log
+
+# Run API parameter validation tests
+test-api-parameters: dev-setup
+	@mkdir -p logs
+	@echo "Running API endpoint parameter validation tests..."
+	@echo "📝 Testing dependency injection and response function parameters"
+	pytest tests/api/test_dependency_injection.py -v --color=yes 2>&1 | tee logs/test-api-parameters.log
+
+# Run all architecture compliance tests
+test-architecture: test-enum-conversions test-repository-layers test-api-parameters check-architecture
+	@echo "✅ All architecture compliance tests completed"
+	@echo "📊 Check logs/ directory for detailed results"
+
 # Create a distribution package
 dist: clean
 	$(UV) pip install setuptools wheel build

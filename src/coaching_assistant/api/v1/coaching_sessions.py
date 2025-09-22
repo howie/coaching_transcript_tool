@@ -13,14 +13,24 @@ from fastapi import (
     Form,
 )
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, desc, asc
 from pydantic import BaseModel, Field
 import logging
 import re
 import json
 
+from ...infrastructure.factories import CoachingSessionServiceFactory
 from ...core.database import get_db
-from ...models import CoachingSession, Client, User, SessionSource
+from ...core.models.user import User
+from ...core.models.coaching_session import SessionSource
+from ...core.services.coaching_session_management_use_case import (
+    CoachingSessionRetrievalUseCase,
+    CoachingSessionCreationUseCase,
+    CoachingSessionUpdateUseCase,
+    CoachingSessionDeletionUseCase,
+    CoachingSessionOptionsUseCase,
+)
+from ...core.services.transcript_upload_use_case import TranscriptUploadUseCase
+from ...models import CoachingSession, Client
 from ...models.session import Session as TranscriptionSession, SessionStatus
 from ...models.transcript import TranscriptSegment, SpeakerRole, SessionRole
 from .auth import get_current_user_dependency
@@ -29,6 +39,27 @@ from ...utils.chinese_converter import convert_to_traditional
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# Dependency injection factory functions
+def get_coaching_session_retrieval_use_case(db: Session = Depends(get_db)) -> CoachingSessionRetrievalUseCase:
+    return CoachingSessionServiceFactory.create_coaching_session_retrieval_use_case(db)
+
+def get_coaching_session_creation_use_case(db: Session = Depends(get_db)) -> CoachingSessionCreationUseCase:
+    return CoachingSessionServiceFactory.create_coaching_session_creation_use_case(db)
+
+def get_coaching_session_update_use_case(db: Session = Depends(get_db)) -> CoachingSessionUpdateUseCase:
+    return CoachingSessionServiceFactory.create_coaching_session_update_use_case(db)
+
+def get_coaching_session_deletion_use_case(db: Session = Depends(get_db)) -> CoachingSessionDeletionUseCase:
+    return CoachingSessionServiceFactory.create_coaching_session_deletion_use_case(db)
+
+def get_coaching_session_options_use_case() -> CoachingSessionOptionsUseCase:
+    return CoachingSessionServiceFactory.create_coaching_session_options_use_case()
+
+def get_transcript_upload_use_case(db: Session = Depends(get_db)) -> TranscriptUploadUseCase:
+    from ...infrastructure.factories import TranscriptServiceFactory
+    return TranscriptServiceFactory.create_transcript_upload_use_case(db)
 
 
 # Move function after class definitions
@@ -129,6 +160,55 @@ class SessionSourceOption(BaseModel):
     label: str
 
 
+# Helper function to convert domain model to response model
+def _coaching_session_to_response(session, db: Session, client_summary=None, transcription_session_summary=None) -> CoachingSessionResponse:
+    """Convert domain CoachingSession to CoachingSessionResponse.
+
+    Args:
+        session: CoachingSession domain entity
+        db: Database session for client lookup
+        client_summary: Optional pre-built ClientSummary
+        transcription_session_summary: Optional pre-built TranscriptionSessionSummary
+
+    Returns:
+        CoachingSessionResponse
+    """
+    # Create client summary if not provided
+    if not client_summary:
+        # Fetch client info using the provided database session
+        client = db.query(Client).filter(Client.id == session.client_id).first()
+        if client:
+            client_summary = ClientSummary(
+                id=client.id,
+                name=client.name,
+                is_anonymized=client.is_anonymized,
+            )
+        else:
+            client_summary = ClientSummary(
+                id=session.client_id,
+                name="Unknown Client",
+                is_anonymized=False,
+            )
+
+    return CoachingSessionResponse(
+        id=session.id,
+        session_date=session.session_date.isoformat(),
+        client=client_summary,
+        client_id=session.client_id,
+        source=session.source.value,  # Use .value to get the string representation
+        duration_min=session.duration_min,
+        fee_currency=session.fee_currency,
+        fee_amount=session.fee_amount,
+        fee_display=session.fee_display,
+        duration_display=session.duration_display,
+        transcription_session_id=session.transcription_session_id,
+        transcription_session=transcription_session_summary,
+        notes=session.notes,
+        created_at=session.created_at.isoformat(),
+        updated_at=session.updated_at.isoformat(),
+    )
+
+
 @router.get("", response_model=CoachingSessionListResponse)
 async def list_coaching_sessions(
     from_date: Optional[date] = Query(None, alias="from"),
@@ -138,444 +218,202 @@ async def list_coaching_sessions(
     sort: str = Query("-session_date", regex="^-?(session_date|fee)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
+    db: Session = Depends(get_db),
 ):
     """List coaching sessions for the current user."""
-    query_filter = and_(CoachingSession.user_id == current_user.id)
-
-    # Apply filters
-    if from_date:
-        query_filter = and_(
-            query_filter, CoachingSession.session_date >= from_date
-        )
-    if to_date:
-        query_filter = and_(
-            query_filter, CoachingSession.session_date <= to_date
-        )
-    if client_id:
-        query_filter = and_(
-            query_filter, CoachingSession.client_id == client_id
-        )
-    if currency:
-        query_filter = and_(
-            query_filter, CoachingSession.fee_currency == currency
+    try:
+        sessions, total, total_pages = retrieval_use_case.list_sessions_paginated(
+            coach_id=current_user.id,
+            from_date=from_date,
+            to_date=to_date,
+            client_id=client_id,
+            currency=currency,
+            sort=sort,
+            page=page,
+            page_size=page_size
         )
 
-    # Build query with joins
-    query = (
-        db.query(CoachingSession)
-        .join(Client, CoachingSession.client_id == Client.id)
-        .outerjoin(
-            TranscriptionSession, CoachingSession.transcription_session_id == TranscriptionSession.id
+        # Convert domain entities to response models
+        session_responses = []
+        for session in sessions:
+            # Get transcription session info if available using the same db session
+            transcription_session_summary = None
+            if session.transcription_session_id:
+                transcription_session_summary = get_transcription_session_summary(
+                    db, session.transcription_session_id
+                )
+
+            session_response = _coaching_session_to_response(
+                session,
+                db,
+                transcription_session_summary=transcription_session_summary
+            )
+            session_responses.append(session_response)
+
+        return CoachingSessionListResponse(
+            items=session_responses,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
         )
-        .filter(query_filter)
-    )
-
-    # Apply sorting
-    if sort == "session_date":
-        query = query.order_by(asc(CoachingSession.session_date))
-    elif sort == "-session_date":
-        query = query.order_by(desc(CoachingSession.session_date))
-    elif sort == "fee":
-        query = query.order_by(
-            asc(CoachingSession.fee_currency), asc(CoachingSession.fee_amount)
-        )
-    elif sort == "-fee":
-        query = query.order_by(
-            desc(CoachingSession.fee_currency),
-            desc(CoachingSession.fee_amount),
-        )
-
-    # Get total count
-    total = query.count()
-
-    # Get paginated results
-    sessions = query.offset((page - 1) * page_size).limit(page_size).all()
-
-    # Build response
-    session_responses = []
-    for session in sessions:
-        client_summary = ClientSummary(
-            id=session.client.id,
-            name=session.client.name,
-            is_anonymized=session.client.is_anonymized,
-        )
-
-        # Get transcription session info if available
-        transcription_session_summary = get_transcription_session_summary(
-            db, session.transcription_session_id
-        )
-
-        session_dict = {
-            "id": session.id,
-            "session_date": session.session_date.isoformat(),
-            "client": client_summary,
-            "client_id": session.client_id,
-            "source": session.source,
-            "duration_min": session.duration_min,
-            "fee_currency": session.fee_currency,
-            "fee_amount": session.fee_amount,
-            "fee_display": session.fee_display,
-            "duration_display": session.duration_display,
-            "transcription_session_id": session.transcription_session_id,
-            "transcription_session": transcription_session_summary,
-            "notes": session.notes,
-            "created_at": session.created_at.isoformat(),
-            "updated_at": session.updated_at.isoformat(),
-        }
-        session_responses.append(CoachingSessionResponse(**session_dict))
-
-    total_pages = (total + page_size - 1) // page_size
-
-    return CoachingSessionListResponse(
-        items=session_responses,
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages,
-    )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{session_id}", response_model=CoachingSessionResponse)
 async def get_coaching_session(
     session_id: UUID,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
+    db: Session = Depends(get_db),
 ):
     """Get a specific coaching session."""
-    session = (
-        db.query(CoachingSession)
-        .join(Client, CoachingSession.client_id == Client.id)
-        .filter(
-            and_(
-                CoachingSession.id == session_id,
-                CoachingSession.user_id == current_user.id,
-            )
-        )
-        .first()
-    )
+    try:
+        session = retrieval_use_case.get_session_by_id(session_id, current_user.id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Coaching session not found")
 
-    if not session:
-        raise HTTPException(
-            status_code=404, detail="Coaching session not found"
-        )
-
-    client_summary = ClientSummary(
-        id=session.client.id,
-        name=session.client.name,
-        is_anonymized=session.client.is_anonymized,
-    )
-
-    # Get transcription session info if available
-    transcription_session_summary = None
-    if session.transcription_session_id:
-        # Query for the transcription session
-        transcription_session = (
-            db.query(TranscriptionSession)
-            .filter(TranscriptionSession.id == session.transcription_session_id)
-            .first()
-        )
-        if transcription_session:
-            transcription_session_summary = TranscriptionSessionSummary(
-                id=transcription_session.id,
-                status=transcription_session.status.value,
-                title=transcription_session.title,
-                segments_count=transcription_session.segments_count,
+        # Get transcription session info if available using the same db session
+        transcription_session_summary = None
+        if session.transcription_session_id:
+            transcription_session_summary = get_transcription_session_summary(
+                db, session.transcription_session_id
             )
 
-    session_dict = {
-        "id": session.id,
-        "session_date": session.session_date.isoformat(),
-        "client": client_summary,
-        "client_id": session.client_id,
-        "source": session.source,
-        "duration_min": session.duration_min,
-        "fee_currency": session.fee_currency,
-        "fee_amount": session.fee_amount,
-        "fee_display": session.fee_display,
-        "duration_display": session.duration_display,
-        "transcription_session_id": session.transcription_session_id,
-        "transcription_session": transcription_session_summary,
-        "notes": session.notes,
-        "created_at": session.created_at.isoformat(),
-        "updated_at": session.updated_at.isoformat(),
-    }
-
-    return CoachingSessionResponse(**session_dict)
+        return _coaching_session_to_response(
+            session,
+            db,
+            transcription_session_summary=transcription_session_summary
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("", response_model=CoachingSessionResponse)
 async def create_coaching_session(
     session_data: CoachingSessionCreate,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    creation_use_case: CoachingSessionCreationUseCase = Depends(get_coaching_session_creation_use_case),
+    db: Session = Depends(get_db),
 ):
     """Create a new coaching session."""
-    # Verify client belongs to current user
-    client = (
-        db.query(Client)
-        .filter(
-            and_(
-                Client.id == session_data.client_id,
-                Client.user_id == current_user.id,
-            )
+    try:
+        session = creation_use_case.create_session(
+            coach_id=current_user.id,
+            session_date=session_data.session_date,
+            client_id=session_data.client_id,
+            source=session_data.source,
+            duration_min=session_data.duration_min,
+            fee_currency=session_data.fee_currency,
+            fee_amount=session_data.fee_amount,
+            notes=session_data.notes,
         )
-        .first()
-    )
 
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-
-    session = CoachingSession(
-        user_id=current_user.id,
-        session_date=session_data.session_date,
-        client_id=session_data.client_id,
-        source=session_data.source,
-        duration_min=session_data.duration_min,
-        fee_currency=session_data.fee_currency.upper(),
-        fee_amount=session_data.fee_amount,
-        notes=session_data.notes,
-    )
-
-    db.add(session)
-    db.commit()
-    db.refresh(session)
-
-    # Reload to get client data
-    session = (
-        db.query(CoachingSession)
-        .join(Client, CoachingSession.client_id == Client.id)
-        .filter(CoachingSession.id == session.id)
-        .first()
-    )
-
-    client_summary = ClientSummary(
-        id=session.client.id,
-        name=session.client.name,
-        is_anonymized=session.client.is_anonymized,
-    )
-
-    # Get transcription session info if available
-    transcription_session_summary = get_transcription_session_summary(
-        db, session.transcription_session_id
-    )
-
-    session_dict = {
-        "id": session.id,
-        "session_date": session.session_date.isoformat(),
-        "client": client_summary,
-        "client_id": session.client_id,
-        "source": session.source,
-        "duration_min": session.duration_min,
-        "fee_currency": session.fee_currency,
-        "fee_amount": session.fee_amount,
-        "fee_display": session.fee_display,
-        "duration_display": session.duration_display,
-        "transcription_session_id": session.transcription_session_id,
-        "transcription_session": transcription_session_summary,
-        "notes": session.notes,
-        "created_at": session.created_at.isoformat(),
-        "updated_at": session.updated_at.isoformat(),
-    }
-
-    return CoachingSessionResponse(**session_dict)
+        return _coaching_session_to_response(session, db)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.patch("/{session_id}", response_model=CoachingSessionResponse)
 async def update_coaching_session(
     session_id: UUID,
     session_data: CoachingSessionUpdate,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    update_use_case: CoachingSessionUpdateUseCase = Depends(get_coaching_session_update_use_case),
+    db: Session = Depends(get_db),
 ):
     """Update a coaching session."""
-    session = (
-        db.query(CoachingSession)
-        .filter(
-            and_(
-                CoachingSession.id == session_id,
-                CoachingSession.user_id == current_user.id,
-            )
-        )
-        .first()
-    )
-
-    if not session:
-        raise HTTPException(
-            status_code=404, detail="Coaching session not found"
-        )
-
-    # Verify client belongs to current user if client_id is being updated
-    if session_data.client_id and session_data.client_id != session.client_id:
-        client = (
-            db.query(Client)
-            .filter(
-                and_(
-                    Client.id == session_data.client_id,
-                    Client.user_id == current_user.id,
+    try:
+        # Handle transcription_session_id conversion if needed
+        transcription_session_id = session_data.transcription_session_id
+        if transcription_session_id is not None and isinstance(transcription_session_id, str):
+            try:
+                from uuid import UUID
+                transcription_session_id = UUID(transcription_session_id)
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid transcription_session_id format: {str(e)}",
                 )
-            )
-            .first()
+
+        session = update_use_case.update_session(
+            session_id=session_id,
+            coach_id=current_user.id,
+            session_date=session_data.session_date,
+            client_id=session_data.client_id,
+            source=session_data.source,
+            duration_min=session_data.duration_min,
+            fee_currency=session_data.fee_currency,
+            fee_amount=session_data.fee_amount,
+            transcription_session_id=transcription_session_id,
+            notes=session_data.notes,
         )
 
-        if not client:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-    # Update fields
-    update_data = session_data.dict(exclude_unset=True)
-    if "fee_currency" in update_data:
-        update_data["fee_currency"] = update_data["fee_currency"].upper()
-
-    # Convert transcription_session_id string to UUID if present
-    if (
-        "transcription_session_id" in update_data
-        and update_data["transcription_session_id"] is not None
-    ):
-        from uuid import UUID
-
-        try:
-            if isinstance(update_data["transcription_session_id"], str):
-                update_data["transcription_session_id"] = UUID(
-                    update_data["transcription_session_id"]
-                )
-        except ValueError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid transcription_session_id format: {str(e)}",
-            )
-
-    for field, value in update_data.items():
-        setattr(session, field, value)
-
-    db.commit()
-    db.refresh(session)
-
-    # Reload to get client data
-    session = (
-        db.query(CoachingSession)
-        .join(Client, CoachingSession.client_id == Client.id)
-        .filter(CoachingSession.id == session.id)
-        .first()
-    )
-
-    client_summary = ClientSummary(
-        id=session.client.id,
-        name=session.client.name,
-        is_anonymized=session.client.is_anonymized,
-    )
-
-    # Get transcription session info if available
-    transcription_session_summary = get_transcription_session_summary(
-        db, session.transcription_session_id
-    )
-
-    session_dict = {
-        "id": session.id,
-        "session_date": session.session_date.isoformat(),
-        "client": client_summary,
-        "client_id": session.client_id,
-        "source": session.source,
-        "duration_min": session.duration_min,
-        "fee_currency": session.fee_currency,
-        "fee_amount": session.fee_amount,
-        "fee_display": session.fee_display,
-        "duration_display": session.duration_display,
-        "transcription_session_id": session.transcription_session_id,
-        "transcription_session": transcription_session_summary,
-        "notes": session.notes,
-        "created_at": session.created_at.isoformat(),
-        "updated_at": session.updated_at.isoformat(),
-    }
-
-    return CoachingSessionResponse(**session_dict)
+        return _coaching_session_to_response(session, db)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{session_id}")
 async def delete_coaching_session(
     session_id: UUID,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    deletion_use_case: CoachingSessionDeletionUseCase = Depends(get_coaching_session_deletion_use_case),
 ):
     """Delete a coaching session (hard delete)."""
-    session = (
-        db.query(CoachingSession)
-        .filter(
-            and_(
-                CoachingSession.id == session_id,
-                CoachingSession.user_id == current_user.id,
-            )
-        )
-        .first()
-    )
-
-    if not session:
-        raise HTTPException(
-            status_code=404, detail="Coaching session not found"
-        )
-
-    db.delete(session)
-    db.commit()
-
-    return {"message": "Coaching session deleted successfully"}
+    try:
+        success = deletion_use_case.delete_session(session_id, current_user.id)
+        if success:
+            return {"message": "Coaching session deleted successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to delete coaching session")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/clients/{client_id}/last-session")
 async def get_client_last_session(
     client_id: UUID,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_dependency),
+    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
 ):
     """Get the last coaching session for a specific client."""
-    # Get the most recent session for this client
-    last_session = (
-        db.query(CoachingSession)
-        .filter(
-            and_(
-                CoachingSession.user_id == current_user.id,
-                CoachingSession.client_id == client_id,
-            )
-        )
-        .order_by(desc(CoachingSession.session_date))
-        .first()
-    )
+    try:
+        last_session = retrieval_use_case.get_last_session_by_client(current_user.id, client_id)
 
-    if not last_session:
-        return None
+        if not last_session:
+            return None
 
-    return {
-        "duration_min": last_session.duration_min,
-        "fee_currency": last_session.fee_currency,
-        "fee_amount": last_session.fee_amount,
-    }
+        return {
+            "duration_min": last_session.duration_min,
+            "fee_currency": last_session.fee_currency,
+            "fee_amount": last_session.fee_amount,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/options/currencies")
-async def get_currencies():
+async def get_currencies(
+    options_use_case: CoachingSessionOptionsUseCase = Depends(get_coaching_session_options_use_case)
+):
     """Get available currency options."""
-    return [
-        {"value": "USD", "label": "USD - US Dollar"},
-        {"value": "EUR", "label": "EUR - Euro"},
-        {"value": "JPY", "label": "JPY - Japanese Yen"},
-        {"value": "GBP", "label": "GBP - British Pound"},
-        {"value": "AUD", "label": "AUD - Australian Dollar"},
-        {"value": "CAD", "label": "CAD - Canadian Dollar"},
-        {"value": "CHF", "label": "CHF - Swiss Franc"},
-        {"value": "CNY", "label": "CNY - Chinese Yuan"},
-        {"value": "SEK", "label": "SEK - Swedish Krona"},
-        {"value": "NZD", "label": "NZD - New Zealand Dollar"},
-        {"value": "MXN", "label": "MXN - Mexican Peso"},
-        {"value": "SGD", "label": "SGD - Singapore Dollar"},
-        {"value": "HKD", "label": "HKD - Hong Kong Dollar"},
-        {"value": "NOK", "label": "NOK - Norwegian Krone"},
-        {"value": "KRW", "label": "KRW - South Korean Won"},
-        {"value": "TRY", "label": "TRY - Turkish Lira"},
-        {"value": "RUB", "label": "RUB - Russian Ruble"},
-        {"value": "INR", "label": "INR - Indian Rupee"},
-        {"value": "BRL", "label": "BRL - Brazilian Real"},
-        {"value": "ZAR", "label": "ZAR - South African Rand"},
-        {"value": "TWD", "label": "TWD - Taiwan Dollar"},
-    ]
+    return options_use_case.get_currency_options()
 
 
 @router.post("/{session_id}/transcript")
@@ -584,13 +422,17 @@ async def upload_session_transcript(
     file: UploadFile = FastAPIFile(...),
     speaker_roles: Optional[str] = Form(None),
     convert_to_traditional_chinese: Optional[str] = Form(None),
-    db: Session = Depends(get_db),
+    transcript_upload_use_case: TranscriptUploadUseCase = Depends(get_transcript_upload_use_case),
     current_user: User = Depends(get_current_user_dependency),
 ):
-    """Upload a VTT or SRT transcript file directly to a coaching session."""
+    """Upload a VTT or SRT transcript file directly to a coaching session.
 
+    This endpoint follows Clean Architecture principles - all business logic
+    is handled by the TranscriptUploadUseCase.
+    """
     logger.info(
-        f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, filename={file.filename}, convert_to_traditional_chinese={convert_to_traditional_chinese}"
+        f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, "
+        f"filename={file.filename}, convert_to_traditional_chinese={convert_to_traditional_chinese}"
     )
 
     # Parse speaker role mapping if provided
@@ -738,6 +580,7 @@ async def upload_session_transcript(
 
         # Update coaching session to reference the transcription session
         session.transcription_session_id = str(transcription_session_id)
+        db.add(session)  # Ensure the modified session is tracked for commit
 
         db.commit()
 

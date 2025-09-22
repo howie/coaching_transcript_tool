@@ -14,6 +14,7 @@ from ...infrastructure.factories import (
     SessionServiceFactory,
     PlanServiceFactory,
     SubscriptionServiceFactory,
+    TranscriptServiceFactory,
     create_session_repository,
 )
 from ...core.services.usage_tracking_use_case import CreateUsageLogUseCase, GetUserUsageUseCase
@@ -42,6 +43,7 @@ from ...core.services.subscription_management_use_case import (
     SubscriptionRetrievalUseCase,
     SubscriptionModificationUseCase,
 )
+from ...core.services.transcript_upload_use_case import TranscriptUploadUseCase
 
 
 def get_usage_log_use_case(
@@ -225,3 +227,10 @@ def get_speaker_role_retrieval_use_case(
 ) -> SpeakerRoleRetrievalUseCase:
     """Dependency to get SpeakerRoleRetrievalUseCase with repository injection."""
     return SessionServiceFactory.create_speaker_role_retrieval_use_case(db)
+
+
+def get_transcript_upload_use_case(
+    db: Session = Depends(get_db),
+) -> TranscriptUploadUseCase:
+    """Dependency to get TranscriptUploadUseCase with repository injection."""
+    return TranscriptServiceFactory.create_transcript_upload_use_case(db)

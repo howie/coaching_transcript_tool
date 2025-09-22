@@ -69,6 +69,8 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+        # Commit any successful transactions
+        db.commit()
     except Exception:
         # Rollback any failed transaction to clear the aborted state
         db.rollback()
