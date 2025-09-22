@@ -453,9 +453,13 @@ class SubscriptionModificationUseCase:
         if subscription.status != SubscriptionStatus.ACTIVE:
             raise DomainException("Subscription is not active")
 
-        # Validate new plan
+        # Validate new plan (handle case-insensitive plan_id)
         try:
-            new_plan_type = UserPlan(new_plan_id)
+            # Try exact match first, then try lowercase
+            try:
+                new_plan_type = UserPlan(new_plan_id)
+            except ValueError:
+                new_plan_type = UserPlan(new_plan_id.lower())
         except ValueError:
             raise ValueError(f"Invalid plan_id: {new_plan_id}")
 
@@ -472,11 +476,18 @@ class SubscriptionModificationUseCase:
         else:
             new_amount_cents = 0
 
-        if new_amount_cents <= 0:
+        # Special handling for FREE plan - allow 0 amount
+        if new_amount_cents < 0:
+            raise ValueError(f"Invalid pricing for {new_plan_id} {new_billing_cycle}")
+
+        # FREE plan should have 0 amount, which is valid for downgrades
+        if new_plan_type == UserPlan.FREE and new_amount_cents == 0:
+            pass  # This is expected and valid for FREE plan
+        elif new_amount_cents <= 0:
             raise ValueError(f"Invalid pricing for {new_plan_id} {new_billing_cycle}")
 
         # Update subscription
-        subscription.plan_id = new_plan_id
+        subscription.plan_id = new_plan_type.value  # Use the enum value (lowercase)
         subscription.billing_cycle = new_billing_cycle
         subscription.amount_twd = new_amount_cents
         subscription.updated_at = datetime.utcnow()

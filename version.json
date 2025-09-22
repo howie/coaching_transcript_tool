@@ -1,8 +1,8 @@
 {
-  "version": "2.21.0",
-  "displayVersion": "v2.21.0",
-  "description": "WP6-Cleanup-2 - Payment Processing Vertical Complete Implementation",
-  "releaseDate": "2025-09-18",
-  "releaseNotes": "Complete WP6-Cleanup-2 Payment Processing Vertical implementation with production-ready ECPay integration and Clean Architecture compliance. Major achievements: (1) Resolved all 11 critical TODO items in payment processing workflow; (2) Created complete ECPay HTTP client with async operations (cancel_credit_authorization, retry_payment, process_payment, calculate_refund_amount); (3) Implemented email notification service with port abstraction for all billing events; (4) Enhanced ECPay service with dependency injection and Clean Architecture compliance; (5) Updated background tasks with real ECPay API integration; (6) Added repository ports (NotificationPort, ECPayClientPort) for proper dependency inversion; (7) Created factory pattern for service creation and configuration; (8) Comprehensive E2E test suite and manual testing infrastructure. Revenue-critical functionality fully operational with zero technical debt remaining. Ready for production deployment with ECPay sandbox and production credentials.",
+  "version": "2.22.0",
+  "displayVersion": "v2.22.0",
+  "description": "Cross-Domain Testing & Prevention Strategy Implementation",
+  "releaseDate": "2025-09-22",
+  "releaseNotes": "Comprehensive testing and prevention strategy to eliminate cross-domain data type errors and missing database session parameters. Major achievements: (1) Created enum conversion testing framework preventing SessionSource.CLIENT-style bugs; (2) Built repository layer validation tests ensuring proper domain ↔ database conversions; (3) Implemented API endpoint parameter validation detecting missing db session parameters; (4) Created architecture compliance checker script with 13 critical violation detection; (5) Enhanced Makefile with specialized testing commands (test-enum-conversions, test-repository-layers, test-api-parameters, check-architecture); (6) Updated refactor architecture documentation with prevention strategy; (7) Fixed audio upload UX issues (session ID display, faster polling, smooth transitions); (8) Resolved coaching session creation enum mismatch bug. Multi-layer protection system ensures future cross-domain issues are caught early in development lifecycle.",
   "author": "Coachly Team"
 }

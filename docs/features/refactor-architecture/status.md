@@ -98,6 +98,182 @@ rg "from sqlalchemy" src/coaching_assistant/core/services
 - **E2E 示範**: 建立訂閱 → 重試付款 → 升級方案 → 退款取消
 - **商業影響**: 收入處理可靠性（業務關鍵）
 
+#### **🔥 Database Transaction Persistence Fix** (✅ 完成 - 2025-09-22)
+- **Critical Bug Fixed**: 音檔上傳後 transcription_session_id 無法持久化問題
+- **Root Cause**: Clean Architecture 實作中 get_db() 缺少 commit 機制
+- **Technical Fix**: 在 `src/coaching_assistant/core/database.py` 的 get_db() 函數中添加自動 commit
+- **User Impact**: 音檔上傳流程現在正確保存會話關聯，解決前端狀態丟失問題
+- **Quality Assurance**:
+  - ✅ 整合測試已建立 (`tests/integration/test_database_transaction_persistence.py`)
+  - ✅ E2E 測試已建立 (`tests/e2e/test_audio_upload_persistence.py`)
+  - ✅ 手動驗證已完成（Test Mode 測試顯示正確的 COMMIT 行為）
+- **Architecture Impact**: 符合 Clean Architecture 原則 - commit 在框架層處理，不在業務邏輯層
+
+#### **🎨 Audio Upload UX Improvements** (✅ 完成 - 2025-09-22)
+- **User Problem**: 音檔上傳後，前端沒有馬上變化狀態，音檔分析區顯示狀態消失
+- **Completed Fixes**:
+  - ✅ **狀態顯示優化**: 簡化 AudioUploader 條件渲染邏輯，處理狀態始終顯示
+  - ✅ **Session ID 顯示**: 新增 session ID 顯示與複製功能
+  - ✅ **加速回應**: 輪詢間隔從 3 秒減少到 2 秒
+  - ✅ **流暢過渡**: 實作平滑動畫和載入指示器
+  - ✅ **清理調試日誌**: 移除所有 console.log 調試訊息
+- **User Impact**: 音檔上傳體驗更流暢，狀態更新即時可見
+
+#### **🚨 Enum Type Mismatch Fix** (✅ 完成 - 2025-09-22)
+- **Critical Bug Fixed**: 建立教練會話時 500 錯誤 "SessionSource.CLIENT not in enum"
+- **Root Cause**: Clean Architecture 中 domain 和 database 層使用不同的 Enum 類型
+- **Technical Fix**:
+  - 在 repository 層添加 domain ↔ database enum 轉換
+  - 修復 API 層缺少 db session 參數問題
+- **Files Fixed**:
+  - `infrastructure/db/repositories/coaching_session_repository.py` - 添加 enum 轉換邏輯
+  - `api/v1/coaching_sessions.py` - 修復 response 函數缺少 db 參數
+- **User Impact**: 教練會話創建功能恢復正常
+
+## 🛡️ Cross-Domain Testing & Prevention Strategy (新增 - 2025-09-22)
+
+### **問題總結**
+近期發現兩個關鍵的 Clean Architecture 實作問題：
+1. **Enum 類型不匹配**: Domain 層和 Database 層使用不同的 Enum 定義
+2. **缺少 DB Session 參數**: API response 函數缺少必要的 database session
+
+### **預防策略**
+
+#### **1. Enum Conversion Testing Framework**
+```python
+# tests/unit/infrastructure/test_enum_conversions.py
+- 所有 domain ↔ database enum 轉換的單元測試
+- Property-based testing 確保所有值都能轉換
+- 雙向轉換驗證 (round-trip testing)
+```
+
+**測試覆蓋項目**:
+- `SessionSource` (CLIENT, FRIEND, CLASSMATE, SUBORDINATE)
+- `SpeakerRole` (COACH, CLIENT, OTHER, UNKNOWN)
+- `UserPlan` (FREE, STUDENT, PRO, ENTERPRISE)
+- 未來新增的所有 enum 類型
+
+#### **2. Repository Layer Validation**
+```python
+# tests/integration/repositories/test_repository_conversions.py
+- 測試 _to_domain() 和 _from_domain() 方法
+- 驗證所有欄位正確轉換
+- 測試 edge cases 和 null 值處理
+```
+
+**關鍵測試點**:
+- Enum 欄位轉換正確性
+- DateTime 欄位時區處理
+- Optional 欄位的 None 值處理
+- 關聯實體的載入策略
+
+#### **3. API Endpoint Parameter Validation**
+```python
+# tests/api/test_dependency_injection.py
+- 確保所有端點接收正確的依賴注入
+- 驗證 response 函數有必要的參數
+- 測試 factory 方法正確建立依賴
+```
+
+**驗證項目**:
+- 所有使用 repository 的端點都透過 factory
+- Response 轉換函數都有 db session 參數
+- 沒有直接的 SQLAlchemy imports
+
+#### **4. Architecture Compliance Tests**
+```python
+# tests/architecture/test_clean_architecture.py
+- 自動檢查架構違規
+- 確保依賴方向正確
+- 防止 core 層引入基礎設施依賴
+```
+
+**自動化檢查**:
+```bash
+# 加入 Makefile 的架構檢查
+check-architecture:
+    @python scripts/check_architecture.py
+    @echo "✅ No SQLAlchemy in core services"
+    @echo "✅ No direct DB access in API"
+    @echo "✅ All enums have converters"
+```
+
+#### **5. CI/CD Pipeline Enhancements**
+```yaml
+# .github/workflows/ci.yml
+- name: Architecture Compliance Check
+  run: |
+    make check-architecture
+    make test-architecture
+
+- name: Enum Synchronization Check
+  run: |
+    python scripts/check_enum_sync.py
+```
+
+#### **6. Code Generation Templates**
+
+**Repository Template** (`scripts/templates/repository_template.py`):
+```python
+class SQLAlchemy{Entity}Repository({Entity}RepoPort):
+    def _to_domain(self, orm_model):
+        # Enum conversion template
+        domain_enum = DomainEnum(orm_model.enum.value)
+
+    def _from_domain(self, domain_model):
+        # Reverse conversion
+        db_enum = DatabaseEnum(domain_model.enum.value)
+```
+
+**API Endpoint Template** (`scripts/templates/api_endpoint_template.py`):
+```python
+@router.post("/")
+def create_entity(
+    request: CreateRequest,
+    use_case: EntityUseCase = Depends(get_entity_use_case),
+    db: Session = Depends(get_db)  # Always include for response conversion
+):
+    result = use_case.execute(request)
+    return convert_to_response(result, db)  # Pass db to response function
+```
+
+### **實施計劃**
+
+#### **Phase 1: Immediate Protection** (1 天)
+1. 建立 enum conversion 單元測試
+2. 添加 repository conversion 整合測試
+3. 修復現有的 5 個 enum 相關問題
+
+#### **Phase 2: Systematic Coverage** (2 天)
+1. 為所有 repository 添加測試
+2. 建立 API 端點參數驗證測試
+3. 實作架構合規性自動檢查
+
+#### **Phase 3: Automation** (1 天)
+1. 整合到 CI/CD pipeline
+2. 建立 pre-commit hooks
+3. 產生測試覆蓋率報告
+
+### **成功指標**
+- ✅ 100% enum 轉換測試覆蓋
+- ✅ 所有 repository 都有 conversion 測試
+- ✅ API 端點參數驗證通過
+- ✅ 架構合規檢查自動化
+- ✅ 零 cross-domain 類型錯誤
+
+### **監控與維護**
+```bash
+# 每日檢查指令
+make check-architecture
+make test-enum-conversions
+make test-repository-layers
+make test-api-parameters
+```
+
+這個策略將建立多層防護，確保類似問題不再發生。
+
+---
+
 ### 🔥 **WP6-Cleanup-3: Factory Pattern Migration** (進行中)
 **優先級**: 關鍵
 **工作量**: 3 天

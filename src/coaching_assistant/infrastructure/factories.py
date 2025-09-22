@@ -37,6 +37,21 @@ from ..core.services.speaker_role_management_use_case import (
     SegmentRoleAssignmentUseCase,
     SpeakerRoleRetrievalUseCase,
 )
+from ..core.services.client_management_use_case import (
+    ClientRetrievalUseCase,
+    ClientCreationUseCase,
+    ClientUpdateUseCase,
+    ClientDeletionUseCase,
+    ClientOptionsUseCase,
+)
+from ..core.services.coaching_session_management_use_case import (
+    CoachingSessionRetrievalUseCase,
+    CoachingSessionCreationUseCase,
+    CoachingSessionUpdateUseCase,
+    CoachingSessionDeletionUseCase,
+    CoachingSessionOptionsUseCase,
+)
+from ..core.services.transcript_upload_use_case import TranscriptUploadUseCase
 from ..core.repositories.ports import (
     UserRepoPort,
     UsageLogRepoPort,
@@ -46,6 +61,8 @@ from ..core.repositories.ports import (
     TranscriptRepoPort,
     SpeakerRoleRepoPort,
     SegmentRoleRepoPort,
+    ClientRepoPort,
+    CoachingSessionRepoPort,
 )
 from .db.repositories.user_repository import create_user_repository
 from .db.repositories.usage_log_repository import create_usage_log_repository
@@ -57,6 +74,8 @@ from .db.repositories.speaker_role_repository import (
     create_speaker_role_repository,
     create_segment_role_repository,
 )
+from .db.repositories.client_repository import create_client_repository
+from .db.repositories.coaching_session_repository import create_coaching_session_repository
 
 
 class UsageTrackingServiceFactory:
@@ -167,14 +186,38 @@ class RepositoryFactory:
     @staticmethod
     def create_transcript_repository(db_session: Session) -> TranscriptRepoPort:
         """Create a transcript repository instance.
-        
+
         Args:
             db_session: SQLAlchemy database session
-            
+
         Returns:
             TranscriptRepoPort implementation
         """
         return create_transcript_repository(db_session)
+
+    @staticmethod
+    def create_client_repository(db_session: Session) -> ClientRepoPort:
+        """Create a client repository instance.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            ClientRepoPort implementation
+        """
+        return create_client_repository(db_session)
+
+    @staticmethod
+    def create_coaching_session_repository(db_session: Session) -> CoachingSessionRepoPort:
+        """Create a coaching session repository instance.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            CoachingSessionRepoPort implementation
+        """
+        return create_coaching_session_repository(db_session)
 
 
 class SessionServiceFactory:
@@ -439,6 +482,208 @@ class SubscriptionServiceFactory:
             subscription_repo=subscription_repo,
             user_repo=user_repo,
             plan_config_repo=plan_config_repo,
+        )
+
+
+class ClientServiceFactory:
+    """Factory for client management use cases."""
+
+    @staticmethod
+    def create_client_retrieval_use_case(db_session: Session) -> ClientRetrievalUseCase:
+        """Create a ClientRetrievalUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured ClientRetrievalUseCase
+        """
+        client_repo = create_client_repository(db_session)
+        user_repo = create_user_repository(db_session)
+
+        return ClientRetrievalUseCase(
+            client_repo=client_repo,
+            user_repo=user_repo,
+        )
+
+    @staticmethod
+    def create_client_creation_use_case(db_session: Session) -> ClientCreationUseCase:
+        """Create a ClientCreationUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured ClientCreationUseCase
+        """
+        client_repo = create_client_repository(db_session)
+        user_repo = create_user_repository(db_session)
+
+        return ClientCreationUseCase(
+            client_repo=client_repo,
+            user_repo=user_repo,
+        )
+
+    @staticmethod
+    def create_client_update_use_case(db_session: Session) -> ClientUpdateUseCase:
+        """Create a ClientUpdateUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured ClientUpdateUseCase
+        """
+        client_repo = create_client_repository(db_session)
+        user_repo = create_user_repository(db_session)
+
+        return ClientUpdateUseCase(
+            client_repo=client_repo,
+            user_repo=user_repo,
+        )
+
+    @staticmethod
+    def create_client_deletion_use_case(db_session: Session) -> ClientDeletionUseCase:
+        """Create a ClientDeletionUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured ClientDeletionUseCase
+        """
+        client_repo = create_client_repository(db_session)
+        user_repo = create_user_repository(db_session)
+
+        return ClientDeletionUseCase(
+            client_repo=client_repo,
+            user_repo=user_repo,
+        )
+
+    @staticmethod
+    def create_client_options_use_case() -> ClientOptionsUseCase:
+        """Create a ClientOptionsUseCase (no dependencies needed).
+
+        Returns:
+            ClientOptionsUseCase instance
+        """
+        return ClientOptionsUseCase()
+
+
+class CoachingSessionServiceFactory:
+    """Factory for coaching session management use cases."""
+
+    @staticmethod
+    def create_coaching_session_retrieval_use_case(db_session: Session) -> CoachingSessionRetrievalUseCase:
+        """Create a CoachingSessionRetrievalUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured CoachingSessionRetrievalUseCase
+        """
+        session_repo = create_coaching_session_repository(db_session)
+        user_repo = create_user_repository(db_session)
+        client_repo = create_client_repository(db_session)
+
+        return CoachingSessionRetrievalUseCase(
+            session_repo=session_repo,
+            user_repo=user_repo,
+            client_repo=client_repo,
+        )
+
+    @staticmethod
+    def create_coaching_session_creation_use_case(db_session: Session) -> CoachingSessionCreationUseCase:
+        """Create a CoachingSessionCreationUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured CoachingSessionCreationUseCase
+        """
+        session_repo = create_coaching_session_repository(db_session)
+        user_repo = create_user_repository(db_session)
+        client_repo = create_client_repository(db_session)
+
+        return CoachingSessionCreationUseCase(
+            session_repo=session_repo,
+            user_repo=user_repo,
+            client_repo=client_repo,
+        )
+
+    @staticmethod
+    def create_coaching_session_update_use_case(db_session: Session) -> CoachingSessionUpdateUseCase:
+        """Create a CoachingSessionUpdateUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured CoachingSessionUpdateUseCase
+        """
+        session_repo = create_coaching_session_repository(db_session)
+        user_repo = create_user_repository(db_session)
+        client_repo = create_client_repository(db_session)
+
+        return CoachingSessionUpdateUseCase(
+            session_repo=session_repo,
+            user_repo=user_repo,
+            client_repo=client_repo,
+        )
+
+    @staticmethod
+    def create_coaching_session_deletion_use_case(db_session: Session) -> CoachingSessionDeletionUseCase:
+        """Create a CoachingSessionDeletionUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured CoachingSessionDeletionUseCase
+        """
+        session_repo = create_coaching_session_repository(db_session)
+        user_repo = create_user_repository(db_session)
+
+        return CoachingSessionDeletionUseCase(
+            session_repo=session_repo,
+            user_repo=user_repo,
+        )
+
+    @staticmethod
+    def create_coaching_session_options_use_case() -> CoachingSessionOptionsUseCase:
+        """Create a CoachingSessionOptionsUseCase (no dependencies needed).
+
+        Returns:
+            CoachingSessionOptionsUseCase instance
+        """
+        return CoachingSessionOptionsUseCase()
+
+
+class TranscriptServiceFactory:
+    """Factory for transcript-related use cases."""
+
+    @staticmethod
+    def create_transcript_upload_use_case(db_session: Session) -> TranscriptUploadUseCase:
+        """Create a TranscriptUploadUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured TranscriptUploadUseCase
+        """
+        coaching_session_repo = create_coaching_session_repository(db_session)
+        session_repo = create_session_repository(db_session)
+        transcript_repo = create_transcript_repository(db_session)
+        speaker_role_repo = create_speaker_role_repository(db_session)
+
+        return TranscriptUploadUseCase(
+            coaching_session_repo=coaching_session_repo,
+            session_repo=session_repo,
+            transcript_repo=transcript_repo,
+            speaker_role_repo=speaker_role_repo,
         )
 
 

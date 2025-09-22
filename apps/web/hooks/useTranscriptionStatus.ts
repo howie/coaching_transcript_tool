@@ -31,7 +31,7 @@ export interface TranscriptionSession {
 }
 
 interface UseTranscriptionStatusOptions {
-  pollInterval?: number // milliseconds, default 3000 (3 seconds for faster updates)
+  pollInterval?: number // milliseconds, default 2000 (2 seconds for faster updates)
   maxPollingTime?: number // milliseconds, default 2 hours
   enablePolling?: boolean // default true
 }
@@ -52,7 +52,7 @@ export const useTranscriptionStatus = (
   options: UseTranscriptionStatusOptions = {}
 ): UseTranscriptionStatusReturn => {
   const {
-    pollInterval = 3000, // Reduced from 5s to 3s for faster UI updates
+    pollInterval = 2000, // Reduced from 3s to 2s for faster UI updates
     maxPollingTime = 2 * 60 * 60 * 1000, // 2 hours
     enablePolling = true
   } = options

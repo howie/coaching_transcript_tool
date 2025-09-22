@@ -164,6 +164,102 @@ curl -X GET http://localhost:8000/api/v1/plans/current
 }
 ```
 
+### 客戶管理 API (Client Management APIs)
+
+#### GET /api/v1/clients/options/sources
+獲取客戶來源選項
+```bash
+curl -X GET http://localhost:8000/api/v1/clients/options/sources
+
+# 預期回應
+[
+  {"value":"referral","labelKey":"clients.sourceReferral"},
+  {"value":"organic","labelKey":"clients.sourceOrganic"},
+  {"value":"friend","labelKey":"clients.sourceFriend"},
+  {"value":"social_media","labelKey":"clients.sourceSocialMedia"}
+]
+```
+
+#### GET /api/v1/clients/options/types
+獲取客戶類型選項
+```bash
+curl -X GET http://localhost:8000/api/v1/clients/options/types
+
+# 預期回應
+[
+  {"value":"paid","labelKey":"clients.typePaid"},
+  {"value":"pro_bono","labelKey":"clients.typeProBono"},
+  {"value":"free_practice","labelKey":"clients.typeFreePractice"},
+  {"value":"other","labelKey":"clients.typeOther"}
+]
+```
+
+#### GET /api/v1/clients/options/statuses
+獲取客戶狀態選項
+```bash
+curl -X GET http://localhost:8000/api/v1/clients/options/statuses
+
+# 預期回應
+[
+  {"value":"first_session","label":"首次會談"},
+  {"value":"in_progress","label":"進行中"},
+  {"value":"paused","label":"暫停"},
+  {"value":"completed","label":"結案"}
+]
+```
+
+#### GET /api/v1/clients
+獲取客戶列表 (需要認證，在 TEST_MODE 下自動通過)
+```bash
+curl -X GET http://localhost:8000/api/v1/clients
+
+# 預期回應
+{
+  "items": [
+    {
+      "id": "client-uuid",
+      "name": "客戶姓名",
+      "email": "client@example.com",
+      "source": "referral",
+      "client_type": "paid",
+      "status": "in_progress",
+      "session_count": 0,
+      "created_at": "2025-09-21T08:58:38.614545"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 1
+}
+```
+
+#### POST /api/v1/clients
+創建新客戶 (需要認證，在 TEST_MODE 下自動通過)
+```bash
+curl -X POST http://localhost:8000/api/v1/clients \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "新客戶",
+    "email": "new@example.com",
+    "source": "referral",
+    "client_type": "paid",
+    "status": "first_session"
+  }'
+
+# 預期回應
+{
+  "id": "new-client-uuid",
+  "name": "新客戶",
+  "email": "new@example.com",
+  "source": "referral",
+  "client_type": "paid",
+  "status": "first_session",
+  "session_count": 0,
+  "created_at": "2025-09-21T08:58:38.614545"
+}
+```
+
 ### 使用統計 API (Usage Analytics APIs)
 
 #### GET /api/v1/usage
@@ -429,6 +525,249 @@ wrk -t12 -c400 -d30s http://localhost:8000/api/v1/auth/me
 
 # 帶 JSON payload 的 POST 測試
 wrk -t12 -c400 -d30s -s post-session.lua http://localhost:8000/api/v1/sessions
+```
+
+## Clean Architecture 遷移驗證 (Clean Architecture Migration Verification)
+
+### 遷移測試標準流程
+
+當完成任何模組的 Clean Architecture 遷移後，必須按照以下標準流程驗證遷移成功：
+
+#### 1. 環境設置驗證
+```bash
+# 確認 .env 配置正確
+grep -E "(TEST_MODE|RECAPTCHA_ENABLED)" .env
+
+# 應顯示：
+# TEST_MODE=true
+# RECAPTCHA_ENABLED=false
+```
+
+#### 2. 伺服器啟動驗證
+```bash
+# 啟動測試伺服器
+uv run python apps/api-server/main.py
+
+# 確認看到以下訊息：
+# - ✅ All environment variables validated successfully!
+# - INFO: Uvicorn running on http://0.0.0.0:8000
+# - INFO: Application startup complete.
+```
+
+#### 3. TEST_MODE 功能驗證
+```bash
+# 測試需要認證的端點，確認 TEST_MODE 生效
+curl -X GET http://localhost:8000/api/v1/clients
+
+# 檢查伺服器日誌，應看到：
+# [WARNING] 🚨 TEST_MODE 已啟用 - 跳過認證檢查，使用測試用戶
+```
+
+#### 4. 遷移後端點測試
+
+##### 4.1 靜態端點測試 (不需認證)
+```bash
+# 測試所有 options 端點
+curl -X GET http://localhost:8000/api/v1/clients/options/sources
+curl -X GET http://localhost:8000/api/v1/clients/options/types
+curl -X GET http://localhost:8000/api/v1/clients/options/statuses
+
+# 驗證：
+# - 所有端點返回 200 OK
+# - 回應格式正確 (JSON array)
+# - 內容符合預期
+```
+
+##### 4.2 動態端點測試 (需認證，TEST_MODE 下自動通過)
+```bash
+# 測試讀取操作
+curl -X GET http://localhost:8000/api/v1/clients
+
+# 測試寫入操作
+curl -X POST http://localhost:8000/api/v1/clients \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Clean Architecture Test Client",
+    "email": "clean@example.com",
+    "source": "referral",
+    "client_type": "paid",
+    "status": "first_session"
+  }'
+
+# 驗證：
+# - GET 請求返回 200 OK 和正確資料格式
+# - POST 請求返回 201 Created 和新創建的記錄
+# - 伺服器日誌顯示 TEST_MODE 警告訊息
+# - 資料庫操作正常執行 (可從 SQL 日誌確認)
+```
+
+#### 5. 資料庫操作驗證
+```bash
+# 檢查伺服器日誌中的 SQL 執行記錄
+# 應看到類似以下內容：
+# - SELECT 查詢用於讀取操作
+# - INSERT 查詢用於創建操作
+# - 操作成功完成 (無 ERROR 訊息)
+```
+
+#### 6. 錯誤處理驗證
+```bash
+# 測試無效資料處理
+curl -X POST http://localhost:8000/api/v1/clients \
+  -H "Content-Type: application/json" \
+  -d '{"invalid": "data"}'
+
+# 驗證：
+# - 返回適當的錯誤狀態碼 (400 或 422)
+# - 錯誤訊息清楚明確
+# - 不會導致伺服器崩潰
+```
+
+### 遷移驗證檢查清單
+
+#### ✅ 必須驗證項目
+
+- [ ] **環境配置**: TEST_MODE=true, RECAPTCHA_ENABLED=false
+- [ ] **伺服器啟動**: 無錯誤訊息，正常監聽 8000 端口
+- [ ] **TEST_MODE 生效**: 認證端點顯示跳過認證警告
+- [ ] **靜態端點**: 所有 options 端點返回正確資料
+- [ ] **動態端點**: 讀取和寫入操作正常工作
+- [ ] **資料庫操作**: SQL 查詢正常執行
+- [ ] **錯誤處理**: 無效請求得到適當處理
+- [ ] **日誌品質**: 無 ERROR 或 EXCEPTION 訊息
+
+#### 🔍 Clean Architecture 特有檢查
+
+- [ ] **依賴注入**: 使用正確的 Factory 模式創建 use case
+- [ ] **Repository 模式**: 資料存取通過 repository 介面
+- [ ] **Use Case 執行**: 業務邏輯在 use case 層執行
+- [ ] **錯誤處理**: 異常正確向上傳播並處理
+- [ ] **測試用戶**: TEST_MODE 下創建和使用測試用戶
+
+### 常見遷移問題與解決方案
+
+#### 問題 1: 認證失敗 (401 錯誤)
+```bash
+# 症狀: API 返回 401 Unauthorized
+# 原因: TEST_MODE 未生效或配置錯誤
+
+# 解決方案:
+# 1. 檢查 .env 檔案
+cat .env | grep TEST_MODE
+# 2. 重新啟動伺服器
+# 3. 確認日誌中有 TEST_MODE 警告
+```
+
+#### 問題 2: 資料庫連線錯誤
+```bash
+# 症狀: 500 Internal Server Error, 資料庫相關錯誤
+# 原因: 資料庫連線配置或 repository 注入問題
+
+# 解決方案:
+# 1. 檢查 DATABASE_URL 配置
+# 2. 確認 SQLAlchemy 依賴注入正確
+# 3. 檢查 repository factory 設置
+```
+
+#### 問題 3: 依賴注入錯誤
+```bash
+# 症狀: ImportError 或 dependency injection 相關錯誤
+# 原因: Factory 或 dependency 配置錯誤
+
+# 解決方案:
+# 1. 檢查 factories.py 中的依賴創建
+# 2. 確認 dependencies.py 中的注入配置
+# 3. 驗證 use case 構造函數參數
+```
+
+### 自動化遷移驗證腳本
+
+```bash
+#!/bin/bash
+# clean-architecture-migration-test.sh
+# Clean Architecture 遷移驗證自動化腳本
+
+echo "🚀 開始 Clean Architecture 遷移驗證"
+
+# 1. 檢查環境配置
+echo "📋 檢查環境配置..."
+if grep -q "TEST_MODE=true" .env && grep -q "RECAPTCHA_ENABLED=false" .env; then
+    echo "✅ 環境配置正確"
+else
+    echo "❌ 環境配置錯誤，請檢查 .env 檔案"
+    exit 1
+fi
+
+# 2. 啟動伺服器 (背景執行)
+echo "🖥️  啟動測試伺服器..."
+uv run python apps/api-server/main.py &
+SERVER_PID=$!
+sleep 5
+
+# 3. 等待伺服器啟動
+echo "⏳ 等待伺服器啟動..."
+for i in {1..30}; do
+    if curl -s http://localhost:8000/api/health >/dev/null 2>&1; then
+        echo "✅ 伺服器已啟動"
+        break
+    fi
+    sleep 1
+done
+
+# 4. 測試靜態端點
+echo "🔍 測試靜態端點..."
+STATIC_ENDPOINTS=(
+    "/api/v1/clients/options/sources"
+    "/api/v1/clients/options/types"
+    "/api/v1/clients/options/statuses"
+)
+
+for endpoint in "${STATIC_ENDPOINTS[@]}"; do
+    response=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8000${endpoint}")
+    if [ "$response" = "200" ]; then
+        echo "✅ $endpoint"
+    else
+        echo "❌ $endpoint (HTTP $response)"
+    fi
+done
+
+# 5. 測試動態端點
+echo "📊 測試動態端點..."
+
+# 測試讀取
+echo "Testing GET /api/v1/clients..."
+response=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8000/api/v1/clients")
+if [ "$response" = "200" ]; then
+    echo "✅ GET /api/v1/clients"
+else
+    echo "❌ GET /api/v1/clients (HTTP $response)"
+fi
+
+# 測試創建
+echo "Testing POST /api/v1/clients..."
+response=$(curl -s -o /dev/null -w "%{http_code}" \
+    -X POST "http://localhost:8000/api/v1/clients" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "name": "Migration Test Client",
+        "email": "migration@example.com",
+        "source": "referral",
+        "client_type": "paid",
+        "status": "first_session"
+    }')
+
+if [ "$response" = "200" ] || [ "$response" = "201" ]; then
+    echo "✅ POST /api/v1/clients"
+else
+    echo "❌ POST /api/v1/clients (HTTP $response)"
+fi
+
+# 6. 清理
+echo "🧹 清理資源..."
+kill $SERVER_PID
+wait $SERVER_PID 2>/dev/null
+
+echo "🎉 Clean Architecture 遷移驗證完成"
 ```
 
 ## 最佳實踐 (Best Practices)

@@ -137,7 +137,7 @@ const ClientDetailPage = () => {
         { value: 'completed', label: t('clients.statusCompleted') }
       ]);
     }
-  }, []);
+  }, [t]);
 
   const fetchClient = useCallback(async () => {
     try {
@@ -182,7 +182,7 @@ const ClientDetailPage = () => {
       fetchSessions();
       fetchOptions();
     }
-  }, [clientId]);
+  }, [clientId, fetchClient, fetchSessions, fetchOptions]);
 
   const getStatusLabel = (status: string) => {
     const statusMap = {

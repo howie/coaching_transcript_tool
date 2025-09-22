@@ -148,7 +148,11 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
   }, [transcriptionSession?.status, currentSessionId, isPolling, startPolling, stopPolling])
 
   // Use useCallback to stabilize the onUploadComplete function
-  const stableOnUploadComplete = useCallback(onUploadComplete || (() => {}), [onUploadComplete])
+  const stableOnUploadComplete = useCallback(() => {
+    if (onUploadComplete && currentSessionId) {
+      onUploadComplete(currentSessionId);
+    }
+  }, [onUploadComplete, currentSessionId])
 
   useEffect(() => {
     // Sync upload state with transcription status
@@ -446,22 +450,39 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
   // If we have an existing audio session ID and not forcing upload view, show status view instead of upload interface
   if ((currentSessionId || existingAudioSessionId) && !forceUploadView) {
     return (
-      <div className="space-y-4">
-        {/* Current Status */}
-        <div className="flex items-center justify-between">
-          <h4 className="font-medium text-content-primary">{t('audio.processingStatus')}</h4>
-          {statusLoading ? (
-            <span className="text-sm text-gray-500 font-medium">{t('audio.checkingStatus')}</span>
-          ) : transcriptionSession?.status === 'completed' ? (
-            <span className="text-sm text-green-600 font-medium">{t('audio.processingComplete')}</span>
-          ) : transcriptionSession?.status === 'processing' ? (
-            <span className="text-sm text-yellow-600 font-medium">{t('audio.status_processing')}</span>
-          ) : transcriptionSession?.status === 'failed' ? (
-            <span className="text-sm text-red-600 font-medium">{t('audio.processingFailed')}</span>
-          ) : transcriptionSession?.status === 'pending' ? (
-            <span className="text-sm text-blue-600 font-medium">{t('audio.waitingToProcess')}</span>
-          ) : (
-            <span className="text-sm text-gray-500 font-medium">{t('audio.audioUploaded')}</span>
+      <div className="space-y-4 animate-in fade-in duration-200">
+        {/* Current Status with Session ID */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-content-primary">{t('audio.processingStatus')}</h4>
+            {statusLoading ? (
+              <span className="text-sm text-gray-500 font-medium animate-pulse">{t('audio.checkingStatus')}</span>
+            ) : transcriptionSession?.status === 'completed' ? (
+              <span className="text-sm text-green-600 font-medium">{t('audio.processingComplete')}</span>
+            ) : transcriptionSession?.status === 'processing' ? (
+              <span className="text-sm text-yellow-600 font-medium">{t('audio.status_processing')}</span>
+            ) : transcriptionSession?.status === 'failed' ? (
+              <span className="text-sm text-red-600 font-medium">{t('audio.processingFailed')}</span>
+            ) : transcriptionSession?.status === 'pending' ? (
+              <span className="text-sm text-blue-600 font-medium">{t('audio.waitingToProcess')}</span>
+            ) : (
+              <span className="text-sm text-gray-500 font-medium">{t('audio.audioUploaded')}</span>
+            )}
+          </div>
+
+          {/* Session ID Display */}
+          {(currentSessionId || existingAudioSessionId) && (
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded px-2 py-1 font-mono">
+              <span className="font-medium">Session ID:</span>
+              <span className="truncate">{currentSessionId || existingAudioSessionId}</span>
+              <button
+                onClick={() => navigator.clipboard?.writeText(currentSessionId || existingAudioSessionId || '')}
+                className="ml-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                title="Copy Session ID"
+              >
+                📋
+              </button>
+            </div>
           )}
         </div>
 
@@ -471,8 +492,8 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
           transcriptionSession?.status === 'pending' ||
           transcriptionSession?.status === 'completed') && (
           <div className={cn(
-            "rounded-lg p-4 border",
-            transcriptionSession?.status === 'completed' 
+            "rounded-lg p-4 border transition-all duration-300 ease-in-out",
+            transcriptionSession?.status === 'completed'
               ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
               : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
           )}>
@@ -495,15 +516,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
                   progressValue = 5;
                 }
                 
-                console.log('TranscriptionProgress debug:', {
-                  transcriptionStatus: transcriptionStatus,
-                  transcriptionSession: transcriptionSession,
-                  uploadState: uploadState,
-                  rawProgress: transcriptionStatus?.progress,
-                  finalProgress: progressValue,
-                  currentSessionId: currentSessionId,
-                  sessionStatus: transcriptionSession?.status
-                });
+                // Progress calculation completed
                 
                 return Math.max(0, Math.min(100, progressValue));
               })()}
@@ -551,7 +564,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
 
   // Upload interface
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-in fade-in duration-200">
       {/* Upload Area */}
       <div
         className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${

@@ -288,6 +288,32 @@ class CoachingSessionRepoPort(Protocol):
         """Delete coaching session by ID."""
         ...
 
+    def get_with_ownership_check(
+        self, session_id: UUID, coach_id: UUID
+    ) -> Optional[CoachingSession]:
+        """Get coaching session with ownership verification."""
+        ...
+
+    def get_paginated_with_filters(
+        self,
+        coach_id: UUID,
+        from_date: Optional[date] = None,
+        to_date: Optional[date] = None,
+        client_id: Optional[UUID] = None,
+        currency: Optional[str] = None,
+        sort: str = "-session_date",
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[List[CoachingSession], int]:
+        """Get paginated coaching sessions with filtering and sorting."""
+        ...
+
+    def get_last_session_by_client(
+        self, coach_id: UUID, client_id: UUID
+    ) -> Optional[CoachingSession]:
+        """Get the most recent coaching session for a specific client."""
+        ...
+
 
 class CoachProfileRepoPort(Protocol):
     """Repository interface for CoachProfile entity operations."""
