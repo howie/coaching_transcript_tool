@@ -18,6 +18,7 @@ from ...infrastructure.factories import (
     ClientServiceFactory,
     CoachingSessionServiceFactory,
     BillingAnalyticsServiceFactory,
+    CoachProfileServiceFactory,
     create_session_repository,
 )
 from ...core.services.usage_tracking_use_case import CreateUsageLogUseCase, GetUserUsageUseCase
@@ -61,6 +62,7 @@ from ...core.services.coaching_session_management_use_case import (
     CoachingSessionDeletionUseCase,
     CoachingSessionOptionsUseCase,
 )
+from ...core.services.coach_profile_management_use_case import CoachProfileManagementUseCase
 from ...core.services.dashboard_summary_use_case import DashboardSummaryUseCase
 from ...core.services.billing_analytics_use_case import (
     BillingAnalyticsOverviewUseCase,
@@ -420,3 +422,10 @@ def get_billing_analytics_health_score_use_case(
 ) -> BillingAnalyticsHealthScoreUseCase:
     """Dependency to inject BillingAnalyticsHealthScoreUseCase."""
     return BillingAnalyticsServiceFactory.create_billing_analytics_health_score_use_case(db)
+
+
+def get_coach_profile_management_use_case(
+    db: Session = Depends(get_db)
+) -> CoachProfileManagementUseCase:
+    """Dependency to inject CoachProfileManagementUseCase."""
+    return CoachProfileServiceFactory.create_coach_profile_management_use_case(db)

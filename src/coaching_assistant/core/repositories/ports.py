@@ -30,6 +30,7 @@ from ..models.subscription import (
 from ..models.client import Client
 from ..models.coaching_session import CoachingSession
 from ..models.coach_profile import CoachProfile
+from ..models.coaching_plan import CoachingPlan
 from ..models.transcript import TranscriptSegment
 
 
@@ -348,8 +349,29 @@ class CoachProfileRepoPort(Protocol):
         """Save or update coach profile."""
         ...
 
+    def delete(self, user_id: UUID) -> bool:
+        """Delete coach profile by user ID."""
+        ...
+
     def get_all_verified_coaches(self) -> List[CoachProfile]:
         """Get all verified coach profiles."""
+        ...
+
+    # CoachingPlan operations
+    def get_coaching_plans_by_profile_id(self, profile_id: UUID) -> List[CoachingPlan]:
+        """Get all coaching plans for a profile."""
+        ...
+
+    def get_coaching_plan_by_id(self, plan_id: UUID) -> Optional[CoachingPlan]:
+        """Get coaching plan by ID."""
+        ...
+
+    def save_coaching_plan(self, plan: CoachingPlan) -> CoachingPlan:
+        """Save or update coaching plan."""
+        ...
+
+    def delete_coaching_plan(self, plan_id: UUID) -> bool:
+        """Delete coaching plan by ID."""
         ...
 
 
