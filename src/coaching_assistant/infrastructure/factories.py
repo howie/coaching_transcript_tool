@@ -8,6 +8,7 @@ business logic.
 
 from sqlalchemy.orm import Session
 
+from ..services.billing_analytics_service import BillingAnalyticsService
 from ..core.services.usage_tracking_use_case import (
     CreateUsageLogUseCase,
     GetUserUsageUseCase,
@@ -51,6 +52,9 @@ from ..core.services.coaching_session_management_use_case import (
     CoachingSessionDeletionUseCase,
     CoachingSessionOptionsUseCase,
 )
+from ..core.services.coach_profile_management_use_case import (
+    CoachProfileManagementUseCase,
+)
 from ..core.services.transcript_upload_use_case import TranscriptUploadUseCase
 from ..core.services.billing_analytics_use_case import (
     BillingAnalyticsOverviewUseCase,
@@ -75,6 +79,7 @@ from ..core.repositories.ports import (
     SegmentRoleRepoPort,
     ClientRepoPort,
     CoachingSessionRepoPort,
+    CoachProfileRepoPort,
 )
 from .db.repositories.user_repository import create_user_repository
 from .db.repositories.usage_log_repository import create_usage_log_repository
@@ -88,6 +93,7 @@ from .db.repositories.speaker_role_repository import (
 )
 from .db.repositories.client_repository import create_client_repository
 from .db.repositories.coaching_session_repository import create_coaching_session_repository
+from .db.repositories.coach_profile_repository import create_coach_profile_repository
 
 
 class UsageTrackingServiceFactory:
@@ -230,6 +236,18 @@ class RepositoryFactory:
             CoachingSessionRepoPort implementation
         """
         return create_coaching_session_repository(db_session)
+
+    @staticmethod
+    def create_coach_profile_repository(db_session: Session) -> CoachProfileRepoPort:
+        """Create a coach profile repository instance.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            CoachProfileRepoPort implementation
+        """
+        return create_coach_profile_repository(db_session)
 
 
 class SessionServiceFactory:
@@ -790,7 +808,8 @@ class BillingAnalyticsServiceFactory:
         Returns:
             Fully configured BillingAnalyticsOverviewUseCase
         """
-        return BillingAnalyticsOverviewUseCase(db_session)
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsOverviewUseCase(billing_service)
 
     @staticmethod
     def create_billing_analytics_revenue_use_case(db_session: Session) -> BillingAnalyticsRevenueUseCase:
@@ -802,7 +821,8 @@ class BillingAnalyticsServiceFactory:
         Returns:
             Fully configured BillingAnalyticsRevenueUseCase
         """
-        return BillingAnalyticsRevenueUseCase(db_session)
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsRevenueUseCase(billing_service)
 
     @staticmethod
     def create_billing_analytics_segmentation_use_case(db_session: Session) -> BillingAnalyticsSegmentationUseCase:
@@ -814,7 +834,8 @@ class BillingAnalyticsServiceFactory:
         Returns:
             Fully configured BillingAnalyticsSegmentationUseCase
         """
-        return BillingAnalyticsSegmentationUseCase(db_session)
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsSegmentationUseCase(billing_service)
 
     @staticmethod
     def create_billing_analytics_user_detail_use_case(db_session: Session) -> BillingAnalyticsUserDetailUseCase:
@@ -826,7 +847,8 @@ class BillingAnalyticsServiceFactory:
         Returns:
             Fully configured BillingAnalyticsUserDetailUseCase
         """
-        return BillingAnalyticsUserDetailUseCase(db_session)
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsUserDetailUseCase(billing_service)
 
     @staticmethod
     def create_billing_analytics_cohort_use_case(db_session: Session) -> BillingAnalyticsCohortUseCase:
@@ -838,7 +860,8 @@ class BillingAnalyticsServiceFactory:
         Returns:
             Fully configured BillingAnalyticsCohortUseCase
         """
-        return BillingAnalyticsCohortUseCase(db_session)
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsCohortUseCase(billing_service)
 
     @staticmethod
     def create_billing_analytics_churn_use_case(db_session: Session) -> BillingAnalyticsChurnUseCase:
@@ -850,7 +873,8 @@ class BillingAnalyticsServiceFactory:
         Returns:
             Fully configured BillingAnalyticsChurnUseCase
         """
-        return BillingAnalyticsChurnUseCase(db_session)
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsChurnUseCase(billing_service)
 
     @staticmethod
     def create_billing_analytics_plan_performance_use_case(db_session: Session) -> BillingAnalyticsPlanPerformanceUseCase:
@@ -862,7 +886,8 @@ class BillingAnalyticsServiceFactory:
         Returns:
             Fully configured BillingAnalyticsPlanPerformanceUseCase
         """
-        return BillingAnalyticsPlanPerformanceUseCase(db_session)
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsPlanPerformanceUseCase(billing_service)
 
     @staticmethod
     def create_billing_analytics_export_use_case(db_session: Session) -> BillingAnalyticsExportUseCase:
@@ -874,7 +899,8 @@ class BillingAnalyticsServiceFactory:
         Returns:
             Fully configured BillingAnalyticsExportUseCase
         """
-        return BillingAnalyticsExportUseCase(db_session)
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsExportUseCase(billing_service)
 
     @staticmethod
     def create_billing_analytics_refresh_use_case(db_session: Session) -> BillingAnalyticsRefreshUseCase:
@@ -886,7 +912,8 @@ class BillingAnalyticsServiceFactory:
         Returns:
             Fully configured BillingAnalyticsRefreshUseCase
         """
-        return BillingAnalyticsRefreshUseCase(db_session)
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsRefreshUseCase(billing_service)
 
     @staticmethod
     def create_billing_analytics_health_score_use_case(db_session: Session) -> BillingAnalyticsHealthScoreUseCase:
@@ -898,4 +925,27 @@ class BillingAnalyticsServiceFactory:
         Returns:
             Fully configured BillingAnalyticsHealthScoreUseCase
         """
-        return BillingAnalyticsHealthScoreUseCase(db_session)
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsHealthScoreUseCase(billing_service)
+
+
+class CoachProfileServiceFactory:
+    """Factory for coach profile management use cases."""
+
+    @staticmethod
+    def create_coach_profile_management_use_case(db_session: Session) -> CoachProfileManagementUseCase:
+        """Create a CoachProfileManagementUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured CoachProfileManagementUseCase
+        """
+        coach_profile_repo = create_coach_profile_repository(db_session)
+        user_repo = create_user_repository(db_session)
+
+        return CoachProfileManagementUseCase(
+            coach_profile_repo=coach_profile_repo,
+            user_repo=user_repo,
+        )

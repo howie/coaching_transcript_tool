@@ -7,7 +7,6 @@ to the existing BillingAnalyticsService while maintaining Clean Architecture bou
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from uuid import UUID
-from sqlalchemy.orm import Session
 
 from ...services.billing_analytics_service import BillingAnalyticsService
 
@@ -15,9 +14,9 @@ from ...services.billing_analytics_service import BillingAnalyticsService
 class BillingAnalyticsOverviewUseCase:
     """Use case for retrieving billing analytics overview."""
 
-    def __init__(self, db_session: Session):
-        """Initialize with database session for service instantiation."""
-        self.db_session = db_session
+    def __init__(self, billing_service: BillingAnalyticsService):
+        """Initialize with billing analytics service."""
+        self.billing_service = billing_service
 
     def execute(
         self,
@@ -26,7 +25,7 @@ class BillingAnalyticsOverviewUseCase:
         end_date: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """Get comprehensive billing analytics overview."""
-        service = BillingAnalyticsService(self.db_session)
+        service = self.billing_service
 
         if end_date is None:
             end_date = datetime.utcnow()
@@ -55,9 +54,9 @@ class BillingAnalyticsOverviewUseCase:
 class BillingAnalyticsRevenueUseCase:
     """Use case for revenue trends analysis."""
 
-    def __init__(self, db_session: Session):
-        """Initialize with database session for service instantiation."""
-        self.db_session = db_session
+    def __init__(self, billing_service: BillingAnalyticsService):
+        """Initialize with billing analytics service."""
+        self.billing_service = billing_service
 
     def execute(
         self,
@@ -66,7 +65,7 @@ class BillingAnalyticsRevenueUseCase:
         plan_filter: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Get revenue trends over time with optional plan filtering."""
-        service = BillingAnalyticsService(self.db_session)
+        service = self.billing_service
         trends = service.get_revenue_trends(period_type, months, plan_filter)
 
         return {
@@ -80,9 +79,9 @@ class BillingAnalyticsRevenueUseCase:
 class BillingAnalyticsSegmentationUseCase:
     """Use case for customer segmentation analysis."""
 
-    def __init__(self, db_session: Session):
-        """Initialize with database session for service instantiation."""
-        self.db_session = db_session
+    def __init__(self, billing_service: BillingAnalyticsService):
+        """Initialize with billing analytics service."""
+        self.billing_service = billing_service
 
     def execute(
         self,
@@ -91,7 +90,7 @@ class BillingAnalyticsSegmentationUseCase:
         include_predictions: bool = False,
     ) -> Dict[str, Any]:
         """Get customer segmentation analysis."""
-        service = BillingAnalyticsService(self.db_session)
+        service = self.billing_service
 
         if period_end is None:
             period_end = datetime.utcnow()
@@ -112,9 +111,9 @@ class BillingAnalyticsSegmentationUseCase:
 class BillingAnalyticsUserDetailUseCase:
     """Use case for detailed user analytics."""
 
-    def __init__(self, db_session: Session):
-        """Initialize with database session for service instantiation."""
-        self.db_session = db_session
+    def __init__(self, billing_service: BillingAnalyticsService):
+        """Initialize with billing analytics service."""
+        self.billing_service = billing_service
 
     def execute(
         self,
@@ -124,7 +123,7 @@ class BillingAnalyticsUserDetailUseCase:
         historical_months: int = 12,
     ) -> Dict[str, Any]:
         """Get detailed analytics for a specific user."""
-        service = BillingAnalyticsService(self.db_session)
+        service = self.billing_service
 
         detail = service.get_user_analytics_detail(
             user_id, include_predictions, include_insights, historical_months
@@ -136,9 +135,9 @@ class BillingAnalyticsUserDetailUseCase:
 class BillingAnalyticsCohortUseCase:
     """Use case for cohort analysis."""
 
-    def __init__(self, db_session: Session):
-        """Initialize with database session for service instantiation."""
-        self.db_session = db_session
+    def __init__(self, billing_service: BillingAnalyticsService):
+        """Initialize with billing analytics service."""
+        self.billing_service = billing_service
 
     def execute(
         self,
@@ -147,7 +146,7 @@ class BillingAnalyticsCohortUseCase:
         metric: str,
     ) -> Dict[str, Any]:
         """Get cohort analysis showing user behavior patterns."""
-        service = BillingAnalyticsService(self.db_session)
+        service = self.billing_service
         cohort_data = service.get_cohort_analysis(cohort_type, cohort_size, metric)
 
         return {
@@ -161,9 +160,9 @@ class BillingAnalyticsCohortUseCase:
 class BillingAnalyticsChurnUseCase:
     """Use case for churn analysis."""
 
-    def __init__(self, db_session: Session):
-        """Initialize with database session for service instantiation."""
-        self.db_session = db_session
+    def __init__(self, billing_service: BillingAnalyticsService):
+        """Initialize with billing analytics service."""
+        self.billing_service = billing_service
 
     def execute(
         self,
@@ -172,7 +171,7 @@ class BillingAnalyticsChurnUseCase:
         include_predictions: bool = True,
     ) -> Dict[str, Any]:
         """Get churn risk analysis with at-risk users."""
-        service = BillingAnalyticsService(self.db_session)
+        service = self.billing_service
 
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=period_months * 30)
@@ -200,9 +199,9 @@ class BillingAnalyticsChurnUseCase:
 class BillingAnalyticsPlanPerformanceUseCase:
     """Use case for plan performance analysis."""
 
-    def __init__(self, db_session: Session):
-        """Initialize with database session for service instantiation."""
-        self.db_session = db_session
+    def __init__(self, billing_service: BillingAnalyticsService):
+        """Initialize with billing analytics service."""
+        self.billing_service = billing_service
 
     def execute(
         self,
@@ -210,7 +209,7 @@ class BillingAnalyticsPlanPerformanceUseCase:
         include_forecasts: bool = True,
     ) -> Dict[str, Any]:
         """Get detailed performance analysis for each subscription plan."""
-        service = BillingAnalyticsService(self.db_session)
+        service = self.billing_service
 
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=period_months * 30)
@@ -237,9 +236,9 @@ class BillingAnalyticsPlanPerformanceUseCase:
 class BillingAnalyticsExportUseCase:
     """Use case for exporting billing analytics data."""
 
-    def __init__(self, db_session: Session):
-        """Initialize with database session for service instantiation."""
-        self.db_session = db_session
+    def __init__(self, billing_service: BillingAnalyticsService):
+        """Initialize with billing analytics service."""
+        self.billing_service = billing_service
 
     def execute(
         self,
@@ -249,7 +248,7 @@ class BillingAnalyticsExportUseCase:
         include_user_details: bool = False,
     ) -> Dict[str, Any]:
         """Export billing analytics data in various formats."""
-        service = BillingAnalyticsService(self.db_session)
+        service = self.billing_service
 
         if period_end is None:
             period_end = datetime.utcnow()
@@ -266,9 +265,9 @@ class BillingAnalyticsExportUseCase:
 class BillingAnalyticsRefreshUseCase:
     """Use case for refreshing billing analytics data."""
 
-    def __init__(self, db_session: Session):
-        """Initialize with database session for service instantiation."""
-        self.db_session = db_session
+    def __init__(self, billing_service: BillingAnalyticsService):
+        """Initialize with billing analytics service."""
+        self.billing_service = billing_service
 
     def execute(
         self,
@@ -277,7 +276,7 @@ class BillingAnalyticsRefreshUseCase:
         force_rebuild: bool = False,
     ) -> Dict[str, Any]:
         """Manually trigger billing analytics refresh."""
-        service = BillingAnalyticsService(self.db_session)
+        service = self.billing_service
 
         if user_id:
             # Refresh specific user
@@ -303,13 +302,13 @@ class BillingAnalyticsRefreshUseCase:
 class BillingAnalyticsHealthScoreUseCase:
     """Use case for customer health score distribution."""
 
-    def __init__(self, db_session: Session):
-        """Initialize with database session for service instantiation."""
-        self.db_session = db_session
+    def __init__(self, billing_service: BillingAnalyticsService):
+        """Initialize with billing analytics service."""
+        self.billing_service = billing_service
 
     def execute(self) -> Dict[str, Any]:
         """Get distribution of customer health scores."""
-        service = BillingAnalyticsService(self.db_session)
+        service = self.billing_service
         distribution = service.get_health_score_distribution()
 
         return {
