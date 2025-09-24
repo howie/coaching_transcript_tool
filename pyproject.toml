@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "coaching-assistant-core"
-version = "2.16.0"
+version = "2.22.4"
 description = "Core logic package for coaching transcript tool"
 readme = "README.md"
 authors = [

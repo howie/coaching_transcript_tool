@@ -7,9 +7,11 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from .auth import get_current_user_dependency
 from .dependencies import get_plan_validation_use_case, get_plan_retrieval_use_case, get_usage_log_use_case, get_user_usage_use_case
+from coaching_assistant.core.database import get_db
 from coaching_assistant.models.user import User
 from coaching_assistant.core.services.plan_management_use_case import PlanValidationUseCase, PlanRetrievalUseCase
 from coaching_assistant.core.services.usage_tracking_use_case import CreateUsageLogUseCase, GetUserUsageUseCase
@@ -347,7 +349,8 @@ async def increment_usage(
 @router.post("/reset-monthly-usage")
 async def reset_monthly_usage(
     admin_key: str,
-    user_usage_use_case: GetUserUsageUseCase = Depends(get_user_usage_use_case)
+    user_usage_use_case: GetUserUsageUseCase = Depends(get_user_usage_use_case),
+    db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
     Reset monthly usage counters for all users using Clean Architecture.
