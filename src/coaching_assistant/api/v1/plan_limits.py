@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from .auth import get_current_user_dependency
 from .dependencies import get_plan_validation_use_case, get_plan_retrieval_use_case, get_usage_log_use_case, get_user_usage_use_case
-from coaching_assistant.core.database import get_db
+from ...core.database import get_db
 from coaching_assistant.models.user import User
 from coaching_assistant.core.services.plan_management_use_case import PlanValidationUseCase, PlanRetrievalUseCase
 from coaching_assistant.core.services.usage_tracking_use_case import CreateUsageLogUseCase, GetUserUsageUseCase
