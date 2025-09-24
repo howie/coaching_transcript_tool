@@ -223,3 +223,48 @@ class TestCoachingSessionsAPI:
 
         # Verify that the old field name doesn't exist in the model
         assert not hasattr(coaching_session, "audio_timeseq_id")
+
+    def test_list_endpoint_returns_transcription_summary_with_segments_count(
+        self, db_session, authenticated_client, test_user
+    ):
+        """Ensure list API includes transcription summary without crashing."""
+
+        client = Client(user_id=test_user.id, name="List Test Client")
+        db_session.add(client)
+        db_session.flush()
+
+        transcription_session = Session(
+            user_id=test_user.id,
+            title="Linked transcription",
+            status=SessionStatus.COMPLETED,
+            language="en-US",
+            duration_seconds=900,
+        )
+        db_session.add(transcription_session)
+        db_session.flush()
+
+        coaching_session = CoachingSession(
+            user_id=test_user.id,
+            client_id=client.id,
+            session_date=date(2025, 9, 24),
+            source=SessionSource.CLIENT,
+            duration_min=45,
+            fee_currency="USD",
+            fee_amount=150,
+            transcription_session_id=transcription_session.id,
+        )
+        db_session.add(coaching_session)
+        db_session.commit()
+
+        response = authenticated_client.get(
+            "/api/v1/coaching-sessions?page=1&page_size=20&sort=-session_date"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert len(data["items"]) == 1
+
+        transcription_summary = data["items"][0]["transcription_session"]
+        assert transcription_summary is not None
+        assert transcription_summary["segments_count"] == 0

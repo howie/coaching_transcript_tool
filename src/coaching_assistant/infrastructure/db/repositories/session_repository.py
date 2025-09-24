@@ -267,6 +267,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             transcript_text=None,  # Legacy model stores in segments
             speaker_count=None,  # Not in legacy model
             confidence_score=None,  # Not in legacy model
+            segments_count=int(getattr(orm_session, "segments_count", 0) or 0),
             created_at=orm_session.created_at,
             updated_at=orm_session.updated_at,
             transcription_started_at=None,  # Not in legacy model
