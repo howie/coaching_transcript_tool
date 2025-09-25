@@ -392,6 +392,12 @@ class TranscriptRepoPort(Protocol):
         """Update speaker roles for session segments."""
         ...
 
+    def update_segment_content(
+        self, session_id: UUID, segments: List[TranscriptSegment]
+    ) -> List[TranscriptSegment]:
+        """Update content for existing transcript segments."""
+        ...
+
     def delete_by_session_id(self, session_id: UUID) -> bool:
         """Delete all segments for a session."""
         ...

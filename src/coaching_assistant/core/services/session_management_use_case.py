@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 from datetime import datetime
 from decimal import Decimal
 from dataclasses import replace
+from copy import deepcopy
 
 from ..repositories.ports import (
     SessionRepoPort,
@@ -40,6 +41,25 @@ def _replace_session(session: Session, **changes: Any) -> Session:
         invalid_list = ", ".join(sorted(invalid_fields))
         raise ValueError(f"Invalid session fields for replace: {invalid_list}")
     return replace(session, **changes)
+
+
+def _replace_transcript_segment(
+    segment: TranscriptSegment, **changes: Any
+) -> TranscriptSegment:
+    """Create an updated TranscriptSegment instance with validation."""
+    invalid_fields = set(changes) - segment.__dataclass_fields__.keys()
+    if invalid_fields:
+        invalid_list = ", ".join(sorted(invalid_fields))
+        raise ValueError(f"Invalid transcript segment fields: {invalid_list}")
+
+    updated_segment = deepcopy(segment)
+    for field_name, value in changes.items():
+        setattr(updated_segment, field_name, value)
+
+    immutable_changes = set(changes) - {"content", "updated_at"}
+    if immutable_changes:
+        updated_segment.validate()
+    return updated_segment
 
 
 class SessionCreationUseCase:
@@ -388,6 +408,76 @@ class SessionTranscriptUpdateUseCase:
         # Create new session instance with updated fields
         updated_session = _replace_session(session, **updated_fields)
         return self.session_repo.save(updated_session)
+
+    def update_segment_content(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        segment_content: Dict[str, str],
+    ) -> List[TranscriptSegment]:
+        """Update transcript segment content for a completed session."""
+        if not segment_content:
+            raise ValueError("No segment content provided")
+
+        session = self.session_repo.get_by_id(session_id)
+        if session is None:
+            raise ValueError("Session not found")
+
+        if session.user_id != user_id:
+            raise ValueError("Access denied")
+
+        if session.status != SessionStatus.COMPLETED:
+            raise ValueError(
+                f"Cannot update segment content. Session status: {session.status.value}. Content can only be updated for completed sessions."
+            )
+
+        normalized_updates: Dict[UUID, str] = {}
+        for segment_id_str, new_content in segment_content.items():
+            if new_content is None:
+                raise ValueError(
+                    f"Segment content cannot be empty for {segment_id_str}"
+                )
+
+            try:
+                segment_uuid = UUID(segment_id_str)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Invalid segment ID format: {segment_id_str}"
+                ) from exc
+
+            normalized_updates[segment_uuid] = new_content
+
+        existing_segments = self.transcript_repo.get_by_session_id(session_id)
+        segments_by_id = {
+            segment.id: segment for segment in existing_segments if segment.id is not None
+        }
+
+        missing_segments = [
+            str(segment_id)
+            for segment_id in normalized_updates
+            if segment_id not in segments_by_id
+        ]
+        if missing_segments:
+            missing_list = ", ".join(missing_segments)
+            raise ValueError(f"Segment not found: {missing_list}")
+
+        updated_segments = [
+            _replace_transcript_segment(
+                segments_by_id[segment_id],
+                content=new_content,
+                updated_at=datetime.utcnow(),
+            )
+            for segment_id, new_content in normalized_updates.items()
+        ]
+
+        persisted_segments = self.transcript_repo.update_segment_content(
+            session_id, updated_segments
+        )
+
+        updated_session = _replace_session(session, updated_at=datetime.utcnow())
+        self.session_repo.save(updated_session)
+
+        return persisted_segments
 
 
 class SessionUploadManagementUseCase:

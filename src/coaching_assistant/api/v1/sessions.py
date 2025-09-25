@@ -12,7 +12,6 @@ from fastapi import (
     status,
 )
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session as DBSession  # Still needed for role management endpoints
 from sqlalchemy import desc
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
@@ -21,7 +20,6 @@ import json
 import logging
 import re
 
-from ...core.database import get_db  # Still needed for role management endpoints
 # TEMPORARY: Still needed for legacy endpoints that haven't been migrated to Clean Architecture
 from ...models.session import Session, SessionStatus
 from ...models.transcript import TranscriptSegment
@@ -876,54 +874,85 @@ async def update_segment_content(
     session_id: UUID,
     request: SegmentContentUpdateRequest,
     current_user: User = Depends(get_current_user_dependency),
-    db: DBSession = Depends(get_db),
+    transcript_update_use_case=Depends(get_session_transcript_update_use_case),
 ):
     """Update transcript segment content for a session."""
+    logger.info(
+        f"Segment content update requested for session {session_id} by user {current_user.id}, "
+        f"updating {len(request.segment_content)} segments"
+    )
+
     try:
-        # Verify session ownership and status
-        session = db.query(Session).filter(Session.id == session_id).first()
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
+        updated_segments = transcript_update_use_case.update_segment_content(
+            session_id=session_id,
+            user_id=current_user.id,
+            segment_content=request.segment_content,
+        )
 
-        if session.user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Access denied - session not owned by user")
-
-        if session.status != SessionStatus.COMPLETED:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot update segment content. Session status: {session.status.value}. Content can only be updated for completed sessions."
-            )
-
-        # Update segment content
-        updated_count = 0
-        for segment_id_str, new_content in request.segment_content.items():
-            try:
-                segment_id = UUID(segment_id_str)
-            except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid segment ID format: {segment_id_str}")
-
-            # Update the segment content
-            result = db.query(TranscriptSegment).filter(
-                TranscriptSegment.id == segment_id,
-                TranscriptSegment.session_id == session_id
-            ).update({"content": new_content})
-
-            updated_count += result
-
-        db.commit()
+        logger.info(
+            f"Successfully updated {len(updated_segments)} segments for session {session_id}"
+        )
 
         return {
             "message": "Segment content updated successfully",
             "session_id": str(session_id),
-            "segments_updated": updated_count
+            "segments_updated": len(updated_segments),
         }
+    except ValueError as error:
+        error_message = str(error)
+        logger.warning(f"Segment content update validation error for session {session_id}: {error_message}")
 
-    except HTTPException:
-        raise
+        if error_message == "Session not found":
+            raise HTTPException(
+                status_code=404,
+                detail=f"Session {session_id} not found or does not belong to the current user"
+            )
+        if error_message == "Access denied":
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to edit this session's transcript"
+            )
+        if error_message.startswith("Invalid segment ID format"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{error_message}. Please ensure segment IDs are valid UUIDs."
+            )
+        if error_message.startswith("Segment not found"):
+            raise HTTPException(
+                status_code=404,
+                detail=f"{error_message}. The segment may have been deleted or does not belong to this session."
+            )
+        if error_message.startswith("Segment content cannot be empty"):
+            raise HTTPException(
+                status_code=400,
+                detail="Segment content cannot be empty. Use an empty string if you want to clear the content."
+            )
+        if error_message == "No segment content provided":
+            raise HTTPException(
+                status_code=400,
+                detail="No segment content provided. Please include at least one segment to update."
+            )
+        if error_message.startswith("Cannot update segment content"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{error_message}. Only completed sessions can have their transcripts edited."
+            )
+
+        # Generic validation error
+        logger.error(f"Unhandled validation error for session {session_id}: {error_message}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Validation error: {error_message}"
+        )
     except Exception as e:
-        db.rollback()
-        logger.error(f"Unexpected error updating segment content for session {session_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(
+            f"Unexpected error updating segment content for session {session_id}: {e}",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="An internal error occurred while updating segment content. Please try again later."
+        )
 
 
 def _export_json(

@@ -652,10 +652,32 @@ ${t('sessions.aiChatFollowUp')}`;
       ) as { [segmentId: string]: 'coach' | 'client' };
       await apiClient.updateSegmentRoles(transcriptionSessionId, filteredSegmentRoles);
       
-      // Save segment content changes via API
-      const contentResult = await apiClient.updateSegmentContent(transcriptionSessionId, tempSegmentContent);
-      if (!contentResult.success) {
-        console.warn('Content update not available:', contentResult.message);
+      // Save segment content changes via API (only if there are actual changes)
+      if (Object.keys(tempSegmentContent).length > 0) {
+        try {
+          const contentResult = await apiClient.updateSegmentContent(transcriptionSessionId, tempSegmentContent);
+          if (!contentResult.success) {
+            console.warn('Content update not available:', contentResult.message);
+          }
+        } catch (error: any) {
+          console.error('Failed to update segment content:', error);
+
+          // Provide more specific error messages to users
+          let errorMessage = t('sessions.saveTranscriptError') || 'Failed to save transcript changes';
+
+          if (error.message.includes('No segment content provided')) {
+            errorMessage = t('sessions.noContentToSave') || 'No content changes to save';
+          } else if (error.message.includes('permission') || error.message.includes('Access denied')) {
+            errorMessage = t('sessions.accessDeniedError') || 'You do not have permission to edit this transcript';
+          } else if (error.message.includes('Session') && error.message.includes('not found')) {
+            errorMessage = t('sessions.sessionNotFoundError') || 'Session not found or no longer available';
+          } else if (error.message.includes('completed sessions')) {
+            errorMessage = t('sessions.sessionNotEditableError') || 'Only completed sessions can be edited';
+          }
+
+          alert(errorMessage);
+          throw error; // Re-throw to prevent saving role changes if content update failed
+        }
       }
       
       // Update local transcript data to include both roles and content changes

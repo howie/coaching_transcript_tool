@@ -10,6 +10,7 @@ from uuid import uuid4, UUID
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List, Optional
+from dataclasses import replace
 
 # Import use cases to test
 from src.coaching_assistant.core.services.session_management_use_case import (
@@ -93,6 +94,12 @@ def sample_session(sample_user):
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
+
+
+@pytest.fixture
+def completed_session(sample_session):
+    """Create a completed session for testing."""
+    return replace(sample_session, status=SessionStatus.COMPLETED)
 
 
 @pytest.fixture
@@ -758,6 +765,166 @@ class TestSessionStatusUpdateUseCase:
         assert usage_log_call.user_id == sample_session.user_id
         assert usage_log_call.session_id == sample_session.id
         assert usage_log_call.duration_minutes == 5  # 300 seconds / 60
+
+
+class TestSessionTranscriptUpdateUseCase:
+    """Test cases for SessionTranscriptUpdateUseCase."""
+
+    def test_update_segment_content_success(
+        self, mock_session_repo, mock_transcript_repo, completed_session
+    ):
+        """Test successful segment content update."""
+        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        segment_id = uuid4()
+        existing_segment = TranscriptSegment(
+            id=segment_id,
+            session_id=completed_session.id,
+            speaker_id=1,
+            start_seconds=0.0,
+            end_seconds=5.0,
+            content="Original",
+            confidence=0.9,
+        )
+
+        mock_session_repo.get_by_id.return_value = completed_session
+        mock_transcript_repo.get_by_session_id.return_value = [existing_segment]
+
+        def _return_segments(_, segments):
+            return segments
+
+        mock_transcript_repo.update_segment_content.side_effect = _return_segments
+
+        result = use_case.update_segment_content(
+            session_id=completed_session.id,
+            user_id=completed_session.user_id,
+            segment_content={str(segment_id): " Updated "},
+        )
+
+        assert len(result) == 1
+        assert result[0].content == " Updated "
+        update_call = mock_transcript_repo.update_segment_content.call_args
+        assert update_call[0][0] == completed_session.id
+        assert update_call[0][1][0].content == " Updated "
+        mock_session_repo.save.assert_called_once()
+
+    def test_update_segment_content_requires_completed_session(
+        self, mock_session_repo, mock_transcript_repo, completed_session
+    ):
+        """Ensure session status must be completed before updates."""
+        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        in_progress_session = replace(
+            completed_session, status=SessionStatus.PROCESSING
+        )
+        mock_session_repo.get_by_id.return_value = in_progress_session
+
+        with pytest.raises(ValueError, match="Cannot update segment content"):
+            use_case.update_segment_content(
+                session_id=in_progress_session.id,
+                user_id=in_progress_session.user_id,
+                segment_content={str(uuid4()): "Content"},
+            )
+
+    def test_update_segment_content_invalid_segment_id(
+        self, mock_session_repo, mock_transcript_repo, completed_session
+    ):
+        """Invalid segment identifiers should raise errors."""
+        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        mock_session_repo.get_by_id.return_value = completed_session
+
+        with pytest.raises(ValueError, match="Invalid segment ID format"):
+            use_case.update_segment_content(
+                session_id=completed_session.id,
+                user_id=completed_session.user_id,
+                segment_content={"not-a-uuid": "content"},
+            )
+
+    def test_update_segment_content_missing_segment(
+        self, mock_session_repo, mock_transcript_repo, completed_session
+    ):
+        """Missing segments should raise a not found error."""
+        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        segment_id = uuid4()
+        other_segment = TranscriptSegment(
+            id=uuid4(),
+            session_id=completed_session.id,
+            speaker_id=1,
+            start_seconds=0.0,
+            end_seconds=5.0,
+            content="Other",
+        )
+
+        mock_session_repo.get_by_id.return_value = completed_session
+        mock_transcript_repo.get_by_session_id.return_value = [other_segment]
+
+        with pytest.raises(ValueError, match="Segment not found"):
+            use_case.update_segment_content(
+                session_id=completed_session.id,
+                user_id=completed_session.user_id,
+                segment_content={str(segment_id): "Updated"},
+            )
+
+    def test_update_segment_content_allows_blank_strings(
+        self, mock_session_repo, mock_transcript_repo, completed_session
+    ):
+        """Whitespace-only content should be accepted for compatibility."""
+        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        segment_id = uuid4()
+        existing_segment = TranscriptSegment(
+            id=segment_id,
+            session_id=completed_session.id,
+            speaker_id=1,
+            start_seconds=0.0,
+            end_seconds=5.0,
+            content="Original",
+            confidence=0.9,
+        )
+
+        mock_session_repo.get_by_id.return_value = completed_session
+        mock_transcript_repo.get_by_session_id.return_value = [existing_segment]
+
+        def _return_segments(_, segments):
+            return segments
+
+        mock_transcript_repo.update_segment_content.side_effect = _return_segments
+
+        result = use_case.update_segment_content(
+            session_id=completed_session.id,
+            user_id=completed_session.user_id,
+            segment_content={str(segment_id): "   "},
+        )
+
+        assert result[0].content == "   "
+        update_call = mock_transcript_repo.update_segment_content.call_args
+        assert update_call[0][1][0].content == "   "
+
+    def test_update_segment_content_session_access_denied(
+        self, mock_session_repo, mock_transcript_repo, completed_session
+    ):
+        """Ensure users cannot update sessions they do not own."""
+        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        other_user_session = replace(completed_session, user_id=uuid4())
+        mock_session_repo.get_by_id.return_value = other_user_session
+
+        with pytest.raises(ValueError, match="Access denied"):
+            use_case.update_segment_content(
+                session_id=other_user_session.id,
+                user_id=completed_session.user_id,
+                segment_content={str(uuid4()): "Content"},
+            )
+
+    def test_update_segment_content_session_not_found(
+        self, mock_session_repo, mock_transcript_repo, completed_session
+    ):
+        """Missing session should raise not found."""
+        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        mock_session_repo.get_by_id.return_value = None
+
+        with pytest.raises(ValueError, match="Session not found"):
+            use_case.update_segment_content(
+                session_id=completed_session.id,
+                user_id=completed_session.user_id,
+                segment_content={str(uuid4()): "Content"},
+            )
 
 
 class TestSessionUploadManagementUseCase:

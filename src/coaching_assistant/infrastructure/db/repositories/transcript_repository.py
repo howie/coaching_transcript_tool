@@ -1,6 +1,7 @@
 """Transcript repository implementation using SQLAlchemy with Clean Architecture."""
 
 from typing import List, Dict
+from datetime import datetime
 from uuid import UUID
 from sqlalchemy.orm import Session
 
@@ -58,6 +59,47 @@ class TranscriptRepository(TranscriptRepoPort):
         # to properly handle speaker role assignments
 
         return [orm_segment.to_domain() for orm_segment in orm_segments]
+
+    def update_segment_content(
+        self, session_id: UUID, segments: List[TranscriptSegment]
+    ) -> List[TranscriptSegment]:
+        """Update content for existing transcript segments."""
+        if not segments:
+            return []
+
+        segment_ids = [segment.id for segment in segments if segment.id is not None]
+        if len(segment_ids) != len(segments):
+            raise ValueError("All transcript segments must have an ID for update")
+
+        orm_segments = (
+            self.db_session.query(TranscriptSegmentModel)
+            .filter(
+                TranscriptSegmentModel.session_id == session_id,
+                TranscriptSegmentModel.id.in_(segment_ids),
+            )
+            .all()
+        )
+
+        orm_segment_map = {orm_segment.id: orm_segment for orm_segment in orm_segments}
+        missing_ids = [
+            str(segment_id) for segment_id in segment_ids if segment_id not in orm_segment_map
+        ]
+
+        if missing_ids:
+            missing_list = ", ".join(missing_ids)
+            raise ValueError(
+                f"Segments not found for session {session_id}: {missing_list}"
+            )
+
+        for updated_segment in segments:
+            orm_segment = orm_segment_map[updated_segment.id]
+            orm_segment.content = updated_segment.content
+            orm_segment.updated_at = updated_segment.updated_at or datetime.utcnow()
+
+        self.db_session.flush()
+
+        # Return the domain segments that were supplied (already reflect new state)
+        return segments
 
     def delete_by_session_id(self, session_id: UUID) -> bool:
         """Delete all segments for a session."""
