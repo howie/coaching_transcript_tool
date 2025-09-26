@@ -19,7 +19,8 @@ from sqlalchemy import select
 
 from ...core.config import settings
 from ...core.database import get_db
-from ...models.user import User, UserPlan
+from ...core.models.user import User as DomainUser, UserPlan
+from ...models.user import User  # Infrastructure model for SQLAlchemy queries
 
 router = APIRouter(tags=["authentication"])
 
