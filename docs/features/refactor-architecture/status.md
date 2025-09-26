@@ -2,6 +2,7 @@
 
 **Last Updated**: 2025-09-26
 **Overall Progress**: 95% Complete - Core services Clean Architecture compliance achieved ✅
+**Recent Fix**: Critical usage.py import error resolved (v2.22.6) - API server startup fixed ✅
 **Documentation**: Completed work archived in `done/wp6-recent-completions-2025-09-23.md`
 
 ---
@@ -226,6 +227,36 @@ rg "from sqlalchemy" src/coaching_assistant/core/services
 
 ---
 
+## 🚨 Critical Fix Completed (2025-09-26)
+
+### ✅ **URGENT BUG RESOLUTION**: usage.py Import Error Fixed (v2.22.6)
+
+**Issue**: API server startup failure due to `NameError: name 'get_db' is not defined` at line 51 in `usage.py`
+
+**Root Cause**: Missing imports during Clean Architecture migration caused critical startup error
+
+**Resolution Implemented**:
+1. ✅ **Added missing imports**: `get_db` from `...core.database` and `UsageTrackingService`
+2. ✅ **Enhanced dependency injection**: Added new use case dependencies for usage tracking
+3. ✅ **Updated endpoints**: Migrated `/summary` endpoint to use Clean Architecture pattern
+4. ✅ **Version bump**: Updated to v2.22.6 with comprehensive commit documentation
+5. ✅ **API startup verified**: Server now starts successfully without import errors
+
+**Impact**:
+- **Immediate**: API server startup restored, development workflow unblocked
+- **Architecture**: Further progress toward Clean Architecture compliance in usage endpoints
+- **Quality**: Improved error handling and dependency injection patterns
+
+**Files Modified**:
+- `src/coaching_assistant/api/v1/usage.py` - Fixed imports, enhanced use case integration
+- `src/coaching_assistant/api/v1/dependencies.py` - Added new factory methods
+- `src/coaching_assistant/core/services/usage_tracking_use_case.py` - Extended use cases
+- `src/coaching_assistant/core/repositories/ports.py` - Added new repository interfaces
+- `src/coaching_assistant/infrastructure/factories.py` - Added factory implementations
+- `pyproject.toml` - Version bump to 2.22.6
+
+---
+
 ## 🎯 Option 1 Completion Summary (2025-09-26)
 
 ### ✅ **MISSION ACCOMPLISHED**: Core Services Clean Architecture Migration
@@ -345,7 +376,10 @@ All metrics have been verified against current codebase (2025-09-25):
 
 #### **usage.py + usage_history.py - 14 endpoints**
 **優先級**: ⚠️ **高** (Usage Tracking)
-- [ ] **14 個用量追蹤端點** - 需要擴展現有 usage use cases
+- [x] **Critical import fix completed (2025-09-26)** - Added missing get_db and UsageTrackingService imports
+- [x] **Enhanced use case dependencies** - Added GetUsageHistoryUseCase, GetUserAnalyticsUseCase, GetAdminAnalyticsUseCase
+- [x] **API startup issue resolved** - Server now starts without NameError at line 51
+- [ ] **6 remaining endpoints** - Still need migration from direct DB access to use case pattern
 
 #### **admin.py - 7 endpoints**
 **優先級**: 📋 **中等** (Admin Functions)

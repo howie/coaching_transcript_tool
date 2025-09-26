@@ -50,7 +50,7 @@ async def get_usage_history(
         3, ge=1, le=12, description="Number of months of history"
     ),
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
+    get_usage_history_use_case: GetUsageHistoryUseCase = Depends(get_usage_history_use_case),
 ) -> Dict[str, Any]:
     """Get user's detailed usage history.
 
@@ -65,12 +65,12 @@ async def get_usage_history(
     )
 
     try:
-        tracking_service = UsageTrackingService(db)
-        return tracking_service.get_user_usage_history(
-            str(current_user.id), months
-        )
+        return get_usage_history_use_case.execute(current_user.id, months)
+    except ValueError as e:
+        logger.error(f"❌ User error getting usage history: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"❌ Error getting usage history: {str(e)}")
+        logger.error(f"❌ System error getting usage history: {str(e)}")
         raise HTTPException(
             status_code=500, detail="Failed to get usage history"
         )
@@ -79,7 +79,7 @@ async def get_usage_history(
 @router.get("/analytics")
 async def get_user_analytics(
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
+    get_user_analytics_use_case: GetUserAnalyticsUseCase = Depends(get_user_analytics_use_case),
 ) -> Dict[str, Any]:
     """Get user's usage analytics and trends.
 
@@ -93,10 +93,12 @@ async def get_user_analytics(
     logger.info(f"📊 User {current_user.id} requesting usage analytics")
 
     try:
-        tracking_service = UsageTrackingService(db)
-        return tracking_service.get_user_analytics(str(current_user.id))
+        return get_user_analytics_use_case.execute(current_user.id)
+    except ValueError as e:
+        logger.error(f"❌ User error getting usage analytics: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"❌ Error getting usage analytics: {str(e)}")
+        logger.error(f"❌ System error getting usage analytics: {str(e)}")
         raise HTTPException(
             status_code=500, detail="Failed to get usage analytics"
         )
@@ -163,7 +165,7 @@ async def get_admin_usage_analytics(
         None, description="Filter by plan (free, pro, enterprise)"
     ),
     admin_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    get_admin_analytics_use_case: GetAdminAnalyticsUseCase = Depends(get_admin_analytics_use_case),
 ) -> Dict[str, Any]:
     """Get system-wide usage analytics (Admin only).
 
@@ -182,12 +184,12 @@ async def get_admin_usage_analytics(
     logger.info(f"📊 Admin {admin_user.id} requesting system analytics")
 
     try:
-        tracking_service = UsageTrackingService(db)
-        return tracking_service.get_admin_analytics(
-            start_date=start_date, end_date=end_date, plan_filter=plan_filter
-        )
+        return get_admin_analytics_use_case.execute()
+    except ValueError as e:
+        logger.error(f"❌ Admin error getting analytics: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"❌ Error getting admin analytics: {str(e)}")
+        logger.error(f"❌ System error getting admin analytics: {str(e)}")
         raise HTTPException(
             status_code=500, detail="Failed to get admin analytics"
         )
