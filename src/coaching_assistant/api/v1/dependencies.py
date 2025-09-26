@@ -29,6 +29,11 @@ from ...core.services.usage_tracking_use_case import (
     GetAdminAnalyticsUseCase,
     GetSpecificUserUsageUseCase,
     GetMonthlyUsageReportUseCase,
+    GetUsageTrendsUseCase,
+    GetUsagePredictionsUseCase,
+    GetUsageInsightsUseCase,
+    CreateUsageSnapshotUseCase,
+    ExportUsageDataUseCase,
 )
 from ...core.services.session_management_use_case import (
     SessionCreationUseCase,
@@ -133,6 +138,41 @@ def get_monthly_usage_report_use_case(
 ) -> GetMonthlyUsageReportUseCase:
     """Dependency to inject GetMonthlyUsageReportUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_monthly_usage_report_use_case(db)
+
+
+def get_usage_trends_use_case(
+    db: Session = Depends(get_db)
+) -> 'GetUsageTrendsUseCase':
+    """Dependency to inject GetUsageTrendsUseCase with proper repositories."""
+    return UsageTrackingServiceFactory.create_usage_trends_use_case(db)
+
+
+def get_usage_predictions_use_case(
+    db: Session = Depends(get_db)
+) -> 'GetUsagePredictionsUseCase':
+    """Dependency to inject GetUsagePredictionsUseCase with proper repositories."""
+    return UsageTrackingServiceFactory.create_usage_predictions_use_case(db)
+
+
+def get_usage_insights_use_case(
+    db: Session = Depends(get_db)
+) -> 'GetUsageInsightsUseCase':
+    """Dependency to inject GetUsageInsightsUseCase with proper repositories."""
+    return UsageTrackingServiceFactory.create_usage_insights_use_case(db)
+
+
+def get_usage_snapshot_use_case(
+    db: Session = Depends(get_db)
+) -> 'CreateUsageSnapshotUseCase':
+    """Dependency to inject CreateUsageSnapshotUseCase with proper repositories."""
+    return UsageTrackingServiceFactory.create_usage_snapshot_use_case(db)
+
+
+def get_export_usage_data_use_case(
+    db: Session = Depends(get_db)
+) -> 'ExportUsageDataUseCase':
+    """Dependency to inject ExportUsageDataUseCase with proper repositories."""
+    return UsageTrackingServiceFactory.create_export_usage_data_use_case(db)
 
 
 # Session Management Dependencies

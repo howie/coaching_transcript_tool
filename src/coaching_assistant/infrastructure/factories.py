@@ -17,6 +17,11 @@ from ..core.services.usage_tracking_use_case import (
     GetAdminAnalyticsUseCase,
     GetSpecificUserUsageUseCase,
     GetMonthlyUsageReportUseCase,
+    GetUsageTrendsUseCase,
+    GetUsagePredictionsUseCase,
+    GetUsageInsightsUseCase,
+    CreateUsageSnapshotUseCase,
+    ExportUsageDataUseCase,
 )
 from ..core.services.session_management_use_case import (
     SessionCreationUseCase,
@@ -100,6 +105,7 @@ from .db.repositories.speaker_role_repository import (
 from .db.repositories.client_repository import create_client_repository
 from .db.repositories.coaching_session_repository import create_coaching_session_repository
 from .db.repositories.coach_profile_repository import create_coach_profile_repository
+from .db.repositories.usage_history_repository import create_usage_history_repository
 
 
 class UsageTrackingServiceFactory:
@@ -229,6 +235,98 @@ class UsageTrackingServiceFactory:
 
         return GetMonthlyUsageReportUseCase(
             usage_analytics_repo=usage_analytics_repo,
+        )
+
+    @staticmethod
+    def create_usage_trends_use_case(db_session: Session) -> 'GetUsageTrendsUseCase':
+        """Create a GetUsageTrendsUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetUsageTrendsUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+
+        return GetUsageTrendsUseCase(
+            usage_analytics_repo=usage_analytics_repo,
+            usage_log_repo=usage_log_repo,
+        )
+
+    @staticmethod
+    def create_usage_predictions_use_case(db_session: Session) -> 'GetUsagePredictionsUseCase':
+        """Create a GetUsagePredictionsUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetUsagePredictionsUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+
+        return GetUsagePredictionsUseCase(
+            usage_analytics_repo=usage_analytics_repo,
+            usage_log_repo=usage_log_repo,
+        )
+
+    @staticmethod
+    def create_usage_insights_use_case(db_session: Session) -> 'GetUsageInsightsUseCase':
+        """Create a GetUsageInsightsUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetUsageInsightsUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+        user_repo = create_user_repository(db_session)
+
+        return GetUsageInsightsUseCase(
+            usage_analytics_repo=usage_analytics_repo,
+            usage_log_repo=usage_log_repo,
+            user_repo=user_repo,
+        )
+
+    @staticmethod
+    def create_usage_snapshot_use_case(db_session: Session) -> 'CreateUsageSnapshotUseCase':
+        """Create a CreateUsageSnapshotUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured CreateUsageSnapshotUseCase
+        """
+        usage_log_repo = create_usage_log_repository(db_session)
+        usage_history_repo = create_usage_history_repository(db_session)
+
+        return CreateUsageSnapshotUseCase(
+            usage_log_repo=usage_log_repo,
+            usage_history_repo=usage_history_repo,
+        )
+
+    @staticmethod
+    def create_export_usage_data_use_case(db_session: Session) -> 'ExportUsageDataUseCase':
+        """Create an ExportUsageDataUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured ExportUsageDataUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+
+        return ExportUsageDataUseCase(
+            usage_analytics_repo=usage_analytics_repo,
+            usage_log_repo=usage_log_repo,
         )
 
 
