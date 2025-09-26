@@ -6,12 +6,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional
 from decimal import Decimal
 from dataclasses import dataclass
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, desc, DECIMAL
 
-from ..models.user import User, UserRole
-from ..models.session import Session as TranscriptSession, SessionStatus
-from ..models.subscription import SaasSubscription
+from ..repositories.ports import AdminAnalyticsRepoPort
 from ..config import Settings
 
 logger = logging.getLogger(__name__)
@@ -60,8 +56,8 @@ class DailyReportData:
 class AdminDailyReportService:
     """Service for generating admin daily reports."""
 
-    def __init__(self, db_session: Session, settings: Settings):
-        self.db = db_session
+    def __init__(self, admin_analytics_repo: AdminAnalyticsRepoPort, settings: Settings):
+        self.admin_analytics_repo = admin_analytics_repo
         self.settings = settings
         self.logger = logging.getLogger(
             f"{__name__}.{self.__class__.__name__}"
@@ -93,33 +89,13 @@ class AdminDailyReportService:
         )
 
         try:
-            # Gather all metrics - handle database errors gracefully
+            # Gather all metrics using repository pattern
             user_metrics = self._get_user_metrics(report_start, report_end)
-            session_metrics = self._get_session_metrics(
-                report_start, report_end
-            )
+            session_metrics = self._get_session_metrics(report_start, report_end)
             admin_metrics = self._get_admin_metrics(report_start, report_end)
-
-            # Handle billing metrics which may fail if table doesn't exist
-            try:
-                billing_metrics = self._get_billing_metrics(
-                    report_start, report_end
-                )
-            except Exception as e:
-                self.logger.warning(f"Failed to get billing metrics: {e}")
-                # Rollback and try again with a new transaction
-                self.db.rollback()
-                billing_metrics = {
-                    "active_subscriptions": {},
-                    "subscription_changes": [],
-                }
-
-            system_metrics = self._get_system_health_metrics(
-                report_start, report_end
-            )
-            activity_metrics = self._get_activity_metrics(
-                report_start, report_end
-            )
+            billing_metrics = self._get_billing_metrics(report_start, report_end)
+            system_metrics = self._get_system_health_metrics(report_start, report_end)
+            activity_metrics = self._get_activity_metrics(report_start, report_end)
 
             report_data = DailyReportData(
                 report_date=report_start.strftime("%Y-%m-%d"),
@@ -148,50 +124,11 @@ class AdminDailyReportService:
         """Get user-related metrics."""
         self.logger.debug("📋 Collecting user metrics...")
 
-        # Total users
-        total_users = self.db.query(User).count()
-
-        # New users in period
-        new_users_query = (
-            self.db.query(User)
-            .filter(and_(User.created_at >= start, User.created_at < end))
-            .order_by(desc(User.created_at))
-        )
-
-        new_users = [
-            {
-                "id": str(user.id),
-                "email": user.email,
-                "name": user.name,
-                "plan": user.plan.value,
-                "auth_provider": user.auth_provider,
-                "created_at": user.created_at.isoformat(),
-                "google_connected": user.google_connected,
-            }
-            for user in new_users_query.all()
-        ]
-
-        # Active users (users who created sessions in period)
-        active_users_count = (
-            self.db.query(func.count(func.distinct(TranscriptSession.user_id)))
-            .filter(
-                and_(
-                    TranscriptSession.created_at >= start,
-                    TranscriptSession.created_at < end,
-                )
-            )
-            .scalar()
-            or 0
-        )
-
-        # Users by plan
-        plan_counts = (
-            self.db.query(User.plan, func.count(User.id))
-            .group_by(User.plan)
-            .all()
-        )
-
-        users_by_plan = {plan.value: count for plan, count in plan_counts}
+        # Use repository methods for all user analytics
+        total_users = self.admin_analytics_repo.get_total_users_count()
+        new_users = self.admin_analytics_repo.get_new_users_in_period(start, end)
+        active_users_count = self.admin_analytics_repo.get_active_users_count(start, end)
+        users_by_plan = self.admin_analytics_repo.get_users_by_plan_distribution()
 
         return {
             "total_users": total_users,
@@ -207,85 +144,8 @@ class AdminDailyReportService:
         """Get session and usage metrics."""
         self.logger.debug("📋 Collecting session metrics...")
 
-        # Session counts by status
-        sessions_in_period = self.db.query(TranscriptSession).filter(
-            and_(
-                TranscriptSession.created_at >= start,
-                TranscriptSession.created_at < end,
-            )
-        )
-
-        total_sessions = sessions_in_period.count()
-        completed_sessions = sessions_in_period.filter(
-            TranscriptSession.status == SessionStatus.COMPLETED
-        ).count()
-        failed_sessions = sessions_in_period.filter(
-            TranscriptSession.status == SessionStatus.FAILED
-        ).count()
-
-        # Sessions by STT provider
-        provider_counts = (
-            self.db.query(
-                TranscriptSession.stt_provider,
-                func.count(TranscriptSession.id),
-            )
-            .filter(
-                and_(
-                    TranscriptSession.created_at >= start,
-                    TranscriptSession.created_at < end,
-                )
-            )
-            .group_by(TranscriptSession.stt_provider)
-            .all()
-        )
-
-        sessions_by_provider = {
-            provider or "unknown": count for provider, count in provider_counts
-        }
-
-        # Total processing metrics
-        usage_stats = (
-            self.db.query(
-                func.sum(TranscriptSession.duration_seconds),
-                func.sum(
-                    func.cast(TranscriptSession.stt_cost_usd, DECIMAL(12, 4))
-                ),
-            )
-            .filter(
-                and_(
-                    TranscriptSession.created_at >= start,
-                    TranscriptSession.created_at < end,
-                    TranscriptSession.status == SessionStatus.COMPLETED,
-                )
-            )
-            .first()
-        )
-
-        total_seconds = (
-            usage_stats[0] if usage_stats and usage_stats[0] is not None else 0
-        )
-        total_minutes_processed = (
-            Decimal(str(total_seconds)) / 60 if total_seconds else Decimal("0")
-        )
-        total_cost_raw = (
-            usage_stats[1]
-            if usage_stats and usage_stats[1] is not None
-            else None
-        )
-        total_cost_usd = (
-            Decimal(str(total_cost_raw))
-            if total_cost_raw is not None
-            else Decimal("0")
-        )
-
-        return {
-            "total_sessions": total_sessions,
-            "completed_sessions": completed_sessions,
-            "failed_sessions": failed_sessions,
-            "sessions_by_provider": sessions_by_provider,
-            "total_minutes_processed": total_minutes_processed,
-            "total_cost_usd": total_cost_usd,
-        }
+        # Use repository method for all session analytics
+        return self.admin_analytics_repo.get_session_metrics_for_period(start, end)
 
     def _get_admin_metrics(
         self, start: datetime, end: datetime
@@ -293,52 +153,9 @@ class AdminDailyReportService:
         """Get admin and staff activity metrics."""
         self.logger.debug("📋 Collecting admin metrics...")
 
-        # All admin users
-        admin_users_query = (
-            self.db.query(User)
-            .filter(
-                User.role.in_(
-                    [UserRole.ADMIN, UserRole.STAFF, UserRole.SUPER_ADMIN]
-                )
-            )
-            .order_by(User.role, User.email)
-        )
-
-        admin_users = [
-            {
-                "id": str(user.id),
-                "email": user.email,
-                "name": user.name,
-                "role": user.role.value,
-                "last_admin_login": (
-                    user.last_admin_login.isoformat()
-                    if user.last_admin_login
-                    else None
-                ),
-                "admin_access_expires": (
-                    user.admin_access_expires.isoformat()
-                    if user.admin_access_expires
-                    else None
-                ),
-                "created_at": user.created_at.isoformat(),
-            }
-            for user in admin_users_query.all()
-        ]
-
-        # Staff logins today
-        staff_logins_today = (
-            self.db.query(User)
-            .filter(
-                and_(
-                    User.role.in_(
-                        [UserRole.ADMIN, UserRole.STAFF, UserRole.SUPER_ADMIN]
-                    ),
-                    User.last_admin_login >= start,
-                    User.last_admin_login < end,
-                )
-            )
-            .count()
-        )
+        # Use repository methods for admin analytics
+        admin_users = self.admin_analytics_repo.get_admin_users_list()
+        staff_logins_today = self.admin_analytics_repo.get_staff_logins_count(start, end)
 
         return {
             "admin_users": admin_users,
@@ -351,72 +168,8 @@ class AdminDailyReportService:
         """Get billing and subscription metrics."""
         self.logger.debug("📋 Collecting billing metrics...")
 
-        # Active subscriptions by plan - handle missing table gracefully
-        try:
-            subscription_counts = (
-                self.db.query(
-                    SaasSubscription.plan_name, func.count(SaasSubscription.id)
-                )
-                .filter(SaasSubscription.status == "active")
-                .group_by(SaasSubscription.plan_name)
-                .all()
-            )
-
-            active_subscriptions = {
-                plan or "unknown": count for plan, count in subscription_counts
-            }
-        except Exception as e:
-            self.logger.warning(
-                f"Failed to query subscription counts (table may not exist): {e}"
-            )
-            active_subscriptions = {}
-
-        # Subscription changes in period (new, cancelled, upgraded)
-        try:
-            subscription_changes = (
-                self.db.query(SaasSubscription)
-                .filter(
-                    or_(
-                        and_(
-                            SaasSubscription.created_at >= start,
-                            SaasSubscription.created_at < end,
-                        ),
-                        and_(
-                            SaasSubscription.updated_at >= start,
-                            SaasSubscription.updated_at < end,
-                        ),
-                    )
-                )
-                .all()
-            )
-
-            changes_summary = [
-                {
-                    "id": str(sub.id),
-                    "user_email": sub.user.email if sub.user else "unknown",
-                    "plan_name": sub.plan_name,
-                    "status": sub.status,
-                    "created_at": sub.created_at.isoformat(),
-                    "updated_at": (
-                        sub.updated_at.isoformat() if sub.updated_at else None
-                    ),
-                    "amount": (
-                        float(sub.amount_twd) / 100 if sub.amount_twd else 0.0
-                    ),  # Convert from cents
-                    "billing_cycle": sub.billing_cycle,
-                }
-                for sub in subscription_changes[:20]  # Limit to recent changes
-            ]
-        except Exception as e:
-            self.logger.warning(
-                f"Failed to query subscription changes (table may not exist): {e}"
-            )
-            changes_summary = []
-
-        return {
-            "active_subscriptions": active_subscriptions,
-            "subscription_changes": changes_summary,
-        }
+        # Use repository method for all subscription analytics
+        return self.admin_analytics_repo.get_subscription_metrics(start, end)
 
     def _get_system_health_metrics(
         self, start: datetime, end: datetime
@@ -424,56 +177,8 @@ class AdminDailyReportService:
         """Get system health and performance metrics."""
         self.logger.debug("📋 Collecting system health metrics...")
 
-        # Calculate error rate
-        total_sessions = (
-            self.db.query(TranscriptSession)
-            .filter(
-                and_(
-                    TranscriptSession.created_at >= start,
-                    TranscriptSession.created_at < end,
-                )
-            )
-            .count()
-        )
-
-        failed_sessions = (
-            self.db.query(TranscriptSession)
-            .filter(
-                and_(
-                    TranscriptSession.created_at >= start,
-                    TranscriptSession.created_at < end,
-                    TranscriptSession.status == SessionStatus.FAILED,
-                )
-            )
-            .count()
-        )
-
-        error_rate = (
-            (failed_sessions / total_sessions * 100)
-            if total_sessions > 0
-            else 0.0
-        )
-
-        # Average processing time (approximation based on completed sessions)
-        completed_durations = (
-            self.db.query(func.avg(TranscriptSession.duration_seconds))
-            .filter(
-                and_(
-                    TranscriptSession.created_at >= start,
-                    TranscriptSession.created_at < end,
-                    TranscriptSession.status == SessionStatus.COMPLETED,
-                    TranscriptSession.duration_seconds.isnot(None),
-                )
-            )
-            .scalar()
-        )
-
-        avg_processing_time_minutes = float(completed_durations or 0) / 60.0
-
-        return {
-            "error_rate": error_rate,
-            "avg_processing_time_minutes": avg_processing_time_minutes,
-        }
+        # Use repository method for all system health analytics
+        return self.admin_analytics_repo.get_system_health_metrics(start, end)
 
     def _get_activity_metrics(
         self, start: datetime, end: datetime
@@ -481,55 +186,8 @@ class AdminDailyReportService:
         """Get top user activity metrics."""
         self.logger.debug("📋 Collecting activity metrics...")
 
-        # Top 10 most active users by sessions created
-        top_users_query = (
-            self.db.query(
-                User,
-                func.count(TranscriptSession.id).label("session_count"),
-                func.sum(TranscriptSession.duration_seconds).label(
-                    "total_seconds"
-                ),
-                func.count(
-                    case(
-                        [
-                            (
-                                TranscriptSession.status
-                                == SessionStatus.COMPLETED,
-                                1,
-                            )
-                        ]
-                    )
-                ).label("completed_sessions"),
-            )
-            .join(TranscriptSession, User.id == TranscriptSession.user_id)
-            .filter(
-                and_(
-                    TranscriptSession.created_at >= start,
-                    TranscriptSession.created_at < end,
-                )
-            )
-            .group_by(User.id)
-            .order_by(desc("session_count"))
-            .limit(10)
-        )
-
-        top_users = [
-            {
-                "user_id": str(user.id),
-                "email": user.email,
-                "name": user.name,
-                "plan": user.plan.value,
-                "sessions_count": session_count,
-                "completed_sessions": completed_sessions,
-                "total_minutes": float(total_seconds or 0) / 60.0,
-                "success_rate": (
-                    (completed_sessions / session_count * 100)
-                    if session_count > 0
-                    else 0.0
-                ),
-            }
-            for user, session_count, total_seconds, completed_sessions in top_users_query.all()
-        ]
+        # Use repository method for top user analytics
+        top_users = self.admin_analytics_repo.get_top_active_users(start, end, limit=10)
 
         return {"top_users": top_users}
 
@@ -812,7 +470,3 @@ class AdminDailyReportService:
             json.dump(report_dict, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"📄 Report exported to JSON: {output_path}")
-
-
-# Fix import issue by importing case from sqlalchemy
-from sqlalchemy import case, or_

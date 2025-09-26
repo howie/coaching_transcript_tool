@@ -549,3 +549,47 @@ class ECPayClientPort(Protocol):
     def calculate_refund_amount(self, original_amount: int, days_used: int, total_days: int) -> int:
         """Calculate prorated refund amount."""
         ...
+
+
+class AdminAnalyticsRepoPort(Protocol):
+    """Repository interface for admin analytics and reporting operations."""
+
+    def get_total_users_count(self) -> int:
+        """Get total count of all users."""
+        ...
+
+    def get_new_users_in_period(self, start: datetime, end: datetime) -> List[Dict[str, Any]]:
+        """Get new users created within the specified period."""
+        ...
+
+    def get_active_users_count(self, start: datetime, end: datetime) -> int:
+        """Get count of users who created sessions in the period."""
+        ...
+
+    def get_users_by_plan_distribution(self) -> Dict[str, int]:
+        """Get user count distribution by plan type."""
+        ...
+
+    def get_session_metrics_for_period(self, start: datetime, end: datetime) -> Dict[str, Any]:
+        """Get comprehensive session metrics for the specified period."""
+        ...
+
+    def get_admin_users_list(self) -> List[Dict[str, Any]]:
+        """Get list of all admin and staff users."""
+        ...
+
+    def get_staff_logins_count(self, start: datetime, end: datetime) -> int:
+        """Get count of staff logins in the specified period."""
+        ...
+
+    def get_subscription_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+        """Get subscription and billing metrics for the specified period."""
+        ...
+
+    def get_system_health_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+        """Get system health and performance metrics."""
+        ...
+
+    def get_top_active_users(self, start: datetime, end: datetime, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get top users by activity in the specified period."""
+        ...

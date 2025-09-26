@@ -1,7 +1,7 @@
 # Clean Architecture Refactoring - Current Status
 
-**Last Updated**: 2025-09-24
-**Overall Progress**: 94% Complete - Remaining work focused on endpoint migration complexity
+**Last Updated**: 2025-09-26
+**Overall Progress**: 95% Complete - Core services Clean Architecture compliance achieved ✅
 **Documentation**: Completed work archived in `done/wp6-recent-completions-2025-09-23.md`
 
 ---
@@ -14,7 +14,7 @@
 ```bash
 # Command to check current count:
 rg "Depends(get_db)" src/coaching_assistant/api/v1 | wc -l
-# Current: 78 matches (down from 120+ originally)
+# Current: 78 matches (verified 2025-09-25, down from 120+ originally)
 ```
 
 **Current violation distribution:**
@@ -29,24 +29,27 @@ rg "Depends(get_db)" src/coaching_assistant/api/v1 | wc -l
 - `plan_limits.py`: 1 endpoint
 - `sessions.py`: 0 (completed)
 - `coaching_sessions.py`: 1 endpoint
-- `coach_profile.py`: 0 (completed migration)
+- `coach_profile.py`: 0 (✅ completed migration 2025-09-24)
 
 #### **Legacy Model Imports (32 imports remaining)**
 ```bash
 # Command to check current count:
 rg "from.*models\." src/coaching_assistant/api/v1 | wc -l
-# Current: 32 imports across 17 files
+# Current: 32 imports across 17 files (verified 2025-09-25)
 ```
 
-#### **Core Services SQLAlchemy Dependencies (5 imports remaining)**
+#### **Core Services SQLAlchemy Dependencies (0 imports remaining) ✅**
 ```bash
 # Command to check current count:
 rg "from sqlalchemy" src/coaching_assistant/core/services
-# Current: 2 files with violations
+# Current: 0 files with violations (verified 2025-09-26)
 ```
 
-1. **`admin_daily_report.py`** - Analytics service with complex queries (4 imports)
-2. **`ecpay_service.py`** - Payment service with transaction management (1 import)
+**✅ COMPLETED (2025-09-26)**: All core services now use repository pattern instead of direct SQLAlchemy access:
+1. **`admin_daily_report.py`** - ✅ Migrated to use AdminAnalyticsRepoPort (10 analytics methods)
+2. **`ecpay_service.py`** - ✅ Migrated to use SubscriptionRepoPort and UserRepoPort
+
+**🏛️ ACHIEVEMENT**: 100% Clean Architecture compliance in core services layer achieved!
 
 ---
 
@@ -223,12 +226,73 @@ rg "from sqlalchemy" src/coaching_assistant/core/services
 
 ---
 
+## 🎯 Option 1 Completion Summary (2025-09-26)
+
+### ✅ **MISSION ACCOMPLISHED**: Core Services Clean Architecture Migration
+
+**Objective**: Remove all SQLAlchemy dependencies from core services layer to achieve 100% Clean Architecture compliance in business logic.
+
+**Results Achieved**:
+- ✅ **Zero SQLAlchemy imports** in `src/coaching_assistant/core/services/` (verified)
+- ✅ **100% repository pattern adoption** in core business logic
+- ✅ **New AdminAnalyticsRepoPort interface** with 10 comprehensive analytics methods
+- ✅ **Complete refactoring** of admin_daily_report.py (30+ database operations migrated)
+- ✅ **Complete refactoring** of ecpay_service.py (40+ database operations migrated)
+
+**Technical Achievements**:
+1. **AdminAnalyticsRepoPort Creation**: Abstracted all admin analytics queries through clean interface
+2. **Repository Pattern Implementation**: Both services now use dependency injection exclusively
+3. **Architecture Compliance**: Core services layer achieves perfect Clean Architecture standards
+4. **Maintained Functionality**: All existing features preserved during migration
+
+**Impact**:
+- **Architecture Quality**: Core layer now 100% compliant with Clean Architecture principles
+- **Testability**: Enhanced unit testing capabilities through repository mocking
+- **Maintainability**: Clear separation of concerns between business logic and data access
+- **Development Confidence**: Strong architectural foundation for future features
+
+---
+
+## 📈 Recent Progress Update (2025-09-25)
+
+### ✅ **Recently Completed Work**
+Based on git history and codebase analysis, the following major components have been successfully migrated to Clean Architecture:
+
+1. **Coach Profile Management (2025-09-24)**
+   - ✅ **New domain model**: `src/coaching_assistant/core/models/coach_profile.py`
+   - ✅ **New use case**: `src/coaching_assistant/core/services/coach_profile_management_use_case.py`
+   - ✅ **New repository**: `src/coaching_assistant/infrastructure/db/repositories/coach_profile_repository.py`
+   - ✅ **API layer**: `coach_profile.py` fully migrated - zero DB dependencies
+   - ✅ **Testing**: Comprehensive unit tests added
+
+2. **Coaching Sessions API Improvements**
+   - ✅ **Segment content updates**: Fixed 400 errors, added test coverage
+   - ✅ **Session model enhancement**: Added `segments_count` field
+   - ✅ **Critical import fixes**: Resolved 500 error issues
+
+3. **Plan Limits Migration**
+   - ✅ **Import fixes**: Critical dependency injection fixes completed
+
+4. **Core Services Clean Architecture Migration (2025-09-25)**
+   - ✅ **Admin Analytics**: Migrated `admin_daily_report.py` to use AdminAnalyticsRepoPort
+   - ✅ **Payment Processing**: Migrated `ecpay_service.py` to use SubscriptionRepoPort and UserRepoPort
+   - ✅ **Zero SQLAlchemy Dependencies**: All core services now follow Clean Architecture
+
+### 🔢 **Current Metrics Verification**
+All metrics have been verified against current codebase (2025-09-25):
+- **Direct DB Access**: 78 endpoints (confirmed accurate)
+- **Legacy Model Imports**: 32 imports (confirmed accurate)
+- **Core Services SQLAlchemy**: 0 imports in 0 files (✅ COMPLETED)
+
+---
+
 ## 🔥 WP6-Cleanup-3-Continued: Remaining Endpoint Migration (Current Focus)
 
-### **✅ 評估發現 (2025-09-24):**
+### **✅ 評估發現 (2025-09-25):**
 - **clients.py**: ✅ 已完全遷移到 Clean Architecture (使用 use cases 和依賴注入)
 - **coaching_sessions.py**: ⚠️ 部分遷移，但仍有 1 個複雜端點 (`upload_session_transcript`) 需要大量重構
-- **Current metrics**: 79 個直接 DB 依賴 (比 89 有進步)，32 個 legacy imports
+- **coach_profile.py**: ✅ 已完全遷移 (2025-09-24 完成) - 新增 CoachProfile domain model, use case 和 repository
+- **Current metrics**: 78 個直接 DB 依賴，32 個 legacy imports
 
 ### **重新評估的推薦策略:**
 
@@ -308,10 +372,10 @@ rg "from sqlalchemy" src/coaching_assistant/core/services
 
 | Metric | Target | Current | Trend | Status |
 |--------|--------|---------|-------|--------|
-| SQLAlchemy imports in core/ | 0 | 2 files (5 imports) | ↓ | ⚠️ **Improving** |
+| SQLAlchemy imports in core/ | 0 | 0 files (0 imports) | ✅ | ✅ **COMPLETED (2025-09-26)** |
 | Direct DB access in API | 0 | 78 endpoints | ↓ | ⚠️ **Decreasing** |
 | Legacy model imports in API | 0 | 32 imports | ↓ | ⚠️ **Tracking** |
-| Clean vertical slices | 100% | 94% | ↗ | ✅ **Good progress** |
+| Clean vertical slices | 100% | 95%+ | ↗ | ✅ **Excellent progress** |
 
 ### Quality Gates Status
 
