@@ -12,6 +12,9 @@ from ..services.billing_analytics_service import BillingAnalyticsService
 from ..core.services.usage_tracking_use_case import (
     CreateUsageLogUseCase,
     GetUserUsageUseCase,
+    GetUsageHistoryUseCase,
+    GetUserAnalyticsUseCase,
+    GetAdminAnalyticsUseCase,
 )
 from ..core.services.session_management_use_case import (
     SessionCreationUseCase,
@@ -135,6 +138,60 @@ class UsageTrackingServiceFactory:
         return GetUserUsageUseCase(
             user_repo=user_repo,
             usage_log_repo=usage_log_repo,
+        )
+
+    @staticmethod
+    def create_usage_history_use_case(db_session: Session) -> GetUsageHistoryUseCase:
+        """Create a GetUsageHistoryUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetUsageHistoryUseCase
+        """
+        user_repo = create_user_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+
+        return GetUsageHistoryUseCase(
+            user_repo=user_repo,
+            usage_log_repo=usage_log_repo,
+        )
+
+    @staticmethod
+    def create_user_analytics_use_case(db_session: Session) -> GetUserAnalyticsUseCase:
+        """Create a GetUserAnalyticsUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetUserAnalyticsUseCase
+        """
+        user_repo = create_user_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+
+        return GetUserAnalyticsUseCase(
+            user_repo=user_repo,
+            usage_log_repo=usage_log_repo,
+            usage_analytics_repo=usage_analytics_repo,
+        )
+
+    @staticmethod
+    def create_admin_analytics_use_case(db_session: Session) -> GetAdminAnalyticsUseCase:
+        """Create a GetAdminAnalyticsUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetAdminAnalyticsUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+
+        return GetAdminAnalyticsUseCase(
+            usage_analytics_repo=usage_analytics_repo,
         )
 
 

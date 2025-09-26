@@ -6,12 +6,14 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import logging
 
-from ...core.database import get_db
 from .auth import get_current_user_dependency
 from ...api.dependencies import require_admin  # Use the new permission system
+from ...core.database import get_db
 from ...models.user import User
 from ...models.usage_analytics import UsageAnalytics
 from ...services.usage_tracking import UsageTrackingService
+from .dependencies import get_user_usage_use_case, get_usage_history_use_case, get_user_analytics_use_case, get_admin_analytics_use_case
+from ...core.services.usage_tracking_use_case import GetUserUsageUseCase, GetUsageHistoryUseCase, GetUserAnalyticsUseCase, GetAdminAnalyticsUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ router = APIRouter(tags=["usage"])
 @router.get("/summary")
 async def get_usage_summary(
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
+    get_user_usage_use_case: GetUserUsageUseCase = Depends(get_user_usage_use_case),
 ) -> Dict[str, Any]:
     """Get user's comprehensive usage summary.
 
@@ -31,10 +33,12 @@ async def get_usage_summary(
     logger.info(f"📊 User {current_user.id} requesting usage summary")
 
     try:
-        tracking_service = UsageTrackingService(db)
-        return tracking_service.get_user_usage_summary(str(current_user.id))
+        return get_user_usage_use_case.get_current_month_usage(current_user.id)
+    except ValueError as e:
+        logger.error(f"❌ User error getting usage summary: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"❌ Error getting usage summary: {str(e)}")
+        logger.error(f"❌ System error getting usage summary: {str(e)}")
         raise HTTPException(
             status_code=500, detail="Failed to get usage summary"
         )

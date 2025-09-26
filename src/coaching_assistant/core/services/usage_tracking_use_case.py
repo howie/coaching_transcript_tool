@@ -15,6 +15,7 @@ from ..repositories.ports import (
     UserRepoPort,
     UsageLogRepoPort,
     SessionRepoPort,
+    UsageAnalyticsRepoPort,
 )
 from ..models.user import User, UserPlan
 from ..models.session import Session as SessionModel, SessionStatus
@@ -315,3 +316,124 @@ class GetUserUsageUseCase:
                 "total_cost_usd": float(user.total_cost_usd or 0),
             },
         }
+
+
+class GetUsageHistoryUseCase:
+    """Use case for retrieving user usage history across multiple months."""
+
+    def __init__(
+        self,
+        user_repo: UserRepoPort,
+        usage_log_repo: UsageLogRepoPort,
+    ):
+        """Initialize use case with repository dependencies.
+
+        Args:
+            user_repo: User repository port
+            usage_log_repo: Usage log repository port
+        """
+        self.user_repo = user_repo
+        self.usage_log_repo = usage_log_repo
+
+    def execute(self, user_id: UUID, months: int = 3) -> Dict[str, Any]:
+        """Get usage history for specified number of months.
+
+        Args:
+            user_id: UUID of the user
+            months: Number of months to retrieve (1-12)
+
+        Returns:
+            Dictionary containing usage history data
+
+        Raises:
+            ValueError: If user not found or invalid months parameter
+        """
+        if months < 1 or months > 12:
+            raise ValueError("Months must be between 1 and 12")
+
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise ValueError(f"User not found: {user_id}")
+
+        # Get usage history from repository
+        usage_history = self.usage_log_repo.get_user_usage_history(user_id, months)
+
+        return {
+            "user_id": str(user_id),
+            "plan": user.plan.value,
+            "months_requested": months,
+            "usage_history": usage_history,
+            "plan_limits": PlanLimits.get_limits(user.plan),
+        }
+
+
+class GetUserAnalyticsUseCase:
+    """Use case for retrieving comprehensive user analytics."""
+
+    def __init__(
+        self,
+        user_repo: UserRepoPort,
+        usage_log_repo: UsageLogRepoPort,
+        usage_analytics_repo: 'UsageAnalyticsRepoPort',
+    ):
+        """Initialize use case with repository dependencies.
+
+        Args:
+            user_repo: User repository port
+            usage_log_repo: Usage log repository port
+            usage_analytics_repo: Usage analytics repository port
+        """
+        self.user_repo = user_repo
+        self.usage_log_repo = usage_log_repo
+        self.usage_analytics_repo = usage_analytics_repo
+
+    def execute(self, user_id: UUID) -> Dict[str, Any]:
+        """Get comprehensive analytics for user.
+
+        Args:
+            user_id: UUID of the user
+
+        Returns:
+            Dictionary containing user analytics data
+
+        Raises:
+            ValueError: If user not found
+        """
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise ValueError(f"User not found: {user_id}")
+
+        # Get analytics data from repository
+        analytics_data = self.usage_analytics_repo.get_by_user(user_id)
+
+        return {
+            "user_id": str(user_id),
+            "plan": user.plan.value,
+            "analytics": analytics_data,
+        }
+
+
+class GetAdminAnalyticsUseCase:
+    """Use case for retrieving admin analytics across all users."""
+
+    def __init__(
+        self,
+        usage_analytics_repo: 'UsageAnalyticsRepoPort',
+    ):
+        """Initialize use case with repository dependencies.
+
+        Args:
+            usage_analytics_repo: Usage analytics repository port
+        """
+        self.usage_analytics_repo = usage_analytics_repo
+
+    def execute(self) -> Dict[str, Any]:
+        """Get system-wide analytics for admin users.
+
+        Returns:
+            Dictionary containing admin analytics data
+        """
+        # Get admin analytics from repository
+        admin_analytics = self.usage_analytics_repo.get_admin_analytics()
+
+        return admin_analytics

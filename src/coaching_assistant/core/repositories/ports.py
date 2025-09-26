@@ -398,39 +398,54 @@ class TranscriptRepoPort(Protocol):
         """Update content for existing transcript segments."""
         ...
 
-    def delete_by_session_id(self, session_id: UUID) -> bool:
-        """Delete all segments for a session."""
+
+class UsageLogRepoPort(Protocol):
+    """Repository interface for UsageLog entity operations."""
+
+    def create(self, usage_log: 'UsageLog') -> 'UsageLog':
+        """Create a new usage log entry."""
         ...
 
-
-# Aggregate repository interfaces for complex operations
-class UsageAnalyticsRepoPort(Protocol):
-    """Repository interface for complex usage analytics operations."""
-
-    def get_user_usage_analytics(
-        self,
-        user_id: UUID,
-        start_date: datetime,
-        end_date: datetime,
-    ) -> Optional[UsageAnalytics]:
-        """Get or create usage analytics for user in period."""
+    def get_by_user_and_timeframe(
+        self, user_id: UUID, start_date: datetime, end_date: datetime
+    ) -> List['UsageLog']:
+        """Get usage logs for a user within a timeframe."""
         ...
 
-    def save_analytics(self, analytics: UsageAnalytics) -> UsageAnalytics:
-        """Save usage analytics entity."""
+    def get_total_usage_for_user_this_month(self, user_id: UUID) -> Dict[str, Any]:
+        """Get total usage metrics for user in current month."""
         ...
 
-    def get_system_wide_analytics(
-        self, start_date: datetime, end_date: datetime
-    ) -> List[UsageAnalytics]:
-        """Get system-wide analytics across all users."""
-        ...
-
-    def get_plan_analytics(
-        self, plan_type: UserPlan, start_date: datetime, end_date: datetime
+    def get_user_usage_history(
+        self, user_id: UUID, months: int
     ) -> Dict[str, Any]:
-        """Get aggregated analytics by plan type."""
+        """Get user usage history for specified number of months."""
         ...
+
+
+class UsageAnalyticsRepoPort(Protocol):
+    """Repository interface for UsageAnalytics entity operations."""
+
+    def get_or_create_monthly(
+        self, user_id: UUID, year: int, month: int
+    ) -> 'UsageAnalytics':
+        """Get or create monthly analytics record."""
+        ...
+
+    def update(self, analytics: 'UsageAnalytics') -> 'UsageAnalytics':
+        """Update analytics record."""
+        ...
+
+    def get_by_user(self, user_id: UUID) -> List['UsageAnalytics']:
+        """Get all analytics records for a user."""
+        ...
+
+    def get_admin_analytics(self) -> Dict[str, Any]:
+        """Get system-wide analytics for admin users."""
+        ...
+
+
+# Already defined above - removing duplicate
 
 
 # Unit of Work interface for transaction management

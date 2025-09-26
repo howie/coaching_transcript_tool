@@ -21,7 +21,13 @@ from ...infrastructure.factories import (
     CoachProfileServiceFactory,
     create_session_repository,
 )
-from ...core.services.usage_tracking_use_case import CreateUsageLogUseCase, GetUserUsageUseCase
+from ...core.services.usage_tracking_use_case import (
+    CreateUsageLogUseCase,
+    GetUserUsageUseCase,
+    GetUsageHistoryUseCase,
+    GetUserAnalyticsUseCase,
+    GetAdminAnalyticsUseCase,
+)
 from ...core.services.session_management_use_case import (
     SessionCreationUseCase,
     SessionRetrievalUseCase,
@@ -90,6 +96,27 @@ def get_user_usage_use_case(
 ) -> GetUserUsageUseCase:
     """Dependency to inject GetUserUsageUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_user_usage_use_case(db)
+
+
+def get_usage_history_use_case(
+    db: Session = Depends(get_db)
+) -> GetUsageHistoryUseCase:
+    """Dependency to inject GetUsageHistoryUseCase with proper repositories."""
+    return UsageTrackingServiceFactory.create_usage_history_use_case(db)
+
+
+def get_user_analytics_use_case(
+    db: Session = Depends(get_db)
+) -> GetUserAnalyticsUseCase:
+    """Dependency to inject GetUserAnalyticsUseCase with proper repositories."""
+    return UsageTrackingServiceFactory.create_user_analytics_use_case(db)
+
+
+def get_admin_analytics_use_case(
+    db: Session = Depends(get_db)
+) -> GetAdminAnalyticsUseCase:
+    """Dependency to inject GetAdminAnalyticsUseCase with proper repositories."""
+    return UsageTrackingServiceFactory.create_admin_analytics_use_case(db)
 
 
 # Session Management Dependencies
