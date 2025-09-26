@@ -444,6 +444,10 @@ class UsageAnalyticsRepoPort(Protocol):
         """Get system-wide analytics for admin users."""
         ...
 
+    def get_by_month_year(self, month_year: str) -> List['UsageAnalytics']:
+        """Get all analytics records for a specific month."""
+        ...
+
 
 # Already defined above - removing duplicate
 

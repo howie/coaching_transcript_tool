@@ -7,13 +7,24 @@ from datetime import datetime
 import logging
 
 from .auth import get_current_user_dependency
-from ...api.dependencies import require_admin  # Use the new permission system
-from ...core.database import get_db
+from ..dependencies import require_admin  # Use the new permission system
 from ...models.user import User
-from ...models.usage_analytics import UsageAnalytics
-from ...services.usage_tracking import UsageTrackingService
-from .dependencies import get_user_usage_use_case, get_usage_history_use_case, get_user_analytics_use_case, get_admin_analytics_use_case
-from ...core.services.usage_tracking_use_case import GetUserUsageUseCase, GetUsageHistoryUseCase, GetUserAnalyticsUseCase, GetAdminAnalyticsUseCase
+from .dependencies import (
+    get_user_usage_use_case,
+    get_usage_history_use_case,
+    get_user_analytics_use_case,
+    get_admin_analytics_use_case,
+    get_specific_user_usage_use_case,
+    get_monthly_usage_report_use_case,
+)
+from ...core.services.usage_tracking_use_case import (
+    GetUserUsageUseCase,
+    GetUsageHistoryUseCase,
+    GetUserAnalyticsUseCase,
+    GetAdminAnalyticsUseCase,
+    GetSpecificUserUsageUseCase,
+    GetMonthlyUsageReportUseCase,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +118,6 @@ async def get_user_analytics(
 @router.get("/current-month")
 async def get_current_month_usage(
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Get current month usage details.
 
@@ -198,8 +208,8 @@ async def get_admin_usage_analytics(
 @router.get("/admin/user/{user_id}")
 async def get_specific_user_usage(
     user_id: str,
-    admin_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    admin_user = Depends(require_admin),
+    get_specific_user_usage_use_case: GetSpecificUserUsageUseCase = Depends(get_specific_user_usage_use_case),
 ) -> Dict[str, Any]:
     """Get usage summary for a specific user (Admin only).
 
@@ -213,24 +223,21 @@ async def get_specific_user_usage(
         f"📊 Admin {admin_user.id} requesting usage for user {user_id}"
     )
 
-    # Verify user exists
-    target_user = db.query(User).filter(User.id == user_id).first()
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     try:
-        tracking_service = UsageTrackingService(db)
-        return tracking_service.get_user_usage_summary(user_id)
+        return get_specific_user_usage_use_case.execute(user_id)
+    except ValueError as e:
+        logger.error(f"❌ User error getting specific user usage: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"❌ Error getting user usage: {str(e)}")
+        logger.error(f"❌ System error getting user usage: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get user usage")
 
 
 @router.get("/admin/monthly-report")
 async def get_monthly_usage_report(
     month_year: str = Query(..., description="Month in YYYY-MM format"),
-    admin_user: User = Depends(require_admin),
-    db: Session = Depends(get_db),
+    admin_user = Depends(require_admin),
+    get_monthly_usage_report_use_case: GetMonthlyUsageReportUseCase = Depends(get_monthly_usage_report_use_case),
 ) -> Dict[str, Any]:
     """Get detailed monthly usage report (Admin only).
 
@@ -244,107 +251,13 @@ async def get_monthly_usage_report(
         f"📊 Admin {admin_user.id} requesting monthly report for {month_year}"
     )
 
-    # Validate month format
     try:
-        datetime.strptime(month_year, "%Y-%m")
-    except ValueError:
+        return get_monthly_usage_report_use_case.execute(month_year)
+    except ValueError as e:
+        logger.error(f"❌ User error getting monthly report: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"❌ System error getting monthly report: {str(e)}")
         raise HTTPException(
-            status_code=400, detail="Invalid month format. Use YYYY-MM"
+            status_code=500, detail="Failed to get monthly usage report"
         )
-
-    # Get all analytics for the month
-    monthly_analytics = (
-        db.query(UsageAnalytics)
-        .filter(UsageAnalytics.month_year == month_year)
-        .all()
-    )
-
-    if not monthly_analytics:
-        return {
-            "month_year": month_year,
-            "message": "No data available for this month",
-            "total_users": 0,
-            "summary": {},
-        }
-
-    # Aggregate data
-    total_users = len(monthly_analytics)
-    total_transcriptions = sum(
-        a.transcriptions_completed for a in monthly_analytics
-    )
-    total_minutes = sum(
-        float(a.total_minutes_processed) for a in monthly_analytics
-    )
-    total_cost = sum(float(a.total_cost_usd) for a in monthly_analytics)
-
-    # Plan breakdown
-    plan_breakdown = {}
-    for analytics in monthly_analytics:
-        plan = analytics.primary_plan
-        if plan not in plan_breakdown:
-            plan_breakdown[plan] = {
-                "users": 0,
-                "transcriptions": 0,
-                "minutes": 0.0,
-                "cost": 0.0,
-            }
-        plan_breakdown[plan]["users"] += 1
-        plan_breakdown[plan][
-            "transcriptions"
-        ] += analytics.transcriptions_completed
-        plan_breakdown[plan]["minutes"] += float(
-            analytics.total_minutes_processed
-        )
-        plan_breakdown[plan]["cost"] += float(analytics.total_cost_usd)
-
-    # Provider breakdown
-    total_google_minutes = sum(
-        float(a.google_stt_minutes) for a in monthly_analytics
-    )
-    total_assemblyai_minutes = sum(
-        float(a.assemblyai_minutes) for a in monthly_analytics
-    )
-
-    return {
-        "month_year": month_year,
-        "total_users": total_users,
-        "summary": {
-            "total_transcriptions": total_transcriptions,
-            "total_minutes": total_minutes,
-            "total_hours": total_minutes / 60,
-            "total_cost_usd": total_cost,
-            "avg_minutes_per_user": (
-                total_minutes / total_users if total_users > 0 else 0
-            ),
-            "avg_cost_per_user": (
-                total_cost / total_users if total_users > 0 else 0
-            ),
-        },
-        "plan_breakdown": plan_breakdown,
-        "provider_breakdown": {
-            "google": {
-                "minutes": total_google_minutes,
-                "percentage": (
-                    (total_google_minutes / total_minutes * 100)
-                    if total_minutes > 0
-                    else 0
-                ),
-            },
-            "assemblyai": {
-                "minutes": total_assemblyai_minutes,
-                "percentage": (
-                    (total_assemblyai_minutes / total_minutes * 100)
-                    if total_minutes > 0
-                    else 0
-                ),
-            },
-        },
-        "period": {
-            "start": f"{month_year}-01",
-            "end": (
-                monthly_analytics[0].period_end.isoformat()
-                if monthly_analytics[0].period_end
-                else None
-            ),
-        },
-    }

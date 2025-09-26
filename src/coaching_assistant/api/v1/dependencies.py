@@ -27,6 +27,8 @@ from ...core.services.usage_tracking_use_case import (
     GetUsageHistoryUseCase,
     GetUserAnalyticsUseCase,
     GetAdminAnalyticsUseCase,
+    GetSpecificUserUsageUseCase,
+    GetMonthlyUsageReportUseCase,
 )
 from ...core.services.session_management_use_case import (
     SessionCreationUseCase,
@@ -117,6 +119,20 @@ def get_admin_analytics_use_case(
 ) -> GetAdminAnalyticsUseCase:
     """Dependency to inject GetAdminAnalyticsUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_admin_analytics_use_case(db)
+
+
+def get_specific_user_usage_use_case(
+    db: Session = Depends(get_db)
+) -> GetSpecificUserUsageUseCase:
+    """Dependency to inject GetSpecificUserUsageUseCase with proper repositories."""
+    return UsageTrackingServiceFactory.create_specific_user_usage_use_case(db)
+
+
+def get_monthly_usage_report_use_case(
+    db: Session = Depends(get_db)
+) -> GetMonthlyUsageReportUseCase:
+    """Dependency to inject GetMonthlyUsageReportUseCase with proper repositories."""
+    return UsageTrackingServiceFactory.create_monthly_usage_report_use_case(db)
 
 
 # Session Management Dependencies

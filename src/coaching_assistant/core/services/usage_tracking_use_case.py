@@ -437,3 +437,192 @@ class GetAdminAnalyticsUseCase:
         admin_analytics = self.usage_analytics_repo.get_admin_analytics()
 
         return admin_analytics
+
+
+class GetSpecificUserUsageUseCase:
+    """Use case for retrieving usage summary for any specific user (Admin only)."""
+
+    def __init__(
+        self,
+        user_repo: UserRepoPort,
+        usage_log_repo: UsageLogRepoPort,
+    ):
+        """Initialize use case with repository dependencies.
+
+        Args:
+            user_repo: User repository port
+            usage_log_repo: Usage log repository port
+        """
+        self.user_repo = user_repo
+        self.usage_log_repo = usage_log_repo
+
+    def execute(self, user_id: UUID) -> Dict[str, Any]:
+        """Get usage summary for any specific user (Admin access).
+
+        Args:
+            user_id: UUID of the user to get usage for
+
+        Returns:
+            Dictionary containing user usage summary data
+
+        Raises:
+            ValueError: If user not found
+        """
+        # Verify user exists
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise ValueError(f"User not found: {user_id}")
+
+        # Calculate current month boundaries
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        next_month = month_start.replace(month=month_start.month + 1) if month_start.month < 12 else month_start.replace(year=month_start.year + 1, month=1)
+
+        # Get usage summary from repository - same logic as regular user
+        usage_summary = self.usage_log_repo.get_usage_summary(
+            user_id, month_start, next_month
+        )
+
+        # Get plan limits
+        plan_limits = PlanLimits.get_limits(user.plan)
+
+        return {
+            "user_id": str(user_id),
+            "user_email": getattr(user, 'email', None),  # Include email for admin view
+            "plan": user.plan.value,
+            "current_month_start": month_start.isoformat(),
+            "usage_summary": usage_summary,
+            "plan_limits": plan_limits,
+            "user_counters": {
+                "usage_minutes": user.usage_minutes,
+                "transcription_count": user.transcription_count,
+                "session_count": user.session_count,
+            },
+            "totals": {
+                "total_transcriptions": user.total_transcriptions_generated,
+                "total_minutes": float(user.total_minutes_processed or 0),
+                "total_cost_usd": float(user.total_cost_usd or 0),
+            },
+        }
+
+
+class GetMonthlyUsageReportUseCase:
+    """Use case for retrieving detailed monthly usage reports (Admin only)."""
+
+    def __init__(
+        self,
+        usage_analytics_repo: 'UsageAnalyticsRepoPort',
+    ):
+        """Initialize use case with repository dependencies.
+
+        Args:
+            usage_analytics_repo: Usage analytics repository port
+        """
+        self.usage_analytics_repo = usage_analytics_repo
+
+    def execute(self, month_year: str) -> Dict[str, Any]:
+        """Get detailed monthly usage report for all users.
+
+        Args:
+            month_year: Month in YYYY-MM format
+
+        Returns:
+            Dictionary containing monthly report data
+
+        Raises:
+            ValueError: If month format is invalid
+        """
+        # Validate month format
+        try:
+            datetime.strptime(month_year, "%Y-%m")
+        except ValueError:
+            raise ValueError("Invalid month format. Use YYYY-MM")
+
+        # Get all analytics for the month
+        monthly_analytics = self.usage_analytics_repo.get_by_month_year(month_year)
+
+        if not monthly_analytics:
+            return {
+                "month_year": month_year,
+                "message": "No data available for this month",
+                "total_users": 0,
+                "summary": {},
+            }
+
+        # Aggregate data
+        total_users = len(monthly_analytics)
+        total_transcriptions = sum(
+            analytics.transcriptions_completed for analytics in monthly_analytics
+        )
+        total_minutes = sum(
+            float(analytics.total_minutes_processed) for analytics in monthly_analytics
+        )
+        total_cost = sum(float(analytics.total_cost_usd) for analytics in monthly_analytics)
+
+        # Plan breakdown
+        plan_breakdown = {}
+        for analytics in monthly_analytics:
+            plan = analytics.primary_plan
+            if plan not in plan_breakdown:
+                plan_breakdown[plan] = {
+                    "users": 0,
+                    "transcriptions": 0,
+                    "minutes": 0.0,
+                    "cost": 0.0,
+                }
+            plan_breakdown[plan]["users"] += 1
+            plan_breakdown[plan]["transcriptions"] += analytics.transcriptions_completed
+            plan_breakdown[plan]["minutes"] += float(analytics.total_minutes_processed)
+            plan_breakdown[plan]["cost"] += float(analytics.total_cost_usd)
+
+        # Provider breakdown
+        total_google_minutes = sum(
+            float(analytics.google_stt_minutes) for analytics in monthly_analytics
+        )
+        total_assemblyai_minutes = sum(
+            float(analytics.assemblyai_minutes) for analytics in monthly_analytics
+        )
+
+        return {
+            "month_year": month_year,
+            "total_users": total_users,
+            "summary": {
+                "total_transcriptions": total_transcriptions,
+                "total_minutes": total_minutes,
+                "total_hours": total_minutes / 60,
+                "total_cost_usd": total_cost,
+                "avg_minutes_per_user": (
+                    total_minutes / total_users if total_users > 0 else 0
+                ),
+                "avg_cost_per_user": (
+                    total_cost / total_users if total_users > 0 else 0
+                ),
+            },
+            "plan_breakdown": plan_breakdown,
+            "provider_breakdown": {
+                "google": {
+                    "minutes": total_google_minutes,
+                    "percentage": (
+                        (total_google_minutes / total_minutes * 100)
+                        if total_minutes > 0
+                        else 0
+                    ),
+                },
+                "assemblyai": {
+                    "minutes": total_assemblyai_minutes,
+                    "percentage": (
+                        (total_assemblyai_minutes / total_minutes * 100)
+                        if total_minutes > 0
+                        else 0
+                    ),
+                },
+            },
+            "period": {
+                "start": f"{month_year}-01",
+                "end": (
+                    monthly_analytics[0].period_end.isoformat()
+                    if monthly_analytics[0].period_end
+                    else None
+                ),
+            },
+        }

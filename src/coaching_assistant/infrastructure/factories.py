@@ -15,6 +15,8 @@ from ..core.services.usage_tracking_use_case import (
     GetUsageHistoryUseCase,
     GetUserAnalyticsUseCase,
     GetAdminAnalyticsUseCase,
+    GetSpecificUserUsageUseCase,
+    GetMonthlyUsageReportUseCase,
 )
 from ..core.services.session_management_use_case import (
     SessionCreationUseCase,
@@ -86,6 +88,7 @@ from ..core.repositories.ports import (
 )
 from .db.repositories.user_repository import create_user_repository
 from .db.repositories.usage_log_repository import create_usage_log_repository
+from .db.repositories.usage_analytics_repository import create_usage_analytics_repository
 from .db.repositories.session_repository import create_session_repository
 from .db.repositories.plan_configuration_repository import create_plan_configuration_repository
 from .db.repositories.subscription_repository import create_subscription_repository
@@ -191,6 +194,40 @@ class UsageTrackingServiceFactory:
         usage_analytics_repo = create_usage_analytics_repository(db_session)
 
         return GetAdminAnalyticsUseCase(
+            usage_analytics_repo=usage_analytics_repo,
+        )
+
+    @staticmethod
+    def create_specific_user_usage_use_case(db_session: Session) -> GetSpecificUserUsageUseCase:
+        """Create a GetSpecificUserUsageUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetSpecificUserUsageUseCase
+        """
+        user_repo = create_user_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+
+        return GetSpecificUserUsageUseCase(
+            user_repo=user_repo,
+            usage_log_repo=usage_log_repo,
+        )
+
+    @staticmethod
+    def create_monthly_usage_report_use_case(db_session: Session) -> GetMonthlyUsageReportUseCase:
+        """Create a GetMonthlyUsageReportUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetMonthlyUsageReportUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+
+        return GetMonthlyUsageReportUseCase(
             usage_analytics_repo=usage_analytics_repo,
         )
 
@@ -305,6 +342,18 @@ class RepositoryFactory:
             CoachProfileRepoPort implementation
         """
         return create_coach_profile_repository(db_session)
+
+    @staticmethod
+    def create_usage_analytics_repository(db_session: Session) -> 'UsageAnalyticsRepoPort':
+        """Create a usage analytics repository instance.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            UsageAnalyticsRepoPort implementation
+        """
+        return create_usage_analytics_repository(db_session)
 
 
 class SessionServiceFactory:
