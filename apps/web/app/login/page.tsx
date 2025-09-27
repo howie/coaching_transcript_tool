@@ -85,6 +85,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="input-base"
               placeholder={t('auth.passwordPlaceholder')}
+              autoComplete="current-password"
               required
             />
           </div>

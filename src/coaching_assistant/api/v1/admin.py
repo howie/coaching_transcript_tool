@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from ...core.database import get_db
-from ...models.user import User, UserRole
+from ...core.models.user import User, UserRole
 from ...services.permissions import PermissionService
 from .dependencies import (
     require_super_admin,

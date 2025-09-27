@@ -8,9 +8,20 @@ business logic.
 
 from sqlalchemy.orm import Session
 
+from ..services.billing_analytics_service import BillingAnalyticsService
 from ..core.services.usage_tracking_use_case import (
     CreateUsageLogUseCase,
     GetUserUsageUseCase,
+    GetUsageHistoryUseCase,
+    GetUserAnalyticsUseCase,
+    GetAdminAnalyticsUseCase,
+    GetSpecificUserUsageUseCase,
+    GetMonthlyUsageReportUseCase,
+    GetUsageTrendsUseCase,
+    GetUsagePredictionsUseCase,
+    GetUsageInsightsUseCase,
+    CreateUsageSnapshotUseCase,
+    ExportUsageDataUseCase,
 )
 from ..core.services.session_management_use_case import (
     SessionCreationUseCase,
@@ -51,7 +62,22 @@ from ..core.services.coaching_session_management_use_case import (
     CoachingSessionDeletionUseCase,
     CoachingSessionOptionsUseCase,
 )
+from ..core.services.coach_profile_management_use_case import (
+    CoachProfileManagementUseCase,
+)
 from ..core.services.transcript_upload_use_case import TranscriptUploadUseCase
+from ..core.services.billing_analytics_use_case import (
+    BillingAnalyticsOverviewUseCase,
+    BillingAnalyticsRevenueUseCase,
+    BillingAnalyticsSegmentationUseCase,
+    BillingAnalyticsUserDetailUseCase,
+    BillingAnalyticsCohortUseCase,
+    BillingAnalyticsChurnUseCase,
+    BillingAnalyticsPlanPerformanceUseCase,
+    BillingAnalyticsExportUseCase,
+    BillingAnalyticsRefreshUseCase,
+    BillingAnalyticsHealthScoreUseCase,
+)
 from ..core.repositories.ports import (
     UserRepoPort,
     UsageLogRepoPort,
@@ -63,9 +89,11 @@ from ..core.repositories.ports import (
     SegmentRoleRepoPort,
     ClientRepoPort,
     CoachingSessionRepoPort,
+    CoachProfileRepoPort,
 )
 from .db.repositories.user_repository import create_user_repository
 from .db.repositories.usage_log_repository import create_usage_log_repository
+from .db.repositories.usage_analytics_repository import create_usage_analytics_repository
 from .db.repositories.session_repository import create_session_repository
 from .db.repositories.plan_configuration_repository import create_plan_configuration_repository
 from .db.repositories.subscription_repository import create_subscription_repository
@@ -76,6 +104,8 @@ from .db.repositories.speaker_role_repository import (
 )
 from .db.repositories.client_repository import create_client_repository
 from .db.repositories.coaching_session_repository import create_coaching_session_repository
+from .db.repositories.coach_profile_repository import create_coach_profile_repository
+from .db.repositories.usage_history_repository import create_usage_history_repository
 
 
 class UsageTrackingServiceFactory:
@@ -116,6 +146,186 @@ class UsageTrackingServiceFactory:
         
         return GetUserUsageUseCase(
             user_repo=user_repo,
+            usage_log_repo=usage_log_repo,
+        )
+
+    @staticmethod
+    def create_usage_history_use_case(db_session: Session) -> GetUsageHistoryUseCase:
+        """Create a GetUsageHistoryUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetUsageHistoryUseCase
+        """
+        user_repo = create_user_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+
+        return GetUsageHistoryUseCase(
+            user_repo=user_repo,
+            usage_log_repo=usage_log_repo,
+        )
+
+    @staticmethod
+    def create_user_analytics_use_case(db_session: Session) -> GetUserAnalyticsUseCase:
+        """Create a GetUserAnalyticsUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetUserAnalyticsUseCase
+        """
+        user_repo = create_user_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+
+        return GetUserAnalyticsUseCase(
+            user_repo=user_repo,
+            usage_log_repo=usage_log_repo,
+            usage_analytics_repo=usage_analytics_repo,
+        )
+
+    @staticmethod
+    def create_admin_analytics_use_case(db_session: Session) -> GetAdminAnalyticsUseCase:
+        """Create a GetAdminAnalyticsUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetAdminAnalyticsUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+
+        return GetAdminAnalyticsUseCase(
+            usage_analytics_repo=usage_analytics_repo,
+        )
+
+    @staticmethod
+    def create_specific_user_usage_use_case(db_session: Session) -> GetSpecificUserUsageUseCase:
+        """Create a GetSpecificUserUsageUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetSpecificUserUsageUseCase
+        """
+        user_repo = create_user_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+
+        return GetSpecificUserUsageUseCase(
+            user_repo=user_repo,
+            usage_log_repo=usage_log_repo,
+        )
+
+    @staticmethod
+    def create_monthly_usage_report_use_case(db_session: Session) -> GetMonthlyUsageReportUseCase:
+        """Create a GetMonthlyUsageReportUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetMonthlyUsageReportUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+
+        return GetMonthlyUsageReportUseCase(
+            usage_analytics_repo=usage_analytics_repo,
+        )
+
+    @staticmethod
+    def create_usage_trends_use_case(db_session: Session) -> 'GetUsageTrendsUseCase':
+        """Create a GetUsageTrendsUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetUsageTrendsUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+
+        return GetUsageTrendsUseCase(
+            usage_analytics_repo=usage_analytics_repo,
+            usage_log_repo=usage_log_repo,
+        )
+
+    @staticmethod
+    def create_usage_predictions_use_case(db_session: Session) -> 'GetUsagePredictionsUseCase':
+        """Create a GetUsagePredictionsUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetUsagePredictionsUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+
+        return GetUsagePredictionsUseCase(
+            usage_analytics_repo=usage_analytics_repo,
+            usage_log_repo=usage_log_repo,
+        )
+
+    @staticmethod
+    def create_usage_insights_use_case(db_session: Session) -> 'GetUsageInsightsUseCase':
+        """Create a GetUsageInsightsUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured GetUsageInsightsUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+        user_repo = create_user_repository(db_session)
+
+        return GetUsageInsightsUseCase(
+            usage_analytics_repo=usage_analytics_repo,
+            usage_log_repo=usage_log_repo,
+            user_repo=user_repo,
+        )
+
+    @staticmethod
+    def create_usage_snapshot_use_case(db_session: Session) -> 'CreateUsageSnapshotUseCase':
+        """Create a CreateUsageSnapshotUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured CreateUsageSnapshotUseCase
+        """
+        usage_log_repo = create_usage_log_repository(db_session)
+        usage_history_repo = create_usage_history_repository(db_session)
+
+        return CreateUsageSnapshotUseCase(
+            usage_log_repo=usage_log_repo,
+            usage_history_repo=usage_history_repo,
+        )
+
+    @staticmethod
+    def create_export_usage_data_use_case(db_session: Session) -> 'ExportUsageDataUseCase':
+        """Create an ExportUsageDataUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured ExportUsageDataUseCase
+        """
+        usage_analytics_repo = create_usage_analytics_repository(db_session)
+        usage_log_repo = create_usage_log_repository(db_session)
+
+        return ExportUsageDataUseCase(
+            usage_analytics_repo=usage_analytics_repo,
             usage_log_repo=usage_log_repo,
         )
 
@@ -218,6 +428,30 @@ class RepositoryFactory:
             CoachingSessionRepoPort implementation
         """
         return create_coaching_session_repository(db_session)
+
+    @staticmethod
+    def create_coach_profile_repository(db_session: Session) -> CoachProfileRepoPort:
+        """Create a coach profile repository instance.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            CoachProfileRepoPort implementation
+        """
+        return create_coach_profile_repository(db_session)
+
+    @staticmethod
+    def create_usage_analytics_repository(db_session: Session) -> 'UsageAnalyticsRepoPort':
+        """Create a usage analytics repository instance.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            UsageAnalyticsRepoPort implementation
+        """
+        return create_usage_analytics_repository(db_session)
 
 
 class SessionServiceFactory:
@@ -586,11 +820,13 @@ class CoachingSessionServiceFactory:
         session_repo = create_coaching_session_repository(db_session)
         user_repo = create_user_repository(db_session)
         client_repo = create_client_repository(db_session)
+        transcription_session_repo = create_session_repository(db_session)
 
         return CoachingSessionRetrievalUseCase(
             session_repo=session_repo,
             user_repo=user_repo,
             client_repo=client_repo,
+            transcription_session_repo=transcription_session_repo,
         )
 
     @staticmethod
@@ -761,3 +997,159 @@ def create_ecpay_client() -> "ECPayAPIClient":
         hash_iv=settings.ECPAY_HASH_IV,
         environment=settings.ECPAY_ENVIRONMENT
     )
+
+
+class BillingAnalyticsServiceFactory:
+    """Factory for billing analytics use cases."""
+
+    @staticmethod
+    def create_billing_analytics_overview_use_case(db_session: Session) -> BillingAnalyticsOverviewUseCase:
+        """Create a BillingAnalyticsOverviewUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsOverviewUseCase
+        """
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsOverviewUseCase(billing_service)
+
+    @staticmethod
+    def create_billing_analytics_revenue_use_case(db_session: Session) -> BillingAnalyticsRevenueUseCase:
+        """Create a BillingAnalyticsRevenueUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsRevenueUseCase
+        """
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsRevenueUseCase(billing_service)
+
+    @staticmethod
+    def create_billing_analytics_segmentation_use_case(db_session: Session) -> BillingAnalyticsSegmentationUseCase:
+        """Create a BillingAnalyticsSegmentationUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsSegmentationUseCase
+        """
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsSegmentationUseCase(billing_service)
+
+    @staticmethod
+    def create_billing_analytics_user_detail_use_case(db_session: Session) -> BillingAnalyticsUserDetailUseCase:
+        """Create a BillingAnalyticsUserDetailUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsUserDetailUseCase
+        """
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsUserDetailUseCase(billing_service)
+
+    @staticmethod
+    def create_billing_analytics_cohort_use_case(db_session: Session) -> BillingAnalyticsCohortUseCase:
+        """Create a BillingAnalyticsCohortUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsCohortUseCase
+        """
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsCohortUseCase(billing_service)
+
+    @staticmethod
+    def create_billing_analytics_churn_use_case(db_session: Session) -> BillingAnalyticsChurnUseCase:
+        """Create a BillingAnalyticsChurnUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsChurnUseCase
+        """
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsChurnUseCase(billing_service)
+
+    @staticmethod
+    def create_billing_analytics_plan_performance_use_case(db_session: Session) -> BillingAnalyticsPlanPerformanceUseCase:
+        """Create a BillingAnalyticsPlanPerformanceUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsPlanPerformanceUseCase
+        """
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsPlanPerformanceUseCase(billing_service)
+
+    @staticmethod
+    def create_billing_analytics_export_use_case(db_session: Session) -> BillingAnalyticsExportUseCase:
+        """Create a BillingAnalyticsExportUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsExportUseCase
+        """
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsExportUseCase(billing_service)
+
+    @staticmethod
+    def create_billing_analytics_refresh_use_case(db_session: Session) -> BillingAnalyticsRefreshUseCase:
+        """Create a BillingAnalyticsRefreshUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsRefreshUseCase
+        """
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsRefreshUseCase(billing_service)
+
+    @staticmethod
+    def create_billing_analytics_health_score_use_case(db_session: Session) -> BillingAnalyticsHealthScoreUseCase:
+        """Create a BillingAnalyticsHealthScoreUseCase.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured BillingAnalyticsHealthScoreUseCase
+        """
+        billing_service = BillingAnalyticsService(db_session)
+        return BillingAnalyticsHealthScoreUseCase(billing_service)
+
+
+class CoachProfileServiceFactory:
+    """Factory for coach profile management use cases."""
+
+    @staticmethod
+    def create_coach_profile_management_use_case(db_session: Session) -> CoachProfileManagementUseCase:
+        """Create a CoachProfileManagementUseCase with all dependencies injected.
+
+        Args:
+            db_session: SQLAlchemy database session
+
+        Returns:
+            Fully configured CoachProfileManagementUseCase
+        """
+        coach_profile_repo = create_coach_profile_repository(db_session)
+        user_repo = create_user_repository(db_session)
+
+        return CoachProfileManagementUseCase(
+            coach_profile_repo=coach_profile_repo,
+            user_repo=user_repo,
+        )

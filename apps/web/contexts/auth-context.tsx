@@ -21,7 +21,7 @@ interface AuthState {
   token: string | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (token: string) => Promise<void>
+  login: (token: string, refreshToken?: string) => Promise<void>
   logout: () => void
   loadUser: () => Promise<void>
   updateUserPreferences: (preferences: { language?: 'zh' | 'en' | 'system' }) => Promise<void>
@@ -36,34 +36,43 @@ const authStore = createStore<AuthState>((set, get) => ({
   token: null,
   isAuthenticated: false,
   isLoading: true,
-  login: async (token) => {
+  login: async (token, refreshToken?: string) => {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem('token', token)
-        console.log('Token stored successfully in localStorage')
+        localStorage.setItem('auth_token', token)
+        if (refreshToken) {
+          localStorage.setItem('refresh_token', refreshToken)
+        }
+        console.log('Tokens stored successfully in localStorage:', {
+          authToken: 'stored',
+          refreshToken: refreshToken ? 'stored' : 'not provided'
+        })
       } else {
         console.warn('localStorage not available during login')
       }
     } catch (error) {
-      console.error('Failed to store token in localStorage:', error)
+      console.error('Failed to store tokens in localStorage:', error)
     }
-    
+
     set({ token, isAuthenticated: true })
     await get().loadUser()
   },
   logout: () => {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
+        // Clear all possible token keys for complete cleanup
         localStorage.removeItem('token')
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('refresh_token')
         localStorage.removeItem('userPreferences')
-        console.log('Cleared tokens from localStorage')
+        console.log('Cleared all tokens from localStorage')
       } else {
         console.warn('localStorage not available during logout')
       }
     } catch (error) {
       console.error('Failed to clear tokens from localStorage:', error)
     }
-    
+
     set({ user: null, token: null, isAuthenticated: false })
   },
   loadUser: async () => {
@@ -72,7 +81,8 @@ const authStore = createStore<AuthState>((set, get) => ({
     if (!token) {
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
-          token = localStorage.getItem('token')
+          // Check for auth_token first (new standard), then fallback to token (legacy)
+          token = localStorage.getItem('auth_token') || localStorage.getItem('token')
         }
       } catch (error) {
         console.error('Failed to access localStorage in loadUser:', error)
@@ -216,9 +226,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result.access_token) {
         console.log('AuthProvider: Token refresh successful, logging in with new token')
 
-        // Store new tokens
+        // Store new tokens using standardized keys
         if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('token', result.access_token)
+          localStorage.setItem('auth_token', result.access_token)
           if (result.refresh_token) {
             localStorage.setItem('refresh_token', result.refresh_token)
           }
@@ -232,9 +242,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('AuthProvider: Token refresh failed:', error)
 
-      // Clear invalid tokens
+      // Clear all invalid tokens
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.removeItem('token')
+        localStorage.removeItem('auth_token')
         localStorage.removeItem('refresh_token')
       }
 
@@ -250,7 +261,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Safe localStorage access with error handling
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        token = localStorage.getItem('token')
+        // Check for auth_token first (new standard), then fallback to token (legacy)
+        token = localStorage.getItem('auth_token') || localStorage.getItem('token')
         refreshToken = localStorage.getItem('refresh_token')
         console.log('AuthProvider: Retrieved from localStorage:', {
           token: token ? 'present' : 'missing',

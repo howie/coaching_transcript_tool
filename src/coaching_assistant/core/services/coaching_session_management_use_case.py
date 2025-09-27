@@ -9,7 +9,7 @@ from uuid import UUID
 from datetime import datetime, date
 
 from ..models.coaching_session import CoachingSession, SessionSource
-from ..repositories.ports import CoachingSessionRepoPort, UserRepoPort, ClientRepoPort
+from ..repositories.ports import CoachingSessionRepoPort, UserRepoPort, ClientRepoPort, SessionRepoPort
 
 
 class CoachingSessionRetrievalUseCase:
@@ -20,6 +20,7 @@ class CoachingSessionRetrievalUseCase:
         session_repo: CoachingSessionRepoPort,
         user_repo: UserRepoPort,
         client_repo: ClientRepoPort,
+        transcription_session_repo: SessionRepoPort,
     ):
         """Initialize use case with repository dependencies.
 
@@ -27,10 +28,12 @@ class CoachingSessionRetrievalUseCase:
             session_repo: Coaching session repository implementation
             user_repo: User repository implementation
             client_repo: Client repository implementation
+            transcription_session_repo: Transcription session repository implementation
         """
         self.session_repo = session_repo
         self.user_repo = user_repo
         self.client_repo = client_repo
+        self.transcription_session_repo = transcription_session_repo
 
     def get_session_by_id(
         self, session_id: UUID, coach_id: UUID
@@ -110,6 +113,131 @@ class CoachingSessionRetrievalUseCase:
             raise ValueError(f"Client with ID {client_id} not found or not owned by coach")
 
         return self.session_repo.get_last_session_by_client(coach_id, client_id)
+
+    def get_client_summary(self, client_id: UUID) -> Optional[Dict[str, Any]]:
+        """Get client summary data.
+
+        Args:
+            client_id: UUID of the client
+
+        Returns:
+            Dict with client data or None if not found
+        """
+        if not client_id:
+            return None
+
+        client = self.client_repo.get_by_id(client_id)
+        if client:
+            return {
+                "id": client.id,
+                "name": client.name,
+                "is_anonymized": client.is_anonymized,
+            }
+        return None
+
+    def get_transcription_session_summary(self, transcription_session_id: UUID) -> Optional[Dict[str, Any]]:
+        """Get transcription session summary data.
+
+        Args:
+            transcription_session_id: UUID of the transcription session
+
+        Returns:
+            Dict with transcription session data or None if not found
+        """
+        if not transcription_session_id:
+            return None
+
+        session = self.transcription_session_repo.get_by_id(transcription_session_id)
+        if session:
+            return {
+                "id": session.id,
+                "status": session.status.value,
+                "title": session.title,
+                "segments_count": session.segments_count,
+            }
+        return None
+
+    def get_session_with_response_data(
+        self, session_id: UUID, coach_id: UUID
+    ) -> Optional[Dict[str, Any]]:
+        """Get coaching session with all data needed for response.
+
+        Args:
+            session_id: UUID of the coaching session
+            coach_id: UUID of the coach
+
+        Returns:
+            Dict with session and related data or None if not found
+        """
+        session = self.get_session_by_id(session_id, coach_id)
+        if not session:
+            return None
+
+        # Get client data
+        client_summary = self.get_client_summary(session.client_id)
+
+        # Get transcription session data
+        transcription_session_summary = None
+        if session.transcription_session_id:
+            transcription_session_summary = self.get_transcription_session_summary(
+                session.transcription_session_id
+            )
+
+        return {
+            "session": session,
+            "client_summary": client_summary,
+            "transcription_session_summary": transcription_session_summary,
+        }
+
+    def get_sessions_with_response_data(
+        self,
+        coach_id: UUID,
+        from_date: Optional[date] = None,
+        to_date: Optional[date] = None,
+        client_id: Optional[UUID] = None,
+        currency: Optional[str] = None,
+        sort: str = "-session_date",
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Tuple[List[Dict[str, Any]], int, int]:
+        """Get paginated coaching sessions with all data needed for response.
+
+        Args:
+            coach_id: UUID of the coach
+            from_date: Start date for filtering sessions
+            to_date: End date for filtering sessions
+            client_id: Optional client ID filter
+            currency: Optional currency filter
+            sort: Sort field and direction
+            page: Page number (1-indexed)
+            page_size: Number of items per page
+
+        Returns:
+            Tuple of (sessions_with_data, total_count, total_pages)
+        """
+        sessions, total, total_pages = self.list_sessions_paginated(
+            coach_id, from_date, to_date, client_id, currency, sort, page, page_size
+        )
+
+        sessions_with_data = []
+        for session in sessions:
+            # Get client data
+            client_summary = self.get_client_summary(session.client_id)
+
+            # Get transcription session data
+            transcription_session_summary = None
+            if session.transcription_session_id:
+                transcription_session_summary = self.get_transcription_session_summary(
+                    session.transcription_session_id
+                )
+
+            sessions_with_data.append({
+                "session": session,
+                "client_summary": client_summary,
+                "transcription_session_summary": transcription_session_summary,
+            })
+
+        return sessions_with_data, total, total_pages
 
 
 class CoachingSessionCreationUseCase:

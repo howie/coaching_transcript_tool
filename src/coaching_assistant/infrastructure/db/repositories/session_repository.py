@@ -267,6 +267,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             transcript_text=None,  # Legacy model stores in segments
             speaker_count=None,  # Not in legacy model
             confidence_score=None,  # Not in legacy model
+            segments_count=int(getattr(orm_session, "segments_count", 0) or 0),
             created_at=orm_session.created_at,
             updated_at=orm_session.updated_at,
             transcription_started_at=None,  # Not in legacy model
@@ -278,6 +279,24 @@ class SQLAlchemySessionRepository(SessionRepoPort):
         domain_session.provider_metadata = getattr(orm_session, 'provider_metadata', {})
 
         return domain_session
+
+    def get_completed_count_for_user(self, user_id: UUID) -> int:
+        """Get count of completed sessions for a user."""
+        try:
+            from ....models.session import SessionStatus as LegacySessionStatus
+            result = (
+                self.session.query(SessionModel)
+                .filter(
+                    and_(
+                        SessionModel.user_id == user_id,
+                        SessionModel.status == LegacySessionStatus.COMPLETED,
+                    )
+                )
+                .count()
+            )
+            return int(result or 0)
+        except SQLAlchemyError as e:
+            raise RuntimeError(f"Database error getting completed sessions count for user {user_id}") from e
 
 
 def create_session_repository(session: DBSession) -> SessionRepoPort:

@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     SECRET_KEY: str = "dev-secret-key"
 
+    # SQL/Database debugging
+    SQL_ECHO: bool = False  # Controls SQLAlchemy SQL statement logging
+
     # 測試模式設定 - 允許在不需要認證的情況下測試所有 API
     # ⚠️ 警告：此模式僅適用於開發和測試環境，絕不可在生產環境中啟用
     TEST_MODE: bool = False

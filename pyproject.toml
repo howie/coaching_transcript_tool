@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "coaching-assistant-core"
-version = "2.15.7"
+version = "2.24.0"
 description = "Core logic package for coaching transcript tool"
 readme = "README.md"
 authors = [
@@ -45,6 +45,7 @@ dependencies = [
     "redis>=5.0.0",
     "requests>=2.31.0",
     "sentry-sdk[flask]>=2.37.0",
+    "assemblyai>=0.44.3",
 ]
 
 [project.optional-dependencies]

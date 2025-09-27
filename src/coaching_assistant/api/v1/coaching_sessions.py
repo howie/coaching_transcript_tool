@@ -12,16 +12,21 @@ from fastapi import (
     File as FastAPIFile,
     Form,
 )
-from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 import logging
 import re
 import json
 
-from ...infrastructure.factories import CoachingSessionServiceFactory
+from sqlalchemy.orm import Session
 from ...core.database import get_db
+
 from ...core.models.user import User
 from ...core.models.coaching_session import SessionSource
+from ...core.models.session import SessionStatus
+from ...core.models.session import Session as TranscriptionSession
+from ...core.models.coaching_session import CoachingSession
+from ...core.models.transcript import SessionRole, TranscriptSegment, SpeakerRole
+from ...core.models.client import Client
 from ...core.services.coaching_session_management_use_case import (
     CoachingSessionRetrievalUseCase,
     CoachingSessionCreationUseCase,
@@ -30,10 +35,15 @@ from ...core.services.coaching_session_management_use_case import (
     CoachingSessionOptionsUseCase,
 )
 from ...core.services.transcript_upload_use_case import TranscriptUploadUseCase
-from ...models import CoachingSession, Client
-from ...models.session import Session as TranscriptionSession, SessionStatus
-from ...models.transcript import TranscriptSegment, SpeakerRole, SessionRole
 from .auth import get_current_user_dependency
+from .dependencies import (
+    get_coaching_session_retrieval_use_case,
+    get_coaching_session_creation_use_case,
+    get_coaching_session_update_use_case,
+    get_coaching_session_deletion_use_case,
+    get_coaching_session_options_use_case,
+    get_transcript_upload_use_case,
+)
 from ...utils.chinese_converter import convert_to_traditional
 
 logger = logging.getLogger(__name__)
@@ -41,28 +51,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# Dependency injection factory functions
-def get_coaching_session_retrieval_use_case(db: Session = Depends(get_db)) -> CoachingSessionRetrievalUseCase:
-    return CoachingSessionServiceFactory.create_coaching_session_retrieval_use_case(db)
-
-def get_coaching_session_creation_use_case(db: Session = Depends(get_db)) -> CoachingSessionCreationUseCase:
-    return CoachingSessionServiceFactory.create_coaching_session_creation_use_case(db)
-
-def get_coaching_session_update_use_case(db: Session = Depends(get_db)) -> CoachingSessionUpdateUseCase:
-    return CoachingSessionServiceFactory.create_coaching_session_update_use_case(db)
-
-def get_coaching_session_deletion_use_case(db: Session = Depends(get_db)) -> CoachingSessionDeletionUseCase:
-    return CoachingSessionServiceFactory.create_coaching_session_deletion_use_case(db)
-
-def get_coaching_session_options_use_case() -> CoachingSessionOptionsUseCase:
-    return CoachingSessionServiceFactory.create_coaching_session_options_use_case()
-
-def get_transcript_upload_use_case(db: Session = Depends(get_db)) -> TranscriptUploadUseCase:
-    from ...infrastructure.factories import TranscriptServiceFactory
-    return TranscriptServiceFactory.create_transcript_upload_use_case(db)
-
-
-# Move function after class definitions
+# Dependency injection functions are imported from dependencies module
 
 
 # Pydantic models for request/response
@@ -209,6 +198,47 @@ def _coaching_session_to_response(session, db: Session, client_summary=None, tra
     )
 
 
+def _coaching_session_to_response_from_data(
+    session, client_summary_dict, transcription_session_summary_dict
+) -> CoachingSessionResponse:
+    """Convert domain CoachingSession to CoachingSessionResponse using pre-fetched data.
+
+    Args:
+        session: CoachingSession domain entity
+        client_summary_dict: Dict with client data or None
+        transcription_session_summary_dict: Dict with transcription session data or None
+
+    Returns:
+        CoachingSessionResponse
+    """
+    # Convert dict data to response models
+    client_summary = None
+    if client_summary_dict:
+        client_summary = ClientSummary(**client_summary_dict)
+
+    transcription_session_summary = None
+    if transcription_session_summary_dict:
+        transcription_session_summary = TranscriptionSessionSummary(**transcription_session_summary_dict)
+
+    return CoachingSessionResponse(
+        id=session.id,
+        session_date=session.session_date.isoformat(),
+        client=client_summary,
+        client_id=session.client_id,
+        source=session.source.value,  # Use .value to get the string representation
+        duration_min=session.duration_min,
+        fee_currency=session.fee_currency,
+        fee_amount=session.fee_amount,
+        fee_display=session.fee_display,
+        duration_display=session.duration_display,
+        transcription_session_id=session.transcription_session_id,
+        transcription_session=transcription_session_summary,
+        notes=session.notes,
+        created_at=session.created_at.isoformat(),
+        updated_at=session.updated_at.isoformat(),
+    )
+
+
 @router.get("", response_model=CoachingSessionListResponse)
 async def list_coaching_sessions(
     from_date: Optional[date] = Query(None, alias="from"),
@@ -220,11 +250,10 @@ async def list_coaching_sessions(
     page_size: int = Query(20, ge=1, le=50),
     current_user: User = Depends(get_current_user_dependency),
     retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
-    db: Session = Depends(get_db),
 ):
     """List coaching sessions for the current user."""
     try:
-        sessions, total, total_pages = retrieval_use_case.list_sessions_paginated(
+        sessions_with_data, total, total_pages = retrieval_use_case.get_sessions_with_response_data(
             coach_id=current_user.id,
             from_date=from_date,
             to_date=to_date,
@@ -235,20 +264,13 @@ async def list_coaching_sessions(
             page_size=page_size
         )
 
-        # Convert domain entities to response models
+        # Convert to response models
         session_responses = []
-        for session in sessions:
-            # Get transcription session info if available using the same db session
-            transcription_session_summary = None
-            if session.transcription_session_id:
-                transcription_session_summary = get_transcription_session_summary(
-                    db, session.transcription_session_id
-                )
-
-            session_response = _coaching_session_to_response(
-                session,
-                db,
-                transcription_session_summary=transcription_session_summary
+        for session_data in sessions_with_data:
+            session_response = _coaching_session_to_response_from_data(
+                session_data["session"],
+                session_data["client_summary"],
+                session_data["transcription_session_summary"]
             )
             session_responses.append(session_response)
 
@@ -270,25 +292,17 @@ async def get_coaching_session(
     session_id: UUID,
     current_user: User = Depends(get_current_user_dependency),
     retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
-    db: Session = Depends(get_db),
 ):
     """Get a specific coaching session."""
     try:
-        session = retrieval_use_case.get_session_by_id(session_id, current_user.id)
-        if not session:
+        session_data = retrieval_use_case.get_session_with_response_data(session_id, current_user.id)
+        if not session_data:
             raise HTTPException(status_code=404, detail="Coaching session not found")
 
-        # Get transcription session info if available using the same db session
-        transcription_session_summary = None
-        if session.transcription_session_id:
-            transcription_session_summary = get_transcription_session_summary(
-                db, session.transcription_session_id
-            )
-
-        return _coaching_session_to_response(
-            session,
-            db,
-            transcription_session_summary=transcription_session_summary
+        return _coaching_session_to_response_from_data(
+            session_data["session"],
+            session_data["client_summary"],
+            session_data["transcription_session_summary"]
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -301,7 +315,7 @@ async def create_coaching_session(
     session_data: CoachingSessionCreate,
     current_user: User = Depends(get_current_user_dependency),
     creation_use_case: CoachingSessionCreationUseCase = Depends(get_coaching_session_creation_use_case),
-    db: Session = Depends(get_db),
+    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
 ):
     """Create a new coaching session."""
     try:
@@ -316,7 +330,16 @@ async def create_coaching_session(
             notes=session_data.notes,
         )
 
-        return _coaching_session_to_response(session, db)
+        # Get complete session data for response
+        session_data_with_details = retrieval_use_case.get_session_with_response_data(session.id, current_user.id)
+        if not session_data_with_details:
+            raise HTTPException(status_code=500, detail="Failed to retrieve created session")
+
+        return _coaching_session_to_response_from_data(
+            session_data_with_details["session"],
+            session_data_with_details["client_summary"],
+            session_data_with_details["transcription_session_summary"]
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
@@ -329,7 +352,7 @@ async def update_coaching_session(
     session_data: CoachingSessionUpdate,
     current_user: User = Depends(get_current_user_dependency),
     update_use_case: CoachingSessionUpdateUseCase = Depends(get_coaching_session_update_use_case),
-    db: Session = Depends(get_db),
+    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
 ):
     """Update a coaching session."""
     try:
@@ -358,7 +381,16 @@ async def update_coaching_session(
             notes=session_data.notes,
         )
 
-        return _coaching_session_to_response(session, db)
+        # Get complete session data for response
+        session_data_with_details = retrieval_use_case.get_session_with_response_data(session.id, current_user.id)
+        if not session_data_with_details:
+            raise HTTPException(status_code=500, detail="Failed to retrieve updated session")
+
+        return _coaching_session_to_response_from_data(
+            session_data_with_details["session"],
+            session_data_with_details["client_summary"],
+            session_data_with_details["transcription_session_summary"]
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
@@ -424,6 +456,7 @@ async def upload_session_transcript(
     convert_to_traditional_chinese: Optional[str] = Form(None),
     transcript_upload_use_case: TranscriptUploadUseCase = Depends(get_transcript_upload_use_case),
     current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db),
 ):
     """Upload a VTT or SRT transcript file directly to a coaching session.
 

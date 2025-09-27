@@ -1,6 +1,6 @@
 # Clean Architecture Refactoring - Lessons Learned
 
-**Last Updated**: 2025-09-21
+**Last Updated**: 2025-09-26
 **Scope**: Critical discoveries, fixes, and best practices from the refactoring journey
 
 ## Critical Fixes and Discoveries
@@ -295,5 +295,75 @@ async def handle_plan_limit(request: Request, exc: PlanLimitExceededException):
 - **Code Reviews**: Focus on architectural compliance, not just syntax
 - **Documentation**: Keep architectural decisions documented with rationale
 - **Testing First**: Write failing tests before implementing business logic
+
+### 16. **Legacy Import Cleanup - Mixed Model Incompatibility (2025-09-26)**
+
+#### **Problem**
+After migrating 30+ legacy infrastructure model imports to domain models, critical runtime errors occurred:
+```
+ValidationError: 1 validation error for UserProfileResponse
+plan
+  Input should be 'free', 'student', 'pro', 'enterprise' or 'coaching_school' [type=enum, input_value=<UserPlan.STUDENT: 'student'>, input_type=UserPlan]
+```
+
+#### **Root Cause Analysis**
+The refactoring created a **Mixed Model Incompatibility**:
+1. **Import Migration**: Changed `from ...models.user import UserPlan` to `from ...core.models.user import UserPlan`
+2. **Type Mismatch**: API returned infrastructure enum instance where Pydantic expected domain enum string
+3. **Architectural Boundary Violation**: Domain models used in SQLAlchemy operations where infrastructure models required
+
+#### **Specific Issues Found**
+
+**Issue 1: Enum Type Incompatibility**
+```python
+# src/coaching_assistant/api/v1/user.py:73
+return UserProfileResponse(
+    plan=current_user.plan,  # Infrastructure enum instance
+    # ...
+)
+
+# UserProfileResponse expects domain UserPlan enum values ('student')
+# But receives infrastructure UserPlan enum instance (<UserPlan.STUDENT: 'student'>)
+```
+
+**Issue 2: SQLAlchemy Domain Model Usage**
+```python
+# src/coaching_assistant/api/v1/auth.py:338
+stmt = select(User).where(User.email == email)  # Domain User doesn't work with SQLAlchemy
+```
+
+#### **Solution Strategy - Mixed Model Approach**
+
+**1. Dual Import Pattern for SQLAlchemy Operations**
+```python
+# Clear separation with explicit aliases
+from ...core.models.user import User as DomainUser, UserPlan  # Domain models
+from ...models.user import User  # Infrastructure model for SQLAlchemy queries
+```
+
+**2. Value Extraction at Boundaries**
+```python
+# Extract enum values when crossing architectural boundaries
+return UserProfileResponse(
+    plan=current_user.plan.value if hasattr(current_user.plan, 'value') else current_user.plan,
+    # ...
+)
+```
+
+#### **Prevention Guidelines**
+
+1. **Use Mixed Model Strategy**: Keep infrastructure models for SQLAlchemy, domain models for business logic
+2. **Value Extraction Rule**: Always extract `.value` from enums when passing to Pydantic models
+3. **Import Naming**: Use explicit aliases (`DomainUser` vs `User`) to prevent confusion
+4. **Test After Import Changes**: Legacy import cleanup requires thorough runtime testing
+5. **Boundary Responsibility**: API layer handles type conversion between infrastructure and domain models
+
+#### **Lesson Learned**
+- **Migration Complexity**: Even "simple" import changes can have deep architectural implications
+- **Testing Gaps**: Static type checking doesn't catch enum type mismatches between layers
+- **Architectural Discipline**: Clear boundaries require explicit handling of type conversions
+- **Documentation Critical**: Complex type relationships must be documented to prevent regression
+
+This incident highlights the importance of understanding data flow across architectural boundaries during refactoring.
 
 These lessons learned provide a roadmap for completing the remaining refactoring work while avoiding the pitfalls already encountered.

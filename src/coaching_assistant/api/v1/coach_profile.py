@@ -2,12 +2,21 @@
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field, UUID4
 from datetime import datetime
 
-from ...core.database import get_db
-from ...models import User, CoachProfile, CoachingPlan
+from ...models import User
+from ...core.models.coach_profile import (
+    CoachProfile,
+    CoachingLanguage,
+    CommunicationTool,
+    CoachExperience,
+)
+from ...core.models.coaching_plan import CoachingPlan
+from ...core.services.coach_profile_management_use_case import (
+    CoachProfileManagementUseCase,
+)
+from .dependencies import get_coach_profile_management_use_case
 from .auth import get_current_user_dependency
 
 
@@ -166,28 +175,58 @@ class CoachingPlanResponse(BaseModel):
 
 
 def _profile_to_response(profile: CoachProfile) -> CoachProfileResponse:
-    """Convert CoachProfile model to response."""
+    """Convert CoachProfile domain model to response."""
+    # Parse location back to city/country
+    city = None
+    country = None
+    if profile.location:
+        parts = profile.location.split(", ")
+        if len(parts) >= 2:
+            city = parts[0]
+            country = parts[1]
+        else:
+            city = profile.location
+
+    # Parse phone back to country code/number
+    phone_country_code = None
+    phone_number = None
+    if profile.contact_phone:
+        if profile.contact_phone.startswith("+"):
+            phone_country_code = profile.contact_phone[:3]
+            phone_number = profile.contact_phone[3:]
+        else:
+            phone_number = profile.contact_phone
+
+    # Convert communication tools to dict
+    communication_tools = {
+        tool.value: True for tool in profile.communication_tools
+    }
+
     return CoachProfileResponse(
         id=profile.id,
         user_id=profile.user_id,
-        display_name=profile.display_name,
+        display_name=profile.public_name,
         profile_photo_url=profile.profile_photo_url,
-        public_email=profile.public_email,
-        phone_country_code=profile.phone_country_code,
-        phone_number=profile.phone_number,
-        country=profile.country,
-        city=profile.city,
+        public_email=profile.contact_email,
+        phone_country_code=phone_country_code,
+        phone_number=phone_number,
+        country=country,
+        city=city,
         timezone=profile.timezone,
-        coaching_languages=profile.get_coaching_languages(),
-        communication_tools=profile.get_communication_tools(),
-        line_id=profile.line_id,
-        coach_experience=profile.coach_experience,
-        training_institution=profile.training_institution,
-        certifications=profile.get_certifications(),
-        linkedin_url=profile.linkedin_url,
-        personal_website=profile.personal_website,
+        coaching_languages=[lang.value for lang in profile.languages],
+        communication_tools=communication_tools,
+        line_id=None,  # Not in domain model - legacy field
+        coach_experience=(
+            profile.experience_level.value
+            if profile.experience_level
+            else None
+        ),
+        training_institution=None,  # Not in domain model - legacy field
+        certifications=profile.certifications,
+        linkedin_url=None,  # Not in domain model - legacy field
+        personal_website=profile.website_url,
         bio=profile.bio,
-        specialties=profile.get_specialties(),
+        specialties=profile.specializations,
         is_public=profile.is_public,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
@@ -195,7 +234,7 @@ def _profile_to_response(profile: CoachProfile) -> CoachProfileResponse:
 
 
 def _plan_to_response(plan: CoachingPlan) -> CoachingPlanResponse:
-    """Convert CoachingPlan model to response."""
+    """Convert CoachingPlan domain model to response."""
     return CoachingPlanResponse(
         id=plan.id,
         coach_profile_id=plan.coach_profile_id,
@@ -217,209 +256,169 @@ def _plan_to_response(plan: CoachingPlan) -> CoachingPlanResponse:
     )
 
 
-# Coach Profile endpoints
-@router.get("/", response_model=Optional[CoachProfileResponse])
-def get_coach_profile(
-    current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
-):
-    """Get current user's coach profile."""
-    profile = (
-        db.query(CoachProfile)
-        .filter(CoachProfile.user_id == current_user.id)
-        .first()
-    )
+def _create_request_to_domain(profile_data: CoachProfileCreate) -> CoachProfile:
+    """Convert CoachProfileCreate request to domain model."""
+    # Parse languages
+    languages = []
+    for lang_str in profile_data.coaching_languages:
+        try:
+            languages.append(CoachingLanguage(lang_str))
+        except ValueError:
+            continue
 
-    if not profile:
-        return None
+    # Parse communication tools
+    communication_tools = []
+    tools_dict = profile_data.communication_tools.model_dump()
+    for tool_name, enabled in tools_dict.items():
+        if enabled:
+            try:
+                communication_tools.append(CommunicationTool(tool_name))
+            except ValueError:
+                continue
 
-    return _profile_to_response(profile)
+    # Parse experience level
+    experience_level = CoachExperience.BEGINNER
+    if profile_data.coach_experience:
+        try:
+            experience_level = CoachExperience(profile_data.coach_experience)
+        except ValueError:
+            pass
 
+    # Combine location
+    location = None
+    if profile_data.city and profile_data.country:
+        location = f"{profile_data.city}, {profile_data.country}"
+    elif profile_data.city:
+        location = profile_data.city
 
-@router.post(
-    "/",
-    response_model=CoachProfileResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def create_coach_profile(
-    profile_data: CoachProfileCreate,
-    current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
-):
-    """Create a coach profile for the current user."""
-    # Check if profile already exists
-    existing_profile = (
-        db.query(CoachProfile)
-        .filter(CoachProfile.user_id == current_user.id)
-        .first()
-    )
+    # Combine phone
+    contact_phone = None
+    if profile_data.phone_country_code and profile_data.phone_number:
+        contact_phone = f"{profile_data.phone_country_code}{profile_data.phone_number}"
+    elif profile_data.phone_number:
+        contact_phone = profile_data.phone_number
 
-    if existing_profile:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Coach profile already exists for this user",
-        )
-
-    # Create new profile
-    profile = CoachProfile(
-        user_id=current_user.id,
-        display_name=profile_data.display_name,
-        profile_photo_url=profile_data.profile_photo_url,
-        public_email=profile_data.public_email,
-        phone_country_code=profile_data.phone_country_code,
-        phone_number=profile_data.phone_number,
-        country=profile_data.country,
-        city=profile_data.city,
-        timezone=profile_data.timezone,
-        line_id=profile_data.line_id,
-        coach_experience=profile_data.coach_experience,
-        training_institution=profile_data.training_institution,
-        linkedin_url=profile_data.linkedin_url,
-        personal_website=profile_data.personal_website,
+    return CoachProfile(
+        public_name=profile_data.display_name,
         bio=profile_data.bio,
+        location=location,
+        timezone=profile_data.timezone or "Asia/Taipei",
+        experience_level=experience_level,
+        specializations=profile_data.specialties,
+        certifications=profile_data.certifications,
+        languages=languages,
+        communication_tools=communication_tools,
         is_public=profile_data.is_public,
+        profile_photo_url=profile_data.profile_photo_url,
+        contact_email=profile_data.public_email,
+        contact_phone=contact_phone,
+        website_url=profile_data.personal_website,
     )
 
-    # Set JSON fields
-    profile.set_coaching_languages(profile_data.coaching_languages)
-    profile.set_communication_tools(
-        profile_data.communication_tools.model_dump()
-    )
-    profile.set_certifications(profile_data.certifications)
-    profile.set_specialties(profile_data.specialties)
 
-    db.add(profile)
-    db.commit()
-    db.refresh(profile)
-
-    return _profile_to_response(profile)
-
-
-@router.put("/", response_model=CoachProfileResponse)
-def update_coach_profile(
-    profile_data: CoachProfileUpdate,
-    current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
-):
-    """Update the current user's coach profile."""
-    profile = (
-        db.query(CoachProfile)
-        .filter(CoachProfile.user_id == current_user.id)
-        .first()
+def _update_request_to_domain(profile_data: CoachProfileUpdate, existing_profile: CoachProfile) -> CoachProfile:
+    """Convert CoachProfileUpdate request to domain model."""
+    # Start with existing profile
+    updated_profile = CoachProfile(
+        id=existing_profile.id,
+        user_id=existing_profile.user_id,
+        public_name=existing_profile.public_name,
+        bio=existing_profile.bio,
+        location=existing_profile.location,
+        timezone=existing_profile.timezone,
+        experience_level=existing_profile.experience_level,
+        specializations=existing_profile.specializations,
+        certifications=existing_profile.certifications,
+        languages=existing_profile.languages,
+        communication_tools=existing_profile.communication_tools,
+        is_public=existing_profile.is_public,
+        profile_photo_url=existing_profile.profile_photo_url,
+        contact_email=existing_profile.contact_email,
+        contact_phone=existing_profile.contact_phone,
+        website_url=existing_profile.website_url,
+        created_at=existing_profile.created_at,
+        updated_at=existing_profile.updated_at,
     )
 
-    if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found",
-        )
+    # Apply updates
+    if profile_data.display_name is not None:
+        updated_profile.public_name = profile_data.display_name
+    if profile_data.bio is not None:
+        updated_profile.bio = profile_data.bio
+    if profile_data.timezone is not None:
+        updated_profile.timezone = profile_data.timezone
+    if profile_data.is_public is not None:
+        updated_profile.is_public = profile_data.is_public
+    if profile_data.profile_photo_url is not None:
+        updated_profile.profile_photo_url = profile_data.profile_photo_url
+    if profile_data.public_email is not None:
+        updated_profile.contact_email = profile_data.public_email
+    if profile_data.personal_website is not None:
+        updated_profile.website_url = profile_data.personal_website
 
-    # Update fields
-    update_data = profile_data.model_dump(exclude_unset=True)
-
-    # Handle JSON fields separately
-    if "coaching_languages" in update_data:
-        profile.set_coaching_languages(update_data.pop("coaching_languages"))
-    if "communication_tools" in update_data:
-        tools = update_data.pop("communication_tools")
-        if hasattr(tools, "model_dump"):
-            profile.set_communication_tools(tools.model_dump())
+    # Update location
+    if profile_data.city is not None or profile_data.country is not None:
+        city = profile_data.city
+        country = profile_data.country
+        if city and country:
+            updated_profile.location = f"{city}, {country}"
+        elif city:
+            updated_profile.location = city
         else:
-            profile.set_communication_tools(tools)
-    if "certifications" in update_data:
-        profile.set_certifications(update_data.pop("certifications"))
-    if "specialties" in update_data:
-        profile.set_specialties(update_data.pop("specialties"))
+            updated_profile.location = None
 
-    # Update remaining fields
-    for field, value in update_data.items():
-        setattr(profile, field, value)
+    # Update phone
+    if profile_data.phone_country_code is not None or profile_data.phone_number is not None:
+        country_code = profile_data.phone_country_code
+        number = profile_data.phone_number
+        if country_code and number:
+            updated_profile.contact_phone = f"{country_code}{number}"
+        elif number:
+            updated_profile.contact_phone = number
+        else:
+            updated_profile.contact_phone = None
 
-    db.commit()
-    db.refresh(profile)
+    # Update languages
+    if profile_data.coaching_languages is not None:
+        languages = []
+        for lang_str in profile_data.coaching_languages:
+            try:
+                languages.append(CoachingLanguage(lang_str))
+            except ValueError:
+                continue
+        updated_profile.languages = languages
 
-    return _profile_to_response(profile)
+    # Update communication tools
+    if profile_data.communication_tools is not None:
+        communication_tools = []
+        tools_dict = profile_data.communication_tools.model_dump()
+        for tool_name, enabled in tools_dict.items():
+            if enabled:
+                try:
+                    communication_tools.append(CommunicationTool(tool_name))
+                except ValueError:
+                    continue
+        updated_profile.communication_tools = communication_tools
 
+    # Update experience level
+    if profile_data.coach_experience is not None:
+        try:
+            updated_profile.experience_level = CoachExperience(profile_data.coach_experience)
+        except ValueError:
+            pass
 
-@router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
-def delete_coach_profile(
-    current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
-):
-    """Delete the current user's coach profile."""
-    profile = (
-        db.query(CoachProfile)
-        .filter(CoachProfile.user_id == current_user.id)
-        .first()
-    )
+    # Update certifications and specialties
+    if profile_data.certifications is not None:
+        updated_profile.certifications = profile_data.certifications
+    if profile_data.specialties is not None:
+        updated_profile.specializations = profile_data.specialties
 
-    if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found",
-        )
-
-    db.delete(profile)
-    db.commit()
-
-
-# Coaching Plan endpoints
-@router.get("/plans", response_model=List[CoachingPlanResponse])
-def get_coaching_plans(
-    current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
-):
-    """Get all coaching plans for the current user's profile."""
-    # Get coach profile
-    profile = (
-        db.query(CoachProfile)
-        .filter(CoachProfile.user_id == current_user.id)
-        .first()
-    )
-
-    if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found",
-        )
-
-    # Get plans
-    plans = (
-        db.query(CoachingPlan)
-        .filter(CoachingPlan.coach_profile_id == profile.id)
-        .all()
-    )
-
-    return [_plan_to_response(plan) for plan in plans]
+    return updated_profile
 
 
-@router.post(
-    "/plans",
-    response_model=CoachingPlanResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def create_coaching_plan(
-    plan_data: CoachingPlanCreate,
-    current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
-):
-    """Create a new coaching plan."""
-    # Get coach profile
-    profile = (
-        db.query(CoachProfile)
-        .filter(CoachProfile.user_id == current_user.id)
-        .first()
-    )
-
-    if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found. Please create a coach profile first.",
-        )
-
-    # Create plan
-    plan = CoachingPlan(
-        coach_profile_id=profile.id,
+def _plan_create_request_to_domain(plan_data: CoachingPlanCreate) -> CoachingPlan:
+    """Convert CoachingPlanCreate request to domain model."""
+    return CoachingPlan(
         plan_type=plan_data.plan_type,
         title=plan_data.title,
         description=plan_data.description,
@@ -433,11 +432,179 @@ def create_coaching_plan(
         cancellation_notice_hours=plan_data.cancellation_notice_hours,
     )
 
-    db.add(plan)
-    db.commit()
-    db.refresh(plan)
 
-    return _plan_to_response(plan)
+def _plan_update_request_to_domain(plan_data: CoachingPlanUpdate, existing_plan: CoachingPlan) -> CoachingPlan:
+    """Convert CoachingPlanUpdate request to domain model."""
+    # Start with existing plan
+    updated_plan = CoachingPlan(
+        id=existing_plan.id,
+        coach_profile_id=existing_plan.coach_profile_id,
+        plan_type=existing_plan.plan_type,
+        title=existing_plan.title,
+        description=existing_plan.description,
+        duration_minutes=existing_plan.duration_minutes,
+        number_of_sessions=existing_plan.number_of_sessions,
+        price=existing_plan.price,
+        currency=existing_plan.currency,
+        is_active=existing_plan.is_active,
+        max_participants=existing_plan.max_participants,
+        booking_notice_hours=existing_plan.booking_notice_hours,
+        cancellation_notice_hours=existing_plan.cancellation_notice_hours,
+        created_at=existing_plan.created_at,
+        updated_at=existing_plan.updated_at,
+    )
+
+    # Apply updates
+    update_data = plan_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if hasattr(updated_plan, field):
+            setattr(updated_plan, field, value)
+
+    return updated_plan
+
+
+# Coach Profile endpoints
+@router.get("/", response_model=Optional[CoachProfileResponse])
+def get_coach_profile(
+    current_user: User = Depends(get_current_user_dependency),
+    use_case: CoachProfileManagementUseCase = Depends(get_coach_profile_management_use_case),
+):
+    """Get current user's coach profile."""
+    try:
+        profile = use_case.get_profile(current_user.id)
+
+        if not profile:
+            return None
+
+        return _profile_to_response(profile)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post(
+    "/",
+    response_model=CoachProfileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_coach_profile(
+    profile_data: CoachProfileCreate,
+    current_user: User = Depends(get_current_user_dependency),
+    use_case: CoachProfileManagementUseCase = Depends(
+        get_coach_profile_management_use_case
+    ),
+):
+    """Create a coach profile for the current user."""
+    try:
+        domain_profile = _create_request_to_domain(profile_data)
+
+        created_profile = use_case.create_profile(current_user.id, domain_profile)
+        return _profile_to_response(created_profile)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.put("/", response_model=CoachProfileResponse)
+def update_coach_profile(
+    profile_data: CoachProfileUpdate,
+    current_user: User = Depends(get_current_user_dependency),
+    use_case: CoachProfileManagementUseCase = Depends(
+        get_coach_profile_management_use_case
+    ),
+):
+    """Update the current user's coach profile."""
+    try:
+        # Get existing profile
+        existing_profile = use_case.get_profile(current_user.id)
+        if not existing_profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Coach profile not found",
+            )
+
+        # Convert update request to domain model
+        domain_profile = _update_request_to_domain(profile_data, existing_profile)
+
+        # Update profile
+        updated_profile = use_case.update_profile(current_user.id, domain_profile)
+        return _profile_to_response(updated_profile)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
+def delete_coach_profile(
+    current_user: User = Depends(get_current_user_dependency),
+    use_case: CoachProfileManagementUseCase = Depends(
+        get_coach_profile_management_use_case
+    ),
+):
+    """Delete the current user's coach profile."""
+    try:
+        deleted = use_case.delete_profile(current_user.id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Coach profile not found",
+            )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+# Coaching Plan endpoints
+@router.get("/plans", response_model=List[CoachingPlanResponse])
+def get_coaching_plans(
+    current_user: User = Depends(get_current_user_dependency),
+    use_case: CoachProfileManagementUseCase = Depends(
+        get_coach_profile_management_use_case
+    ),
+):
+    """Get all coaching plans for the current user's profile."""
+    try:
+        plans = use_case.get_coaching_plans(current_user.id)
+
+        return [_plan_to_response(plan) for plan in plans]
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
+@router.post(
+    "/plans",
+    response_model=CoachingPlanResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_coaching_plan(
+    plan_data: CoachingPlanCreate,
+    current_user: User = Depends(get_current_user_dependency),
+    use_case: CoachProfileManagementUseCase = Depends(
+        get_coach_profile_management_use_case
+    ),
+):
+    """Create a new coaching plan."""
+    try:
+        domain_plan = _plan_create_request_to_domain(plan_data)
+
+        created_plan = use_case.create_plan(current_user.id, domain_plan)
+        return _plan_to_response(created_plan)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
 
 
 @router.put("/plans/{plan_id}", response_model=CoachingPlanResponse)
@@ -445,84 +612,53 @@ def update_coaching_plan(
     plan_id: UUID4,
     plan_data: CoachingPlanUpdate,
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
+    use_case: CoachProfileManagementUseCase = Depends(
+        get_coach_profile_management_use_case
+    ),
 ):
     """Update a coaching plan."""
-    # Get coach profile
-    profile = (
-        db.query(CoachProfile)
-        .filter(CoachProfile.user_id == current_user.id)
-        .first()
-    )
+    try:
+        # Get existing plan through use case to verify ownership
+        existing_plans = use_case.get_coaching_plans(current_user.id)
+        existing_plan = next((p for p in existing_plans if p.id == plan_id), None)
 
-    if not profile:
+        if not existing_plan:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Coaching plan not found",
+            )
+
+        # Convert update request to domain model
+        domain_plan = _plan_update_request_to_domain(plan_data, existing_plan)
+
+        # Update plan
+        updated_plan = use_case.update_plan(current_user.id, plan_id, domain_plan)
+        return _plan_to_response(updated_plan)
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found",
+            detail=str(e)
         )
-
-    # Get plan
-    plan = (
-        db.query(CoachingPlan)
-        .filter(
-            CoachingPlan.id == plan_id,
-            CoachingPlan.coach_profile_id == profile.id,
-        )
-        .first()
-    )
-
-    if not plan:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coaching plan not found",
-        )
-
-    # Update fields
-    update_data = plan_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(plan, field, value)
-
-    db.commit()
-    db.refresh(plan)
-
-    return _plan_to_response(plan)
 
 
 @router.delete("/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_coaching_plan(
     plan_id: UUID4,
     current_user: User = Depends(get_current_user_dependency),
-    db: Session = Depends(get_db),
+    use_case: CoachProfileManagementUseCase = Depends(
+        get_coach_profile_management_use_case
+    ),
 ):
     """Delete a coaching plan."""
-    # Get coach profile
-    profile = (
-        db.query(CoachProfile)
-        .filter(CoachProfile.user_id == current_user.id)
-        .first()
-    )
-
-    if not profile:
+    try:
+        deleted = use_case.delete_plan(current_user.id, plan_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Coaching plan not found",
+            )
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coach profile not found",
+            detail=str(e)
         )
-
-    # Get plan
-    plan = (
-        db.query(CoachingPlan)
-        .filter(
-            CoachingPlan.id == plan_id,
-            CoachingPlan.coach_profile_id == profile.id,
-        )
-        .first()
-    )
-
-    if not plan:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Coaching plan not found",
-        )
-
-    db.delete(plan)
-    db.commit()

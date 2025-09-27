@@ -30,6 +30,7 @@ from ..models.subscription import (
 from ..models.client import Client
 from ..models.coaching_session import CoachingSession
 from ..models.coach_profile import CoachProfile
+from ..models.coaching_plan import CoachingPlan
 from ..models.transcript import TranscriptSegment
 
 
@@ -107,6 +108,10 @@ class SessionRepoPort(Protocol):
         self, user_id: UUID, since: Optional[datetime] = None
     ) -> int:
         """Get total duration in minutes for user sessions."""
+        ...
+
+    def get_completed_count_for_user(self, user_id: UUID) -> int:
+        """Get count of completed sessions for a user."""
         ...
 
 
@@ -314,6 +319,24 @@ class CoachingSessionRepoPort(Protocol):
         """Get the most recent coaching session for a specific client."""
         ...
 
+    def get_total_minutes_for_user(self, user_id: UUID) -> int:
+        """Get total minutes from all coaching sessions for a user."""
+        ...
+
+    def get_monthly_minutes_for_user(self, user_id: UUID, year: int, month: int) -> int:
+        """Get total minutes for a user in a specific month."""
+        ...
+
+    def get_monthly_revenue_by_currency(
+        self, user_id: UUID, year: int, month: int
+    ) -> Dict[str, int]:
+        """Get revenue by currency for a user in a specific month."""
+        ...
+
+    def get_unique_clients_count_for_user(self, user_id: UUID) -> int:
+        """Get count of unique clients for a user."""
+        ...
+
 
 class CoachProfileRepoPort(Protocol):
     """Repository interface for CoachProfile entity operations."""
@@ -326,8 +349,29 @@ class CoachProfileRepoPort(Protocol):
         """Save or update coach profile."""
         ...
 
+    def delete(self, user_id: UUID) -> bool:
+        """Delete coach profile by user ID."""
+        ...
+
     def get_all_verified_coaches(self) -> List[CoachProfile]:
         """Get all verified coach profiles."""
+        ...
+
+    # CoachingPlan operations
+    def get_coaching_plans_by_profile_id(self, profile_id: UUID) -> List[CoachingPlan]:
+        """Get all coaching plans for a profile."""
+        ...
+
+    def get_coaching_plan_by_id(self, plan_id: UUID) -> Optional[CoachingPlan]:
+        """Get coaching plan by ID."""
+        ...
+
+    def save_coaching_plan(self, plan: CoachingPlan) -> CoachingPlan:
+        """Save or update coaching plan."""
+        ...
+
+    def delete_coaching_plan(self, plan_id: UUID) -> bool:
+        """Delete coaching plan by ID."""
         ...
 
 
@@ -348,39 +392,64 @@ class TranscriptRepoPort(Protocol):
         """Update speaker roles for session segments."""
         ...
 
-    def delete_by_session_id(self, session_id: UUID) -> bool:
-        """Delete all segments for a session."""
+    def update_segment_content(
+        self, session_id: UUID, segments: List[TranscriptSegment]
+    ) -> List[TranscriptSegment]:
+        """Update content for existing transcript segments."""
         ...
 
 
-# Aggregate repository interfaces for complex operations
-class UsageAnalyticsRepoPort(Protocol):
-    """Repository interface for complex usage analytics operations."""
+class UsageLogRepoPort(Protocol):
+    """Repository interface for UsageLog entity operations."""
 
-    def get_user_usage_analytics(
-        self,
-        user_id: UUID,
-        start_date: datetime,
-        end_date: datetime,
-    ) -> Optional[UsageAnalytics]:
-        """Get or create usage analytics for user in period."""
+    def create(self, usage_log: 'UsageLog') -> 'UsageLog':
+        """Create a new usage log entry."""
         ...
 
-    def save_analytics(self, analytics: UsageAnalytics) -> UsageAnalytics:
-        """Save usage analytics entity."""
+    def get_by_user_and_timeframe(
+        self, user_id: UUID, start_date: datetime, end_date: datetime
+    ) -> List['UsageLog']:
+        """Get usage logs for a user within a timeframe."""
         ...
 
-    def get_system_wide_analytics(
-        self, start_date: datetime, end_date: datetime
-    ) -> List[UsageAnalytics]:
-        """Get system-wide analytics across all users."""
+    def get_total_usage_for_user_this_month(self, user_id: UUID) -> Dict[str, Any]:
+        """Get total usage metrics for user in current month."""
         ...
 
-    def get_plan_analytics(
-        self, plan_type: UserPlan, start_date: datetime, end_date: datetime
+    def get_user_usage_history(
+        self, user_id: UUID, months: int
     ) -> Dict[str, Any]:
-        """Get aggregated analytics by plan type."""
+        """Get user usage history for specified number of months."""
         ...
+
+
+class UsageAnalyticsRepoPort(Protocol):
+    """Repository interface for UsageAnalytics entity operations."""
+
+    def get_or_create_monthly(
+        self, user_id: UUID, year: int, month: int
+    ) -> 'UsageAnalytics':
+        """Get or create monthly analytics record."""
+        ...
+
+    def update(self, analytics: 'UsageAnalytics') -> 'UsageAnalytics':
+        """Update analytics record."""
+        ...
+
+    def get_by_user(self, user_id: UUID) -> List['UsageAnalytics']:
+        """Get all analytics records for a user."""
+        ...
+
+    def get_admin_analytics(self) -> Dict[str, Any]:
+        """Get system-wide analytics for admin users."""
+        ...
+
+    def get_by_month_year(self, month_year: str) -> List['UsageAnalytics']:
+        """Get all analytics records for a specific month."""
+        ...
+
+
+# Already defined above - removing duplicate
 
 
 # Unit of Work interface for transaction management
@@ -498,4 +567,48 @@ class ECPayClientPort(Protocol):
 
     def calculate_refund_amount(self, original_amount: int, days_used: int, total_days: int) -> int:
         """Calculate prorated refund amount."""
+        ...
+
+
+class AdminAnalyticsRepoPort(Protocol):
+    """Repository interface for admin analytics and reporting operations."""
+
+    def get_total_users_count(self) -> int:
+        """Get total count of all users."""
+        ...
+
+    def get_new_users_in_period(self, start: datetime, end: datetime) -> List[Dict[str, Any]]:
+        """Get new users created within the specified period."""
+        ...
+
+    def get_active_users_count(self, start: datetime, end: datetime) -> int:
+        """Get count of users who created sessions in the period."""
+        ...
+
+    def get_users_by_plan_distribution(self) -> Dict[str, int]:
+        """Get user count distribution by plan type."""
+        ...
+
+    def get_session_metrics_for_period(self, start: datetime, end: datetime) -> Dict[str, Any]:
+        """Get comprehensive session metrics for the specified period."""
+        ...
+
+    def get_admin_users_list(self) -> List[Dict[str, Any]]:
+        """Get list of all admin and staff users."""
+        ...
+
+    def get_staff_logins_count(self, start: datetime, end: datetime) -> int:
+        """Get count of staff logins in the specified period."""
+        ...
+
+    def get_subscription_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+        """Get subscription and billing metrics for the specified period."""
+        ...
+
+    def get_system_health_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+        """Get system health and performance metrics."""
+        ...
+
+    def get_top_active_users(self, start: datetime, end: datetime, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get top users by activity in the specified period."""
         ...

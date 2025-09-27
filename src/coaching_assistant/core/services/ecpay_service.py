@@ -7,10 +7,8 @@ import time
 from datetime import datetime, timedelta, date
 from typing import Dict, Any, Optional
 
-from sqlalchemy.orm import Session
-
 from ..config import Settings
-from ..repositories.ports import NotificationPort, ECPayClientPort
+from ..repositories.ports import NotificationPort, ECPayClientPort, SubscriptionRepoPort, UserRepoPort
 from ..models.user import User
 from ..models.subscription import (
     ECPayCreditAuthorization,
@@ -29,12 +27,14 @@ class ECPaySubscriptionService:
 
     def __init__(
         self,
-        db: Session,
+        user_repo: UserRepoPort,
+        subscription_repo: SubscriptionRepoPort,
         settings: Settings,
         ecpay_client: ECPayClientPort,
         notification_service: NotificationPort
     ):
-        self.db = db
+        self.user_repo = user_repo
+        self.subscription_repo = subscription_repo
         self.settings = settings
         self.ecpay_client = ecpay_client
         self.notification_service = notification_service

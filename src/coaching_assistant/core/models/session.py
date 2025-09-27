@@ -52,6 +52,7 @@ class Session:
     transcript_text: Optional[str] = None
     speaker_count: Optional[int] = None
     confidence_score: Optional[float] = None
+    segments_count: int = 0
 
     # Timestamps
     created_at: Optional[datetime] = None

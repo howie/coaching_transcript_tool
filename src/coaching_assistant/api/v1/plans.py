@@ -12,8 +12,7 @@ from .dependencies import (
     get_plan_validation_use_case,
     get_subscription_retrieval_use_case,
 )
-from ...models import User
-from ...models.user import UserPlan
+from ...core.models.user import User, UserPlan
 from ...core.services.plan_management_use_case import (
     PlanRetrievalUseCase,
     PlanValidationUseCase,

@@ -3,11 +3,8 @@
 from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from ...infrastructure.factories import ClientServiceFactory
-from ...core.database import get_db
 from ...core.models.user import User
 from ...core.services.client_management_use_case import (
     ClientRetrievalUseCase,
@@ -17,34 +14,15 @@ from ...core.services.client_management_use_case import (
     ClientOptionsUseCase
 )
 from .auth import get_current_user_dependency
+from .dependencies import (
+    get_client_retrieval_use_case,
+    get_client_creation_use_case,
+    get_client_update_use_case,
+    get_client_deletion_use_case,
+    get_client_options_use_case,
+)
 
 router = APIRouter()
-
-
-# Dependency injection factory functions
-def get_client_retrieval_use_case(db: Session = Depends(get_db)) -> ClientRetrievalUseCase:
-    """Dependency injection for ClientRetrievalUseCase."""
-    return ClientServiceFactory.create_client_retrieval_use_case(db)
-
-
-def get_client_creation_use_case(db: Session = Depends(get_db)) -> ClientCreationUseCase:
-    """Dependency injection for ClientCreationUseCase."""
-    return ClientServiceFactory.create_client_creation_use_case(db)
-
-
-def get_client_update_use_case(db: Session = Depends(get_db)) -> ClientUpdateUseCase:
-    """Dependency injection for ClientUpdateUseCase."""
-    return ClientServiceFactory.create_client_update_use_case(db)
-
-
-def get_client_deletion_use_case(db: Session = Depends(get_db)) -> ClientDeletionUseCase:
-    """Dependency injection for ClientDeletionUseCase."""
-    return ClientServiceFactory.create_client_deletion_use_case(db)
-
-
-def get_client_options_use_case() -> ClientOptionsUseCase:
-    """Dependency injection for ClientOptionsUseCase."""
-    return ClientServiceFactory.create_client_options_use_case()
 
 
 # Pydantic models for request/response
