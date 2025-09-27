@@ -502,7 +502,7 @@ async def get_current_user(
         id=current_user.id,
         email=current_user.email,
         name=current_user.name,
-        plan=current_user.plan,
+        plan=current_user.plan.value if hasattr(current_user.plan, 'value') else current_user.plan,
         auth_provider=current_user.auth_provider,
         google_connected=current_user.google_connected,
         preferences=current_user.get_preferences(),
