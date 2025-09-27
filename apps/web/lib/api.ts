@@ -1918,7 +1918,7 @@ class ApiClient {
   // Refresh token functionality
   async refreshAccessToken(refreshToken: string) {
     try {
-      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+      const response = await fetch(`${this.baseUrl}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

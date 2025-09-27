@@ -54,20 +54,11 @@ export default function SignupPage() {
       // Show success message
       setShowSuccess(true)
       
-      // Auto-login after successful registration
-      if (response.access_token) {
-        login(response.access_token)
-        
-        // Redirect to profile page after 2 seconds
-        setTimeout(() => {
-          router.push('/dashboard/profile')
-        }, 2000)
-      } else {
-        // If no token returned, redirect to login
-        setTimeout(() => {
-          router.push('/login')
-        }, 2000)
-      }
+      // Signup successful, redirect to login page
+      // Note: Backend doesn't provide tokens for signup, user needs to login
+      setTimeout(() => {
+        router.push('/login')
+      }, 2000)
     } catch (err) {
       if (err instanceof Error && err.message.includes('Human Verification')) {
         setError(t('auth.recaptchaError'))
@@ -162,6 +153,7 @@ export default function SignupPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="input-base"
               placeholder={t('auth.passwordPlaceholder')}
+              autoComplete="new-password"
               required
             />
           </div>
@@ -175,6 +167,7 @@ export default function SignupPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="input-base"
               placeholder={t('auth.confirmPasswordPlaceholder')}
+              autoComplete="new-password"
               required
             />
           </div>

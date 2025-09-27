@@ -8,7 +8,7 @@ import logging
 
 from .auth import get_current_user_dependency
 from ..dependencies import require_admin  # Use the new permission system
-from ...models.user import User
+from ...core.models.user import User
 from .dependencies import (
     get_user_usage_use_case,
     get_usage_history_use_case,

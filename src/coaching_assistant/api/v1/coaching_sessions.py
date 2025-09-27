@@ -23,10 +23,10 @@ from ...core.database import get_db
 from ...core.models.user import User
 from ...core.models.coaching_session import SessionSource
 from ...core.models.session import SessionStatus
-from ...models.session import Session as TranscriptionSession
-from ...models.coaching_session import CoachingSession
-from ...models.transcript import SessionRole, TranscriptSegment, SpeakerRole
-from ...models.client import Client
+from ...core.models.session import Session as TranscriptionSession
+from ...core.models.coaching_session import CoachingSession
+from ...core.models.transcript import SessionRole, TranscriptSegment, SpeakerRole
+from ...core.models.client import Client
 from ...core.services.coaching_session_management_use_case import (
     CoachingSessionRetrievalUseCase,
     CoachingSessionCreationUseCase,

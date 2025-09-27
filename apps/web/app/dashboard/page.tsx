@@ -46,19 +46,10 @@ function DashboardContent() {
       // Add a small delay for Safari to ensure everything is ready
       const processOAuth = async () => {
         try {
-          console.log('Attempting login with access token...')
-          await login(access_token)
-          
-          console.log('OAuth login successful, storing refresh token')
-          // Store refresh token for later use
-          try {
-            if (typeof window !== 'undefined' && window.localStorage) {
-              localStorage.setItem('refresh_token', refresh_token)
-              console.log('Refresh token stored successfully')
-            }
-          } catch (storageError) {
-            console.error('Failed to store refresh token:', storageError)
-          }
+          console.log('Attempting login with access token and refresh token...')
+          await login(access_token, refresh_token)
+
+          console.log('OAuth login successful with both tokens stored')
           
           // Clean up URL parameters after a successful login
           setTimeout(() => {

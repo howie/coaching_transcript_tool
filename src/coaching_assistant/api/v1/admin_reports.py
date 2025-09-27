@@ -12,7 +12,7 @@ from ...tasks.admin_report_tasks import (
     generate_and_send_daily_report,
     schedule_weekly_summary_report,
 )
-from ...models.user import User, UserRole
+from ...core.models.user import User, UserRole
 from ...core.database import get_db
 from ...core.config import settings
 from .dependencies import require_admin

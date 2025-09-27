@@ -21,9 +21,9 @@ import logging
 import re
 
 # TEMPORARY: Still needed for legacy endpoints that haven't been migrated to Clean Architecture
-from ...models.session import Session, SessionStatus
-from ...models.transcript import TranscriptSegment
-from ...models.user import User
+from ...core.models.session import Session, SessionStatus
+from ...core.models.transcript import TranscriptSegment
+from ...core.models.user import User
 from .auth import get_current_user_dependency
 from ...api.v1.dependencies import (
     get_session_creation_use_case,

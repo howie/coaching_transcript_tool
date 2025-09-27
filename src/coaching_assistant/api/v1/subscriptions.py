@@ -18,7 +18,7 @@ from ...core.services.subscription_management_use_case import (
     SubscriptionRetrievalUseCase,
     SubscriptionModificationUseCase,
 )
-from ...models.user import User
+from ...core.models.user import User
 from ...exceptions import DomainException
 
 logger = logging.getLogger(__name__)

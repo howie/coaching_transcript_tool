@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
-from ...models.user import User
+from ...core.models.user import User
 from .dependencies import (
     require_admin,
     require_staff,
