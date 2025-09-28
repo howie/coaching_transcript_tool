@@ -1,8 +1,8 @@
 {
-  "version": "2.22.3",
-  "displayVersion": "v2.22.3",
-  "description": "WP6-Cleanup-3 Clean Architecture Migration - Phase 1 Complete",
-  "releaseDate": "2025-09-22",
-  "releaseNotes": "Completed Clean Architecture migration for 14 API endpoints: (1) Migrated billing_analytics.py - 10 endpoints from direct DB access to dependency injection using use cases; (2) Migrated coaching_sessions.py - 4 endpoints enhanced with comprehensive data retrieval methods; (3) Created 10 new use case classes in core/services/billing_analytics_use_case.py; (4) Enhanced CoachingSessionRetrievalUseCase with session/client/transcription summary methods; (5) Added factory methods in infrastructure/factories.py for dependency injection; (6) Updated dependencies.py with proper use case dependency injection; (7) Fixed all linting errors - resolved undefined names and imports; (8) Verified smoke tests, unit tests, and server startup functionality. Architecture compliance: All migrated endpoints now follow Clean Architecture principles with proper separation of concerns between API layer, business logic (use cases), and data access (repositories). Remaining: 75 endpoints to migrate in subsequent phases.",
+  "version": "2.24.1",
+  "displayVersion": "v2.24.1",
+  "description": "Production Stability & Security Enhancement Release",
+  "releaseDate": "2025-09-28",
+  "releaseNotes": "Critical production fixes and security enhancements: (1) Resolved PostgreSQL enum migration failures with native_enum=False compatibility fixes; (2) Fixed Alembic multiple head revisions error by creating linear migration chain; (3) Completed comprehensive security cleanup - removed sensitive credentials from entire git history using BFG Repo Cleaner; (4) Upgraded deprecated GitHub Actions (v3→v4) to restore CI/CD pipeline functionality; (5) Enhanced subscription plan management with upgrade/downgrade capabilities; (6) Added emergency production scripts for database maintenance and diagnostics; (7) Implemented idempotent migrations safe for production reruns; (8) Cleaned up 4 outdated remote feature branches containing security commits; (9) Fixed enum validation errors preventing production deployments; (10) Added production-grade error handling and recovery mechanisms. Security: Completely removed .claude/settings.local.json and other sensitive files from 596 git objects across all branches and history. All exposed credentials should be rotated immediately.",
   "author": "Coachly Team"
 }
