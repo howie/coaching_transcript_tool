@@ -2,3 +2,4 @@ python 3.13.3
 nodejs 22.16.0
 terraform 1.12.2
 uv 0.8.13
+java temurin-17.0.8+101
