@@ -1,7 +1,7 @@
 """fix_enum_metadata_compatibility
 
 Revision ID: 900f713316c0
-Revises: dc0e4ea7ee0a
+Revises: 04a3991223d9
 Create Date: 2025-09-28 12:15:10.738605
 
 """
@@ -31,12 +31,17 @@ def upgrade() -> None:
         sa.text("""
             SELECT enumlabel
             FROM pg_enum
-            WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'userplan')
+            WHERE enumtypid = (
+                SELECT oid FROM pg_type WHERE typname = 'userplan'
+            )
         """)
     )
     existing_values = {row[0] for row in existing_values_result}
 
-    required_values = ['FREE', 'PRO', 'ENTERPRISE', 'free', 'pro', 'enterprise', 'student', 'coaching_school']
+    required_values = [
+        'FREE', 'PRO', 'ENTERPRISE', 'free', 'pro', 'enterprise',
+        'student', 'coaching_school'
+    ]
 
     # Add any missing enum values (defensive programming)
     for value in required_values:
@@ -54,7 +59,9 @@ def upgrade() -> None:
     for old_value, new_value in uppercase_to_lowercase:
         # Check if there are users with uppercase values
         check_result = connection.execute(
-            sa.text(f"SELECT COUNT(*) FROM \"user\" WHERE plan = '{old_value}'")
+            sa.text(
+                f"SELECT COUNT(*) FROM \"user\" WHERE plan = '{old_value}'"
+            )
         )
         count = check_result.scalar()
 
@@ -63,17 +70,26 @@ def upgrade() -> None:
             op.execute(f"UPDATE \"user\" SET plan = '{new_value}' WHERE plan = '{old_value}'")
 
         # Also check other tables that use the enum
-        for table, column in [('plan_configurations', 'plan_type'),
-                             ('subscription_history', 'old_plan'),
-                             ('subscription_history', 'new_plan')]:
+        table_columns = [
+            ('plan_configurations', 'plan_type'),
+            ('subscription_history', 'old_plan'),
+            ('subscription_history', 'new_plan')
+        ]
+        for table, column in table_columns:
             try:
                 check_result = connection.execute(
-                    sa.text(f"SELECT COUNT(*) FROM \"{table}\" WHERE {column} = '{old_value}'")
+                    sa.text(
+                        f"SELECT COUNT(*) FROM \"{table}\" "
+                        f"WHERE {column} = '{old_value}'"
+                    )
                 )
                 count = check_result.scalar()
 
                 if count > 0:
-                    op.execute(f"UPDATE \"{table}\" SET {column} = '{new_value}' WHERE {column} = '{old_value}'")
+                    op.execute(
+                        f"UPDATE \"{table}\" SET {column} = '{new_value}' "
+                        f"WHERE {column} = '{old_value}'"
+                    )
             except Exception:
                 # Table might not exist or column might be nullable
                 pass
