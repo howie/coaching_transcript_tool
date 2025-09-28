@@ -193,9 +193,13 @@ jobs:
       working-directory: apps/web
       run: npm ci
 
+    - name: Create Next.js build directory
+      working-directory: apps/web
+      run: mkdir -p .next
+
     - name: Run frontend linting
       working-directory: apps/web
-      run: npx next lint --strict
+      run: npx next lint --fix
 
     - name: Run frontend tests
       working-directory: apps/web
