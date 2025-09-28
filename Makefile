@@ -325,15 +325,23 @@ dev-setup:
 	$(UV) sync --dev
 	$(UV) pip install -r apps/api-server/requirements.txt
 	$(UV) pip install -r apps/cli/requirements.txt
-	$(UV) pip install setuptools wheel build flake8 pytest
+	$(UV) pip install setuptools wheel build pytest
 	$(UV) pip install -e .
 
-# Run linting
+# Run linting and formatting with Ruff
 lint: dev-setup
 	@mkdir -p logs
-	@echo "Running linting..."
+	@echo "Running Ruff linting and formatting..."
 	@echo "Lint logs will be saved to logs/lint.log"
-	$(PYTHON) -m flake8 src/ tests/ 2>&1 | tee logs/lint.log
+	@echo ""
+	@echo "🔧 Formatting code with Ruff..."
+	$(UV) run ruff format src/ apps/ tests/ 2>&1 | tee logs/lint.log
+	@echo ""
+	@echo "🔍 Checking linting rules with Ruff..."
+	$(UV) run ruff check src/ apps/ tests/ --fix 2>&1 | tee -a logs/lint.log
+	@echo ""
+	@echo "📊 Final statistics:"
+	$(UV) run ruff check src/ apps/ tests/ --statistics 2>&1 | tee -a logs/lint.log
 
 # Run architecture compliance checks
 check-architecture: dev-setup
@@ -406,10 +414,10 @@ help:
 	@echo "  test-all       : Run all tests (standalone + server-dependent)"
 	@echo "  coverage       : Run standalone tests with coverage report"
 	@echo "  coverage-all   : Run all tests with coverage (requires API server)"
-	@echo "  lint           : Run linting (logs to logs/lint.log)"
+	@echo "  lint           : Run Ruff formatting and linting (logs to logs/lint.log)"
 	@echo ""  
 	@echo "Zsh compatibility aliases:"
-	@echo "  make-lint      : Run linting (alias for zsh users)"
+	@echo "  make-lint      : Run Ruff formatting and linting (alias for zsh users)"
 	@echo "  make-test-unit : Run unit tests (alias for zsh users)"
 	@echo ""
 	@echo "Frontend (Node.js):"
