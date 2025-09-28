@@ -5,26 +5,26 @@ operations. All external dependencies are injected through repository ports.
 """
 
 from __future__ import annotations
-from typing import List, Dict, Any, Optional
-from uuid import UUID
-from datetime import datetime
 
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from ...exceptions import DomainException
+from ..models.plan_configuration import PlanConfiguration
+from ..models.user import UserPlan
 from ..repositories.ports import (
     PlanConfigurationRepoPort,
-    UserRepoPort,
     SessionRepoPort,
-    UsageLogRepoPort,
     SubscriptionRepoPort,
+    UsageLogRepoPort,
+    UserRepoPort,
 )
-from ..models.user import User, UserPlan
-from ..models.plan_configuration import PlanConfiguration
-from ..models.session import SessionStatus
-from ...exceptions import DomainException
 
 
 def _get_plan_value(plan):
     """Safely get the string value from a plan field, handling both enum and string types."""
-    return plan.value if hasattr(plan, 'value') else plan
+    return plan.value if hasattr(plan, "value") else plan
 
 
 class PlanRetrievalUseCase:
@@ -42,12 +42,12 @@ class PlanRetrievalUseCase:
 
     def get_all_plans(self) -> List[Dict[str, Any]]:
         """Get all available plans with their configurations.
-        
+
         Returns:
             List of plan configuration dictionaries
         """
         plan_configs = self.plan_config_repo.get_all_active_plans()
-        
+
         return [self._format_plan_config(config) for config in plan_configs]
 
     def get_user_current_plan(self, user_id: UUID) -> Dict[str, Any]:
@@ -75,20 +75,24 @@ class PlanRetrievalUseCase:
         # to avoid duplicate queries within same transaction
 
         plan_info = self._format_plan_config(plan_config)
-        plan_info.update({
-            "user_plan": _get_plan_value(user.plan),
-            "subscription": None,  # Set separately by caller if needed
-            "is_current_plan": True,
-        })
+        plan_info.update(
+            {
+                "user_plan": _get_plan_value(user.plan),
+                "subscription": None,  # Set separately by caller if needed
+                "is_current_plan": True,
+            }
+        )
 
         return plan_info
 
-    def compare_plans(self, plan_types: Optional[List[UserPlan]] = None) -> Dict[str, Any]:
+    def compare_plans(
+        self, plan_types: Optional[List[UserPlan]] = None
+    ) -> Dict[str, Any]:
         """Get plan comparison data.
-        
+
         Args:
             plan_types: Optional list of specific plans to compare
-            
+
         Returns:
             Dictionary with plan comparison data
         """
@@ -102,7 +106,7 @@ class PlanRetrievalUseCase:
             plan_configs = self.plan_config_repo.get_all_active_plans()
 
         formatted_plans = [self._format_plan_config(config) for config in plan_configs]
-        
+
         # Sort by sort_order or plan hierarchy
         formatted_plans.sort(key=lambda x: x.get("sort_order", 999))
 
@@ -116,11 +120,14 @@ class PlanRetrievalUseCase:
         """Format plan configuration for API response."""
         limits = config.limits
 
-        # Format limits for frontend display (accessing dataclass fields directly)
+        # Format limits for frontend display (accessing dataclass fields
+        # directly)
         formatted_limits = {
             "maxSessions": self._format_limit_value(limits.max_sessions),
             "maxTotalMinutes": self._format_limit_value(limits.max_total_minutes),
-            "maxTranscriptionCount": self._format_limit_value(limits.max_transcription_count),
+            "maxTranscriptionCount": self._format_limit_value(
+                limits.max_transcription_count
+            ),
             "maxFileSizeMb": limits.max_file_size_mb,
             "exportFormats": limits.export_formats,
             "concurrentProcessing": limits.concurrent_processing,
@@ -167,7 +174,11 @@ class PlanRetrievalUseCase:
             "plan_id": subscription.plan_id,
             "billing_cycle": subscription.billing_cycle,
             "created_at": subscription.created_at.isoformat(),
-            "next_billing_date": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+            "next_billing_date": (
+                subscription.current_period_end.isoformat()
+                if subscription.current_period_end
+                else None
+            ),
         }
 
     def _get_fallback_plan_info(self, plan_type: UserPlan) -> Dict[str, Any]:
@@ -185,7 +196,7 @@ class PlanRetrievalUseCase:
                     "exportFormats": ["json", "txt"],
                     "concurrentProcessing": 1,
                     "retentionDays": 30,
-                }
+                },
             },
             UserPlan.PRO: {
                 "id": "PRO",
@@ -199,7 +210,7 @@ class PlanRetrievalUseCase:
                     "exportFormats": ["json", "txt", "excel"],
                     "concurrentProcessing": 3,
                     "retentionDays": 90,
-                }
+                },
             },
             UserPlan.ENTERPRISE: {
                 "id": "ENTERPRISE",
@@ -213,10 +224,10 @@ class PlanRetrievalUseCase:
                     "exportFormats": ["json", "txt", "excel"],
                     "concurrentProcessing": 10,
                     "retentionDays": "permanent",
-                }
-            }
+                },
+            },
         }
-        
+
         return fallback_configs.get(plan_type, fallback_configs[UserPlan.FREE])
 
     def _get_comparison_features(self) -> List[str]:
@@ -249,13 +260,13 @@ class PlanValidationUseCase:
 
     def validate_user_limits(self, user_id: UUID) -> Dict[str, Any]:
         """Validate user's current usage against plan limits.
-        
+
         Args:
             user_id: User ID to validate
-            
+
         Returns:
             Dictionary with validation results and usage information
-            
+
         Raises:
             ValueError: If user not found
         """
@@ -273,12 +284,12 @@ class PlanValidationUseCase:
                 "limits": {},
                 "current_usage": current_usage,
                 "violations": [],
-                "warnings": []
+                "warnings": [],
             }
 
         limits = plan_config.limits
         current_usage = self._get_current_usage(user_id)
-        
+
         # Convert PlanLimits dataclass to dictionary for API compatibility
         limits_dict = {
             "maxSessions": limits.max_sessions,
@@ -302,50 +313,66 @@ class PlanValidationUseCase:
         max_sessions = limits.max_sessions
         if max_sessions > 0 and current_usage["session_count"] >= max_sessions:
             validation_results["valid"] = False
-            validation_results["violations"].append({
-                "type": "session_count",
-                "limit": max_sessions,
-                "current": current_usage["session_count"],
-                "message": f"Session limit exceeded: {current_usage['session_count']}/{max_sessions}"
-            })
+            validation_results["violations"].append(
+                {
+                    "type": "session_count",
+                    "limit": max_sessions,
+                    "current": current_usage["session_count"],
+                    "message": (
+                        f"Session limit exceeded: {current_usage['session_count']}/{max_sessions}"
+                    ),
+                }
+            )
 
         # Check total minutes limit
         max_minutes = limits.max_total_minutes
         if max_minutes > 0 and current_usage["total_minutes"] >= max_minutes:
             validation_results["valid"] = False
-            validation_results["violations"].append({
-                "type": "total_minutes",
-                "limit": max_minutes,
-                "current": current_usage["total_minutes"],
-                "message": f"Total minutes limit exceeded: {current_usage['total_minutes']}/{max_minutes}"
-            })
+            validation_results["violations"].append(
+                {
+                    "type": "total_minutes",
+                    "limit": max_minutes,
+                    "current": current_usage["total_minutes"],
+                    "message": (
+                        f"Total minutes limit exceeded: {current_usage['total_minutes']}/{max_minutes}"
+                    ),
+                }
+            )
 
         # Add warnings for approaching limits
         if max_sessions > 0:
             usage_percentage = (current_usage["session_count"] / max_sessions) * 100
             if usage_percentage >= 80:
-                validation_results["warnings"].append({
-                    "type": "session_count_warning",
-                    "message": f"Approaching session limit: {usage_percentage:.1f}% used"
-                })
+                validation_results["warnings"].append(
+                    {
+                        "type": "session_count_warning",
+                        "message": (
+                            f"Approaching session limit: {usage_percentage:.1f}% used"
+                        ),
+                    }
+                )
 
         if max_minutes > 0:
             usage_percentage = (current_usage["total_minutes"] / max_minutes) * 100
             if usage_percentage >= 80:
-                validation_results["warnings"].append({
-                    "type": "minutes_warning",
-                    "message": f"Approaching minutes limit: {usage_percentage:.1f}% used"
-                })
+                validation_results["warnings"].append(
+                    {
+                        "type": "minutes_warning",
+                        "message": (
+                            f"Approaching minutes limit: {usage_percentage:.1f}% used"
+                        ),
+                    }
+                )
 
         return validation_results
 
     def validate_file_size(self, user_id: UUID, file_size_mb: float) -> Dict[str, Any]:
         """Validate if file size is within plan limits.
-        
+
         Args:
             user_id: User ID
             file_size_mb: File size in megabytes
-            
+
         Returns:
             Dictionary with validation result
         """
@@ -357,33 +384,43 @@ class PlanValidationUseCase:
         if not plan_config:
             return {"valid": True, "message": "No file size limits configured"}
 
-        max_file_size = plan_config.limits.max_file_size_mb  # Access dataclass field directly
-        
+        max_file_size = (
+            plan_config.limits.max_file_size_mb
+        )  # Access dataclass field directly
+
         if file_size_mb > max_file_size:
             return {
                 "valid": False,
                 "limit": max_file_size,
                 "actual": file_size_mb,
-                "message": f"File size {file_size_mb:.1f}MB exceeds plan limit of {max_file_size}MB"
+                "message": (
+                    f"File size {file_size_mb:.1f}MB exceeds plan limit of {max_file_size}MB"
+                ),
             }
 
         return {
             "valid": True,
             "limit": max_file_size,
             "actual": file_size_mb,
-            "message": "File size within limits"
+            "message": "File size within limits",
         }
 
     def _get_current_usage(self, user_id: UUID) -> Dict[str, Any]:
         """Get current usage statistics for user."""
         # Get current period usage (can be configured)
         now = datetime.utcnow()
-        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)  # Start of month
+        period_start = now.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )  # Start of month
 
         try:
             # Try to get usage from repositories (Clean Architecture approach)
-            session_count = self.session_repo.count_user_sessions(user_id, since=period_start)
-            total_minutes = self.session_repo.get_total_duration_minutes(user_id, since=period_start)
+            session_count = self.session_repo.count_user_sessions(
+                user_id, since=period_start
+            )
+            total_minutes = self.session_repo.get_total_duration_minutes(
+                user_id, since=period_start
+            )
 
             # Get usage logs for cost calculation
             usage_logs = self.usage_log_repo.get_by_user_id(user_id, period_start, now)
@@ -391,8 +428,8 @@ class PlanValidationUseCase:
         except (AttributeError, Exception):
             # Fallback to user model data during Clean Architecture migration
             user = self.user_repo.get_by_id(user_id)
-            session_count = getattr(user, 'session_count', 0)
-            total_minutes = getattr(user, 'usage_minutes', 0)
+            session_count = getattr(user, "session_count", 0)
+            total_minutes = getattr(user, "usage_minutes", 0)
             total_cost = 0.0  # Default for cost tracking
 
         return {

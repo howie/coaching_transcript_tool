@@ -1,17 +1,19 @@
 """Processing status model for detailed session tracking."""
 
+from datetime import datetime
+
 from sqlalchemy import (
     Column,
-    String,
-    Integer,
-    ForeignKey,
-    Text,
     DateTime,
     Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from datetime import datetime
+
 from .base import BaseModel
 
 
@@ -34,18 +36,12 @@ class ProcessingStatus(BaseModel):
     message = Column(Text, nullable=True)  # Human-readable status message
 
     # Progress details
-    duration_processed = Column(
-        Integer, default=0
-    )  # Seconds of audio processed
+    duration_processed = Column(Integer, default=0)  # Seconds of audio processed
     duration_total = Column(Integer, nullable=True)  # Total seconds of audio
 
     # Time estimates
-    started_at = Column(
-        DateTime, nullable=True
-    )  # When processing actually started
-    estimated_completion = Column(
-        DateTime, nullable=True
-    )  # Estimated completion time
+    started_at = Column(DateTime, nullable=True)  # When processing actually started
+    estimated_completion = Column(DateTime, nullable=True)  # Estimated completion time
 
     # Performance metrics
     processing_speed = Column(

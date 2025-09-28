@@ -1,13 +1,14 @@
 """Dashboard summary API endpoints."""
 
 from typing import Dict, Optional
+
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from ...core.models.user import User
 from ...core.services.dashboard_summary_use_case import (
-    DashboardSummaryUseCase,
     DashboardSummaryRequest,
+    DashboardSummaryUseCase,
 )
 from .auth import get_current_user_dependency
 from .dependencies import get_dashboard_summary_use_case

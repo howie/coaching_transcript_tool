@@ -2,6 +2,7 @@
 """
 Test script to verify ECPay MerchantTradeNo generation is within 20-character limit.
 """
+
 import time
 
 
@@ -25,9 +26,7 @@ def test_merchant_trade_no_generation():
         timestamp = int(time.time()) + i  # Slight variation
 
         # Use the same logic as in ECPaySubscriptionService (with sanitization)
-        safe_user_prefix = "".join(
-            c for c in user_id[:8].upper() if c.isalnum()
-        )[:8]
+        safe_user_prefix = "".join(c for c in user_id[:8].upper() if c.isalnum())[:8]
         safe_user_prefix = safe_user_prefix.ljust(8, "0")[:8]
         merchant_trade_no = f"SUB{str(timestamp)[-6:]}{safe_user_prefix}"
 

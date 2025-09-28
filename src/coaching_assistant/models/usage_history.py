@@ -1,20 +1,22 @@
 """Usage history model for tracking historical usage patterns over time."""
 
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    ForeignKey,
     DECIMAL,
+    JSON,
+    Column,
     DateTime,
-    UniqueConstraint,
+    ForeignKey,
     Index,
+    Integer,
+    String,
+    UniqueConstraint,
 )
-from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import JSON
+from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 
@@ -34,9 +36,7 @@ class UsageHistory(BaseModel):
     recorded_at = Column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )
-    period_type = Column(
-        String(20), nullable=False
-    )  # 'hourly', 'daily', 'monthly'
+    period_type = Column(String(20), nullable=False)  # 'hourly', 'daily', 'monthly'
     period_start = Column(DateTime(timezone=True), nullable=False)
     period_end = Column(DateTime(timezone=True), nullable=False)
 
@@ -69,9 +69,7 @@ class UsageHistory(BaseModel):
     exports_by_format = Column(JSON, default={}, nullable=False)
 
     # Performance metrics
-    avg_processing_time_seconds = Column(
-        DECIMAL(8, 2), default=0, nullable=False
-    )
+    avg_processing_time_seconds = Column(DECIMAL(8, 2), default=0, nullable=False)
     failed_transcriptions = Column(Integer, default=0, nullable=False)
 
     # Relationships
@@ -106,18 +104,13 @@ class UsageHistory(BaseModel):
     def avg_session_duration_minutes(self) -> float:
         """Calculate average session duration in minutes."""
         if self.transcriptions_completed > 0:
-            return (
-                float(self.audio_minutes_processed)
-                / self.transcriptions_completed
-            )
+            return float(self.audio_minutes_processed) / self.transcriptions_completed
         return 0.0
 
     @property
     def success_rate(self) -> float:
         """Calculate transcription success rate."""
-        total_attempts = (
-            self.transcriptions_completed + self.failed_transcriptions
-        )
+        total_attempts = self.transcriptions_completed + self.failed_transcriptions
         if total_attempts > 0:
             return (self.transcriptions_completed / total_attempts) * 100
         return 0.0
@@ -126,9 +119,7 @@ class UsageHistory(BaseModel):
     def cost_per_minute(self) -> float:
         """Calculate cost per minute of audio processed."""
         if self.audio_minutes_processed > 0:
-            return float(self.total_cost_usd) / float(
-                self.audio_minutes_processed
-            )
+            return float(self.total_cost_usd) / float(self.audio_minutes_processed)
         return 0.0
 
     @property
@@ -147,16 +138,12 @@ class UsageHistory(BaseModel):
         return {
             "id": str(self.id),
             "user_id": str(self.user_id),
-            "recorded_at": (
-                self.recorded_at.isoformat() if self.recorded_at else None
-            ),
+            "recorded_at": (self.recorded_at.isoformat() if self.recorded_at else None),
             "period_type": self.period_type,
             "period_start": (
                 self.period_start.isoformat() if self.period_start else None
             ),
-            "period_end": (
-                self.period_end.isoformat() if self.period_end else None
-            ),
+            "period_end": (self.period_end.isoformat() if self.period_end else None),
             "usage_metrics": {
                 "sessions_created": self.sessions_created,
                 "audio_minutes_processed": float(self.audio_minutes_processed),
@@ -188,19 +175,13 @@ class UsageHistory(BaseModel):
                 "total": self.exports_generated,
             },
             "performance_metrics": {
-                "avg_processing_time_seconds": float(
-                    self.avg_processing_time_seconds
-                ),
+                "avg_processing_time_seconds": float(self.avg_processing_time_seconds),
                 "failed_transcriptions": self.failed_transcriptions,
                 "success_rate": self.success_rate,
-                "avg_session_duration_minutes": self.avg_session_duration_minutes,
+                "avg_session_duration_minutes": (self.avg_session_duration_minutes),
             },
-            "created_at": (
-                self.created_at.isoformat() if self.created_at else None
-            ),
-            "updated_at": (
-                self.updated_at.isoformat() if self.updated_at else None
-            ),
+            "created_at": (self.created_at.isoformat() if self.created_at else None),
+            "updated_at": (self.updated_at.isoformat() if self.updated_at else None),
         }
 
     @classmethod
@@ -220,25 +201,17 @@ class UsageHistory(BaseModel):
             period_end=period_end,
             recorded_at=datetime.utcnow(),
             sessions_created=usage_data.get("sessions_created", 0),
-            audio_minutes_processed=usage_data.get(
-                "audio_minutes_processed", 0
-            ),
-            transcriptions_completed=usage_data.get(
-                "transcriptions_completed", 0
-            ),
+            audio_minutes_processed=usage_data.get("audio_minutes_processed", 0),
+            transcriptions_completed=usage_data.get("transcriptions_completed", 0),
             exports_generated=usage_data.get("exports_generated", 0),
             storage_used_mb=usage_data.get("storage_used_mb", 0),
             unique_clients=usage_data.get("unique_clients", 0),
             api_calls_made=usage_data.get("api_calls_made", 0),
-            concurrent_sessions_peak=usage_data.get(
-                "concurrent_sessions_peak", 0
-            ),
+            concurrent_sessions_peak=usage_data.get("concurrent_sessions_peak", 0),
             plan_name=usage_data.get("plan_name", "FREE"),
             plan_limits=usage_data.get("plan_limits", {}),
             total_cost_usd=usage_data.get("total_cost_usd", 0),
-            billable_transcriptions=usage_data.get(
-                "billable_transcriptions", 0
-            ),
+            billable_transcriptions=usage_data.get("billable_transcriptions", 0),
             free_retries=usage_data.get("free_retries", 0),
             google_stt_minutes=usage_data.get("google_stt_minutes", 0),
             assemblyai_minutes=usage_data.get("assemblyai_minutes", 0),

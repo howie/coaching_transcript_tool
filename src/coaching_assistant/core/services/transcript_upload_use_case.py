@@ -7,18 +7,17 @@ creating transcription sessions, and linking them to coaching sessions.
 import logging
 import re
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 from uuid import UUID, uuid4
-from datetime import datetime
 
-from ..models.transcript import TranscriptSegment, SpeakerRole
-from ..models.session import Session as TranscriptionSession, SessionStatus
-from ..models.coaching_session import CoachingSession
+from ..models.session import Session as TranscriptionSession
+from ..models.session import SessionStatus
+from ..models.transcript import SpeakerRole, TranscriptSegment
 from ..repositories.ports import (
     CoachingSessionRepoPort,
     SessionRepoPort,
-    TranscriptRepoPort,
     SpeakerRoleRepoPort,
+    TranscriptRepoPort,
 )
 
 logger = logging.getLogger(__name__)
@@ -49,7 +48,9 @@ class ParsedSegment:
 class TranscriptParsingService:
     """Service for parsing VTT and SRT transcript files."""
 
-    def parse_vtt_content(self, content: str, speaker_role_mapping: Dict[str, str] = None) -> List[ParsedSegment]:
+    def parse_vtt_content(
+        self, content: str, speaker_role_mapping: Dict[str, str] = None
+    ) -> List[ParsedSegment]:
         """Parse VTT file content and return segments."""
         segments = []
         lines = content.strip().split("\n")
@@ -74,7 +75,10 @@ class TranscriptParsingService:
                     if i < len(lines):
                         content_line = lines[i].strip()
                         parsed_segment = self._parse_content_line(
-                            content_line, start_time, end_time, speaker_role_mapping
+                            content_line,
+                            start_time,
+                            end_time,
+                            speaker_role_mapping,
                         )
                         if parsed_segment:
                             segments.append(parsed_segment)
@@ -86,7 +90,9 @@ class TranscriptParsingService:
 
         return segments
 
-    def parse_srt_content(self, content: str, speaker_role_mapping: Dict[str, str] = None) -> List[ParsedSegment]:
+    def parse_srt_content(
+        self, content: str, speaker_role_mapping: Dict[str, str] = None
+    ) -> List[ParsedSegment]:
         """Parse SRT file content and return segments."""
         segments = []
 
@@ -124,10 +130,14 @@ class TranscriptParsingService:
     def _parse_timestamp_line(self, line: str) -> Optional[tuple[float, float]]:
         """Parse timestamp line and return start/end times in seconds."""
         timestamp_patterns = [
-            r"(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})",  # HH:MM:SS.mmm
-            r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})",  # HH:MM:SS,mmm (SRT format)
-            r"(\d{1,2}:\d{2}:\d{2}\.\d{3}) --> (\d{1,2}:\d{2}:\d{2}\.\d{3})",  # H:MM:SS.mmm
-            r"(\d{1,2}:\d{2}:\d{2}) --> (\d{1,2}:\d{2}:\d{2})",  # H:MM:SS (no milliseconds)
+            # HH:MM:SS.mmm
+            r"(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})",
+            # HH:MM:SS,mmm (SRT format)
+            r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})",
+            # H:MM:SS.mmm
+            r"(\d{1,2}:\d{2}:\d{2}\.\d{3}) --> (\d{1,2}:\d{2}:\d{2}\.\d{3})",
+            # H:MM:SS (no milliseconds)
+            r"(\d{1,2}:\d{2}:\d{2}) --> (\d{1,2}:\d{2}:\d{2})",
         ]
 
         for pattern in timestamp_patterns:
@@ -152,7 +162,7 @@ class TranscriptParsingService:
         content_line: str,
         start_time: float,
         end_time: float,
-        speaker_role_mapping: Dict[str, str] = None
+        speaker_role_mapping: Dict[str, str] = None,
     ) -> Optional[ParsedSegment]:
         """Parse content line and extract speaker info."""
         speaker_id = 1
@@ -160,7 +170,8 @@ class TranscriptParsingService:
         speaker_key = None
         speaker_name = None
 
-        # Format 1: VTT format like "<v jolly shih>content</v>" or "<v Speaker>content</v>"
+        # Format 1: VTT format like "<v jolly shih>content</v>" or "<v
+        # Speaker>content</v>"
         speaker_match = re.match(r"<v\s+([^>]+)>\s*(.*?)(?:</v>)?$", content_line)
         if speaker_match:
             speaker_name = speaker_match.group(1).strip()
@@ -171,7 +182,8 @@ class TranscriptParsingService:
             )
             speaker_key = f"speaker_{normalized_name}"
 
-        # Format 2: Simple prefix format like "Coach: content" or "Client: content"
+        # Format 2: Simple prefix format like "Coach: content" or "Client:
+        # content"
         elif ":" in content_line:
             prefix_match = re.match(r"^([^:]+):\s*(.+)$", content_line)
             if prefix_match:
@@ -190,14 +202,21 @@ class TranscriptParsingService:
             final_speaker_role = speaker_role_mapping.get(speaker_key, "coach")
             final_speaker_id = 1 if final_speaker_role == "coach" else 2
             logger.info(
-                f"Applied role mapping: {speaker_key} -> {final_speaker_role} (speaker_id: {final_speaker_id})"
+                f"Applied role mapping: {speaker_key} -> {final_speaker_role} "
+                f"(speaker_id: {final_speaker_id})"
             )
         elif speaker_name:
-            # Fallback to name-based assignment when no role mapping is provided
-            if any(keyword in speaker_name.lower() for keyword in ["client", "客戶", "學員"]):
+            # Fallback to name-based assignment when no role mapping is
+            # provided
+            if any(
+                keyword in speaker_name.lower()
+                for keyword in ["client", "客戶", "學員"]
+            ):
                 final_speaker_id = 2
                 final_speaker_role = "client"
-            elif any(keyword in speaker_name.lower() for keyword in ["coach", "教練", "老師"]):
+            elif any(
+                keyword in speaker_name.lower() for keyword in ["coach", "教練", "老師"]
+            ):
                 final_speaker_id = 1
                 final_speaker_role = "coach"
             else:
@@ -235,7 +254,9 @@ class TranscriptParsingService:
                 # Pad or truncate milliseconds to 3 digits
                 milliseconds_part = milliseconds_part.ljust(3, "0")[:3]
                 milliseconds = int(milliseconds_part)
-                total_seconds = hours * 3600 + minutes * 60 + seconds + milliseconds / 1000
+                total_seconds = (
+                    hours * 3600 + minutes * 60 + seconds + milliseconds / 1000
+                )
             else:
                 total_seconds = hours * 3600 + minutes * 60 + int(seconds_str)
 
@@ -297,23 +318,35 @@ class TranscriptUploadUseCase:
             coaching_session_id, user_id
         )
         if not coaching_session:
-            raise ValueError(f"Coaching session {coaching_session_id} not found or not accessible")
+            raise ValueError(
+                f"Coaching session {coaching_session_id} not found or not accessible"
+            )
 
         # Parse transcript content based on file extension
         file_extension = file_name.lower().split(".")[-1] if "." in file_name else ""
 
         if file_extension == "vtt":
-            parsed_segments = self.parser.parse_vtt_content(file_content, speaker_role_mapping)
+            parsed_segments = self.parser.parse_vtt_content(
+                file_content, speaker_role_mapping
+            )
         elif file_extension == "srt":
-            parsed_segments = self.parser.parse_srt_content(file_content, speaker_role_mapping)
+            parsed_segments = self.parser.parse_srt_content(
+                file_content, speaker_role_mapping
+            )
         else:
-            raise ValueError(f"Unsupported file format: {file_extension}. Only VTT and SRT files are supported.")
+            raise ValueError(
+                f"Unsupported file format: {file_extension}. Only VTT and SRT files are supported."
+            )
 
         if not parsed_segments:
             raise ValueError("No valid segments found in the transcript file")
 
         # Calculate total duration
-        total_duration = max(segment.end_seconds for segment in parsed_segments) if parsed_segments else 0
+        total_duration = (
+            max(segment.end_seconds for segment in parsed_segments)
+            if parsed_segments
+            else 0
+        )
 
         # Create transcription session
         transcription_session_id = uuid4()
@@ -324,11 +357,13 @@ class TranscriptUploadUseCase:
             status=SessionStatus.COMPLETED,
             language="auto",  # Will be determined from content
             duration_seconds=int(total_duration),
-            audio_filename=file_name.replace(".vtt", ".manual").replace(".srt", ".manual"),
+            audio_filename=file_name.replace(".vtt", ".manual").replace(
+                ".srt", ".manual"
+            ),
         )
 
         # Save transcription session
-        saved_session = self.session_repo.save(transcription_session)
+        self.session_repo.save(transcription_session)
 
         # Convert parsed segments to domain models
         transcript_segments = []
@@ -343,22 +378,29 @@ class TranscriptUploadUseCase:
                 end_seconds=parsed_segment.end_seconds,
                 content=parsed_segment.content,
                 confidence=1.0,  # Manual upload, assume high confidence
-                speaker_role=SpeakerRole.COACH if parsed_segment.speaker_role == "coach" else SpeakerRole.CLIENT,
+                speaker_role=(
+                    SpeakerRole.COACH
+                    if parsed_segment.speaker_role == "coach"
+                    else SpeakerRole.CLIENT
+                ),
             )
             transcript_segments.append(segment)
-            speaker_roles_to_create.add((parsed_segment.speaker_id, parsed_segment.speaker_role))
+            speaker_roles_to_create.add(
+                (parsed_segment.speaker_id, parsed_segment.speaker_role)
+            )
 
         # Save transcript segments
-        saved_segments = self.transcript_repo.save_segments(transcript_segments)
+        self.transcript_repo.save_segments(transcript_segments)
 
         # Create speaker role assignments
-        # Note: This will need to be implemented when SpeakerRoleRepoPort is available
+        # Note: This will need to be implemented when SpeakerRoleRepoPort is
+        # available
         speaker_roles_created = len(speaker_roles_to_create)
         logger.info(f"Created {speaker_roles_created} speaker role assignments")
 
         # Update coaching session to reference the transcription session
         coaching_session.transcription_session_id = str(transcription_session_id)
-        updated_coaching_session = self.coaching_session_repo.save(coaching_session)
+        self.coaching_session_repo.save(coaching_session)
 
         logger.info(
             f"✅ Successfully uploaded transcript: {len(transcript_segments)} segments, "

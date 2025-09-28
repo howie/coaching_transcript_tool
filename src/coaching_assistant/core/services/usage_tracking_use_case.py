@@ -5,21 +5,23 @@ any infrastructure dependencies. It operates only through repository
 ports and domain models.
 """
 
-from typing import Dict, Any, Optional, List
+import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Any, Dict, List, Optional
 from uuid import UUID
-import logging
 
+from ..models.session import Session as SessionModel
+from ..models.usage_history import UsageHistory
+from ..models.usage_log import TranscriptionType, UsageLog
+from ..models.user import User, UserPlan
 from ..repositories.ports import (
-    UserRepoPort,
-    UsageLogRepoPort,
     SessionRepoPort,
     UsageAnalyticsRepoPort,
+    UsageHistoryRepoPort,
+    UsageLogRepoPort,
+    UserRepoPort,
 )
-from ..models.user import User, UserPlan
-from ..models.session import Session as SessionModel, SessionStatus
-from ..models.usage_log import UsageLog, TranscriptionType
 
 logger = logging.getLogger(__name__)
 
@@ -88,10 +90,10 @@ class CreateUsageLogUseCase:
         session_repo: SessionRepoPort,
     ):
         """Initialize use case with repository dependencies.
-        
+
         Args:
             user_repo: User repository port
-            usage_log_repo: Usage log repository port  
+            usage_log_repo: Usage log repository port
             session_repo: Session repository port
         """
         self.user_repo = user_repo
@@ -107,17 +109,17 @@ class CreateUsageLogUseCase:
         billing_reason: str = "transcription_completed",
     ) -> UsageLog:
         """Create comprehensive usage log entry.
-        
+
         Args:
             session: Session entity
             transcription_type: Type of transcription operation
             cost_usd: Optional explicit cost
             is_billable: Whether this usage should be billed
             billing_reason: Reason for billing
-            
+
         Returns:
             Created usage log entity
-            
+
         Raises:
             ValueError: If user not found or invalid session
             RuntimeError: If repository operations fail
@@ -148,9 +150,7 @@ class CreateUsageLogUseCase:
             session_id=session.id,
             client_id=getattr(session, "client_id", None),
             duration_minutes=(
-                int(session.duration_seconds / 60)
-                if session.duration_seconds
-                else 0
+                int(session.duration_seconds / 60) if session.duration_seconds else 0
             ),
             duration_seconds=session.duration_seconds or 0,
             cost_usd=calculated_cost,
@@ -183,38 +183,41 @@ class CreateUsageLogUseCase:
         return saved_log
 
     def _calculate_cost(
-        self, session: SessionModel, cost_usd: Optional[float], is_billable: bool
+        self,
+        session: SessionModel,
+        cost_usd: Optional[float],
+        is_billable: bool,
     ) -> Decimal:
         """Calculate cost for the session - pure business logic.
-        
+
         Args:
             session: Session entity
             cost_usd: Explicit cost override
             is_billable: Whether this should be billed
-            
+
         Returns:
             Calculated cost as Decimal
         """
         if not is_billable:
             return Decimal("0")
-        
+
         if cost_usd is not None:
             return Decimal(str(cost_usd))
-        
+
         if not session.duration_seconds:
             return Decimal("0")
-        
+
         # Basic cost calculation - this is business logic
         # Google STT: ~$0.016 per minute, AssemblyAI: ~$0.01 per minute
         rate_per_minute = 0.016 if session.stt_provider == "google" else 0.01
         duration_minutes = session.duration_seconds / 60.0
         calculated_cost = duration_minutes * rate_per_minute
-        
+
         return Decimal(str(calculated_cost))
 
     def _update_user_usage_counters(self, user: User, usage_log: UsageLog) -> None:
         """Update user's monthly usage counters with monthly reset logic.
-        
+
         Args:
             user: User entity to update
             usage_log: Usage log with billing information
@@ -261,7 +264,7 @@ class GetUserUsageUseCase:
         usage_log_repo: UsageLogRepoPort,
     ):
         """Initialize use case with repository dependencies.
-        
+
         Args:
             user_repo: User repository port
             usage_log_repo: Usage log repository port
@@ -271,13 +274,13 @@ class GetUserUsageUseCase:
 
     def get_current_month_usage(self, user_id: UUID) -> Dict[str, Any]:
         """Get current month usage summary for user.
-        
+
         Args:
             user_id: UUID of the user
-            
+
         Returns:
             Dictionary containing current month usage data
-            
+
         Raises:
             ValueError: If user not found
             RuntimeError: If repository operations fail
@@ -289,16 +292,20 @@ class GetUserUsageUseCase:
         # Calculate current month boundaries
         now = datetime.now(timezone.utc)
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        next_month = month_start.replace(month=month_start.month + 1) if month_start.month < 12 else month_start.replace(year=month_start.year + 1, month=1)
-        
+        next_month = (
+            month_start.replace(month=month_start.month + 1)
+            if month_start.month < 12
+            else month_start.replace(year=month_start.year + 1, month=1)
+        )
+
         # Get usage summary from repository
         usage_summary = self.usage_log_repo.get_usage_summary(
             user_id, month_start, next_month
         )
-        
+
         # Get plan limits
         plan_limits = PlanLimits.get_limits(user.plan)
-        
+
         return {
             "user_id": str(user_id),
             "plan": user.plan.value,
@@ -374,7 +381,7 @@ class GetUserAnalyticsUseCase:
         self,
         user_repo: UserRepoPort,
         usage_log_repo: UsageLogRepoPort,
-        usage_analytics_repo: 'UsageAnalyticsRepoPort',
+        usage_analytics_repo: "UsageAnalyticsRepoPort",
     ):
         """Initialize use case with repository dependencies.
 
@@ -418,7 +425,7 @@ class GetAdminAnalyticsUseCase:
 
     def __init__(
         self,
-        usage_analytics_repo: 'UsageAnalyticsRepoPort',
+        usage_analytics_repo: "UsageAnalyticsRepoPort",
     ):
         """Initialize use case with repository dependencies.
 
@@ -476,7 +483,11 @@ class GetSpecificUserUsageUseCase:
         # Calculate current month boundaries
         now = datetime.now(timezone.utc)
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        next_month = month_start.replace(month=month_start.month + 1) if month_start.month < 12 else month_start.replace(year=month_start.year + 1, month=1)
+        next_month = (
+            month_start.replace(month=month_start.month + 1)
+            if month_start.month < 12
+            else month_start.replace(year=month_start.year + 1, month=1)
+        )
 
         # Get usage summary from repository - same logic as regular user
         usage_summary = self.usage_log_repo.get_usage_summary(
@@ -488,7 +499,7 @@ class GetSpecificUserUsageUseCase:
 
         return {
             "user_id": str(user_id),
-            "user_email": getattr(user, 'email', None),  # Include email for admin view
+            "user_email": getattr(user, "email", None),  # Include email for admin view
             "plan": user.plan.value,
             "current_month_start": month_start.isoformat(),
             "usage_summary": usage_summary,
@@ -511,7 +522,7 @@ class GetMonthlyUsageReportUseCase:
 
     def __init__(
         self,
-        usage_analytics_repo: 'UsageAnalyticsRepoPort',
+        usage_analytics_repo: "UsageAnalyticsRepoPort",
     ):
         """Initialize use case with repository dependencies.
 
@@ -557,7 +568,9 @@ class GetMonthlyUsageReportUseCase:
         total_minutes = sum(
             float(analytics.total_minutes_processed) for analytics in monthly_analytics
         )
-        total_cost = sum(float(analytics.total_cost_usd) for analytics in monthly_analytics)
+        total_cost = sum(
+            float(analytics.total_cost_usd) for analytics in monthly_analytics
+        )
 
         # Plan breakdown
         plan_breakdown = {}
@@ -639,7 +652,9 @@ class GetUsageTrendsUseCase:
         self.usage_analytics_repo = usage_analytics_repo
         self.usage_log_repo = usage_log_repo
 
-    def execute(self, user_id: UUID, period: str, group_by: str) -> List[Dict[str, Any]]:
+    def execute(
+        self, user_id: UUID, period: str, group_by: str
+    ) -> List[Dict[str, Any]]:
         """
         Get usage trends data for visualization.
 
@@ -677,22 +692,32 @@ class GetUsageTrendsUseCase:
 
             daily_sessions = len(set(log.session_id for log in daily_logs))
             daily_minutes = sum(log.duration_minutes or 0 for log in daily_logs)
-            daily_transcriptions = len([log for log in daily_logs if log.transcription_type])
-            daily_exports = len([log for log in daily_logs if 'export' in str(log.action).lower()])
-            daily_cost = sum(log.cost_usd or Decimal('0') for log in daily_logs)
+            daily_transcriptions = len(
+                [log for log in daily_logs if log.transcription_type]
+            )
+            daily_exports = len(
+                [log for log in daily_logs if "export" in str(log.action).lower()]
+            )
+            daily_cost = sum(log.cost_usd or Decimal("0") for log in daily_logs)
 
-            trends.append({
-                "date": current_date.strftime("%Y-%m-%d"),
-                "sessions": daily_sessions,
-                "minutes": float(daily_minutes),
-                "hours": float(daily_minutes / 60),
-                "transcriptions": daily_transcriptions,
-                "exports": daily_exports,
-                "cost": float(daily_cost),
-                "utilization": min(float(daily_minutes / 60), 100.0),
-                "success_rate": 100.0 if daily_sessions > 0 else 0.0,
-                "avg_duration": float(daily_minutes / daily_sessions) if daily_sessions > 0 else 0.0
-            })
+            trends.append(
+                {
+                    "date": current_date.strftime("%Y-%m-%d"),
+                    "sessions": daily_sessions,
+                    "minutes": float(daily_minutes),
+                    "hours": float(daily_minutes / 60),
+                    "transcriptions": daily_transcriptions,
+                    "exports": daily_exports,
+                    "cost": float(daily_cost),
+                    "utilization": min(float(daily_minutes / 60), 100.0),
+                    "success_rate": 100.0 if daily_sessions > 0 else 0.0,
+                    "avg_duration": (
+                        float(daily_minutes / daily_sessions)
+                        if daily_sessions > 0
+                        else 0.0
+                    ),
+                }
+            )
 
             current_date = next_date
 
@@ -734,9 +759,9 @@ class GetUsagePredictionsUseCase:
                 "predicted_minutes": 0,
                 "estimated_limit_date": None,
                 "confidence": 0.0,
-                "recommendation": "No historical data available for predictions",
+                "recommendation": ("No historical data available for predictions"),
                 "growth_rate": 0.0,
-                "current_trend": "unknown"
+                "current_trend": "unknown",
             }
 
         # Calculate daily averages
@@ -760,7 +785,9 @@ class GetUsagePredictionsUseCase:
 
         growth_rate = 0.0
         if first_half_minutes > 0:
-            growth_rate = ((second_half_minutes - first_half_minutes) / first_half_minutes) * 100
+            growth_rate = (
+                (second_half_minutes - first_half_minutes) / first_half_minutes
+            ) * 100
 
         # Determine trend
         if growth_rate > 10:
@@ -781,12 +808,15 @@ class GetUsagePredictionsUseCase:
         else:
             recommendation = "Current usage pattern looks sustainable"
 
-        # Estimate when limits might be reached (assuming Free plan limit of 120 minutes)
+        # Estimate when limits might be reached (assuming Free plan limit of
+        # 120 minutes)
         estimated_limit_date = None
         if avg_minutes_per_day > 0:
             days_to_limit = 120 / avg_minutes_per_day
             if days_to_limit <= 30:
-                estimated_limit_date = (datetime.now() + timedelta(days=int(days_to_limit))).strftime("%Y-%m-%d")
+                estimated_limit_date = (
+                    datetime.now() + timedelta(days=int(days_to_limit))
+                ).strftime("%Y-%m-%d")
 
         return {
             "predicted_sessions": predicted_sessions,
@@ -795,7 +825,7 @@ class GetUsagePredictionsUseCase:
             "confidence": confidence,
             "recommendation": recommendation,
             "growth_rate": growth_rate,
-            "current_trend": current_trend
+            "current_trend": current_trend,
         }
 
 
@@ -836,14 +866,18 @@ class GetUsageInsightsUseCase:
         )
 
         if not recent_logs:
-            insights.append({
-                "type": "pattern",
-                "title": "Getting Started",
-                "message": "No recent usage detected",
-                "suggestion": "Try uploading your first coaching session recording",
-                "priority": "medium",
-                "action": None
-            })
+            insights.append(
+                {
+                    "type": "pattern",
+                    "title": "Getting Started",
+                    "message": "No recent usage detected",
+                    "suggestion": (
+                        "Try uploading your first coaching session recording"
+                    ),
+                    "priority": "medium",
+                    "action": None,
+                }
+            )
             return insights
 
         # Analyze usage patterns
@@ -856,76 +890,102 @@ class GetUsageInsightsUseCase:
         utilization = (total_minutes / monthly_limit) * 100 if monthly_limit > 0 else 0
 
         if utilization > 90:
-            insights.append({
-                "type": "warning",
-                "title": "Plan Limit Approaching",
-                "message": f"You've used {utilization:.1f}% of your monthly limit",
-                "suggestion": "Consider upgrading to Pro plan for higher limits",
-                "priority": "high",
-                "action": "upgrade"
-            })
+            insights.append(
+                {
+                    "type": "warning",
+                    "title": "Plan Limit Approaching",
+                    "message": (
+                        f"You've used {utilization:.1f}% of your monthly limit"
+                    ),
+                    "suggestion": ("Consider upgrading to Pro plan for higher limits"),
+                    "priority": "high",
+                    "action": "upgrade",
+                }
+            )
         elif utilization < 10:
-            insights.append({
-                "type": "optimization",
-                "title": "Low Usage Detected",
-                "message": f"You've only used {utilization:.1f}% of your plan limits",
-                "suggestion": "You might be able to use a lower plan tier",
-                "priority": "low",
-                "action": "downgrade"
-            })
+            insights.append(
+                {
+                    "type": "optimization",
+                    "title": "Low Usage Detected",
+                    "message": (
+                        f"You've only used {utilization:.1f}% of your plan limits"
+                    ),
+                    "suggestion": "You might be able to use a lower plan tier",
+                    "priority": "low",
+                    "action": "downgrade",
+                }
+            )
 
         # Usage efficiency insight
         if total_sessions > 0:
             avg_duration = total_minutes / total_sessions
             if avg_duration > 120:  # > 2 hours per session
-                insights.append({
-                    "type": "optimization",
-                    "title": "Long Session Duration",
-                    "message": f"Average session duration: {avg_duration:.1f} minutes",
-                    "suggestion": "Consider breaking longer sessions into smaller chunks for better processing",
-                    "priority": "medium",
-                    "action": None
-                })
+                insights.append(
+                    {
+                        "type": "optimization",
+                        "title": "Long Session Duration",
+                        "message": (
+                            f"Average session duration: {avg_duration:.1f} minutes"
+                        ),
+                        "suggestion": (
+                            "Consider breaking longer sessions into smaller chunks for better processing"
+                        ),
+                        "priority": "medium",
+                        "action": None,
+                    }
+                )
             elif avg_duration < 15:  # < 15 minutes per session
-                insights.append({
-                    "type": "pattern",
-                    "title": "Short Sessions",
-                    "message": f"Average session duration: {avg_duration:.1f} minutes",
-                    "suggestion": "Short sessions are processed efficiently",
-                    "priority": "low",
-                    "action": None
-                })
+                insights.append(
+                    {
+                        "type": "pattern",
+                        "title": "Short Sessions",
+                        "message": (
+                            f"Average session duration: {avg_duration:.1f} minutes"
+                        ),
+                        "suggestion": ("Short sessions are processed efficiently"),
+                        "priority": "low",
+                        "action": None,
+                    }
+                )
 
         # Cost analysis insight
-        total_cost = sum(log.cost_usd or Decimal('0') for log in recent_logs)
+        total_cost = sum(log.cost_usd or Decimal("0") for log in recent_logs)
         if total_cost > 0:
-            cost_per_minute = float(total_cost / total_minutes) if total_minutes > 0 else 0
-            insights.append({
-                "type": "cost",
-                "title": "Cost Efficiency",
-                "message": f"Current cost: ${cost_per_minute:.4f} per minute",
-                "suggestion": "Cost tracking is active for your transcriptions",
-                "priority": "low",
-                "action": None
-            })
+            cost_per_minute = (
+                float(total_cost / total_minutes) if total_minutes > 0 else 0
+            )
+            insights.append(
+                {
+                    "type": "cost",
+                    "title": "Cost Efficiency",
+                    "message": (f"Current cost: ${cost_per_minute:.4f} per minute"),
+                    "suggestion": ("Cost tracking is active for your transcriptions"),
+                    "priority": "low",
+                    "action": None,
+                }
+            )
 
         # Activity pattern insight
         # Group by day of week to find patterns
         weekday_usage = {}
         for log in recent_logs:
             weekday = log.created_at.strftime("%A")
-            weekday_usage[weekday] = weekday_usage.get(weekday, 0) + (log.duration_minutes or 0)
+            weekday_usage[weekday] = weekday_usage.get(weekday, 0) + (
+                log.duration_minutes or 0
+            )
 
         if weekday_usage:
             most_active_day = max(weekday_usage, key=weekday_usage.get)
-            insights.append({
-                "type": "pattern",
-                "title": "Usage Pattern",
-                "message": f"Most active day: {most_active_day}",
-                "suggestion": "Consistent usage patterns help with planning",
-                "priority": "low",
-                "action": None
-            })
+            insights.append(
+                {
+                    "type": "pattern",
+                    "title": "Usage Pattern",
+                    "message": f"Most active day: {most_active_day}",
+                    "suggestion": ("Consistent usage patterns help with planning"),
+                    "priority": "low",
+                    "action": None,
+                }
+            )
 
         logger.info(f"Generated {len(insights)} insights for user {user_id}")
         return insights
@@ -937,12 +997,12 @@ class CreateUsageSnapshotUseCase:
     def __init__(
         self,
         usage_log_repo: UsageLogRepoPort,
-        usage_history_repo: 'UsageHistoryRepoPort',
+        usage_history_repo: "UsageHistoryRepoPort",
     ):
         self.usage_log_repo = usage_log_repo
         self.usage_history_repo = usage_history_repo
 
-    def execute(self, user_id: UUID, period_type: str) -> 'UsageHistory':
+    def execute(self, user_id: UUID, period_type: str) -> "UsageHistory":
         """
         Create a usage snapshot for the specified period.
 
@@ -950,7 +1010,9 @@ class CreateUsageSnapshotUseCase:
             user_id: User identifier
             period_type: Type of period (hourly, daily, monthly)
         """
-        logger.info(f"Creating usage snapshot for user {user_id}, period: {period_type}")
+        logger.info(
+            f"Creating usage snapshot for user {user_id}, period: {period_type}"
+        )
 
         # Calculate period boundaries
         now = datetime.now(timezone.utc)
@@ -978,9 +1040,13 @@ class CreateUsageSnapshotUseCase:
         # Aggregate metrics
         total_sessions = len(set(log.session_id for log in usage_logs))
         total_minutes = sum(log.duration_minutes or 0 for log in usage_logs)
-        total_transcriptions = len([log for log in usage_logs if log.transcription_type])
-        total_exports = len([log for log in usage_logs if 'export' in str(log.action).lower()])
-        total_cost = sum(log.cost_usd or Decimal('0') for log in usage_logs)
+        total_transcriptions = len(
+            [log for log in usage_logs if log.transcription_type]
+        )
+        total_exports = len(
+            [log for log in usage_logs if "export" in str(log.action).lower()]
+        )
+        total_cost = sum(log.cost_usd or Decimal("0") for log in usage_logs)
 
         # Create snapshot data
         usage_metrics = {
@@ -992,30 +1058,29 @@ class CreateUsageSnapshotUseCase:
 
         plan_context = {
             "plan_type": "free",  # TODO: Get actual plan from user
-            "limits": {
-                "monthly_minutes": 120,
-                "monthly_sessions": 10
-            }
+            "limits": {"monthly_minutes": 120, "monthly_sessions": 10},
         }
 
         cost_metrics = {
             "total_cost": float(total_cost),
-            "cost_per_minute": float(total_cost / total_minutes) if total_minutes > 0 else 0
+            "cost_per_minute": (
+                float(total_cost / total_minutes) if total_minutes > 0 else 0
+            ),
         }
 
         provider_breakdown = {
             "google": {"minutes": float(total_minutes * 0.6)},  # Estimate
-            "assemblyai": {"minutes": float(total_minutes * 0.4)}  # Estimate
+            "assemblyai": {"minutes": float(total_minutes * 0.4)},  # Estimate
         }
 
         export_activity = {
             "total_exports": total_exports,
-            "formats_used": ["json", "txt"]  # Default formats
+            "formats_used": ["json", "txt"],  # Default formats
         }
 
         performance_metrics = {
             "avg_processing_time": 30.0,  # Estimate
-            "success_rate": 100.0
+            "success_rate": 100.0,
         }
 
         # Create UsageHistory domain object
@@ -1031,7 +1096,7 @@ class CreateUsageSnapshotUseCase:
             cost_metrics=cost_metrics,
             provider_breakdown=provider_breakdown,
             export_activity=export_activity,
-            performance_metrics=performance_metrics
+            performance_metrics=performance_metrics,
         )
 
         # Save and return
@@ -1061,12 +1126,13 @@ class ExportUsageDataUseCase:
             format: Export format (json, xlsx, txt)
             period: Time period to export
         """
-        logger.info(f"Exporting usage data for user {user_id}, format: {format}, period: {period}")
+        logger.info(
+            f"Exporting usage data for user {user_id}, format: {format}, period: {period}"
+        )
 
         # Get trends data (reuse logic from trends use case)
         trends_use_case = GetUsageTrendsUseCase(
-            self.usage_analytics_repo,
-            self.usage_log_repo
+            self.usage_analytics_repo, self.usage_log_repo
         )
 
         trends_data = trends_use_case.execute(user_id, period, "day")
@@ -1078,15 +1144,16 @@ class ExportUsageDataUseCase:
                 "format": "json",
                 "period": period,
                 "data": trends_data,
-                "filename": f"{filename_base}.json"
+                "filename": f"{filename_base}.json",
             }
         elif format.lower() == "xlsx":
-            # Return Excel export structure (actual Excel generation handled in API layer)
+            # Return Excel export structure (actual Excel generation handled in
+            # API layer)
             return {
                 "format": "xlsx",
                 "period": period,
                 "data": trends_data,
-                "filename": f"{filename_base}.xlsx"
+                "filename": f"{filename_base}.xlsx",
             }
         elif format.lower() == "txt":
             # Generate text format
@@ -1110,7 +1177,7 @@ class ExportUsageDataUseCase:
                 "format": "txt",
                 "period": period,
                 "data": txt_data,
-                "filename": f"{filename_base}.txt"
+                "filename": f"{filename_base}.txt",
             }
         else:
             raise ValueError(f"Unsupported export format: {format}")

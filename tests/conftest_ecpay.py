@@ -3,15 +3,16 @@ Pytest configuration specifically for ECPay tests.
 This file provides fixtures and utilities for ECPay testing.
 """
 
-import pytest
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
+
+import pytest
 
 # Set test environment variables
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["ECPAY_MERCHANT_ID"] = "3002607"
-os.environ["ECPAY_HASH_KEY"] = "pwFHCqoQZGmho4w6" 
+os.environ["ECPAY_HASH_KEY"] = "pwFHCqoQZGmho4w6"
 os.environ["ECPAY_HASH_IV"] = "EkRm7iFT261dpevs"
 os.environ["ECPAY_ENVIRONMENT"] = "sandbox"
 
@@ -58,7 +59,7 @@ def sample_auth_callback_data():
         "AuthCode": "AUTH123456",
         "card4no": "4242",
         "card6no": "424242",
-        "CheckMacValue": "VALID_TEST_MAC_VALUE"
+        "CheckMacValue": "VALID_TEST_MAC_VALUE",
     }
 
 
@@ -71,39 +72,56 @@ def sample_payment_webhook_data():
         "gwsr": "987654321",
         "RtnCode": "1",
         "amount": "899",
-        "CheckMacValue": "VALID_TEST_MAC_VALUE"
+        "CheckMacValue": "VALID_TEST_MAC_VALUE",
     }
 
 
 class ECPayTestHelper:
     """Helper class for ECPay testing utilities"""
-    
+
     @staticmethod
     def generate_test_merchant_trade_no(timestamp=1755520128, user_id="550e8400"):
         """Generate test MerchantTradeNo using the fixed logic"""
         return f"SUB{str(timestamp)[-6:]}{user_id[:8].upper()}"
-    
+
     @staticmethod
     def validate_merchant_trade_no_length(trade_no):
         """Validate MerchantTradeNo length constraint"""
         return len(trade_no) <= 20
-    
+
     @staticmethod
     def validate_required_fields(form_data):
         """Validate all required ECPay fields are present"""
         required_fields = [
-            "MerchantID", "MerchantMemberID", "MerchantTradeNo", 
-            "TotalAmount", "OrderResultURL", "ReturnURL",
-            "ClientBackURL", "PeriodType", "Frequency", "PeriodAmount",
-            "ExecTimes", "PaymentType", "ChoosePayment", "TradeDesc",
-            "ItemName", "MerchantTradeDate", "ExpireDate", "CheckMacValue"
+            "MerchantID",
+            "MerchantMemberID",
+            "MerchantTradeNo",
+            "TotalAmount",
+            "OrderResultURL",
+            "ReturnURL",
+            "ClientBackURL",
+            "PeriodType",
+            "Frequency",
+            "PeriodAmount",
+            "ExecTimes",
+            "PaymentType",
+            "ChoosePayment",
+            "TradeDesc",
+            "ItemName",
+            "MerchantTradeDate",
+            "ExpireDate",
+            "CheckMacValue",
         ]  # Note: ProductDesc & TradeNo removed - not used in order creation
-        
+
         missing_fields = []
         for field in required_fields:
-            if field not in form_data or form_data[field] is None or str(form_data[field]).strip() == "":
+            if (
+                field not in form_data
+                or form_data[field] is None
+                or str(form_data[field]).strip() == ""
+            ):
                 missing_fields.append(field)
-        
+
         return missing_fields
 
 

@@ -40,9 +40,7 @@ class TestBillingAnalytics:
 
     def test_total_hours_processed_property(self):
         """Test total_hours_processed property calculation."""
-        billing_analytics = BillingAnalytics(
-            total_minutes_processed=Decimal("120.0")
-        )
+        billing_analytics = BillingAnalytics(total_minutes_processed=Decimal("120.0"))
 
         assert billing_analytics.total_hours_processed == 2.0
 
@@ -217,10 +215,9 @@ class TestBillingAnalytics:
 
         health_score = billing_analytics.calculate_customer_health_score()
 
-        # Expected: (80 * 0.3) + (80 * 0.3) + (50 * 0.2) + (95 * 0.2) = 24 + 24 + 10 + 19 = 77
-        assert (
-            75 <= health_score <= 80
-        )  # Allow some tolerance for floating point
+        # Expected: (80 * 0.3) + (80 * 0.3) + (50 * 0.2) + (95 * 0.2) = 24 + 24
+        # + 10 + 19 = 77
+        assert 75 <= health_score <= 80  # Allow some tolerance for floating point
 
     def test_to_dict(self):
         """Test conversion to dictionary."""

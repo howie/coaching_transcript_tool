@@ -3,8 +3,7 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -13,20 +12,6 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 
 # Import our models
 from src.coaching_assistant.models.base import Base
-from src.coaching_assistant.models.user import User
-from src.coaching_assistant.models.session import Session, SessionStatus
-from src.coaching_assistant.models.transcript import TranscriptSegment, SessionRole, SpeakerRole
-from src.coaching_assistant.models.client import Client
-from src.coaching_assistant.models.coaching_session import CoachingSession, SessionSource
-from src.coaching_assistant.models.coach_profile import CoachProfile, CoachingPlan
-from src.coaching_assistant.models.ecpay_subscription import (
-    ECPayCreditAuthorization, 
-    SaasSubscription, 
-    SubscriptionPayment, 
-    SubscriptionPendingChange, 
-    PaymentRetryAttempt, 
-    GracePeriod
-)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -53,7 +38,7 @@ def get_url():
     database_url = os.getenv("DATABASE_URL")
     if database_url:
         return database_url
-    
+
     # Fall back to the URL in alembic.ini (for local development)
     return config.get_main_option("sqlalchemy.url")
 
@@ -91,8 +76,8 @@ def run_migrations_online() -> None:
     """
     # Override the sqlalchemy.url with environment variable if available
     configuration = config.get_section(config.config_ini_section)
-    configuration['sqlalchemy.url'] = get_url()
-    
+    configuration["sqlalchemy.url"] = get_url()
+
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
@@ -100,9 +85,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

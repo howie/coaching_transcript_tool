@@ -2,6 +2,7 @@
 
 import pytest
 from sqlalchemy.exc import IntegrityError
+
 from coaching_assistant.models import User
 from coaching_assistant.models.user import UserPlan
 
@@ -76,9 +77,7 @@ class TestUserModel:
 
     def test_user_str_representation(self, sample_user):
         """Test user string representation."""
-        expected = (
-            f"<User(email={sample_user.email}, plan={sample_user.plan.value})>"
-        )
+        expected = f"<User(email={sample_user.email}, plan={sample_user.plan.value})>"
         assert str(sample_user) == expected
 
 
@@ -152,13 +151,13 @@ class TestUserPlanLimits:
         )
 
         # Can create 10-minute session (total 55 < 60)
-        assert user.can_create_session(10) == True
+        assert user.can_create_session(10) is True
 
         # Can create 15-minute session (total 60 = 60)
-        assert user.can_create_session(15) == True
+        assert user.can_create_session(15) is True
 
         # Cannot create 20-minute session (total 65 > 60)
-        assert user.can_create_session(20) == False
+        assert user.can_create_session(20) is False
 
 
 class TestUserUsageTracking:
@@ -260,7 +259,5 @@ class TestUserRelationships:
         db_session.commit()
 
         # Check that session is deleted
-        deleted_session = (
-            db_session.query(Session).filter_by(id=session_id).first()
-        )
+        deleted_session = db_session.query(Session).filter_by(id=session_id).first()
         assert deleted_session is None

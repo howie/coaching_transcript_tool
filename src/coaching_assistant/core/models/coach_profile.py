@@ -1,6 +1,7 @@
 """Coach profile domain model for Clean Architecture."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -10,6 +11,7 @@ from uuid import UUID
 
 class CoachingLanguage(Enum):
     """Languages that coach can provide services in."""
+
     MANDARIN = "mandarin"
     ENGLISH = "english"
     CANTONESE = "cantonese"
@@ -22,6 +24,7 @@ class CoachingLanguage(Enum):
 
 class CommunicationTool(Enum):
     """Communication tools available."""
+
     LINE = "line"
     ZOOM = "zoom"
     GOOGLE_MEET = "google_meet"
@@ -33,6 +36,7 @@ class CommunicationTool(Enum):
 
 class CoachExperience(Enum):
     """Coach experience levels."""
+
     BEGINNER = "beginner"  # 0-1 years
     INTERMEDIATE = "intermediate"  # 1-3 years
     ADVANCED = "advanced"  # 3-5 years

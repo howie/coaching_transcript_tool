@@ -7,22 +7,23 @@ Following TDD methodology: Red → Green → Refactor
 
 import os
 import tempfile
-import pytest
 from unittest.mock import patch
+
+import pytest
 import yaml
 
 from coaching_assistant.config.lemur_config import (
-    ModelSettings,
-    PerformanceSettings,
-    LeMURPrompts,
     LeMURConfig,
     LeMURConfigLoader,
-    get_lemur_config,
-    reload_lemur_config,
-    get_prompt_template,
-    get_speaker_prompt,
-    get_punctuation_prompt,
+    LeMURPrompts,
+    ModelSettings,
+    PerformanceSettings,
     get_combined_prompt,
+    get_lemur_config,
+    get_prompt_template,
+    get_punctuation_prompt,
+    get_speaker_prompt,
+    reload_lemur_config,
 )
 
 
@@ -130,9 +131,7 @@ class TestLeMURPrompts:
     def test_get_punctuation_prompt_existing(self):
         """Should return punctuation prompt when it exists."""
         prompts = LeMURPrompts(
-            punctuation_optimization={
-                "english": {"enhanced": "Punctuation prompt"}
-            }
+            punctuation_optimization={"english": {"enhanced": "Punctuation prompt"}}
         )
 
         result = prompts.get_punctuation_prompt("english", "enhanced")
@@ -209,16 +208,12 @@ class TestLeMURConfigLoader:
         """Should raise FileNotFoundError when config file doesn't exist."""
         loader = LeMURConfigLoader("/nonexistent/path.yaml")
 
-        with pytest.raises(
-            FileNotFoundError, match="Configuration file not found"
-        ):
+        with pytest.raises(FileNotFoundError, match="Configuration file not found"):
             loader.load_config()
 
     def test_load_config_invalid_yaml(self):
         """Should raise yaml.YAMLError when YAML is invalid."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("invalid: yaml: content: [")
             temp_path = f.name
 
@@ -250,9 +245,7 @@ speaker_identification:
     default: "Test speaker prompt"
 """
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_path = f.name
 
@@ -282,9 +275,7 @@ model_settings:
   default_model: "cached_model"
 """
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_path = f.name
 
@@ -343,9 +334,7 @@ speaker_identification:
     default: "Hello {name}, analyze {role}"
 """
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_path = f.name
 
@@ -368,9 +357,7 @@ speaker_identification:
     default: "Hello {name}, analyze {role}"
 """
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_path = f.name
 
@@ -395,9 +382,7 @@ speaker_identification:
     default: "Test prompt"
 """
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_path = f.name
 
@@ -463,9 +448,7 @@ class TestGlobalFunctions:
 
         coaching_assistant.config.lemur_config._config_loader = None
 
-        mock_loader = (
-            coaching_assistant.config.lemur_config.LeMURConfigLoader()
-        )
+        mock_loader = coaching_assistant.config.lemur_config.LeMURConfigLoader()
         with patch(
             "coaching_assistant.config.lemur_config.LeMURConfigLoader"
         ) as MockLoader:
@@ -495,18 +478,14 @@ class TestGlobalFunctions:
             mock_get.return_value = "Test prompt"
 
             # Test get_speaker_promp
-            result = get_speaker_prompt(
-                "english", "enhanced", {"context": "value"}
-            )
+            result = get_speaker_prompt("english", "enhanced", {"context": "value"})
             assert result == "Test prompt"
             mock_get.assert_called_with(
                 "speaker", "english", "enhanced", {"context": "value"}
             )
 
             # Test get_punctuation_promp
-            result = get_punctuation_prompt(
-                "chinese", "optimized", {"key": "val"}
-            )
+            result = get_punctuation_prompt("chinese", "optimized", {"key": "val"})
             assert result == "Test prompt"
             mock_get.assert_called_with(
                 "punctuation", "chinese", "optimized", {"key": "val"}
@@ -515,6 +494,4 @@ class TestGlobalFunctions:
             # Test get_combined_promp
             result = get_combined_prompt("japanese", "default", None)
             assert result == "Test prompt"
-            mock_get.assert_called_with(
-                "combined", "japanese", "default", None
-            )
+            mock_get.assert_called_with("combined", "japanese", "default", None)

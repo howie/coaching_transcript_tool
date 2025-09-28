@@ -3,6 +3,7 @@ Debugging and diagnostic routes for development environments.
 """
 
 from fastapi import APIRouter, HTTPException
+
 from ..core.config import settings
 
 router = APIRouter()

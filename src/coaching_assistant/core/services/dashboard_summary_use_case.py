@@ -74,13 +74,17 @@ class DashboardSummaryUseCase:
         )
 
         # Get current month revenue by currency
-        current_month_revenue_by_currency = self.coaching_session_repo.get_monthly_revenue_by_currency(
-            request.user_id, year, month_num
+        current_month_revenue_by_currency = (
+            self.coaching_session_repo.get_monthly_revenue_by_currency(
+                request.user_id, year, month_num
+            )
         )
 
         # Get unique clients total
-        unique_clients_total = self.coaching_session_repo.get_unique_clients_count_for_user(
-            request.user_id
+        unique_clients_total = (
+            self.coaching_session_repo.get_unique_clients_count_for_user(
+                request.user_id
+            )
         )
 
         return DashboardSummaryResponse(

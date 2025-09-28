@@ -1,19 +1,21 @@
 """Integration tests for subscription repository."""
 
-import pytest
+from datetime import date, datetime
 from uuid import uuid4
-from datetime import datetime, date
 
-from src.coaching_assistant.infrastructure.db.repositories.subscription_repository import SubscriptionRepository
+import pytest
+
+from src.coaching_assistant.infrastructure.db.repositories.subscription_repository import (
+    SubscriptionRepository,
+)
 from src.coaching_assistant.models.ecpay_subscription import (
+    ECPayAuthStatus,
+    ECPayCreditAuthorization,
+    PaymentStatus,
     SaasSubscription,
     SubscriptionPayment,
-    ECPayCreditAuthorization,
     SubscriptionStatus,
-    PaymentStatus,
-    ECPayAuthStatus,
 )
-from src.coaching_assistant.models.user import User, UserPlan
 
 
 @pytest.mark.integration
@@ -157,7 +159,10 @@ class TestSubscriptionRepositoryIntegration:
         # Verify in database
         retrieved_subscription = repo.get_subscription_by_user_id(sample_user.id)
         # Should not return cancelled subscription in normal query
-        assert retrieved_subscription is None or retrieved_subscription.status != SubscriptionStatus.ACTIVE.value
+        assert (
+            retrieved_subscription is None
+            or retrieved_subscription.status != SubscriptionStatus.ACTIVE.value
+        )
 
     def test_get_subscription_by_user_id_filters_status(self, db_session, sample_user):
         """Test that get_subscription_by_user_id only returns active-like subscriptions."""

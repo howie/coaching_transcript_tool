@@ -5,7 +5,7 @@ to the existing BillingAnalyticsService while maintaining Clean Architecture bou
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 from ...services.billing_analytics_service import BillingAnalyticsService
@@ -226,9 +226,7 @@ class BillingAnalyticsPlanPerformanceUseCase:
             },
             "plan_performance": performance["plans"],
             "upgrade_patterns": performance["upgrade_patterns"],
-            "forecasts": (
-                performance.get("forecasts") if include_forecasts else None
-            ),
+            "forecasts": (performance.get("forecasts") if include_forecasts else None),
             "recommendations": performance["recommendations"],
         }
 
@@ -280,9 +278,7 @@ class BillingAnalyticsRefreshUseCase:
 
         if user_id:
             # Refresh specific user
-            result = service.refresh_user_analytics(
-                user_id, period_type, force_rebuild
-            )
+            result = service.refresh_user_analytics(user_id, period_type, force_rebuild)
             return {
                 "success": True,
                 "message": f"Analytics refreshed for user {user_id}",

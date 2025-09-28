@@ -1,9 +1,9 @@
 """Subscription domain models with business rules."""
 
 import enum
-from dataclasses import dataclass, field
-from datetime import datetime, date
-from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
+from datetime import date, datetime
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 
@@ -77,7 +77,10 @@ class ECPayCreditAuthorization:
 
     def is_valid_for_payment(self) -> bool:
         """Check if authorization can be used for payments."""
-        return self.auth_status in [ECPayAuthStatus.ACTIVE, ECPayAuthStatus.PENDING]
+        return self.auth_status in [
+            ECPayAuthStatus.ACTIVE,
+            ECPayAuthStatus.PENDING,
+        ]
 
     def get_amount_twd(self) -> float:
         """Get authorization amount in TWD dollars."""
@@ -141,7 +144,10 @@ class SaasSubscription:
 
     def is_renewable(self) -> bool:
         """Check if subscription can be renewed."""
-        return self.status in [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE]
+        return self.status in [
+            SubscriptionStatus.ACTIVE,
+            SubscriptionStatus.PAST_DUE,
+        ]
 
     def should_cancel_at_period_end(self) -> bool:
         """Check if subscription should be cancelled at period end."""
@@ -184,8 +190,7 @@ class SubscriptionPayment:
     def can_retry(self) -> bool:
         """Check if payment can be retried."""
         return (
-            self.status == PaymentStatus.FAILED
-            and self.retry_count < self.max_retries
+            self.status == PaymentStatus.FAILED and self.retry_count < self.max_retries
         )
 
     def get_amount_twd(self) -> float:

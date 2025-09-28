@@ -2,12 +2,12 @@
 
 import pytest
 
+from coaching_assistant.services.stt_provider import TranscriptSegment
 from coaching_assistant.utils.speaker_analysis import (
     SpeakerAnalyzer,
     SpeakerStats,
     analyze_and_assign_roles,
 )
-from coaching_assistant.services.stt_provider import TranscriptSegment
 
 
 class TestSpeakerStats:
@@ -40,9 +40,7 @@ class TestSpeakerStats:
             avg_segment_length=0.0,
         )
 
-        assert (
-            stats.question_ratio == 0.0
-        )  # 0/1 (max prevents division by zero)
+        assert stats.question_ratio == 0.0  # 0/1 (max prevents division by zero)
         assert stats.words_per_minute > 0  # Should handle near-zero duration
 
 
@@ -130,21 +128,11 @@ class TestSpeakerAnalyzer:
         analyzer = SpeakerAnalyzer("en")
 
         # Coaching patterns
+        assert analyzer._is_coaching_question("How does that make you feel?") is True
+        assert analyzer._is_coaching_question("Tell me more about that.") is True
+        assert analyzer._is_coaching_question("What would you like to happen?") is True
         assert (
-            analyzer._is_coaching_question("How does that make you feel?")
-            is True
-        )
-        assert (
-            analyzer._is_coaching_question("Tell me more about that.") is True
-        )
-        assert (
-            analyzer._is_coaching_question("What would you like to happen?")
-            is True
-        )
-        assert (
-            analyzer._is_coaching_question(
-                "Help me understand your perspective."
-            )
+            analyzer._is_coaching_question("Help me understand your perspective.")
             is True
         )
 
@@ -177,9 +165,7 @@ class TestSpeakerAnalysis:
             TranscriptSegment(0, 0.0, 3.0, "How are you feeling today?", 0.9),
             TranscriptSegment(0, 10.0, 13.0, "What brings you here?", 0.9),
             TranscriptSegment(0, 25.0, 28.0, "Tell me more about that.", 0.9),
-            TranscriptSegment(
-                0, 40.0, 42.0, "How does that make you feel?", 0.9
-            ),
+            TranscriptSegment(0, 40.0, 42.0, "How does that make you feel?", 0.9),
             # Client segments - longer, more statements
             TranscriptSegment(
                 1,
@@ -280,9 +266,7 @@ class TestSpeakerAnalysis:
             TranscriptSegment(1, 2.5, 5.0, "I'm doing well.", 0.8),
             TranscriptSegment(1, 15.0, 18.0, "That's interesting.", 0.8),
             # Speaker 2: Some responses
-            TranscriptSegment(
-                2, 5.5, 9.5, "I agree with that perspective.", 0.8
-            ),
+            TranscriptSegment(2, 5.5, 9.5, "I agree with that perspective.", 0.8),
             TranscriptSegment(2, 18.5, 22.0, "Thanks for sharing.", 0.8),
         ]
 
@@ -324,10 +308,7 @@ class TestSpeakerAnalysis:
 
         # Should have high confidence due to clear differentiation
         assert confidence["confidence"] > 0.7
-        assert (
-            confidence["coach_question_ratio"]
-            > confidence["client_question_ratio"]
-        )
+        assert confidence["coach_question_ratio"] > confidence["client_question_ratio"]
         assert confidence["question_ratio_difference"] > 0
 
     def test_confidence_metrics_low_confidence(self):
@@ -372,9 +353,7 @@ class TestConvenienceFunctions:
         """Test the convenience function for analysis and role assignment."""
         segments = [
             TranscriptSegment(0, 0.0, 2.0, "How are you feeling?", 0.9),
-            TranscriptSegment(
-                1, 2.5, 8.0, "I'm feeling anxious about work.", 0.8
-            ),
+            TranscriptSegment(1, 2.5, 8.0, "I'm feeling anxious about work.", 0.8),
             TranscriptSegment(0, 8.5, 10.0, "Tell me more.", 0.9),
         ]
 
@@ -390,9 +369,7 @@ class TestConvenienceFunctions:
         """Test analysis of Chinese conversation."""
         segments = [
             TranscriptSegment(0, 0.0, 3.0, "你今天感覺怎麼樣？", 0.9),
-            TranscriptSegment(
-                1, 3.5, 10.0, "我最近工作壓力很大，感覺很焦慮。", 0.8
-            ),
+            TranscriptSegment(1, 3.5, 10.0, "我最近工作壓力很大，感覺很焦慮。", 0.8),
             TranscriptSegment(0, 10.5, 12.0, "告訴我更多。", 0.9),
         ]
 
@@ -403,10 +380,7 @@ class TestConvenienceFunctions:
         assert roles[1] == "client"  # Longer responses
 
         # Should detect questions properly in Chinese
-        assert (
-            confidence["coach_question_ratio"]
-            > confidence["client_question_ratio"]
-        )
+        assert confidence["coach_question_ratio"] > confidence["client_question_ratio"]
 
 
 if __name__ == "__main__":

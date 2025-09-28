@@ -2,10 +2,12 @@
 Database connection and session management.
 """
 
-from contextlib import contextmanager
 import logging
+from contextlib import contextmanager
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
 from .config import settings
 
 
@@ -19,17 +21,16 @@ def create_database_engine(database_url: str, **kwargs):
         "pool_pre_ping": True,
         "pool_recycle": 3600,  # Recycle connections every hour
         "pool_timeout": 20,  # Timeout for getting connection from pool
-        "pool_size": 10,       # Number of connections to maintain
-        "max_overflow": 20,    # Additional connections allowed
+        "pool_size": 10,  # Number of connections to maintain
+        "max_overflow": 20,  # Additional connections allowed
         "echo": settings.SQL_ECHO,  # Log SQL queries when enabled
         "connect_args": {},
         **kwargs,
     }
 
-    # For production environments using SSL (like Render), add SSL configuration
-    if database_url and (
-        "render.com" in database_url or "dpg-" in database_url
-    ):
+    # For production environments using SSL (like Render), add SSL
+    # configuration
+    if database_url and ("render.com" in database_url or "dpg-" in database_url):
         connect_args = engine_kwargs.get("connect_args", {})
 
         # Render PostgreSQL SSL configuration
@@ -40,7 +41,8 @@ def create_database_engine(database_url: str, **kwargs):
             }
         )
 
-        # Render database SSL configuration - require SSL but disable certificate verification
+        # Render database SSL configuration - require SSL but disable
+        # certificate verification
         connect_args.update(
             {
                 "sslmode": "require",
@@ -61,12 +63,12 @@ engine = create_database_engine(settings.DATABASE_URL)
 # Configure SQLAlchemy logging independently from general logging
 if not settings.SQL_ECHO:
     # Suppress SQLAlchemy's SQL query logs by setting logger level to WARNING
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
-    logging.getLogger('sqlalchemy.engine.Engine').setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.WARNING)
 else:
     # Enable detailed SQL logging when SQL_ECHO is True
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-    logging.getLogger('sqlalchemy.engine.Engine').setLevel(logging.INFO)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+    logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.INFO)
 
 # Create a configured "Session" class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -3,9 +3,11 @@ Celery task for resetting monthly usage counters.
 Should be scheduled to run at midnight on the first day of each month.
 """
 
-from celery import shared_task
 import logging
+
 import requests
+from celery import shared_task
+
 from coaching_assistant.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -30,9 +32,7 @@ def reset_monthly_usage():
 
         if response.status_code == 200:
             result = response.json()
-            logger.info(
-                f"Successfully reset usage for {result['users_reset']} users"
-            )
+            logger.info(f"Successfully reset usage for {result['users_reset']} users")
             return {
                 "success": True,
                 "users_reset": result["users_reset"],
@@ -67,7 +67,7 @@ def check_usage_warnings():
         tracker = UsageTracker(db)
 
         # Get all active users
-        users = db.query(User).filter(User.is_active == True).all()
+        users = db.query(User).filter(User.is_active.is_(True)).all()
 
         warnings_sent = 0
         for user in users:
@@ -93,9 +93,7 @@ def check_usage_warnings():
                         warnings_sent += 1
 
             except Exception as e:
-                logger.error(
-                    f"Error checking usage for user {user.id}: {str(e)}"
-                )
+                logger.error(f"Error checking usage for user {user.id}: {str(e)}")
                 continue
 
         db.commit()
@@ -148,12 +146,10 @@ def send_usage_warning(user, metric: str, threshold: int, usage_info: dict):
 from celery.schedules import crontab
 
 CELERYBEAT_SCHEDULE = {
-    'reset-monthly-usage': {
-        'task': 'reset_monthly_usage',
+    'reset-monthly-usage': {'task': 'reset_monthly_usage',
         'schedule': crontab(day_of_month=1, hour=0, minute=0),  # First day of month at midnight
     },
-    'check-usage-warnings': {
-        'task': 'check_usage_warnings',
+    'check-usage-warnings': {'task': 'check_usage_warnings',
         'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
     },
 }

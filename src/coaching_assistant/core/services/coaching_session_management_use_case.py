@@ -4,12 +4,17 @@ This module contains the business logic for coaching session management operatio
 following the Clean Architecture principles with dependency injection.
 """
 
-from typing import List, Optional, Dict, Any, Tuple
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
-from datetime import datetime, date
 
 from ..models.coaching_session import CoachingSession, SessionSource
-from ..repositories.ports import CoachingSessionRepoPort, UserRepoPort, ClientRepoPort, SessionRepoPort
+from ..repositories.ports import (
+    ClientRepoPort,
+    CoachingSessionRepoPort,
+    SessionRepoPort,
+    UserRepoPort,
+)
 
 
 class CoachingSessionRetrievalUseCase:
@@ -81,7 +86,14 @@ class CoachingSessionRetrievalUseCase:
             raise ValueError(f"Coach with ID {coach_id} not found")
 
         sessions, total = self.session_repo.get_paginated_with_filters(
-            coach_id, from_date, to_date, client_id, currency, sort, page, page_size
+            coach_id,
+            from_date,
+            to_date,
+            client_id,
+            currency,
+            sort,
+            page,
+            page_size,
         )
 
         total_pages = (total + page_size - 1) // page_size
@@ -110,7 +122,9 @@ class CoachingSessionRetrievalUseCase:
         # Verify client exists and belongs to coach
         client = self.client_repo.get_by_id(client_id)
         if not client or client.user_id != coach_id:
-            raise ValueError(f"Client with ID {client_id} not found or not owned by coach")
+            raise ValueError(
+                f"Client with ID {client_id} not found or not owned by coach"
+            )
 
         return self.session_repo.get_last_session_by_client(coach_id, client_id)
 
@@ -135,7 +149,9 @@ class CoachingSessionRetrievalUseCase:
             }
         return None
 
-    def get_transcription_session_summary(self, transcription_session_id: UUID) -> Optional[Dict[str, Any]]:
+    def get_transcription_session_summary(
+        self, transcription_session_id: UUID
+    ) -> Optional[Dict[str, Any]]:
         """Get transcription session summary data.
 
         Args:
@@ -216,7 +232,14 @@ class CoachingSessionRetrievalUseCase:
             Tuple of (sessions_with_data, total_count, total_pages)
         """
         sessions, total, total_pages = self.list_sessions_paginated(
-            coach_id, from_date, to_date, client_id, currency, sort, page, page_size
+            coach_id,
+            from_date,
+            to_date,
+            client_id,
+            currency,
+            sort,
+            page,
+            page_size,
         )
 
         sessions_with_data = []
@@ -231,11 +254,13 @@ class CoachingSessionRetrievalUseCase:
                     session.transcription_session_id
                 )
 
-            sessions_with_data.append({
-                "session": session,
-                "client_summary": client_summary,
-                "transcription_session_summary": transcription_session_summary,
-            })
+            sessions_with_data.append(
+                {
+                    "session": session,
+                    "client_summary": client_summary,
+                    "transcription_session_summary": (transcription_session_summary),
+                }
+            )
 
         return sessions_with_data, total, total_pages
 
@@ -317,7 +342,9 @@ class CoachingSessionCreationUseCase:
 
         # Validate business rules
         if not session.validate():
-            raise ValueError("Invalid session data: duration must be positive, fee must be non-negative")
+            raise ValueError(
+                "Invalid session data: duration must be positive, fee must be non-negative"
+            )
 
         return self.session_repo.save(session)
 
@@ -386,7 +413,9 @@ class CoachingSessionUpdateUseCase:
             if not client:
                 raise ValueError(f"Client with ID {client_id} not found")
             if client.user_id != coach_id:
-                raise ValueError(f"Client {client_id} does not belong to coach {coach_id}")
+                raise ValueError(
+                    f"Client {client_id} does not belong to coach {coach_id}"
+                )
 
         # Update fields (only if provided)
         if session_date is not None:
@@ -410,7 +439,9 @@ class CoachingSessionUpdateUseCase:
 
         # Validate business rules
         if not session.validate():
-            raise ValueError("Invalid session data: duration must be positive, fee must be non-negative")
+            raise ValueError(
+                "Invalid session data: duration must be positive, fee must be non-negative"
+            )
 
         return self.session_repo.save(session)
 

@@ -1,12 +1,14 @@
 """Tests for CoachingSession with SessionSource field."""
 
-import pytest
 from datetime import date
+
+import pytest
+
 from coaching_assistant.models import (
+    Client,
     CoachingSession,
     SessionSource,
     User,
-    Client,
 )
 
 
@@ -16,9 +18,7 @@ class TestCoachingSessionSource:
     def test_create_coaching_session_with_source(self, db_session):
         """Test creating a coaching session with all SessionSource values."""
         # Create a coach user
-        coach = User(
-            email="coach@example.com", name="Test Coach", google_id="coach123"
-        )
+        coach = User(email="coach@example.com", name="Test Coach", google_id="coach123")
         db_session.add(coach)
         db_session.flush()
 
@@ -87,9 +87,7 @@ class TestCoachingSessionSource:
         )
         db_session.add(session)
 
-        with pytest.raises(
-            Exception
-        ):  # Should raise an integrity constraint error
+        with pytest.raises(Exception):  # Should raise an integrity constraint error
             db_session.commit()
 
     def test_coaching_session_source_enum_validation(self, db_session):

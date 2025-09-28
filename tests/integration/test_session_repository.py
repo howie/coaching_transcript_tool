@@ -4,18 +4,16 @@ This module tests the SQLAlchemySessionRepository with real database operations,
 ensuring proper domain ↔ ORM conversion and transaction integrity.
 """
 
-import pytest
-from uuid import uuid4
 from datetime import datetime, timedelta
+from uuid import uuid4
 
+import pytest
+
+from src.coaching_assistant.core.models.session import Session, SessionStatus
 from src.coaching_assistant.infrastructure.db.repositories.session_repository import (
     SQLAlchemySessionRepository,
     create_session_repository,
 )
-from src.coaching_assistant.core.models.session import Session, SessionStatus
-from src.coaching_assistant.core.models.user import User, UserPlan
-from src.coaching_assistant.models.user import User as UserModel
-from src.coaching_assistant.models.session import Session as SessionModel
 
 
 @pytest.mark.integration
@@ -94,7 +92,9 @@ class TestSessionRepositoryIntegration:
         all_sessions = repo.get_by_user_id(sample_user.id)
 
         # Act - Get only UPLOADING sessions
-        uploading_sessions = repo.get_by_user_id(sample_user.id, status=SessionStatus.UPLOADING)
+        uploading_sessions = repo.get_by_user_id(
+            sample_user.id, status=SessionStatus.UPLOADING
+        )
 
         # Act - Get with limit
         limited_sessions = repo.get_by_user_id(sample_user.id, limit=2)
@@ -150,7 +150,7 @@ class TestSessionRepositoryIntegration:
             session = Session(
                 id=uuid4(),
                 user_id=sample_user.id,
-                title=f"Count Test Session {i+1}",
+                title=f"Count Test Session {i + 1}",
                 status=SessionStatus.UPLOADING,
                 created_at=datetime.utcnow() - timedelta(hours=i),
                 updated_at=datetime.utcnow() - timedelta(hours=i),
@@ -162,8 +162,7 @@ class TestSessionRepositoryIntegration:
         # Act
         total_count = repo.count_user_sessions(sample_user.id)
         recent_count = repo.count_user_sessions(
-            sample_user.id,
-            since=datetime.utcnow() - timedelta(minutes=30)
+            sample_user.id, since=datetime.utcnow() - timedelta(minutes=30)
         )
 
         # Assert
@@ -214,13 +213,12 @@ class TestSessionRepositoryIntegration:
         # Act
         total_minutes = repo.get_total_duration_minutes(sample_user.id)
         recent_minutes = repo.get_total_duration_minutes(
-            sample_user.id,
-            since=datetime.utcnow() - timedelta(minutes=30)
+            sample_user.id, since=datetime.utcnow() - timedelta(minutes=30)
         )
 
         # Assert
         assert total_minutes == 15  # 5 + 10 minutes (session3 has no duration)
-        assert recent_minutes == 5   # Only session1 is recent
+        assert recent_minutes == 5  # Only session1 is recent
 
     def test_get_sessions_by_date_range(self, db_session, sample_user):
         """Test getting sessions within date range."""
@@ -374,7 +372,10 @@ class TestSessionRepositoryIntegration:
         assert retrieved_session.error_message == original_session.error_message
         assert retrieved_session.gcs_audio_path == original_session.gcs_audio_path
         assert retrieved_session.stt_provider == original_session.stt_provider
-        assert retrieved_session.transcription_job_id == original_session.transcription_job_id
+        assert (
+            retrieved_session.transcription_job_id
+            == original_session.transcription_job_id
+        )
 
     def test_repository_factory_function(self, db_session):
         """Test the repository factory function."""
@@ -403,8 +404,8 @@ class TestSessionRepositoryIntegration:
         db_session.commit()
 
         # Act - Simulate concurrent updates
-        updated_session1 = repo1.update_status(saved_session.id, SessionStatus.PENDING)
-        updated_session2 = repo2.update_status(saved_session.id, SessionStatus.PROCESSING)
+        repo1.update_status(saved_session.id, SessionStatus.PENDING)
+        repo2.update_status(saved_session.id, SessionStatus.PROCESSING)
 
         db_session.commit()
 
@@ -423,8 +424,10 @@ class TestSessionRepositoryIntegration:
             session = Session(
                 id=uuid4(),
                 user_id=sample_user.id,
-                title=f"Performance Test Session {i+1}",
-                status=SessionStatus.UPLOADING if i % 2 == 0 else SessionStatus.COMPLETED,
+                title=f"Performance Test Session {i + 1}",
+                status=(
+                    SessionStatus.UPLOADING if i % 2 == 0 else SessionStatus.COMPLETED
+                ),
                 created_at=datetime.utcnow() - timedelta(hours=i),
                 updated_at=datetime.utcnow() - timedelta(hours=i),
             )
@@ -444,5 +447,7 @@ class TestSessionRepositoryIntegration:
         assert (end_time - start_time) < 1.0  # Should complete within 1 second
 
         # Test status filtering
-        uploading_sessions = repo.get_by_user_id(sample_user.id, status=SessionStatus.UPLOADING)
+        uploading_sessions = repo.get_by_user_id(
+            sample_user.id, status=SessionStatus.UPLOADING
+        )
         assert len(uploading_sessions) == 25  # Half should be UPLOADING

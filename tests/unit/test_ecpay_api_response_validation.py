@@ -4,9 +4,10 @@ These tests ensure robust handling of ECPay API responses and prevent
 silent failures that could lead to billing issues.
 """
 
-import pytest
-from unittest.mock import Mock, patch
 from datetime import date
+from unittest.mock import Mock, patch
+
+import pytest
 
 from src.coaching_assistant.core.services.ecpay_service import (
     ECPaySubscriptionService,
@@ -78,9 +79,7 @@ class TestECPayAPIResponseValidation:
         }
 
         with patch.object(service, "_verify_callback", return_value=True):
-            with patch.object(
-                service, "_create_subscription"
-            ) as mock_create_sub:
+            with patch.object(service, "_create_subscription") as mock_create_sub:
                 mock_subscription = Mock()
                 mock_subscription.plan_id = "PRO"
                 mock_create_sub.return_value = mock_subscription
@@ -149,9 +148,7 @@ class TestECPayAPIResponseValidation:
             mock_db_session.commit.assert_not_called()
             mock_db_session.rollback.assert_not_called()
 
-    def test_missing_merchant_member_id_callback(
-        self, service, mock_db_session
-    ):
+    def test_missing_merchant_member_id_callback(self, service, mock_db_session):
         """Test handling of callback missing MerchantMemberID"""
 
         callback_data = {
@@ -164,17 +161,13 @@ class TestECPayAPIResponseValidation:
         with patch.object(service, "_verify_callback", return_value=True):
             result = service.handle_auth_callback(callback_data)
 
-            assert (
-                result is False
-            ), "Missing MerchantMemberID should be rejected"
+            assert result is False, "Missing MerchantMemberID should be rejected"
 
     def test_auth_record_not_found_callback(self, service, mock_db_session):
         """Test handling of callback for non-existent authorization record"""
 
         # Mock query to return None (record not found)
-        mock_db_session.query.return_value.filter.return_value.first.return_value = (
-            None
-        )
+        mock_db_session.query.return_value.filter.return_value.first.return_value = None
 
         callback_data = {
             "MerchantID": "3002607",
@@ -186,13 +179,9 @@ class TestECPayAPIResponseValidation:
         with patch.object(service, "_verify_callback", return_value=True):
             result = service.handle_auth_callback(callback_data)
 
-            assert (
-                result is False
-            ), "Non-existent auth record should be rejected"
+            assert result is False, "Non-existent auth record should be rejected"
 
-    def test_successful_payment_webhook_handling(
-        self, service, mock_db_session
-    ):
+    def test_successful_payment_webhook_handling(self, service, mock_db_session):
         """Test handling of successful payment webhook"""
 
         # Mock authorization record
@@ -224,9 +213,7 @@ class TestECPayAPIResponseValidation:
         with patch.object(service, "_verify_callback", return_value=True):
             result = service.handle_payment_webhook(webhook_data)
 
-            assert (
-                result is True
-            ), "Successful payment webhook should return True"
+            assert result is True, "Successful payment webhook should return True"
 
             # Verify subscription was extended
             assert mock_subscription.status == SubscriptionStatus.ACTIVE.value
@@ -259,14 +246,12 @@ class TestECPayAPIResponseValidation:
         }
 
         with patch.object(service, "_verify_callback", return_value=True):
-            with patch.object(
-                service, "_handle_failed_payment"
-            ) as mock_handle_failed:
+            with patch.object(service, "_handle_failed_payment") as mock_handle_failed:
                 result = service.handle_payment_webhook(webhook_data)
 
-                assert (
-                    result is True
-                ), "Webhook processing should succeed even if payment failed"
+                assert result is True, (
+                    "Webhook processing should succeed even if payment failed"
+                )
                 mock_handle_failed.assert_called_once()
 
     def test_check_mac_value_generation_consistency(self, service):
@@ -289,15 +274,11 @@ class TestECPayAPIResponseValidation:
         assert mac1 == mac2 == mac3, "CheckMacValue generation not consistent"
 
         # Should be 64 characters (SHA256)
-        assert (
-            len(mac1) == 64
-        ), f"CheckMacValue should be 64 chars, got {len(mac1)}"
+        assert len(mac1) == 64, f"CheckMacValue should be 64 chars, got {len(mac1)}"
 
         # Should be uppercase hex
         assert mac1.isupper(), "CheckMacValue should be uppercase"
-        assert all(
-            c in "0123456789ABCDEF" for c in mac1
-        ), "CheckMacValue should be hex"
+        assert all(c in "0123456789ABCDEF" for c in mac1), "CheckMacValue should be hex"
 
     def test_check_mac_value_changes_with_data(self, service):
         """Test CheckMacValue changes when data changes"""
@@ -323,12 +304,10 @@ class TestECPayAPIResponseValidation:
             modified_data = {**base_data, **variation}
             modified_mac = service._generate_check_mac_value(modified_data)
 
-            assert (
-                modified_mac != base_mac
-            ), f"CheckMacValue should change for variation {variation}"
-            assert (
-                len(modified_mac) == 64
-            ), "Modified MAC should still be 64 chars"
+            assert modified_mac != base_mac, (
+                f"CheckMacValue should change for variation {variation}"
+            )
+            assert len(modified_mac) == 64, "Modified MAC should still be 64 chars"
 
     def test_callback_verification_security(self, service):
         """Test that callback verification properly validates CheckMacValue"""
@@ -392,14 +371,12 @@ class TestECPayAPIResponseValidation:
                 result = service.handle_auth_callback(callback_data)
 
                 # All non-"1" codes should be treated as failures
-                assert (
-                    result is False
-                ), f"Error code {error_code} should be treated as failure"
+                assert result is False, (
+                    f"Error code {error_code} should be treated as failure"
+                )
 
                 if error_code != "1":
-                    assert (
-                        mock_auth.auth_status == ECPayAuthStatus.FAILED.value
-                    )
+                    assert mock_auth.auth_status == ECPayAuthStatus.FAILED.value
 
     def test_amount_parsing_and_validation(self, service):
         """Test proper parsing and validation of monetary amounts"""
@@ -441,9 +418,9 @@ class TestECPayAPIResponseValidation:
                 if payment_record_call:
                     payment_record = payment_record_call[0][0]
                     if hasattr(payment_record, "amount"):
-                        assert (
-                            payment_record.amount == expected_cents
-                        ), f"Amount {amount_str} should convert to {expected_cents} cents"
+                        assert payment_record.amount == expected_cents, (
+                            f"Amount {amount_str} should convert to {expected_cents} cents"
+                        )
 
     @pytest.mark.parametrize(
         "invalid_data",
@@ -464,6 +441,4 @@ class TestECPayAPIResponseValidation:
                 service.handle_auth_callback(invalid_data)
         else:
             result = service.handle_auth_callback(invalid_data)
-            assert (
-                result is False
-            ), f"Invalid data should be rejected: {invalid_data}"
+            assert result is False, f"Invalid data should be rejected: {invalid_data}"

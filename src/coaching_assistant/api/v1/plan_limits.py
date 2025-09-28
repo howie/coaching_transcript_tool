@@ -3,20 +3,33 @@ Plan limits validation API endpoints.
 Handles usage validation and limit checking for different plan tiers.
 """
 
+import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from .auth import get_current_user_dependency
-from .dependencies import get_plan_validation_use_case, get_plan_retrieval_use_case, get_usage_log_use_case, get_user_usage_use_case
+from coaching_assistant.core.config import settings
+from coaching_assistant.core.services.plan_management_use_case import (
+    PlanRetrievalUseCase,
+    PlanValidationUseCase,
+)
+from coaching_assistant.core.services.usage_tracking_use_case import (
+    CreateUsageLogUseCase,
+    GetUserUsageUseCase,
+)
+
 from ...core.database import get_db
 from ...core.models.user import User
-from coaching_assistant.core.services.plan_management_use_case import PlanValidationUseCase, PlanRetrievalUseCase
-from coaching_assistant.core.services.usage_tracking_use_case import CreateUsageLogUseCase, GetUserUsageUseCase
-from coaching_assistant.core.config import settings
-import logging
+from .auth import get_current_user_dependency
+from .dependencies import (
+    get_plan_retrieval_use_case,
+    get_plan_validation_use_case,
+    get_usage_log_use_case,
+    get_user_usage_use_case,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +41,10 @@ class ValidateActionRequest(BaseModel):
 
     action: str = Field(
         ...,
-        description="Action to validate: create_session, transcribe, check_minutes, upload_file, export_transcript",
+        description=(
+            "Action to validate: create_session, transcribe, check_minutes, "
+            "upload_file, export_transcript"
+        ),
     )
     params: Optional[Dict[str, Any]] = Field(
         default_factory=dict, description="Optional parameters for validation"
@@ -44,9 +60,7 @@ class LimitInfo(BaseModel):
     )
     current: int = Field(..., description="Current usage count")
     limit: int = Field(..., description="Plan limit (-1 for unlimited)")
-    reset_date: str = Field(
-        ..., description="ISO format date when limits reset"
-    )
+    reset_date: str = Field(..., description="ISO format date when limits reset")
 
 
 class UpgradeSuggestion(BaseModel):
@@ -74,10 +88,13 @@ class ValidateActionResponse(BaseModel):
 async def validate_action(
     request: ValidateActionRequest,
     current_user: User = Depends(get_current_user_dependency),
-    plan_validation_use_case: PlanValidationUseCase = Depends(get_plan_validation_use_case),
+    plan_validation_use_case: PlanValidationUseCase = Depends(
+        get_plan_validation_use_case
+    ),
 ) -> ValidateActionResponse:
     """
-    Validate if a user can perform a specific action based on their plan limits using Clean Architecture.
+    Validate if a user can perform a specific action based on their plan
+    limits using Clean Architecture.
 
     Actions:
     - create_session: Check if user can create a new coaching session
@@ -101,26 +118,34 @@ async def validate_action(
                 request.params.get("file_size_mb", 0) if request.params else 0
             )
             # Use file size validation from the use case
-            file_validation = plan_validation_use_case.validate_file_size(current_user.id, file_size_mb)
+            file_validation = plan_validation_use_case.validate_file_size(
+                current_user.id, file_size_mb
+            )
 
             response = ValidateActionResponse(
                 allowed=file_validation["valid"],
                 message=file_validation["message"],
-                limit_info=LimitInfo(
-                    type="file_size",
-                    current=int(file_validation.get("actual", file_size_mb)),
-                    limit=int(file_validation.get("limit", 60)),
-                    reset_date=reset_date_str,
-                ) if not file_validation["valid"] else LimitInfo(
-                    type="file_size",
-                    current=int(file_size_mb),
-                    limit=int(file_validation.get("limit", 60)),
-                    reset_date=reset_date_str,
+                limit_info=(
+                    LimitInfo(
+                        type="file_size",
+                        current=int(file_validation.get("actual", file_size_mb)),
+                        limit=int(file_validation.get("limit", 60)),
+                        reset_date=reset_date_str,
+                    )
+                    if not file_validation["valid"]
+                    else LimitInfo(
+                        type="file_size",
+                        current=int(file_size_mb),
+                        limit=int(file_validation.get("limit", 60)),
+                        reset_date=reset_date_str,
+                    )
                 ),
             )
         else:
             # For other actions, use general usage validation
-            usage_validation = plan_validation_use_case.validate_user_limits(current_user.id)
+            usage_validation = plan_validation_use_case.validate_user_limits(
+                current_user.id
+            )
 
             # Determine current usage and limits based on action
             if request.action in ["create_session", "transcribe"]:
@@ -129,8 +154,19 @@ async def validate_action(
                     allowed=True,
                     message=None,
                     limit_info=LimitInfo(
-                        type=request.action.replace("create_", "").replace("transcribe", "transcription"),
-                        current=getattr(current_user, "session_count" if request.action == "create_session" else "transcription_count", 0) or 0,
+                        type=request.action.replace("create_", "").replace(
+                            "transcribe", "transcription"
+                        ),
+                        current=getattr(
+                            current_user,
+                            (
+                                "session_count"
+                                if request.action == "create_session"
+                                else "transcription_count"
+                            ),
+                            0,
+                        )
+                        or 0,
                         limit=-1,  # Unlimited
                         reset_date=reset_date_str,
                     ),
@@ -142,7 +178,8 @@ async def validate_action(
                 )
                 current_minutes = getattr(current_user, "usage_minutes", 0) or 0
 
-                # Check if any violations would occur with the additional minutes
+                # Check if any violations would occur with the additional
+                # minutes
                 allowed = usage_validation["valid"]
                 message = "Action permitted"
 
@@ -168,17 +205,25 @@ async def validate_action(
                 # Default case for export_transcript or other actions
                 response = ValidateActionResponse(
                     allowed=usage_validation["valid"],
-                    message=usage_validation.get("message", "Action permitted") if not usage_validation["valid"] else None,
+                    message=(
+                        usage_validation.get("message", "Action permitted")
+                        if not usage_validation["valid"]
+                        else None
+                    ),
                     limit_info=LimitInfo(
                         type=request.action.replace("export_", ""),
                         current=0,  # Would need specific tracking
-                        limit=50,   # Default export limit
+                        limit=50,  # Default export limit
                         reset_date=reset_date_str,
                     ),
                 )
 
         # Add upgrade suggestions based on current plan
-        current_plan_value = getattr(current_user.plan, 'value', current_user.plan) if hasattr(current_user.plan, 'value') else current_user.plan
+        current_plan_value = (
+            getattr(current_user.plan, "value", current_user.plan)
+            if hasattr(current_user.plan, "value")
+            else current_user.plan
+        )
 
         if not response.allowed and current_plan_value != "ENTERPRISE":
             if current_plan_value == "FREE":
@@ -205,16 +250,15 @@ async def validate_action(
                 )
 
         logger.info(
-            f"Validation for user {current_user.id}: action={request.action}, allowed={response.allowed}"
+            f"Validation for user {current_user.id}: "
+            f"action={request.action}, allowed={response.allowed}"
         )
         return response
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            f"Error validating action for user {current_user.id}: {str(e)}"
-        )
+        logger.error(f"Error validating action for user {current_user.id}: {str(e)}")
         # Fail open - allow action on error for better UX
         return ValidateActionResponse(
             allowed=True,
@@ -227,7 +271,9 @@ async def validate_action(
 @router.get("/current-usage")
 async def get_current_usage(
     current_user: User = Depends(get_current_user_dependency),
-    plan_retrieval_use_case: PlanRetrievalUseCase = Depends(get_plan_retrieval_use_case),
+    plan_retrieval_use_case: PlanRetrievalUseCase = Depends(
+        get_plan_retrieval_use_case
+    ),
 ) -> Dict[str, Any]:
     """Get current usage statistics for the authenticated user using Clean Architecture."""
     try:
@@ -247,7 +293,8 @@ async def get_current_usage(
         return {
             "plan": plan_info.get("id", "FREE"),
             "usage": {
-                # Phase 2: Only minutes-based limits, sessions/transcriptions unlimited
+                # Phase 2: Only minutes-based limits, sessions/transcriptions
+                # unlimited
                 "minutes": {
                     "current": current_user.usage_minutes or 0,
                     "limit": plan_limits.get("maxTotalMinutes", -1),
@@ -263,9 +310,7 @@ async def get_current_usage(
         }
 
     except Exception as e:
-        logger.error(
-            f"Error getting usage for user {current_user.id}: {str(e)}"
-        )
+        logger.error(f"Error getting usage for user {current_user.id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve usage information",
@@ -302,7 +347,7 @@ async def increment_usage(
         usage_log_use_case.log_usage(
             user_id=current_user.id,
             action=metric,
-            usage_data={"amount": amount, "metric": metric}
+            usage_data={"amount": amount, "metric": metric},
         )
 
         # For backward compatibility, we'll simulate the old behavior
@@ -313,7 +358,9 @@ async def increment_usage(
         if metric == "session_count":
             current_user.session_count = (current_user.session_count or 0) + amount
         elif metric == "transcription_count":
-            current_user.transcription_count = (current_user.transcription_count or 0) + amount
+            current_user.transcription_count = (
+                current_user.transcription_count or 0
+            ) + amount
         elif metric == "usage_minutes":
             current_user.usage_minutes = (current_user.usage_minutes or 0) + amount
 
@@ -326,7 +373,8 @@ async def increment_usage(
             new_value = current_user.usage_minutes
 
         logger.info(
-            f"Incremented {metric} by {amount} for user {current_user.id}. New value: {new_value}"
+            f"Incremented {metric} by {amount} for user {current_user.id}. "
+            f"New value: {new_value}"
         )
 
         return {
@@ -337,9 +385,7 @@ async def increment_usage(
         }
 
     except Exception as e:
-        logger.error(
-            f"Error incrementing usage for user {current_user.id}: {str(e)}"
-        )
+        logger.error(f"Error incrementing usage for user {current_user.id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update usage",
@@ -350,7 +396,7 @@ async def increment_usage(
 async def reset_monthly_usage(
     admin_key: str,
     user_usage_use_case: GetUserUsageUseCase = Depends(get_user_usage_use_case),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
     Reset monthly usage counters for all users using Clean Architecture.
@@ -365,7 +411,9 @@ async def reset_monthly_usage(
 
     try:
         # Use dedicated BulkUsageResetUseCase for bulk operations
-        from ...core.services.bulk_operations_use_case import BulkUsageResetUseCase
+        from ...core.services.bulk_operations_use_case import (
+            BulkUsageResetUseCase,
+        )
         from ...infrastructure.factories import RepositoryFactory
 
         # Create use case with repository dependencies
@@ -377,15 +425,20 @@ async def reset_monthly_usage(
         reset_result = bulk_reset_use_case.reset_all_monthly_usage()
 
         if reset_result["success"]:
-            logger.info(f"✅ Reset monthly usage for {reset_result['users_reset']} users")
+            logger.info(
+                f"✅ Reset monthly usage for {reset_result['users_reset']} users"
+            )
         else:
-            logger.error(f"❌ Bulk usage reset failed: {reset_result.get('error', 'Unknown error')}")
+            logger.error(
+                f"❌ Bulk usage reset failed: "
+                f"{reset_result.get('error', 'Unknown error')}"
+            )
 
-        reset_count = reset_result.get("users_reset", 0)
+        reset_result.get("users_reset", 0)
 
         return {
             **reset_result,  # Include all results from use case
-            "reset_time": datetime.utcnow().isoformat() + "Z"
+            "reset_time": datetime.utcnow().isoformat() + "Z",
         }
 
     except Exception as e:

@@ -2,16 +2,17 @@
 Plan Configuration model for dynamic billing plan management.
 """
 
+import uuid
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
     JSON,
     Boolean,
-    Enum as SQLEnum,
+    Column,
+    Integer,
+    String,
 )
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
-import uuid
 
 from .base import Base, TimestampMixin
 from .user import UserPlan
@@ -29,20 +30,24 @@ class PlanConfiguration(Base, TimestampMixin):
 
     # Plan identification
     plan_type = Column(
-        SQLEnum(UserPlan, values_callable=lambda x: [e.value for e in x], native_enum=False), unique=True, nullable=False, index=True
+        SQLEnum(
+            UserPlan,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False,
+        ),
+        unique=True,
+        nullable=False,
+        index=True,
     )
     plan_name = Column(String(50), nullable=False)  # free, pro, business
-    display_name = Column(
-        String(100), nullable=False
-    )  # "Free Trial", "Pro Plan", etc.
+    display_name = Column(String(100), nullable=False)  # "Free Trial", "Pro Plan", etc.
     description = Column(String(500))
     tagline = Column(String(200))
 
     # Usage limits (stored as JSON for flexibility)
     limits = Column(JSON, nullable=False, default=dict)
     # Expected structure:
-    # {
-    #     "max_sessions": 10,
+    # {#     "max_sessions": 10,
     #     "max_total_minutes": 120,
     #     "max_transcription_count": 20,
     #     "max_file_size_mb": 50,
@@ -84,8 +89,7 @@ class PlanConfiguration(Base, TimestampMixin):
     # Additional data
     extra_data = Column(JSON, default=dict)
     # Can store additional info like:
-    # {
-    #     "stripe_product_id": "prod_xxx",
+    # {#     "stripe_product_id": "prod_xxx",
     #     "stripe_price_id_monthly": "price_xxx",
     #     "stripe_price_id_annual": "price_xxx",
     #     "promotional_discount": 0.2,
@@ -109,7 +113,7 @@ class PlanConfiguration(Base, TimestampMixin):
                 "monthly_twd": self.monthly_price_twd_cents / 100,
                 "annual_twd": self.annual_price_twd_cents / 100,
                 "currency": self.currency,
-                "annual_discount_percentage": self._calculate_annual_discount(),
+                "annual_discount_percentage": (self._calculate_annual_discount()),
                 "annual_savings_usd": self._calculate_annual_savings(),
             },
             "display": {
@@ -154,8 +158,22 @@ class SubscriptionHistory(Base, TimestampMixin):
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
 
     # Plan change details
-    old_plan = Column(SQLEnum(UserPlan, values_callable=lambda x: [e.value for e in x], native_enum=False), nullable=True)
-    new_plan = Column(SQLEnum(UserPlan, values_callable=lambda x: [e.value for e in x], native_enum=False), nullable=False)
+    old_plan = Column(
+        SQLEnum(
+            UserPlan,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False,
+        ),
+        nullable=True,
+    )
+    new_plan = Column(
+        SQLEnum(
+            UserPlan,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False,
+        ),
+        nullable=False,
+    )
 
     # Change metadata
     change_type = Column(

@@ -1,18 +1,20 @@
 """Coaching session model."""
 
 import enum
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    ForeignKey,
-    Text,
-    Date,
     CheckConstraint,
+    Column,
+    Date,
     Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 

@@ -7,11 +7,13 @@ import os
 import sys
 
 # Add the src directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from coaching_assistant.infrastructure.db.session import get_database_session
-from coaching_assistant.core.config import Settings
 from sqlalchemy import text
+
+from coaching_assistant.core.config import Settings
+from coaching_assistant.infrastructure.db.session import get_database_session
+
 
 def fix_user_plan_case():
     """Fix user plan case mismatch by converting uppercase to lowercase."""
@@ -23,12 +25,14 @@ def fix_user_plan_case():
         session = get_database_session(settings)
         try:
             # First, check all current plan values
-            result = session.execute(text("""
+            result = session.execute(
+                text("""
                 SELECT plan, COUNT(*) as count
                 FROM "user"
                 GROUP BY plan
                 ORDER BY plan
-            """))
+            """)
+            )
             plan_counts = list(result)
             print("📊 Current plan distribution:")
             for plan, count in plan_counts:
@@ -41,7 +45,9 @@ def fix_user_plan_case():
             # Since the database has proper lowercase enum values, the issue must be
             # in the application code trying to compare/use uppercase enum values
 
-            print("🔍 The issue is likely in the application code using uppercase enum values")
+            print(
+                "🔍 The issue is likely in the application code using uppercase enum values"
+            )
             print("💡 Database has correct lowercase enum values")
             print("✅ No database changes needed - fix is in application enum handling")
 
@@ -54,6 +60,7 @@ def fix_user_plan_case():
 
     print("✅ User plan case fix completed")
     return True
+
 
 if __name__ == "__main__":
     success = fix_user_plan_case()

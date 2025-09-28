@@ -2,7 +2,8 @@
 
 from functools import wraps
 from typing import Callable
-from fastapi import Depends, HTTPException, status, Request
+
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
@@ -24,9 +25,7 @@ def require_role(required_role: UserRole):
         ):
             permission_service = PermissionService(db)
             permission_service.require_role(current_user, required_role)
-            return await func(
-                *args, current_user=current_user, db=db, **kwargs
-            )
+            return await func(*args, current_user=current_user, db=db, **kwargs)
 
         return wrapper
 
@@ -79,9 +78,7 @@ async def get_current_user_with_permissions(
 
     # Check IP allowlist if configured
     client_ip = request.client.host if request.client else None
-    if client_ip and not permission_service.check_ip_allowlist(
-        current_user, client_ip
-    ):
+    if client_ip and not permission_service.check_ip_allowlist(current_user, client_ip):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied from this IP address",

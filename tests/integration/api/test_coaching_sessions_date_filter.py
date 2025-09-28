@@ -1,16 +1,22 @@
 """Test coaching sessions API date filtering functionality."""
 
-import pytest
 from datetime import date
 from uuid import uuid4
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
 
-from coaching_assistant.main import app
-from coaching_assistant.models import User, Client, CoachingSession, SessionSource
-from coaching_assistant.models.base import Base
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from coaching_assistant.core.database import get_db
+from coaching_assistant.main import app
+from coaching_assistant.models import (
+    Client,
+    CoachingSession,
+    SessionSource,
+    User,
+)
+from coaching_assistant.models.base import Base
 
 
 @pytest.fixture
@@ -55,7 +61,10 @@ def auth_headers(test_db):
     test_db.add(user)
 
     client = Client(
-        id=uuid4(), coach_id=user.id, name="Test Client", email="client@example.com"
+        id=uuid4(),
+        coach_id=user.id,
+        name="Test Client",
+        email="client@example.com",
     )
     test_db.add(client)
 
@@ -136,5 +145,6 @@ class TestCoachingSessionsDateFilter:
             "/api/v1/sessions?from=2025-08-10&to_date=2025-08-20&client_id=some-uuid"
         )
 
-        # Should get 401 (auth required) - correct params are accepted, wrong ones ignored
+        # Should get 401 (auth required) - correct params are accepted, wrong
+        # ones ignored
         assert response.status_code == 401

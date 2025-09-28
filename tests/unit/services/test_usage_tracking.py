@@ -1,16 +1,20 @@
 """Tests for usage tracking service."""
 
-import pytest
 from datetime import datetime, timedelta
 from decimal import Decimal
+
+import pytest
 from sqlalchemy.orm import Session
 
-from coaching_assistant.models.user import User, UserPlan
-from coaching_assistant.models.usage_log import UsageLog, TranscriptionType
 from coaching_assistant.models.usage_analytics import UsageAnalytics
+from coaching_assistant.models.usage_log import (
+    TranscriptionType,
+    UsageLog,
+)
+from coaching_assistant.models.user import User, UserPlan
 from coaching_assistant.services.usage_tracking import (
-    UsageTrackingService,
     PlanLimits,
+    UsageTrackingService,
 )
 
 
@@ -68,9 +72,7 @@ class TestPlanLimits:
         assert PlanLimits.validate_export_format(UserPlan.FREE, "json") is True
         assert PlanLimits.validate_export_format(UserPlan.FREE, "txt") is True
         assert PlanLimits.validate_export_format(UserPlan.FREE, "vtt") is False
-        assert (
-            PlanLimits.validate_export_format(UserPlan.FREE, "xlsx") is False
-        )
+        assert PlanLimits.validate_export_format(UserPlan.FREE, "xlsx") is False
 
         # Pro plan formats
         assert PlanLimits.validate_export_format(UserPlan.PRO, "vtt") is True
@@ -78,14 +80,8 @@ class TestPlanLimits:
         assert PlanLimits.validate_export_format(UserPlan.PRO, "xlsx") is False
 
         # Enterprise formats
-        assert (
-            PlanLimits.validate_export_format(UserPlan.ENTERPRISE, "xlsx")
-            is True
-        )
-        assert (
-            PlanLimits.validate_export_format(UserPlan.ENTERPRISE, "json")
-            is True
-        )
+        assert PlanLimits.validate_export_format(UserPlan.ENTERPRISE, "xlsx") is True
+        assert PlanLimits.validate_export_format(UserPlan.ENTERPRISE, "json") is True
 
 
 class TestUsageTrackingService:
@@ -111,9 +107,7 @@ class TestUsageTrackingService:
         assert log_entry.is_billable is True
 
         # Verify it's in the database
-        saved_log = (
-            db_session.query(UsageLog).filter_by(id=log_entry.id).first()
-        )
+        saved_log = db_session.query(UsageLog).filter_by(id=log_entry.id).first()
         assert saved_log is not None
 
     def test_create_usage_log_retry(self, db_session: Session, test_session):
@@ -138,9 +132,7 @@ class TestUsageTrackingService:
         assert retry_log.is_billable is False
         assert retry_log.parent_log_id == initial_log.id
 
-    def test_get_user_usage_summary(
-        self, db_session: Session, test_user: User
-    ):
+    def test_get_user_usage_summary(self, db_session: Session, test_user: User):
         """Test getting user usage summary."""
         service = UsageTrackingService(db_session)
 
@@ -149,7 +141,7 @@ class TestUsageTrackingService:
         logs = [
             UsageLog(
                 user_id=str(test_user.id),
-                usage_type=UsageType.TRANSCRIPTION,
+                usage_type=TranscriptionType.ORIGINAL,
                 session_id=f"session-{i}",
                 duration_minutes=10.0,
                 cost_usd=Decimal("0.50"),
@@ -176,9 +168,7 @@ class TestUsageTrackingService:
         assert summary["lifetime"]["total_transcriptions"] == 5
         assert float(summary["lifetime"]["total_cost"]) == 2.50
 
-    def test_get_user_usage_history(
-        self, db_session: Session, test_user: User
-    ):
+    def test_get_user_usage_history(self, db_session: Session, test_user: User):
         """Test getting user usage history."""
         service = UsageTrackingService(db_session)
 
@@ -189,7 +179,7 @@ class TestUsageTrackingService:
             for i in range(3):
                 log = UsageLog(
                     user_id=str(test_user.id),
-                    usage_type=UsageType.TRANSCRIPTION,
+                    usage_type=TranscriptionType.ORIGINAL,
                     session_id=f"session-{month_offset}-{i}",
                     duration_minutes=10.0,
                     cost_usd=Decimal("0.50"),
@@ -247,9 +237,7 @@ class TestUsageTrackingService:
         assert result["trends"]["total_minutes"] == 216.0
         assert result["provider_breakdown"]["google"]["percentage"] > 0
 
-    def test_update_usage_and_check_limit(
-        self, db_session: Session, test_user: User
-    ):
+    def test_update_usage_and_check_limit(self, db_session: Session, test_user: User):
         """Test usage update and limit checking."""
         service = UsageTrackingService(db_session)
 
@@ -307,9 +295,7 @@ class TestUsageTrackingService:
         assert test_user.usage_minutes == 0
         assert test_user.session_count == 0
 
-    def test_usage_summary_with_reset_check(
-        self, db_session: Session, test_user: User
-    ):
+    def test_usage_summary_with_reset_check(self, db_session: Session, test_user: User):
         """Test getting usage summary with month boundary check."""
         service = UsageTrackingService(db_session)
 
@@ -333,9 +319,7 @@ class TestUsageTrackingService:
 
         # Create test users with different plans
         users = []
-        for i, plan in enumerate(
-            [UserPlan.FREE, UserPlan.PRO, UserPlan.ENTERPRISE]
-        ):
+        for i, plan in enumerate([UserPlan.FREE, UserPlan.PRO, UserPlan.ENTERPRISE]):
             user = User(
                 id=f"user-{i}",
                 email=f"user{i}@example.com",
@@ -353,7 +337,7 @@ class TestUsageTrackingService:
             for j in range(3):
                 log = UsageLog(
                     user_id=str(user.id),
-                    usage_type=UsageType.TRANSCRIPTION,
+                    usage_type=TranscriptionType.ORIGINAL,
                     session_id=f"session-{user.id}-{j}",
                     duration_minutes=10.0,
                     cost_usd=Decimal("0.50"),
@@ -373,9 +357,7 @@ class TestUsageTrackingService:
         assert analytics["usage_by_plan"]["free"]["users"] == 1
         assert analytics["usage_by_plan"]["pro"]["users"] == 1
 
-    def test_cost_calculation_in_usage_log(
-        self, db_session: Session, test_session
-    ):
+    def test_cost_calculation_in_usage_log(self, db_session: Session, test_session):
         """Test cost calculation in usage log creation."""
         service = UsageTrackingService(db_session)
 
@@ -423,8 +405,9 @@ def test_user(db_session: Session) -> User:
 @pytest.fixture
 def test_session(db_session: Session, test_user: User):
     """Create a test session."""
-    from coaching_assistant.models.session import Session as SessionModel
     import uuid
+
+    from coaching_assistant.models.session import Session as SessionModel
 
     session = SessionModel(
         id=uuid.uuid4(),

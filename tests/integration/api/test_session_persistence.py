@@ -5,23 +5,19 @@ These tests verify that sessions are properly committed to the database
 and immediately available for retrieval, preventing "Session not found" errors.
 """
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
-from uuid import uuid4
 from datetime import datetime
 
-from coaching_assistant.main import app
-from coaching_assistant.core.database import get_db
+import pytest
+
 from coaching_assistant.models.user import User, UserPlan
-from coaching_assistant.models.session import Session as SessionModel
 
 
 # Helper for testing with overridden database
 def override_get_db():
     """Override database dependency for testing."""
-    from tests.conftest import engine
     from sqlalchemy.orm import sessionmaker
+
+    from tests.conftest import engine
 
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine())
     db = TestingSessionLocal()
@@ -48,8 +44,10 @@ class AuthTestUtils:
             usage_minutes=0,
             session_count=session_count,
             transcription_count=transcription_count,
-            current_month_start=datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0),
-            created_at=datetime.now()
+            current_month_start=datetime.now().replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            ),
+            created_at=datetime.now(),
         )
         db.add(user)
         db.commit()
@@ -62,15 +60,21 @@ class AuthTestUtils:
         def override_get_current_user():
             return user
 
-        app.dependency_overrides[get_current_user_dependency] = override_get_current_user
+        app.dependency_overrides[get_current_user_dependency] = (
+            override_get_current_user
+        )
 
 
-def test_session_creation_and_immediate_retrieval(authenticated_client, db_session, test_user):
+def test_session_creation_and_immediate_retrieval(
+    authenticated_client, db_session, test_user
+):
     """Test that created session is immediately retrievable (no 404 errors)."""
     # Set user to have available session quota
     test_user.plan = UserPlan.PRO
     test_user.session_count = 0  # Allow session creation
-    test_user.current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    test_user.current_month_start = datetime.now().replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
     db_session.commit()
 
     # Create a session
@@ -79,8 +83,8 @@ def test_session_creation_and_immediate_retrieval(authenticated_client, db_sessi
         json={
             "title": "Test Session for Persistence",
             "language": "en-US",
-            "stt_provider": "google"
-        }
+            "stt_provider": "google",
+        },
     )
 
     # Should succeed
@@ -99,12 +103,16 @@ def test_session_creation_and_immediate_retrieval(authenticated_client, db_sessi
     assert retrieved_session["title"] == "Test Session for Persistence"
 
 
-def test_upload_url_generation_after_session_creation(authenticated_client, db_session, test_user):
+def test_upload_url_generation_after_session_creation(
+    authenticated_client, db_session, test_user
+):
     """Test that upload URL can be generated immediately after session creation."""
     # Set user to have available quota
     test_user.plan = UserPlan.PRO
     test_user.session_count = 0
-    test_user.current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    test_user.current_month_start = datetime.now().replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
     db_session.commit()
 
     # Create a session
@@ -113,8 +121,8 @@ def test_upload_url_generation_after_session_creation(authenticated_client, db_s
         json={
             "title": "Test Session for Upload",
             "language": "en-US",
-            "stt_provider": "google"
-        }
+            "stt_provider": "google",
+        },
     )
 
     assert create_response.status_code == 200
@@ -125,8 +133,8 @@ def test_upload_url_generation_after_session_creation(authenticated_client, db_s
         f"/api/v1/sessions/{session_id}/upload-url",
         params={
             "filename": "test.mp3",
-            "file_size_mb": 10  # Within PRO limits
-        }
+            "file_size_mb": 10,  # Within PRO limits
+        },
     )
 
     # Should succeed without "'PlanLimits' object has no attribute 'get'" error
@@ -136,12 +144,16 @@ def test_upload_url_generation_after_session_creation(authenticated_client, db_s
     assert "expires_at" in upload_data
 
 
-def test_session_status_check_after_creation(authenticated_client, db_session, test_user):
+def test_session_status_check_after_creation(
+    authenticated_client, db_session, test_user
+):
     """Test that session status can be checked immediately after creation."""
     # Set user to have available quota
     test_user.plan = UserPlan.PRO
     test_user.session_count = 0
-    test_user.current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    test_user.current_month_start = datetime.now().replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
     db_session.commit()
 
     # Create a session
@@ -150,8 +162,8 @@ def test_session_status_check_after_creation(authenticated_client, db_session, t
         json={
             "title": "Test Session for Status",
             "language": "en-US",
-            "stt_provider": "google"
-        }
+            "stt_provider": "google",
+        },
     )
 
     assert create_response.status_code == 200
@@ -166,12 +178,16 @@ def test_session_status_check_after_creation(authenticated_client, db_session, t
     assert status_data["status"] == "uploading"  # Initial status
 
 
-def test_complete_session_workflow_without_errors(authenticated_client, db_session, test_user):
+def test_complete_session_workflow_without_errors(
+    authenticated_client, db_session, test_user
+):
     """Test complete workflow: create -> upload URL -> status check."""
     # Set user to have available quota
     test_user.plan = UserPlan.PRO
     test_user.session_count = 0
-    test_user.current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    test_user.current_month_start = datetime.now().replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
     db_session.commit()
 
     # Step 1: Create session
@@ -180,8 +196,8 @@ def test_complete_session_workflow_without_errors(authenticated_client, db_sessi
         json={
             "title": "Complete Workflow Test",
             "language": "en-US",
-            "stt_provider": "google"
-        }
+            "stt_provider": "google",
+        },
     )
     assert create_response.status_code == 200
     session_id = create_response.json()["id"]
@@ -189,10 +205,7 @@ def test_complete_session_workflow_without_errors(authenticated_client, db_sessi
     # Step 2: Get upload URL
     upload_url_response = authenticated_client.post(
         f"/api/v1/sessions/{session_id}/upload-url",
-        params={
-            "filename": "workflow_test.mp3",
-            "file_size_mb": 15
-        }
+        params={"filename": "workflow_test.mp3", "file_size_mb": 15},
     )
     assert upload_url_response.status_code == 200
 
@@ -207,12 +220,16 @@ def test_complete_session_workflow_without_errors(authenticated_client, db_sessi
     # All steps should succeed without any 404 or 500 errors
 
 
-def test_session_persistence_across_multiple_requests(authenticated_client, db_session, test_user):
+def test_session_persistence_across_multiple_requests(
+    authenticated_client, db_session, test_user
+):
     """Test that session persists across multiple separate requests."""
     # Set user to have available quota
     test_user.plan = UserPlan.PRO
     test_user.session_count = 0
-    test_user.current_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    test_user.current_month_start = datetime.now().replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
     db_session.commit()
 
     # Create session
@@ -221,8 +238,8 @@ def test_session_persistence_across_multiple_requests(authenticated_client, db_s
         json={
             "title": "Persistence Test Session",
             "language": "en-US",
-            "stt_provider": "google"
-        }
+            "stt_provider": "google",
+        },
     )
     assert create_response.status_code == 200
     session_id = create_response.json()["id"]

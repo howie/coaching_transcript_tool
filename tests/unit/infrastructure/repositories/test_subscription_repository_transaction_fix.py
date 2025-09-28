@@ -1,14 +1,17 @@
 """Unit tests for subscription repository transaction management fix."""
 
-import pytest
-from unittest.mock import Mock, MagicMock
-from uuid import uuid4, UUID
+from unittest.mock import Mock
+from uuid import uuid4
 
-from src.coaching_assistant.infrastructure.db.repositories.subscription_repository import SubscriptionRepository
+import pytest
+
+from src.coaching_assistant.infrastructure.db.repositories.subscription_repository import (
+    SubscriptionRepository,
+)
 from src.coaching_assistant.models.ecpay_subscription import (
+    ECPayCreditAuthorization,
     SaasSubscription,
     SubscriptionPayment,
-    ECPayCreditAuthorization,
     SubscriptionStatus,
 )
 
@@ -66,7 +69,9 @@ class TestSubscriptionRepositoryTransactionFix:
             status="completed",
         )
 
-    def test_save_subscription_no_commit(self, repository, mock_session, sample_subscription):
+    def test_save_subscription_no_commit(
+        self, repository, mock_session, sample_subscription
+    ):
         """Test that save_subscription uses flush instead of commit."""
         # Act
         result = repository.save_subscription(sample_subscription)
@@ -78,7 +83,9 @@ class TestSubscriptionRepositoryTransactionFix:
         mock_session.refresh.assert_not_called()
         assert result == sample_subscription
 
-    def test_save_credit_authorization_no_commit(self, repository, mock_session, sample_authorization):
+    def test_save_credit_authorization_no_commit(
+        self, repository, mock_session, sample_authorization
+    ):
         """Test that save_credit_authorization uses flush instead of commit."""
         # Act
         result = repository.save_credit_authorization(sample_authorization)
@@ -102,7 +109,9 @@ class TestSubscriptionRepositoryTransactionFix:
         mock_session.refresh.assert_not_called()
         assert result == sample_payment
 
-    def test_update_subscription_status_no_commit(self, repository, mock_session, sample_subscription):
+    def test_update_subscription_status_no_commit(
+        self, repository, mock_session, sample_subscription
+    ):
         """Test that update_subscription_status uses flush instead of commit."""
         # Arrange
         mock_query = mock_session.query.return_value
@@ -110,8 +119,7 @@ class TestSubscriptionRepositoryTransactionFix:
 
         # Act
         result = repository.update_subscription_status(
-            sample_subscription.id,
-            SubscriptionStatus.CANCELLED
+            sample_subscription.id, SubscriptionStatus.CANCELLED
         )
 
         # Assert
@@ -129,37 +137,47 @@ class TestSubscriptionRepositoryTransactionFix:
         subscription_id = uuid4()
 
         # Act & Assert
-        with pytest.raises(ValueError, match=f"Subscription not found: {subscription_id}"):
-            repository.update_subscription_status(subscription_id, SubscriptionStatus.CANCELLED)
+        with pytest.raises(
+            ValueError, match=f"Subscription not found: {subscription_id}"
+        ):
+            repository.update_subscription_status(
+                subscription_id, SubscriptionStatus.CANCELLED
+            )
 
         # Verify no transaction operations were called
         mock_session.flush.assert_not_called()
         mock_session.commit.assert_not_called()
 
-    def test_get_subscription_by_user_id_no_transaction_operations(self, repository, mock_session):
+    def test_get_subscription_by_user_id_no_transaction_operations(
+        self, repository, mock_session
+    ):
         """Test that read operations don't call any transaction methods."""
         # Act
-        result = repository.get_subscription_by_user_id(uuid4())
+        repository.get_subscription_by_user_id(uuid4())
 
         # Assert
         mock_session.flush.assert_not_called()
         mock_session.commit.assert_not_called()
         mock_session.refresh.assert_not_called()
 
-    def test_get_credit_authorization_by_user_id_no_transaction_operations(self, repository, mock_session):
+    def test_get_credit_authorization_by_user_id_no_transaction_operations(
+        self, repository, mock_session
+    ):
         """Test that read operations don't call any transaction methods."""
         # Act
-        result = repository.get_credit_authorization_by_user_id(uuid4())
+        repository.get_credit_authorization_by_user_id(uuid4())
 
         # Assert
         mock_session.flush.assert_not_called()
         mock_session.commit.assert_not_called()
         mock_session.refresh.assert_not_called()
 
-    def test_get_payments_for_subscription_no_transaction_operations(self, repository, mock_session):
+    def test_get_payments_for_subscription_no_transaction_operations(
+        self, repository, mock_session
+    ):
         """Test that read operations don't call any transaction methods."""
         # Act
-        result = repository.get_payments_for_subscription(uuid4())
+        repository.get_payments_for_subscription(uuid4())
 
         # Assert
         mock_session.flush.assert_not_called()

@@ -5,8 +5,9 @@ These tests protect against regressions where enums are included directly
 in HTTPException details, causing JSON serialization errors.
 """
 
-import pytest
 import json
+
+import pytest
 from fastapi.responses import JSONResponse
 
 from coaching_assistant.models.user import UserPlan
@@ -112,7 +113,7 @@ class TestEnumSerialization:
 
         detail = {
             "error": "transcription_limit_exceeded",
-            "message": "You have reached your monthly transcription limit of 5",
+            "message": ("You have reached your monthly transcription limit of 5"),
             "current_usage": 5,
             "limit": 5,
             "plan": user_plan.value,  # Fixed: use .value

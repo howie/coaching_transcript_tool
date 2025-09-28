@@ -5,12 +5,12 @@ including profile management and coaching plan management.
 Following Clean Architecture principles with repository injection.
 """
 
-from typing import Optional, List
+from typing import List, Optional
 from uuid import UUID
 
-from ..repositories.ports import CoachProfileRepoPort, UserRepoPort
 from ..models.coach_profile import CoachProfile
 from ..models.coaching_plan import CoachingPlan
+from ..repositories.ports import CoachProfileRepoPort, UserRepoPort
 
 
 class CoachProfileManagementUseCase:
@@ -170,14 +170,18 @@ class CoachProfileManagementUseCase:
         # Get coach profile
         profile = self.coach_profile_repo.get_by_user_id(user_id)
         if not profile:
-            raise ValueError(f"Coach profile not found for user {user_id}. Please create a coach profile first.")
+            raise ValueError(
+                f"Coach profile not found for user {user_id}. Please create a coach profile first."
+            )
 
         # Set coach_profile_id on the plan
         plan_data.coach_profile_id = profile.id
 
         return self.coach_profile_repo.save_coaching_plan(plan_data)
 
-    def update_plan(self, user_id: UUID, plan_id: UUID, plan_data: CoachingPlan) -> CoachingPlan:
+    def update_plan(
+        self, user_id: UUID, plan_id: UUID, plan_data: CoachingPlan
+    ) -> CoachingPlan:
         """Update existing coaching plan.
 
         Args:
@@ -207,7 +211,9 @@ class CoachProfileManagementUseCase:
             raise ValueError(f"Coaching plan {plan_id} not found")
 
         if existing_plan.coach_profile_id != profile.id:
-            raise ValueError(f"Coaching plan {plan_id} does not belong to user {user_id}")
+            raise ValueError(
+                f"Coaching plan {plan_id} does not belong to user {user_id}"
+            )
 
         # Update plan with existing ID and coach_profile_id
         plan_data.id = plan_id
@@ -244,7 +250,9 @@ class CoachProfileManagementUseCase:
             return False  # Plan not found
 
         if existing_plan.coach_profile_id != profile.id:
-            raise ValueError(f"Coaching plan {plan_id} does not belong to user {user_id}")
+            raise ValueError(
+                f"Coaching plan {plan_id} does not belong to user {user_id}"
+            )
 
         return self.coach_profile_repo.delete_coaching_plan(plan_id)
 

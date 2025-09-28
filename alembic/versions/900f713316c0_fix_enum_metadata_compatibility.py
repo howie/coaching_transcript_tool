@@ -5,15 +5,16 @@ Revises: 04a3991223d9
 Create Date: 2025-09-28 12:15:10.738605
 
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '900f713316c0'
-down_revision: Union[str, Sequence[str], None] = 'dc0e4ea7ee0a'
+revision: str = "900f713316c0"
+down_revision: Union[str, Sequence[str], None] = "dc0e4ea7ee0a"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -39,8 +40,14 @@ def upgrade() -> None:
     existing_values = {row[0] for row in existing_values_result}
 
     required_values = [
-        'FREE', 'PRO', 'ENTERPRISE', 'free', 'pro', 'enterprise',
-        'student', 'coaching_school'
+        "FREE",
+        "PRO",
+        "ENTERPRISE",
+        "free",
+        "pro",
+        "enterprise",
+        "student",
+        "coaching_school",
     ]
 
     # Add any missing enum values (defensive programming)
@@ -51,35 +58,35 @@ def upgrade() -> None:
     # Ensure all user data uses lowercase values for consistency
     # This is safe to run multiple times
     uppercase_to_lowercase = [
-        ('FREE', 'free'),
-        ('PRO', 'pro'),
-        ('ENTERPRISE', 'enterprise')
+        ("FREE", "free"),
+        ("PRO", "pro"),
+        ("ENTERPRISE", "enterprise"),
     ]
 
     for old_value, new_value in uppercase_to_lowercase:
         # Check if there are users with uppercase values
         check_result = connection.execute(
-            sa.text(
-                f"SELECT COUNT(*) FROM \"user\" WHERE plan = '{old_value}'"
-            )
+            sa.text(f"SELECT COUNT(*) FROM \"user\" WHERE plan = '{old_value}'")
         )
         count = check_result.scalar()
 
         if count > 0:
             # Migrate remaining uppercase values to lowercase
-            op.execute(f"UPDATE \"user\" SET plan = '{new_value}' WHERE plan = '{old_value}'")
+            op.execute(
+                f"UPDATE \"user\" SET plan = '{new_value}' WHERE plan = '{old_value}'"
+            )
 
         # Also check other tables that use the enum
         table_columns = [
-            ('plan_configurations', 'plan_type'),
-            ('subscription_history', 'old_plan'),
-            ('subscription_history', 'new_plan')
+            ("plan_configurations", "plan_type"),
+            ("subscription_history", "old_plan"),
+            ("subscription_history", "new_plan"),
         ]
         for table, column in table_columns:
             try:
                 check_result = connection.execute(
                     sa.text(
-                        f"SELECT COUNT(*) FROM \"{table}\" "
+                        f'SELECT COUNT(*) FROM "{table}" '
                         f"WHERE {column} = '{old_value}'"
                     )
                 )

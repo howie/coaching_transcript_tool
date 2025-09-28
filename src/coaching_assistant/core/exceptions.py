@@ -2,7 +2,7 @@
 Custom exceptions for the coaching assistant application.
 """
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 
 class CoachingAssistantException(Exception):
@@ -99,9 +99,7 @@ class AuthorizationError(CoachingAssistantException):
 class ValidationError(CoachingAssistantException):
     """Raised when data validation fails."""
 
-    def __init__(
-        self, message: str, field: Optional[str] = None, value: Any = None
-    ):
+    def __init__(self, message: str, field: Optional[str] = None, value: Any = None):
         details = {"field": field, "value": value}
         super().__init__(message, details)
         self.field = field
@@ -135,9 +133,7 @@ class ConcurrentProcessingLimitExceeded(PlanLimitExceeded):
 class ExportFormatNotAllowed(PlanLimitExceeded):
     """Raised when export format is not allowed for the user's plan."""
 
-    def __init__(
-        self, format: str, allowed_formats: list[str], required_plan: str
-    ):
+    def __init__(self, format: str, allowed_formats: list[str], required_plan: str):
         message = f"Export format '{format}' not allowed. Allowed formats: {', '.join(allowed_formats)}"
         super().__init__(
             message=message,

@@ -4,14 +4,19 @@ This module contains business entities without infrastructure dependencies.
 Following Clean Architecture principles, these models contain only business logic.
 """
 
-from .user import User, UserPlan, UserRole
-from .session import Session, SessionStatus
-from .usage_log import UsageLog, TranscriptionType
-from .usage_history import UsageHistory
-from .usage_analytics import UsageAnalytics
 from .client import Client
+from .coach_profile import (
+    CoachExperience,
+    CoachingLanguage,
+    CoachProfile,
+    CommunicationTool,
+)
 from .coaching_session import CoachingSession, SessionSource
-from .coach_profile import CoachProfile, CoachingLanguage, CommunicationTool, CoachExperience
+from .session import Session, SessionStatus
+from .usage_analytics import UsageAnalytics
+from .usage_history import UsageHistory
+from .usage_log import TranscriptionType, UsageLog
+from .user import User, UserPlan, UserRole
 
 __all__ = [
     "User",

@@ -1,21 +1,32 @@
 """SessionModel ORM with domain model conversion."""
 
-from sqlalchemy import Column, String, Integer, ForeignKey, Enum, Text, JSON, DateTime, Float
+from datetime import datetime
+from typing import Optional
+from uuid import UUID as PyUUID
+
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from datetime import datetime
-from uuid import UUID as PyUUID
-from typing import Optional
 
-from .base import BaseModel
-from ....core.models.session import Session, SessionStatus
 from ....core.config import settings
+from ....core.models.session import Session, SessionStatus
+from .base import BaseModel
 
 
 class SessionModel(BaseModel):
     """ORM model for Session entity with SQLAlchemy mappings."""
 
-    __tablename__ = 'session'
+    __tablename__ = "session"
 
     # Basic info
     title = Column(String(255), nullable=False)
@@ -69,7 +80,9 @@ class SessionModel(BaseModel):
 
     # ORM relationships (using string references to avoid circular imports)
     user = relationship("UserModel", back_populates="sessions")
-    usage_logs = relationship("UsageLogModel", back_populates="session", cascade="all, delete-orphan")
+    usage_logs = relationship(
+        "UsageLogModel", back_populates="session", cascade="all, delete-orphan"
+    )
     # Legacy relationships - will be migrated later
     # transcript_segments = relationship("TranscriptSegment", back_populates="session", cascade="all, delete-orphan")
 
@@ -88,8 +101,7 @@ class SessionModel(BaseModel):
             gcs_audio_path=self.gcs_audio_path,
             gcs_transcript_path=self.gcs_transcript_path,
             stt_provider=(
-                (self.stt_provider or "").strip().lower()
-                or settings.STT_PROVIDER
+                (self.stt_provider or "").strip().lower() or settings.STT_PROVIDER
             ),
             transcription_job_id=self.transcription_job_id,
             assemblyai_transcript_id=self.assemblyai_transcript_id,
@@ -103,7 +115,7 @@ class SessionModel(BaseModel):
         )
 
     @classmethod
-    def from_domain(cls, session: Session) -> 'SessionModel':
+    def from_domain(cls, session: Session) -> "SessionModel":
         """Convert domain model to ORM model."""
         return cls(
             id=session.id,
@@ -187,14 +199,18 @@ class SessionModel(BaseModel):
 
     def is_processing_complete(self) -> bool:
         """Check if processing is complete."""
-        return self.status in [SessionStatus.COMPLETED, SessionStatus.FAILED, SessionStatus.CANCELLED]
+        return self.status in [
+            SessionStatus.COMPLETED,
+            SessionStatus.FAILED,
+            SessionStatus.CANCELLED,
+        ]
 
     def is_ready_for_export(self) -> bool:
         """Check if session is ready for export."""
         return (
-            self.status == SessionStatus.COMPLETED and
-            self.transcript_text is not None and
-            len(self.transcript_text.strip()) > 0
+            self.status == SessionStatus.COMPLETED
+            and self.transcript_text is not None
+            and len(self.transcript_text.strip()) > 0
         )
 
     def is_long_audio(self, threshold_minutes: int = 60) -> bool:

@@ -1,11 +1,13 @@
 """Permission service for role-based access control."""
 
-from typing import Optional, List
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
+from typing import List, Optional
+
 from fastapi import HTTPException, status
-from ..models.user import User, UserRole
+from sqlalchemy.orm import Session
+
 from ..models.role_audit_log import RoleAuditLog
+from ..models.user import User, UserRole
 
 
 class PermissionService:
@@ -31,10 +33,7 @@ class PermissionService:
             )
 
         # Check if admin session expired (2 hours timeout)
-        if (
-            user.admin_access_expires
-            and user.admin_access_expires < datetime.utcnow()
-        ):
+        if user.admin_access_expires and user.admin_access_expires < datetime.utcnow():
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Admin session expired. Please re-authenticate.",
@@ -65,10 +64,7 @@ class PermissionService:
             )
 
         # Cannot modify super_admin role unless you are super_admin
-        if (
-            target_user.role == UserRole.SUPER_ADMIN
-            and granted_by.id != target_user.id
-        ):
+        if target_user.role == UserRole.SUPER_ADMIN and granted_by.id != target_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cannot modify super administrator role",
@@ -86,14 +82,12 @@ class PermissionService:
         self.db.add(audit_log)
 
         # Update user role
-        old_role = target_user.role
+        target_user.role
         target_user.role = new_role
 
         # If granting admin/staff, set session expiry
         if new_role in [UserRole.ADMIN, UserRole.STAFF]:
-            target_user.admin_access_expires = datetime.utcnow() + timedelta(
-                hours=2
-            )
+            target_user.admin_access_expires = datetime.utcnow() + timedelta(hours=2)
 
         self.db.commit()
 
@@ -132,9 +126,7 @@ class PermissionService:
         if changed_by_id:
             query = query.filter(RoleAuditLog.changed_by_id == changed_by_id)
 
-        return (
-            query.order_by(RoleAuditLog.created_at.desc()).limit(limit).all()
-        )
+        return query.order_by(RoleAuditLog.created_at.desc()).limit(limit).all()
 
     def refresh_admin_session(self, user: User):
         """Refresh admin session expiry time."""
@@ -158,17 +150,11 @@ class PermissionService:
         """Get statistics about admin users."""
         total_users = self.db.query(User).count()
         super_admins = (
-            self.db.query(User)
-            .filter(User.role == UserRole.SUPER_ADMIN)
-            .count()
+            self.db.query(User).filter(User.role == UserRole.SUPER_ADMIN).count()
         )
-        admins = (
-            self.db.query(User).filter(User.role == UserRole.ADMIN).count()
-        )
+        admins = self.db.query(User).filter(User.role == UserRole.ADMIN).count()
         staff = self.db.query(User).filter(User.role == UserRole.STAFF).count()
-        regular_users = (
-            self.db.query(User).filter(User.role == UserRole.USER).count()
-        )
+        regular_users = self.db.query(User).filter(User.role == UserRole.USER).count()
 
         return {
             "total_users": total_users,

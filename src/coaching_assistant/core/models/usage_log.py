@@ -3,13 +3,12 @@
 import enum
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional
 from uuid import UUID, uuid4
 
-from .user import User
-from .session import Session
 from ..config import settings
+from .session import Session
+from .user import User
 
 
 class TranscriptionType(enum.Enum):
@@ -87,7 +86,9 @@ class UsageLog:
         if not session.user_id or session.user_id != user.id:
             raise ValueError("Session user_id must match user")
 
-        duration_minutes = max(1, int(session.duration_seconds / 60))  # Round up to nearest minute
+        duration_minutes = max(
+            1, int(session.duration_seconds / 60)
+        )  # Round up to nearest minute
 
         default_provider = settings.STT_PROVIDER
         session_provider = (session.stt_provider or "").strip().lower()
@@ -124,7 +125,8 @@ class UsageLog:
     ) -> "UsageLog":
         """Factory method: Create usage log for retry attempt."""
         retry_type = (
-            TranscriptionType.RETRY_FAILED if is_failure_retry
+            TranscriptionType.RETRY_FAILED
+            if is_failure_retry
             else TranscriptionType.RETRY_SUCCESS
         )
 
@@ -199,7 +201,9 @@ class UsageLog:
 
         # Add complexity multiplier for multiple speakers
         if self.speaker_count and self.speaker_count > 2:
-            multiplier = 1.0 + (self.speaker_count - 2) * 0.1  # 10% per additional speaker
+            multiplier = (
+                1.0 + (self.speaker_count - 2) * 0.1
+            )  # 10% per additional speaker
             base_cost = int(base_cost * multiplier)
 
         # Add quality multiplier for low confidence
@@ -343,13 +347,10 @@ class UsageLog:
 
     def contributes_to_monthly_usage(self) -> bool:
         """Business rule: Check if this log counts toward monthly usage limits."""
-        return (
-            self.billable and
-            self.transcription_type in [
-                TranscriptionType.ORIGINAL,
-                TranscriptionType.RETRY_SUCCESS,
-            ]
-        )
+        return self.billable and self.transcription_type in [
+            TranscriptionType.ORIGINAL,
+            TranscriptionType.RETRY_SUCCESS,
+        ]
 
     def get_effective_minutes(self) -> int:
         """Business rule: Get minutes that count toward user's quota."""

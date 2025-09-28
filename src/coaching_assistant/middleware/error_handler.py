@@ -3,7 +3,8 @@ Error handling middleware for the Coaching Transcript Tool Backend API.
 """
 
 import logging
-from fastapi import Request, HTTPException
+
+from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -22,9 +23,7 @@ async def error_handler(request: Request, exc: Exception) -> JSONResponse:
         )
 
     if isinstance(exc, StarletteHTTPException):
-        logger.warning(
-            f"Starlette HTTP Exception: {exc.status_code} - {exc.detail}"
-        )
+        logger.warning(f"Starlette HTTP Exception: {exc.status_code} - {exc.detail}")
         return JSONResponse(
             status_code=exc.status_code,
             content={"error": exc.detail, "status_code": exc.status_code},

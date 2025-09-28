@@ -5,16 +5,18 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
 following Clean Architecture principles.
 """
 
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
-from sqlalchemy.orm import Session as DBSession
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import func, desc, and_
+from typing import List, Optional
+from uuid import UUID
 
-from ....core.repositories.ports import SessionRepoPort
-from ....core.models.session import Session, SessionStatus
+from sqlalchemy import and_, desc, func
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session as DBSession
+
 from ....core.config import settings
+from ....core.models.session import Session, SessionStatus
+from ....core.repositories.ports import SessionRepoPort
+
 # TEMPORARY FIX: Use legacy model until database migration is complete
 # from ..models.session_model import SessionModel
 from ....models.session import Session as SessionModel
@@ -66,24 +68,24 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             List of Session domain entities
         """
         try:
-            query = (
-                self.session.query(SessionModel)
-                .filter(SessionModel.user_id == user_id)
+            query = self.session.query(SessionModel).filter(
+                SessionModel.user_id == user_id
             )
 
             if status is not None:
                 query = query.filter(SessionModel.status == status)
 
             orm_sessions = (
-                query
-                .order_by(desc(SessionModel.created_at))
+                query.order_by(desc(SessionModel.created_at))
                 .offset(offset)
                 .limit(limit)
                 .all()
             )
             return [self._legacy_to_domain(orm_session) for orm_session in orm_sessions]
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving sessions for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error retrieving sessions for user {user_id}"
+            ) from e
 
     def save(self, session: Session) -> Session:
         """Save or update session entity.
@@ -149,7 +151,9 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             raise
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error updating session status for {session_id}") from e
+            raise RuntimeError(
+                f"Database error updating session status for {session_id}"
+            ) from e
 
     def get_sessions_by_date_range(
         self,
@@ -174,7 +178,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
                     and_(
                         SessionModel.user_id == user_id,
                         SessionModel.created_at >= start_date,
-                        SessionModel.created_at <= end_date
+                        SessionModel.created_at <= end_date,
                     )
                 )
                 .order_by(SessionModel.created_at)
@@ -182,9 +186,13 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             )
             return [self._legacy_to_domain(orm_session) for orm_session in orm_sessions]
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving sessions by date range for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error retrieving sessions by date range for user {user_id}"
+            ) from e
 
-    def count_user_sessions(self, user_id: UUID, since: Optional[datetime] = None) -> int:
+    def count_user_sessions(
+        self, user_id: UUID, since: Optional[datetime] = None
+    ) -> int:
         """Count user sessions, optionally since a date.
 
         Args:
@@ -195,9 +203,8 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             Count of user sessions
         """
         try:
-            query = (
-                self.session.query(SessionModel)
-                .filter(SessionModel.user_id == user_id)
+            query = self.session.query(SessionModel).filter(
+                SessionModel.user_id == user_id
             )
 
             if since is not None:
@@ -205,7 +212,9 @@ class SQLAlchemySessionRepository(SessionRepoPort):
 
             return query.count()
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error counting sessions for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error counting sessions for user {user_id}"
+            ) from e
 
     def get_total_duration_minutes(
         self, user_id: UUID, since: Optional[datetime] = None
@@ -220,13 +229,10 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             Total duration in minutes
         """
         try:
-            query = (
-                self.session.query(func.sum(SessionModel.duration_seconds))
-                .filter(
-                    and_(
-                        SessionModel.user_id == user_id,
-                        SessionModel.duration_seconds.isnot(None)
-                    )
+            query = self.session.query(func.sum(SessionModel.duration_seconds)).filter(
+                and_(
+                    SessionModel.user_id == user_id,
+                    SessionModel.duration_seconds.isnot(None),
                 )
             )
 
@@ -236,7 +242,9 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             total_seconds = query.scalar() or 0
             return int(total_seconds / 60)  # Convert to minutes
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error calculating total duration for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error calculating total duration for user {user_id}"
+            ) from e
 
     def _legacy_to_domain(self, orm_session: SessionModel) -> Session:
         """Convert legacy ORM model to domain model.
@@ -244,16 +252,19 @@ class SQLAlchemySessionRepository(SessionRepoPort):
         TEMPORARY: This method handles conversion from legacy Session ORM model
         to domain Session model until database migration is complete.
         """
-        from ....models.session import SessionStatus as LegacySessionStatus
 
         domain_session = Session(
             id=UUID(str(orm_session.id)) if orm_session.id else None,
-            user_id=UUID(str(orm_session.user_id)) if orm_session.user_id else None,
+            user_id=(UUID(str(orm_session.user_id)) if orm_session.user_id else None),
             title=orm_session.title or "",
             language=orm_session.language or "auto",
             audio_filename=orm_session.audio_filename,
             duration_seconds=orm_session.duration_seconds,
-            status=SessionStatus(orm_session.status.value) if orm_session.status else SessionStatus.UPLOADING,
+            status=(
+                SessionStatus(orm_session.status.value)
+                if orm_session.status
+                else SessionStatus.UPLOADING
+            ),
             error_message=orm_session.error_message,
             progress_percentage=0,  # Not in legacy model, default to 0
             gcs_audio_path=orm_session.gcs_audio_path,
@@ -276,7 +287,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
 
         # TEMPORARY: Add legacy fields for backward compatibility
         domain_session.stt_cost_usd = orm_session.stt_cost_usd
-        domain_session.provider_metadata = getattr(orm_session, 'provider_metadata', {})
+        domain_session.provider_metadata = getattr(orm_session, "provider_metadata", {})
 
         return domain_session
 
@@ -284,6 +295,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
         """Get count of completed sessions for a user."""
         try:
             from ....models.session import SessionStatus as LegacySessionStatus
+
             result = (
                 self.session.query(SessionModel)
                 .filter(
@@ -296,7 +308,9 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             )
             return int(result or 0)
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error getting completed sessions count for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error getting completed sessions count for user {user_id}"
+            ) from e
 
 
 def create_session_repository(session: DBSession) -> SessionRepoPort:

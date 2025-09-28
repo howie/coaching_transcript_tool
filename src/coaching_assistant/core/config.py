@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",  # Next.js dev server
         "http://localhost:8787",  # Cloudflare Workers preview
-        "https://coachly-doxa-com-tw.howie-yu.workers.dev",  # Cloudflare Workers production
+        "https://coachly-doxa-com-tw.howie-yu.workers.dev",  # Cloudflare Workers production  # noqa: E501
         "https://coachly.doxa.com.tw",  # Production frontend domain
     ]
 
@@ -52,14 +52,15 @@ class Settings(BaseSettings):
                 parsed_json = None
 
             if isinstance(parsed_json, list):
-                return [str(origin).strip() for origin in parsed_json if str(origin).strip()]
+                return [
+                    str(origin).strip() for origin in parsed_json if str(origin).strip()
+                ]
             if isinstance(parsed_json, str):
                 return [parsed_json.strip()]
 
             # Support quoted single origin strings ("origin")
-            if (
-                (raw_value.startswith('"') and raw_value.endswith('"'))
-                or (raw_value.startswith("'") and raw_value.endswith("'"))
+            if (raw_value.startswith('"') and raw_value.endswith('"')) or (
+                raw_value.startswith("'") and raw_value.endswith("'")
             ):
                 inner_value = raw_value[1:-1].strip()
                 return [inner_value] if inner_value else []
@@ -94,9 +95,7 @@ class Settings(BaseSettings):
     RECAPTCHA_SECRET: str = os.getenv(
         "RECAPTCHA_SECRET", "6LeIxAcTAAAAABKJdbdotzKATjbpe4U93716OSsz"
     )  # Test secret key for development
-    RECAPTCHA_MIN_SCORE: float = (
-        0.5  # Minimum score to pass verification (0.0-1.0)
-    )
+    RECAPTCHA_MIN_SCORE: float = 0.5  # Minimum score to pass verification (0.0-1.0)
 
     # 檔案上傳限制
     MAX_FILE_SIZE: int = 500  # MB
@@ -123,30 +122,20 @@ class Settings(BaseSettings):
     # STT (Speech-to-Text) 設定
     STT_PROVIDER: str  # 必須設定，避免預設值 silently fallback
     SPEECH_API_VERSION: str = "v2"  # Google Speech-to-Text API version
-    GOOGLE_STT_MODEL: str = (
-        "chirp_2"  # Default model (chirp supports more languages)
-    )
+    GOOGLE_STT_MODEL: str = "chirp_2"  # Default model (chirp supports more languages)
     GOOGLE_STT_LOCATION: str = "asia-southeast1"  # Default location for STT
 
     # AssemblyAI 設定
     ASSEMBLYAI_API_KEY: str = ""
     ASSEMBLYAI_MODEL: str = "best"  # "best" or "nano"
-    ASSEMBLYAI_SPEAKERS_EXPECTED: int = (
-        2  # Number of speakers expected for diarization
-    )
+    ASSEMBLYAI_SPEAKERS_EXPECTED: int = 2  # Number of speakers expected for diarization
     ASSEMBLYAI_WEBHOOK_URL: str = ""  # Optional webhook URL for notifications
 
     # LeMUR (Large Language Model) 設定
     LEMUR_MODEL: str = "claude_sonnet_4_20250514"  # Claude 4 Sonnet as default
-    LEMUR_FALLBACK_MODEL: str = (
-        "claude3_5_sonnet"  # Fallback to Claude 3.5 Sonnet
-    )
-    LEMUR_MAX_OUTPUT_SIZE: int = (
-        4000  # Maximum output size for LeMUR responses
-    )
-    LEMUR_COMBINED_MODE: bool = (
-        True  # Enable combined speaker + punctuation processing
-    )
+    LEMUR_FALLBACK_MODEL: str = "claude3_5_sonnet"  # Fallback to Claude 3.5 Sonnet
+    LEMUR_MAX_OUTPUT_SIZE: int = 4000  # Maximum output size for LeMUR responses
+    LEMUR_COMBINED_MODE: bool = True  # Enable combined speaker + punctuation processing
     LEMUR_PROMPTS_PATH: str = ""  # Custom path to prompts YAML file (optional)
 
     # Language-specific STT configurations (JSON format)
@@ -215,7 +204,12 @@ class Settings(BaseSettings):
         if not normalized:
             raise ValueError("STT_PROVIDER 不可為空白")
 
-        allowed_providers = {"google", "google_stt_v2", "assemblyai", "whisper"}
+        allowed_providers = {
+            "google",
+            "google_stt_v2",
+            "assemblyai",
+            "whisper",
+        }
         if normalized not in allowed_providers:
             raise ValueError(
                 "STT_PROVIDER 必須為以下其中之一: "
@@ -230,9 +224,7 @@ class Settings(BaseSettings):
         # 確保 TEST_MODE 在生產環境中不能啟用
         environment = os.getenv("ENVIRONMENT", "development")
         if value is True and environment == "production":
-            raise ValueError(
-                "TEST_MODE 不可在生產環境中啟用！這會造成嚴重的安全漏洞。"
-            )
+            raise ValueError("TEST_MODE 不可在生產環境中啟用！這會造成嚴重的安全漏洞。")
         return value
 
 

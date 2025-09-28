@@ -1,16 +1,17 @@
 """Unit tests for AssemblyAI STT provider."""
 
-import pytest
-from unittest.mock import Mock, patch, mock_open
 from decimal import Decimal
+from unittest.mock import Mock, mock_open, patch
+
+import pytest
 
 from coaching_assistant.services.assemblyai_stt import (
     AssemblyAIProvider,
 )
 from coaching_assistant.services.stt_provider import (
     STTProviderError,
-    STTProviderQuotaExceededError,
     STTProviderInvalidAudioError,
+    STTProviderQuotaExceededError,
 )
 
 
@@ -40,9 +41,7 @@ class TestAssemblyAIProvider:
         ) as mock_settings:
             mock_settings.ASSEMBLYAI_API_KEY = ""
 
-            with pytest.raises(
-                STTProviderError, match="ASSEMBLYAI_API_KEY is not set"
-            ):
+            with pytest.raises(STTProviderError, match="ASSEMBLYAI_API_KEY is not set"):
                 AssemblyAIProvider()
 
     def test_language_code_mapping(self):
@@ -68,9 +67,7 @@ class TestAssemblyAIProvider:
             mock_settings.ASSEMBLYAI_API_KEY = "test-key"
             provider = AssemblyAIProvider()
 
-            assert (
-                provider._needs_traditional_conversion("cmn-Hant-TW") is True
-            )
+            assert provider._needs_traditional_conversion("cmn-Hant-TW") is True
             assert provider._needs_traditional_conversion("zh-TW") is True
             assert provider._needs_traditional_conversion("zh-CN") is False
             assert provider._needs_traditional_conversion("en-US") is False
@@ -87,12 +84,11 @@ class TestAssemblyAIProvider:
             assert provider._convert_speaker_id("A") == 1
             assert provider._convert_speaker_id("B") == 2
             assert provider._convert_speaker_id("C") == 3
-            assert (
-                provider._convert_speaker_id("a") == 1
-            )  # lowercase should work
+            assert provider._convert_speaker_id("a") == 1  # lowercase should work
             assert provider._convert_speaker_id("b") == 2
 
-            # Test integer passthrough (0 gets converted to 1, others stay the same)
+            # Test integer passthrough (0 gets converted to 1, others stay the
+            # same)
             assert provider._convert_speaker_id(0) == 1  # 0 -> 1 conversion
             assert provider._convert_speaker_id(1) == 1  # stays 1
             assert provider._convert_speaker_id(2) == 2  # stays 2
@@ -115,9 +111,7 @@ class TestChineseTextProcessing:
             provider = AssemblyAIProvider()
 
             text = "你 好 吗 ？"
-            result = provider._process_chinese_text(
-                text, needs_conversion=False
-            )
+            result = provider._process_chinese_text(text, needs_conversion=False)
 
             # Should remove spaces between Chinese characters
             assert result == "你好吗？"
@@ -134,9 +128,7 @@ class TestChineseTextProcessing:
             mock_convert.return_value = "你好嗎？"
 
             text = "你 好 吗 ？"
-            result = provider._process_chinese_text(
-                text, needs_conversion=True
-            )
+            result = provider._process_chinese_text(text, needs_conversion=True)
 
             mock_convert.assert_called_once()
             assert result == "你好嗎？"
@@ -150,9 +142,7 @@ class TestChineseTextProcessing:
             provider = AssemblyAIProvider()
 
             text = "你好 ， 今天怎麼樣 ？"
-            result = provider._process_chinese_text(
-                text, needs_conversion=False
-            )
+            result = provider._process_chinese_text(text, needs_conversion=False)
 
             assert result == "你好，今天怎麼樣？"
 
@@ -181,15 +171,11 @@ class TestAudioUpload:
             provider = AssemblyAIProvider()
 
             # Test invalid GCS URI (missing path)
-            with pytest.raises(
-                STTProviderError, match="Invalid GCS URI format"
-            ):
+            with pytest.raises(STTProviderError, match="Invalid GCS URI format"):
                 provider._upload_audio("gs://bucket-only")
 
     @patch("coaching_assistant.services.assemblyai_stt.requests.post")
-    @patch(
-        "builtins.open", new_callable=mock_open, read_data=b"fake audio data"
-    )
+    @patch("builtins.open", new_callable=mock_open, read_data=b"fake audio data")
     def test_upload_local_file(self, mock_file, mock_post):
         """Test local file upload."""
         with patch(
@@ -239,10 +225,7 @@ class TestTranscriptionSubmission:
 
             # Verify request payload
             call_args = mock_post.call_args
-            assert (
-                call_args[1]["json"]["audio_url"]
-                == "https://example.com/audio.mp3"
-            )
+            assert call_args[1]["json"]["audio_url"] == "https://example.com/audio.mp3"
             assert call_args[1]["json"]["language_code"] == "zh"
             assert call_args[1]["json"]["speaker_labels"] is True
             assert call_args[1]["json"]["speakers_expected"] == 2
@@ -287,9 +270,7 @@ class TestTranscriptionPolling:
             # First call: processing, second call: completed
             responses = [
                 Mock(json=lambda: {"status": "processing"}),
-                Mock(
-                    json=lambda: {"status": "completed", "text": "Hello world"}
-                ),
+                Mock(json=lambda: {"status": "completed", "text": "Hello world"}),
             ]
             for resp in responses:
                 resp.raise_for_status = Mock()
@@ -368,26 +349,20 @@ class TestResultParsing:
                     {"confidence": 0.8},
                 )
 
-                parsed = provider._parse_transcript_result(
-                    result, "en-US", True
-                )
+                parsed = provider._parse_transcript_result(result, "en-US", True)
 
                 assert len(parsed.segments) == 2
                 assert parsed.segments[0].speaker_id == 1
                 assert parsed.segments[0].start_seconds == 1.0
                 assert parsed.segments[0].end_seconds == 3.0
-                assert (
-                    parsed.segments[0].content == "Hello, how are you today?"
-                )
+                assert parsed.segments[0].content == "Hello, how are you today?"
                 assert parsed.segments[0].confidence == 0.9
 
                 assert parsed.total_duration_sec == 30.0
                 assert parsed.language_code == "en"
                 assert parsed.provider_metadata["provider"] == "assemblyai"
                 # Current implementation skips early role assignment
-                assert parsed.provider_metadata[
-                    "speaker_role_assignments"
-                ] == {}
+                assert parsed.provider_metadata["speaker_role_assignments"] == {}
 
     def test_parse_chinese_result_with_conversion(self):
         """Test parsing Chinese result with Traditional conversion."""
@@ -432,17 +407,15 @@ class TestResultParsing:
                 ]
                 mock_lemur.return_value.processing_notes = ["LeMUR processing"]
 
-                parsed = provider._parse_transcript_result(
-                    result, "zh-TW", False
-                )
+                parsed = provider._parse_transcript_result(result, "zh-TW", False)
 
                 # Current implementation uses LeMUR for Chinese processing
                 assert parsed.segments[0].content == "你好嗎？"
                 assert parsed.provider_metadata["post_processing_applied"] == [
                     "remove_spaces",
-                    "convert_to_traditional"
+                    "convert_to_traditional",
                 ]
-                assert parsed.provider_metadata["lemur_smoothing_applied"] == True
+                assert parsed.provider_metadata["lemur_smoothing_applied"] is True
 
     def test_parse_no_utterances_fallback(self):
         """Test parsing when no utterances are available."""
@@ -578,17 +551,19 @@ class TestFullTranscriptionWorkflow:
                         "audio_duration": 15000,
                         "utterances": [
                             {
-                                "speaker": "A",  # AssemblyAI uses string speaker IDs
+                                "speaker": ("A"),  # AssemblyAI uses string speaker IDs
                                 "start": 1000,
                                 "end": 5000,
                                 "text": "How are you feeling today?",
                                 "confidence": 0.95,
                             },
                             {
-                                "speaker": "B",  # AssemblyAI uses string speaker IDs
+                                "speaker": ("B"),  # AssemblyAI uses string speaker IDs
                                 "start": 6000,
                                 "end": 12000,
-                                "text": "I'm feeling quite overwhelmed with work lately.",
+                                "text": (
+                                    "I'm feeling quite overwhelmed with work lately."
+                                ),
                                 "confidence": 0.88,
                             },
                         ],
@@ -625,14 +600,13 @@ class TestFullTranscriptionWorkflow:
             # Current implementation skips early role assignment
             assert result.provider_metadata["speaker_role_assignments"] == {}
             # Current implementation skips early role assignment
-            assert (
-                result.provider_metadata["automatic_role_assignment"] is False
-            )
+            assert result.provider_metadata["automatic_role_assignment"] is False
 
             # Verify API calls
             mock_post.assert_called_once()
             mock_get.call_count == 2
-            # Current implementation skips early role assignment, so assign_roles_simple is not called
+            # Current implementation skips early role assignment, so
+            # assign_roles_simple is not called
             mock_assign.assert_not_called()
 
 
@@ -695,9 +669,7 @@ class TestErrorHandling:
             mock_response.raise_for_status = Mock()
             mock_get.return_value = mock_response
 
-            with pytest.raises(
-                STTProviderError, match="Transcription timed out"
-            ):
+            with pytest.raises(STTProviderError, match="Transcription timed out"):
                 provider._poll_transcription_status("transcript_123")
 
     def test_invalid_audio_file_upload(self):
@@ -712,9 +684,7 @@ class TestErrorHandling:
                 "builtins.open",
                 side_effect=FileNotFoundError("File not found"),
             ):
-                with pytest.raises(
-                    STTProviderError, match="Failed to upload audio"
-                ):
+                with pytest.raises(STTProviderError, match="Failed to upload audio"):
                     provider._upload_audio("/nonexistent/file.mp3")
 
 
@@ -744,17 +714,13 @@ class TestGCSIntegration:
             result = provider._upload_audio(gcs_uri)
 
             # Verify signed URL returned
-            assert (
-                result == "https://storage.googleapis.com/bucket/path?signed"
-            )
+            assert result == "https://storage.googleapis.com/bucket/path?signed"
 
             # Verify GCS uploader was created correctly
             mock_gcs_uploader_class.assert_called_once()
             call_args = mock_gcs_uploader_class.call_args
             assert call_args.kwargs["bucket_name"] == "my-bucket"
-            assert (
-                "credentials_json" in call_args.kwargs
-            )  # Just verify it exists
+            assert "credentials_json" in call_args.kwargs  # Just verify it exists
 
             # Verify signed URL was generated
             mock_uploader.generate_signed_read_url.assert_called_once_with(
@@ -770,9 +736,7 @@ class TestGCSIntegration:
             provider = AssemblyAIProvider()
 
             # Test invalid GCS URI (missing path)
-            with pytest.raises(
-                STTProviderError, match="Invalid GCS URI format"
-            ):
+            with pytest.raises(STTProviderError, match="Invalid GCS URI format"):
                 provider._upload_audio("gs://bucket-only")
 
     @patch("coaching_assistant.utils.gcs_uploader.GCSUploader")
@@ -784,9 +748,7 @@ class TestGCSIntegration:
             mock_settings.ASSEMBLYAI_API_KEY = "test-key"
 
             # Mock GCS uploader to raise exception
-            mock_gcs_uploader_class.side_effect = Exception(
-                "GCS credentials error"
-            )
+            mock_gcs_uploader_class.side_effect = Exception("GCS credentials error")
 
             provider = AssemblyAIProvider()
 

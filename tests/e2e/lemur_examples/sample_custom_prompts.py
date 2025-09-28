@@ -48,7 +48,7 @@ DETAILED_COACH_CLIENT = """
 MULTIPLE_ROLES = """
 這是一段多人對話記錄，可能包含以下角色：
 - 教練：提問、引導、給予專業建議
-- 客戶：分享問題、回答問題、尋求協助  
+- 客戶：分享問題、回答問題、尋求協助
 - 觀察者：偶爾發言、提供觀點
 - 主持人：引導流程、維持秩序
 
@@ -76,7 +76,7 @@ LIFE_COACHING = """
 """
 
 # ================================
-# 標點符號優化提示詞範例  
+# 標點符號優化提示詞範例
 # ================================
 
 # 基本標點符號改善
@@ -115,7 +115,7 @@ CHINESE_DIALOGUE = """
 
 處理重點：
 1. 句號：完整表達結束處加「。」
-2. 逗號：語句停頓處加「，」  
+2. 逗號：語句停頓處加「，」
 3. 問號：疑問句結尾加「？」
 4. 驚嘆號：強調或感嘆處加「！」
 5. 語氣詞：「嗯、喔、對、是的」等後面適當加標點
@@ -125,7 +125,7 @@ CHINESE_DIALOGUE = """
 保持對話的自然流暢，不過度添加標點。
 """
 
-# 英文對話專用  
+# 英文對話專用
 ENGLISH_DIALOGUE = """
 Please improve the punctuation of this English coaching dialogue:
 
@@ -195,18 +195,21 @@ COMPREHENSIVE_PROCESSING = """
 if __name__ == "__main__":
     print("LeMUR自訂提示詞範例")
     print("=" * 50)
-    
+
     print("\n🎭 說話者識別提示詞：")
     print("\n1. 基本教練對話識別：")
     print(BASIC_COACH_CLIENT)
-    
+
     print("\n🔤 標點符號優化提示詞：")
     print("\n1. 基本標點符號改善：")
     print(BASIC_PUNCTUATION)
-    
+
     print("\n💡 使用方式：")
-    print("python test_lemur_*.py --speaker-prompt \"YOUR_SPEAKER_PROMPT\" --punctuation-prompt \"YOUR_PUNCTUATION_PROMPT\"")
-    
+    print(
+        'python test_lemur_*.py --speaker-prompt "YOUR_SPEAKER_PROMPT" '
+        '--punctuation-prompt "YOUR_PUNCTUATION_PROMPT"'
+    )
+
     print("\n📋 提示詞選擇建議：")
     print("- 新手：使用 BASIC_* 系列")
     print("- 進階：使用 DETAILED_* 系列")

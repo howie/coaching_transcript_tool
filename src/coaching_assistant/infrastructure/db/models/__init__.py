@@ -5,11 +5,15 @@ Following Clean Architecture principles, these models handle persistence concern
 """
 
 from .base import Base, BaseModel
-from .user_model import UserModel
-from .session_model import SessionModel
-from .usage_log_model import UsageLogModel
 from .plan_configuration_model import PlanConfigurationModel
-from .transcript_model import TranscriptSegmentModel, SessionRoleModel, SegmentRoleModel
+from .session_model import SessionModel
+from .transcript_model import (
+    SegmentRoleModel,
+    SessionRoleModel,
+    TranscriptSegmentModel,
+)
+from .usage_log_model import UsageLogModel
+from .user_model import UserModel
 
 __all__ = [
     "Base",

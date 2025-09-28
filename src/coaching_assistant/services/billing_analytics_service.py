@@ -1,18 +1,18 @@
 """Billing Analytics Service for enhanced admin reporting and revenue analysis."""
 
+import csv
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
-from uuid import UUID
-import csv
 from io import StringIO
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
+from sqlalchemy import and_, desc, func
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func, desc
 
 from ..models.billing_analytics import BillingAnalytics
-from ..models.user import User
 from ..models.usage_history import UsageHistory
+from ..models.user import User
 from ..services.usage_analytics_service import UsageAnalyticsService
 
 logger = logging.getLogger(__name__)
@@ -32,9 +32,7 @@ class BillingAnalyticsService:
         period_type: str = "monthly",
     ) -> Dict[str, Any]:
         """Get comprehensive admin analytics overview."""
-        logger.info(
-            f"📊 Getting admin overview from {period_start} to {period_end}"
-        )
+        logger.info(f"📊 Getting admin overview from {period_start} to {period_end}")
 
         # Get billing analytics for the period
         billing_data = (
@@ -62,9 +60,7 @@ class BillingAnalyticsService:
         top_users = self._get_top_users(billing_data, limit=10)
 
         # Get trend data
-        trend_data = self._get_trend_data(
-            period_start, period_end, period_type
-        )
+        trend_data = self._get_trend_data(period_start, period_end, period_type)
 
         return {
             "revenue_metrics": revenue_metrics,
@@ -93,9 +89,7 @@ class BillingAnalyticsService:
         )
 
         if plan_filter:
-            query = query.filter(
-                BillingAnalytics.plan_name == plan_filter.upper()
-            )
+            query = query.filter(BillingAnalytics.plan_name == plan_filter.upper())
 
         billing_data = query.order_by(BillingAnalytics.period_start).all()
 
@@ -115,9 +109,7 @@ class BillingAnalyticsService:
             trends[period_key]["revenue"] += float(record.total_revenue_usd)
             trends[period_key]["users"] += 1
             trends[period_key]["sessions"] += record.sessions_created
-            trends[period_key]["minutes"] += float(
-                record.total_minutes_processed
-            )
+            trends[period_key]["minutes"] += float(record.total_minutes_processed)
 
         return list(trends.values())
 
@@ -128,7 +120,7 @@ class BillingAnalyticsService:
         include_predictions: bool = False,
     ) -> List[Dict[str, Any]]:
         """Get customer segmentation analysis."""
-        logger.info(f"👥 Getting customer segmentation analysis")
+        logger.info("👥 Getting customer segmentation analysis")
 
         billing_data = (
             self.db.query(BillingAnalytics)
@@ -187,9 +179,7 @@ class BillingAnalyticsService:
             float(record.total_revenue_usd) for record in historical_data
         )
         tenure_days = (
-            (datetime.utcnow() - user.created_at).days
-            if user.created_at
-            else 0
+            (datetime.utcnow() - user.created_at).days if user.created_at else 0
         )
 
         detail = {
@@ -200,20 +190,14 @@ class BillingAnalyticsService:
             "total_revenue": total_revenue,
             "lifetime_value": self._calculate_lifetime_value(user_id),
             "tenure_days": tenure_days,
-            "historical_data": [
-                record.to_dict() for record in historical_data
-            ],
+            "historical_data": [record.to_dict() for record in historical_data],
         }
 
         if include_predictions:
-            detail["predictions"] = self.usage_analytics_service.predict_usage(
-                user_id
-            )
+            detail["predictions"] = self.usage_analytics_service.predict_usage(user_id)
 
         if include_insights:
-            detail["insights"] = (
-                self.usage_analytics_service.generate_insights(user_id)
-            )
+            detail["insights"] = self.usage_analytics_service.generate_insights(user_id)
 
         return detail
 
@@ -225,8 +209,8 @@ class BillingAnalyticsService:
             f"📊 Getting cohort analysis: {cohort_type}, size: {cohort_size}, metric: {metric}"
         )
 
-        # This is a simplified implementation - would need more complex logic for production
-        cohorts = {}
+        # This is a simplified implementation - would need more complex logic
+        # for production
 
         # Get users grouped by signup period
         if cohort_type == "monthly":
@@ -274,9 +258,7 @@ class BillingAnalyticsService:
         include_predictions: bool = True,
     ) -> Dict[str, Any]:
         """Get churn risk analysis with at-risk users."""
-        logger.info(
-            f"⚠️ Getting churn analysis from {start_date} to {end_date}"
-        )
+        logger.info(f"⚠️ Getting churn analysis from {start_date} to {end_date}")
 
         # Get users with high churn risk scores
         at_risk_users = (
@@ -293,9 +275,7 @@ class BillingAnalyticsService:
         )
 
         # Group at-risk users by risk level
-        high_risk = [
-            u for u in at_risk_users if float(u.churn_risk_score) >= 0.9
-        ]
+        high_risk = [u for u in at_risk_users if float(u.churn_risk_score) >= 0.9]
         medium_risk = [
             u for u in at_risk_users if 0.7 <= float(u.churn_risk_score) < 0.9
         ]
@@ -310,9 +290,7 @@ class BillingAnalyticsService:
         }
 
         # Generate recommendations
-        recommendations = self._generate_churn_prevention_recommendations(
-            at_risk_users
-        )
+        recommendations = self._generate_churn_prevention_recommendations(at_risk_users)
 
         analysis = {
             "summary": summary,
@@ -323,9 +301,7 @@ class BillingAnalyticsService:
         }
 
         if include_predictions:
-            analysis["predictions"] = self._get_churn_predictions(
-                at_risk_users
-            )
+            analysis["predictions"] = self._get_churn_predictions(at_risk_users)
 
         return analysis
 
@@ -336,7 +312,7 @@ class BillingAnalyticsService:
         include_forecasts: bool = True,
     ) -> Dict[str, Any]:
         """Get detailed performance analysis for each subscription plan."""
-        logger.info(f"📋 Getting plan performance analysis")
+        logger.info("📋 Getting plan performance analysis")
 
         plan_performance = {}
 
@@ -355,28 +331,26 @@ class BillingAnalyticsService:
 
             if plan_data:
                 plan_performance[plan] = {
-                    "user_count": len(
-                        set(record.user_id for record in plan_data)
-                    ),
+                    "user_count": len(set(record.user_id for record in plan_data)),
                     "total_revenue": sum(
                         float(record.total_revenue_usd) for record in plan_data
                     ),
-                    "avg_utilization": sum(
-                        float(record.plan_utilization_percentage)
-                        for record in plan_data
-                    )
-                    / len(plan_data),
-                    "avg_health_score": sum(
-                        record.calculate_customer_health_score()
-                        for record in plan_data
-                    )
-                    / len(plan_data),
+                    "avg_utilization": (
+                        sum(
+                            float(record.plan_utilization_percentage)
+                            for record in plan_data
+                        )
+                        / len(plan_data)
+                    ),
+                    "avg_health_score": (
+                        sum(
+                            record.calculate_customer_health_score()
+                            for record in plan_data
+                        )
+                        / len(plan_data)
+                    ),
                     "churn_risk_users": len(
-                        [
-                            r
-                            for r in plan_data
-                            if float(r.churn_risk_score) > 0.7
-                        ]
+                        [r for r in plan_data if float(r.churn_risk_score) > 0.7]
                     ),
                 }
 
@@ -386,15 +360,11 @@ class BillingAnalyticsService:
         analysis = {
             "plans": plan_performance,
             "upgrade_patterns": upgrade_patterns,
-            "recommendations": self._generate_plan_recommendations(
-                plan_performance
-            ),
+            "recommendations": self._generate_plan_recommendations(plan_performance),
         }
 
         if include_forecasts:
-            analysis["forecasts"] = self._generate_plan_forecasts(
-                plan_performance
-            )
+            analysis["forecasts"] = self._generate_plan_forecasts(plan_performance)
 
         return analysis
 
@@ -424,11 +394,7 @@ class BillingAnalyticsService:
             # Join with user data
             export_data = []
             for record in billing_data:
-                user = (
-                    self.db.query(User)
-                    .filter(User.id == record.user_id)
-                    .first()
-                )
+                user = self.db.query(User).filter(User.id == record.user_id).first()
                 data = record.to_dict()
                 if user:
                     data.update(
@@ -436,9 +402,7 @@ class BillingAnalyticsService:
                             "user_email": user.email,
                             "user_name": user.name,
                             "user_signup_date": (
-                                user.created_at.isoformat()
-                                if user.created_at
-                                else None
+                                user.created_at.isoformat() if user.created_at else None
                             ),
                         }
                     )
@@ -469,19 +433,13 @@ class BillingAnalyticsService:
         # Get current month's data
         now = datetime.utcnow()
         if period_type == "monthly":
-            period_start = now.replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
+            period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             if period_start.month == 12:
-                period_end = period_start.replace(
-                    year=period_start.year + 1, month=1
-                )
+                period_end = period_start.replace(year=period_start.year + 1, month=1)
             else:
                 period_end = period_start.replace(month=period_start.month + 1)
         else:  # daily
-            period_start = now.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
+            period_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
             period_end = period_start + timedelta(days=1)
 
         # Check if record exists
@@ -531,7 +489,7 @@ class BillingAnalyticsService:
         self, period_type: str = "monthly", force_rebuild: bool = False
     ) -> Dict[str, Any]:
         """Refresh analytics for all users."""
-        logger.info(f"🔄 Refreshing analytics for all users")
+        logger.info("🔄 Refreshing analytics for all users")
 
         users = self.db.query(User).all()
         records_updated = 0
@@ -543,9 +501,7 @@ class BillingAnalyticsService:
                 )
                 records_updated += result.get("records_updated", 0)
             except Exception as e:
-                logger.error(
-                    f"Failed to refresh analytics for user {user.id}: {e}"
-                )
+                logger.error(f"Failed to refresh analytics for user {user.id}: {e}")
 
         return {
             "users_processed": len(users),
@@ -554,14 +510,13 @@ class BillingAnalyticsService:
 
     def get_health_score_distribution(self) -> Dict[str, Any]:
         """Get distribution of customer health scores."""
-        logger.info(f"📊 Getting health score distribution")
+        logger.info("📊 Getting health score distribution")
 
         # Get recent billing analytics
         recent_data = (
             self.db.query(BillingAnalytics)
             .filter(
-                BillingAnalytics.period_start
-                >= datetime.utcnow() - timedelta(days=60)
+                BillingAnalytics.period_start >= datetime.utcnow() - timedelta(days=60)
             )
             .all()
         )
@@ -614,9 +569,7 @@ class BillingAnalyticsService:
                 "avg_revenue_per_minute": 0,
             }
 
-        total_revenue = sum(
-            float(record.total_revenue_usd) for record in billing_data
-        )
+        total_revenue = sum(float(record.total_revenue_usd) for record in billing_data)
         total_cost = sum(
             float(record.total_provider_cost_usd) for record in billing_data
         )
@@ -627,8 +580,7 @@ class BillingAnalyticsService:
         return {
             "total_revenue": total_revenue,
             "subscription_revenue": sum(
-                float(record.subscription_revenue_usd)
-                for record in billing_data
+                float(record.subscription_revenue_usd) for record in billing_data
             ),
             "overage_revenue": sum(
                 float(record.usage_overage_usd) for record in billing_data
@@ -663,9 +615,7 @@ class BillingAnalyticsService:
                 "unique_active_users": 0,
             }
 
-        total_sessions = sum(
-            record.sessions_created for record in billing_data
-        )
+        total_sessions = sum(record.sessions_created for record in billing_data)
         total_transcriptions = sum(
             record.transcriptions_completed for record in billing_data
         )
@@ -684,16 +634,12 @@ class BillingAnalyticsService:
             "total_minutes": total_minutes,
             "total_hours": total_minutes / 60,
             "avg_session_duration": (
-                total_minutes / total_transcriptions
-                if total_transcriptions > 0
-                else 0
+                total_minutes / total_transcriptions if total_transcriptions > 0 else 0
             ),
             "success_rate": (
                 sum(success_rates) / len(success_rates) if success_rates else 0
             ),
-            "unique_active_users": len(
-                set(record.user_id for record in billing_data)
-            ),
+            "unique_active_users": len(set(record.user_id for record in billing_data)),
         }
 
     def _get_customer_segments(
@@ -714,9 +660,7 @@ class BillingAnalyticsService:
                 }
 
             segments[segment]["user_count"] += 1
-            segments[segment]["total_revenue"] += float(
-                record.total_revenue_usd
-            )
+            segments[segment]["total_revenue"] += float(record.total_revenue_usd)
             segments[segment]["total_utilization"] += float(
                 record.plan_utilization_percentage
             )
@@ -730,8 +674,7 @@ class BillingAnalyticsService:
                     segment_data["total_revenue"] / segment_data["user_count"]
                 )
                 segment_data["avg_utilization"] = (
-                    segment_data["total_utilization"]
-                    / segment_data["user_count"]
+                    segment_data["total_utilization"] / segment_data["user_count"]
                 )
 
         return list(segments.values())
@@ -749,9 +692,7 @@ class BillingAnalyticsService:
 
         top_users = []
         for record in sorted_data[:limit]:
-            user = (
-                self.db.query(User).filter(User.id == record.user_id).first()
-            )
+            user = self.db.query(User).filter(User.id == record.user_id).first()
             if user:
                 top_users.append(
                     {
@@ -771,7 +712,9 @@ class BillingAnalyticsService:
                             record.plan_utilization_percentage
                         ),
                         "churn_risk_score": float(record.churn_risk_score),
-                        "customer_health_score": record.calculate_customer_health_score(),
+                        "customer_health_score": (
+                            record.calculate_customer_health_score()
+                        ),
                         "is_power_user": record.is_power_user,
                         "is_at_risk": record.is_at_risk,
                     }
@@ -801,9 +744,7 @@ class BillingAnalyticsService:
                         year=current_date.year + 1, month=1
                     )
                 else:
-                    next_date = current_date.replace(
-                        month=current_date.month + 1
-                    )
+                    next_date = current_date.replace(month=current_date.month + 1)
 
             period_data = (
                 self.db.query(BillingAnalytics)
@@ -820,25 +761,17 @@ class BillingAnalyticsService:
                 {
                     "date": current_date.strftime("%Y-%m-%d"),
                     "revenue": sum(
-                        float(record.total_revenue_usd)
-                        for record in period_data
+                        float(record.total_revenue_usd) for record in period_data
                     ),
-                    "users": len(
-                        set(record.user_id for record in period_data)
-                    ),
-                    "sessions": sum(
-                        record.sessions_created for record in period_data
-                    ),
+                    "users": len(set(record.user_id for record in period_data)),
+                    "sessions": sum(record.sessions_created for record in period_data),
                     "minutes": sum(
-                        float(record.total_minutes_processed)
-                        for record in period_data
+                        float(record.total_minutes_processed) for record in period_data
                     ),
-                    "new_signups": self._calculate_new_signups(
-                        current_date, next_date
-                    ),
+                    "new_signups": self._calculate_new_signups(current_date, next_date),
                     "churned_users": self._calculate_churned_users(
                         current_date, next_date
-                    )
+                    ),
                 }
             )
 
@@ -867,9 +800,7 @@ class BillingAnalyticsService:
         user_profile = {
             "signup_date": user.created_at,
             "tenure_days": (
-                (datetime.utcnow() - user.created_at).days
-                if user.created_at
-                else 0
+                (datetime.utcnow() - user.created_at).days if user.created_at else 0
             ),
             "segment": self._determine_user_segment(user_id),
             "timezone": self._get_user_timezone(user),
@@ -931,7 +862,7 @@ class BillingAnalyticsService:
             .filter(
                 and_(
                     User.id.in_(self.db.query(active_before.c.id)),
-                    ~User.id.in_(self.db.query(active_during.c.id))
+                    ~User.id.in_(self.db.query(active_during.c.id)),
                 )
             )
             .count()
@@ -950,14 +881,14 @@ class BillingAnalyticsService:
 
         # Calculate subscription revenue based on plan
         days_in_period = (period_end - period_start).days
-        monthly_price = getattr(plan_config, 'monthly_price_usd', 0) or 0
+        monthly_price = getattr(plan_config, "monthly_price_usd", 0) or 0
 
         # Pro-rate for the period
         subscription_revenue = (monthly_price * days_in_period) / 30
 
         # Calculate overage revenue (simplified)
         overage_revenue = 0
-        transcriptions_used = usage_data.get('transcriptions_completed', 0)
+        transcriptions_used = usage_data.get("transcriptions_completed", 0)
         if transcriptions_used > plan_config.max_transcriptions:
             overage_count = transcriptions_used - plan_config.max_transcriptions
             overage_revenue = overage_count * 0.10  # $0.10 per overage
@@ -995,8 +926,7 @@ class BillingAnalyticsService:
             .filter(
                 and_(
                     UsageHistory.user_id == user_id,
-                    UsageHistory.period_start
-                    >= datetime.utcnow() - timedelta(days=90),
+                    UsageHistory.period_start >= datetime.utcnow() - timedelta(days=90),
                 )
             )
             .all()
@@ -1102,7 +1032,7 @@ class BillingAnalyticsService:
             {
                 "type": "support",
                 "title": "Proactive Support",
-                "description": "Offer help to users showing declining usage patterns",
+                "description": ("Offer help to users showing declining usage patterns"),
                 "priority": "medium",
             },
         ]
@@ -1113,10 +1043,9 @@ class BillingAnalyticsService:
         """Get churn predictions for at-risk users."""
         return {
             "predicted_churn_30_days": len(at_risk_users) * 0.3,
-            "predicted_revenue_loss": sum(
-                float(u.total_revenue_usd) for u in at_risk_users
-            )
-            * 0.3,
+            "predicted_revenue_loss": (
+                sum(float(u.total_revenue_usd) for u in at_risk_users) * 0.3
+            ),
         }
 
     def _analyze_upgrade_patterns(
@@ -1133,7 +1062,7 @@ class BillingAnalyticsService:
         return [
             {
                 "recommendation": "Focus on converting FREE users to PRO",
-                "reason": "High utilization in FREE tier indicates upgrade potential",
+                "reason": ("High utilization in FREE tier indicates upgrade potential"),
             }
         ]
 

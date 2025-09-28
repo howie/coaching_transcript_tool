@@ -3,16 +3,17 @@ Usage tracking service for monitoring and managing user plan usage.
 Handles incrementing counters, checking limits, and resetting monthly usage.
 """
 
-from datetime import datetime
-from typing import Dict, Optional, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import text
-import redis
 import json
 import logging
+from datetime import datetime
+from typing import Any, Dict, Optional
 
-from coaching_assistant.models.user import User
+import redis
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
 from coaching_assistant.core.config import settings
+from coaching_assistant.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +21,7 @@ logger = logging.getLogger(__name__)
 class UsageTracker:
     """Service for tracking and managing user usage against plan limits."""
 
-    def __init__(
-        self, db_session: Session, redis_client: Optional[redis.Redis] = None
-    ):
+    def __init__(self, db_session: Session, redis_client: Optional[redis.Redis] = None):
         """
         Initialize usage tracker with database session and optional Redis client.
 
@@ -38,9 +37,7 @@ class UsageTracker:
         """Get Redis client if available."""
         try:
             if hasattr(settings, "REDIS_URL") and settings.REDIS_URL:
-                return redis.from_url(
-                    settings.REDIS_URL, decode_responses=True
-                )
+                return redis.from_url(settings.REDIS_URL, decode_responses=True)
         except Exception as e:
             logger.warning(f"Redis not available, using database only: {e}")
         return None
@@ -86,9 +83,7 @@ class UsageTracker:
 
         return usage
 
-    def increment_usage(
-        self, user_id: str, metric: str, amount: int = 1
-    ) -> int:
+    def increment_usage(self, user_id: str, metric: str, amount: int = 1) -> int:
         """
         Increment a usage metric for a user.
 
@@ -246,8 +241,8 @@ class UsageTracker:
             Dictionary with usage summary including percentages
         """
         from coaching_assistant.services.plan_limits import (
-            get_global_plan_limits,
             PlanName,
+            get_global_plan_limits,
         )
 
         usage = self.get_current_usage(user_id)
@@ -359,9 +354,7 @@ class UsageTracker:
                 # Store in a sorted set with timestamp as score
                 key = f"usage_history:{user_id}:{action}"
                 timestamp = datetime.utcnow().timestamp()
-                value = json.dumps(
-                    {"timestamp": timestamp, "metadata": metadata or {}}
-                )
+                value = json.dumps({"timestamp": timestamp, "metadata": metadata or {}})
 
                 # Keep only last 30 days of history
                 self.redis.zadd(key, {value: timestamp})

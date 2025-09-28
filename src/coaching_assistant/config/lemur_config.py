@@ -10,8 +10,9 @@ Centralizes configuration for AssemblyAI LeMUR processing including:
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Any, Union
 from pathlib import Path
+from typing import Any, Dict, Optional, Union
+
 import yaml
 
 from ..core.config import settings
@@ -46,15 +47,9 @@ class PerformanceSettings:
 class LeMURPrompts:
     """Container for LeMUR prompt templates."""
 
-    speaker_identification: Dict[str, Dict[str, str]] = field(
-        default_factory=dict
-    )
-    punctuation_optimization: Dict[str, Dict[str, str]] = field(
-        default_factory=dict
-    )
-    combined_processing: Dict[str, Dict[str, str]] = field(
-        default_factory=dict
-    )
+    speaker_identification: Dict[str, Dict[str, str]] = field(default_factory=dict)
+    punctuation_optimization: Dict[str, Dict[str, str]] = field(default_factory=dict)
+    combined_processing: Dict[str, Dict[str, str]] = field(default_factory=dict)
     fallback_prompts: Dict[str, str] = field(default_factory=dict)
     templates: Dict[str, Dict[str, str]] = field(default_factory=dict)
 
@@ -145,12 +140,8 @@ class LeMURConfigLoader:
         logger.info(f"Loading LeMUR configuration from {self.config_path}")
 
         if not self.config_path.exists():
-            logger.error(
-                f"LeMUR configuration file not found: {self.config_path}"
-            )
-            raise FileNotFoundError(
-                f"Configuration file not found: {self.config_path}"
-            )
+            logger.error(f"LeMUR configuration file not found: {self.config_path}")
+            raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
 
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
@@ -165,13 +156,9 @@ class LeMURConfigLoader:
                 default_model=model_config.get(
                     "default_model", "claude_sonnet_4_20250514"
                 ),
-                fallback_model=model_config.get(
-                    "fallback_model", "claude3_5_sonnet"
-                ),
+                fallback_model=model_config.get("fallback_model", "claude3_5_sonnet"),
                 max_output_size=model_config.get("max_output_size", 4000),
-                enable_combined_mode=model_config.get(
-                    "enable_combined_mode", True
-                ),
+                enable_combined_mode=model_config.get("enable_combined_mode", True),
             )
 
             batch_config = perf_config.get("batch_processing", {})
@@ -198,9 +185,7 @@ class LeMURConfigLoader:
 
             # Load prompts
             prompts = LeMURPrompts(
-                speaker_identification=yaml_config.get(
-                    "speaker_identification", {}
-                ),
+                speaker_identification=yaml_config.get("speaker_identification", {}),
                 punctuation_optimization=yaml_config.get(
                     "punctuation_optimization", {}
                 ),
@@ -218,11 +203,9 @@ class LeMURConfigLoader:
                 prompts=prompts,
             )
 
-            logger.info(f"✅ LeMUR configuration loaded successfully")
+            logger.info("✅ LeMUR configuration loaded successfully")
             logger.info(f"   Default model: {self._config.default_model}")
-            logger.info(
-                f"   Combined mode: {self._config.combined_mode_enabled}"
-            )
+            logger.info(f"   Combined mode: {self._config.combined_mode_enabled}")
             logger.info(
                 f"   Prompt languages: {list(self._config.prompts.speaker_identification.keys())}"
             )
@@ -236,24 +219,18 @@ class LeMURConfigLoader:
             logger.error(f"❌ Error loading LeMUR configuration: {e}")
             raise
 
-    def _apply_env_overrides(
-        self, model_settings: ModelSettings
-    ) -> ModelSettings:
+    def _apply_env_overrides(self, model_settings: ModelSettings) -> ModelSettings:
         """Apply environment variable overrides to model settings."""
         # Check for environment variable overrides
         if hasattr(settings, "LEMUR_MODEL") and settings.LEMUR_MODEL:
             model_settings.default_model = settings.LEMUR_MODEL
-            logger.info(
-                f"🔧 Model override from environment: {settings.LEMUR_MODEL}"
-            )
+            logger.info(f"🔧 Model override from environment: {settings.LEMUR_MODEL}")
 
         if (
             hasattr(settings, "LEMUR_MAX_OUTPUT_SIZE")
             and settings.LEMUR_MAX_OUTPUT_SIZE
         ):
-            model_settings.max_output_size = int(
-                settings.LEMUR_MAX_OUTPUT_SIZE
-            )
+            model_settings.max_output_size = int(settings.LEMUR_MAX_OUTPUT_SIZE)
             logger.info(
                 f"🔧 Max output size override: {settings.LEMUR_MAX_OUTPUT_SIZE}"
             )
@@ -262,12 +239,8 @@ class LeMURConfigLoader:
             hasattr(settings, "LEMUR_COMBINED_MODE")
             and settings.LEMUR_COMBINED_MODE is not None
         ):
-            model_settings.enable_combined_mode = bool(
-                settings.LEMUR_COMBINED_MODE
-            )
-            logger.info(
-                f"🔧 Combined mode override: {settings.LEMUR_COMBINED_MODE}"
-            )
+            model_settings.enable_combined_mode = bool(settings.LEMUR_COMBINED_MODE)
+            logger.info(f"🔧 Combined mode override: {settings.LEMUR_COMBINED_MODE}")
 
         return model_settings
 
@@ -303,9 +276,7 @@ class LeMURConfigLoader:
             return None
 
         if prompt is None:
-            logger.warning(
-                f"Prompt not found: {prompt_type}/{language}/{variant}"
-            )
+            logger.warning(f"Prompt not found: {prompt_type}/{language}/{variant}")
             return None
 
         # Apply context substitution if provided
@@ -313,9 +284,7 @@ class LeMURConfigLoader:
             try:
                 return prompt.format(**context)
             except KeyError as e:
-                logger.error(
-                    f"Missing context variable for prompt template: {e}"
-                )
+                logger.error(f"Missing context variable for prompt template: {e}")
                 return prompt
 
         return prompt

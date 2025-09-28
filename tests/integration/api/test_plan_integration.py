@@ -3,18 +3,18 @@ Integration tests for billing plan system.
 Tests end-to-end workflows including plan limits, upgrades, and usage tracking.
 """
 
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from coaching_assistant.models.user import User, UserPlan
 from coaching_assistant.models.session import Session as CoachingSession
 from coaching_assistant.models.usage_log import UsageLog
-from coaching_assistant.services.usage_tracking import UsageTrackingService
+from coaching_assistant.models.user import User, UserPlan
 from coaching_assistant.services.plan_limits import PlanLimits
-from coaching_assistant.core.exceptions import PlanLimitExceeded
+from coaching_assistant.services.usage_tracking import UsageTrackingService
 
 
 class TestPlanIntegration:
@@ -32,7 +32,7 @@ class TestPlanIntegration:
         self.user.session_count = 0
         self.user.transcription_count = 0
         self.user.current_month_start = datetime.now().replace(day=1)
-        db.commit()
+        self.db.commit()
 
     def test_free_user_limit_enforcement_workflow(self):
         """Test complete free user limit hit and upgrade flow."""
@@ -44,10 +44,10 @@ class TestPlanIntegration:
         response = self.client.post(
             "/api/v1/sessions",
             json={"title": "Session 10", "description": "At limit"},
-            headers={"Authorization": f"Bearer {self.user.id}"}
+            headers={"Authorization": f"Bearer {self.user.id}"},
         )
         assert response.status_code == 201
-        
+
         # Update session count
         self.user.session_count = 10
         self.db.commit()
@@ -56,7 +56,7 @@ class TestPlanIntegration:
         response = self.client.post(
             "/api/v1/sessions",
             json={"title": "Session 11", "description": "Over limit"},
-            headers={"Authorization": f"Bearer {self.user.id}"}
+            headers={"Authorization": f"Bearer {self.user.id}"},
         )
         assert response.status_code == 402  # Payment Required
         error_data = response.json()
@@ -70,7 +70,7 @@ class TestPlanIntegration:
             user_id=self.user.id,
             title="Test Session",
             duration_seconds=600,  # 10 minutes
-            status="completed"
+            status="completed",
         )
         self.db.add(session)
         self.db.commit()
@@ -83,7 +83,7 @@ class TestPlanIntegration:
             duration_minutes=10,
             is_billable=True,
             cost_usd=0.05,
-            metadata={"provider": "google", "model": "chirp_2"}
+            metadata={"provider": "google", "model": "chirp_2"},
         )
         self.db.add(usage_log)
         self.db.commit()
@@ -112,26 +112,26 @@ class TestPlanIntegration:
         response = self.client.post(
             "/api/v1/plans/upgrade",
             json={"target_plan": "PRO"},
-            headers={"Authorization": f"Bearer {self.user.id}"}
+            headers={"Authorization": f"Bearer {self.user.id}"},
         )
-        
+
         # In test mode, simulate successful upgrade
         if response.status_code == 200:
             self.user.plan = UserPlan.PRO
             self.db.commit()
-            
+
             # Verify plan updated
             assert self.user.plan == UserPlan.PRO
-            
+
             # Should now be able to create more sessions
             limits = PlanLimits.get_limits(UserPlan.PRO)
             assert limits["max_sessions"] == 100  # Pro limit
-            
+
             # Verify user can now create session 11
             response = self.client.post(
                 "/api/v1/sessions",
                 json={"title": "Session 11", "description": "After upgrade"},
-                headers={"Authorization": f"Bearer {self.user.id}"}
+                headers={"Authorization": f"Bearer {self.user.id}"},
             )
             # Should succeed now with Pro plan
             assert response.status_code in [200, 201]
@@ -140,7 +140,7 @@ class TestPlanIntegration:
         """Test accurate usage analytics calculation."""
         # Create multiple usage logs for current month
         base_time = datetime.now().replace(day=1)
-        
+
         for i in range(5):
             log = UsageLog(
                 user_id=self.user.id,
@@ -149,21 +149,21 @@ class TestPlanIntegration:
                 duration_minutes=30,
                 is_billable=True,
                 cost_usd=0.10,
-                created_at=base_time + timedelta(days=i)
+                created_at=base_time + timedelta(days=i),
             )
             self.db.add(log)
-        
+
         self.db.commit()
 
         # Get usage summary
         response = self.client.get(
             "/api/v1/usage/current-month",
-            headers={"Authorization": f"Bearer {self.user.id}"}
+            headers={"Authorization": f"Bearer {self.user.id}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Verify calculations
         assert data["total_minutes"] == 150  # 5 * 30
         assert data["total_cost"] == 0.50  # 5 * 0.10
@@ -174,21 +174,21 @@ class TestPlanIntegration:
         # Free plan - 1 concurrent
         self.user.plan = UserPlan.FREE
         self.db.commit()
-        
+
         limits = PlanLimits.get_limits(UserPlan.FREE)
         assert limits["concurrent_processing"] == 1
-        
+
         # Pro plan - 3 concurrent
         self.user.plan = UserPlan.PRO
         self.db.commit()
-        
+
         limits = PlanLimits.get_limits(UserPlan.PRO)
         assert limits["concurrent_processing"] == 3
-        
+
         # Business plan - 10 concurrent
         self.user.plan = UserPlan.BUSINESS
         self.db.commit()
-        
+
         limits = PlanLimits.get_limits(UserPlan.BUSINESS)
         assert limits["concurrent_processing"] == 10
 
@@ -197,12 +197,12 @@ class TestPlanIntegration:
         # Free plan - limited formats
         self.user.plan = UserPlan.FREE
         self.db.commit()
-        
+
         response = self.client.get(
             "/api/v1/plans/export-formats",
-            headers={"Authorization": f"Bearer {self.user.id}"}
+            headers={"Authorization": f"Bearer {self.user.id}"},
         )
-        
+
         if response.status_code == 200:
             formats = response.json()
             assert "txt" in formats
@@ -223,7 +223,7 @@ class TestPlanIntegration:
         # Trigger reset check
         service = UsageTrackingService(self.db)
         service.check_and_reset_monthly_usage(self.user)
-        
+
         # Verify counters reset
         assert self.user.usage_minutes == 0
         assert self.user.session_count == 0
@@ -233,17 +233,17 @@ class TestPlanIntegration:
     def test_plan_comparison_endpoint(self):
         """Test plan comparison API endpoint."""
         response = self.client.get("/api/v1/plans/compare")
-        
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Should have all three plans
         assert len(data) == 3
         plan_names = [p["name"] for p in data]
         assert "FREE" in plan_names
         assert "PRO" in plan_names
         assert "BUSINESS" in plan_names
-        
+
         # Verify plan details
         free_plan = next(p for p in data if p["name"] == "FREE")
         assert free_plan["max_sessions"] == 10
@@ -261,24 +261,24 @@ class TestPlanIntegration:
                 duration_minutes=10,
                 is_billable=True,
                 cost_usd=0.05,
-                created_at=date
+                created_at=date,
             )
             self.db.add(log)
-        
+
         self.db.commit()
 
         # Get usage history
         response = self.client.get(
             "/api/v1/usage/history?days=30",
-            headers={"Authorization": f"Bearer {self.user.id}"}
+            headers={"Authorization": f"Bearer {self.user.id}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Should have 30 days of data
         assert len(data) >= 30
-        
+
         # Verify data structure
         for entry in data[:5]:  # Check first 5 entries
             assert "date" in entry
@@ -298,11 +298,11 @@ class TestPlanIntegration:
             "/api/v1/plans/validate",
             json={
                 "action": "create_transcription",
-                "resource_type": "transcription"
+                "resource_type": "transcription",
             },
-            headers={"Authorization": f"Bearer {self.user.id}"}
+            headers={"Authorization": f"Bearer {self.user.id}"},
         )
-        
+
         if response.status_code == 200:
             data = response.json()
             assert data.get("allowed") is False
@@ -318,7 +318,7 @@ class TestPlanIntegration:
             user_id=self.user.id,
             title="Failed Session",
             status="failed",
-            error_message="STT provider error"
+            error_message="STT provider error",
         )
         self.db.add(failed_session)
         self.db.commit()
@@ -330,7 +330,7 @@ class TestPlanIntegration:
             action_type="retry_failed",
             duration_minutes=10,
             is_billable=False,  # Should be free
-            cost_usd=0.00
+            cost_usd=0.00,
         )
         self.db.add(usage_log)
         self.db.commit()
@@ -340,9 +340,7 @@ class TestPlanIntegration:
 
         # Create a successful session
         success_session = CoachingSession(
-            user_id=self.user.id,
-            title="Success Session",
-            status="completed"
+            user_id=self.user.id, title="Success Session", status="completed"
         )
         self.db.add(success_session)
         self.db.commit()
@@ -354,7 +352,7 @@ class TestPlanIntegration:
             action_type="retranscription",
             duration_minutes=10,
             is_billable=True,  # Should be billable
-            cost_usd=0.05
+            cost_usd=0.05,
         )
         self.db.add(retrans_log)
         self.db.commit()
@@ -369,13 +367,14 @@ class TestPlanIntegration:
         self.user.usage_minutes = 108  # 90% of 120 minutes
         self.db.commit()
 
-        with patch('httpx.AsyncClient.post') as mock_post:
+        with patch("httpx.AsyncClient.post") as mock_post:
             # Simulate webhook call
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_post.return_value = mock_response
 
-            # Trigger limit check (this would normally happen during transcription)
+            # Trigger limit check (this would normally happen during
+            # transcription)
             service = UsageTrackingService(self.db)
             await service.check_usage_limits_and_notify(self.user)
 

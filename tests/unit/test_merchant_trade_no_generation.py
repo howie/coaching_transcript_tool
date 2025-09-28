@@ -3,9 +3,10 @@ Unit tests for ECPay MerchantTradeNo generation logic.
 These tests prevent regression of the 20-character limit violation bug.
 """
 
-import pytest
 import time
 from unittest.mock import Mock, patch
+
+import pytest
 
 from src.coaching_assistant.core.services.ecpay_service import (
     ECPaySubscriptionService,
@@ -42,26 +43,20 @@ class TestMerchantTradeNoGeneration:
 
         user_id = "550e8400-e29b-41d4-a716-446655440000"
 
-        with patch(
-            "time.time", return_value=1755520128
-        ):  # Fixed timestamp for testing
+        with patch("time.time", return_value=1755520128):  # Fixed timestamp for testing
             timestamp = int(time.time())
 
             # Generate using the same logic as the service
-            merchant_trade_no = (
-                f"SUB{str(timestamp)[-6:]}{user_id[:8].upper()}"
-            )
+            merchant_trade_no = f"SUB{str(timestamp)[-6:]}{user_id[:8].upper()}"
 
             # Format validations
-            assert (
-                merchant_trade_no == "SUB520128550E8400"
-            ), f"Unexpected format: {merchant_trade_no}"
-            assert merchant_trade_no.startswith(
-                "SUB"
-            ), "Must start with SUB prefix"
-            assert (
-                len(merchant_trade_no) == 17
-            ), f"Expected 17 chars, got {len(merchant_trade_no)}"
+            assert merchant_trade_no == "SUB520128550E8400", (
+                f"Unexpected format: {merchant_trade_no}"
+            )
+            assert merchant_trade_no.startswith("SUB"), "Must start with SUB prefix"
+            assert len(merchant_trade_no) == 17, (
+                f"Expected 17 chars, got {len(merchant_trade_no)}"
+            )
 
     def test_merchant_trade_no_length_constraint(self, service):
         """Test MerchantTradeNo never exceeds 20-character ECPay limit"""
@@ -94,9 +89,7 @@ class TestMerchantTradeNoGeneration:
                 "time.time", return_value=1755520128 + len(user_id)
             ):  # Vary timestamp
                 timestamp = int(time.time())
-                merchant_trade_no = (
-                    f"SUB{str(timestamp)[-6:]}{user_id[:8].upper()}"
-                )
+                merchant_trade_no = f"SUB{str(timestamp)[-6:]}{user_id[:8].upper()}"
 
                 # Critical assertion: NEVER exceed 20 characters
                 assert len(merchant_trade_no) <= 20, (
@@ -105,12 +98,10 @@ class TestMerchantTradeNoGeneration:
                 )
 
                 # Additional format validations
-                assert merchant_trade_no.startswith(
-                    "SUB"
-                ), f"Must start with SUB: {merchant_trade_no}"
-                assert (
-                    len(merchant_trade_no) >= 3
-                ), f"Too short: {merchant_trade_no}"
+                assert merchant_trade_no.startswith("SUB"), (
+                    f"Must start with SUB: {merchant_trade_no}"
+                )
+                assert len(merchant_trade_no) >= 3, f"Too short: {merchant_trade_no}"
 
     def test_merchant_trade_no_uniqueness_over_time(self, service):
         """Test that MerchantTradeNo is unique across different timestamps"""
@@ -131,9 +122,7 @@ class TestMerchantTradeNoGeneration:
 
         for timestamp in test_timestamps:
             with patch("time.time", return_value=timestamp):
-                merchant_trade_no = (
-                    f"SUB{str(timestamp)[-6:]}{user_id[:8].upper()}"
-                )
+                merchant_trade_no = f"SUB{str(timestamp)[-6:]}{user_id[:8].upper()}"
 
                 # Check uniqueness
                 assert merchant_trade_no not in generated_ids, (
@@ -144,9 +133,9 @@ class TestMerchantTradeNoGeneration:
                 generated_ids.add(merchant_trade_no)
 
                 # Length constraint still applies
-                assert (
-                    len(merchant_trade_no) <= 20
-                ), f"Length violation for timestamp {timestamp}: {merchant_trade_no}"
+                assert len(merchant_trade_no) <= 20, (
+                    f"Length violation for timestamp {timestamp}: {merchant_trade_no}"
+                )
 
     def test_merchant_trade_no_with_different_users(self, service):
         """Test MerchantTradeNo uniqueness across different users"""
@@ -168,17 +157,18 @@ class TestMerchantTradeNoGeneration:
                     f"SUB{str(fixed_timestamp)[-6:]}{user_id[:8].upper()}"
                 )
 
-                # Should be unique even with same timestamp (different user prefixes)
-                assert (
-                    merchant_trade_no not in generated_ids
-                ), f"Duplicate MerchantTradeNo: {merchant_trade_no} for user {user_id[:20]}..."
+                # Should be unique even with same timestamp (different user
+                # prefixes)
+                assert merchant_trade_no not in generated_ids, (
+                    f"Duplicate MerchantTradeNo: {merchant_trade_no} for user {user_id[:20]}..."
+                )
 
                 generated_ids.add(merchant_trade_no)
 
                 # Length compliance
-                assert (
-                    len(merchant_trade_no) <= 20
-                ), f"Length violation for user {user_id[:20]}...: {merchant_trade_no}"
+                assert len(merchant_trade_no) <= 20, (
+                    f"Length violation for user {user_id[:20]}...: {merchant_trade_no}"
+                )
 
     def test_merchant_trade_no_character_safety(self, service):
         """Test MerchantTradeNo contains only safe characters"""
@@ -205,25 +195,21 @@ class TestMerchantTradeNoGeneration:
                     c for c in user_id[:8].upper() if c.isalnum()
                 )[:8]
                 safe_user_prefix = safe_user_prefix.ljust(8, "0")[:8]
-                merchant_trade_no = (
-                    f"SUB{str(timestamp)[-6:]}{safe_user_prefix}"
-                )
+                merchant_trade_no = f"SUB{str(timestamp)[-6:]}{safe_user_prefix}"
 
                 # Length constraint
-                assert (
-                    len(merchant_trade_no) <= 20
-                ), f"Length violation for problematic user ID: {merchant_trade_no}"
+                assert len(merchant_trade_no) <= 20, (
+                    f"Length violation for problematic user ID: {merchant_trade_no}"
+                )
 
                 # Character safety - should be alphanumeric after processing
                 # The [:8] slice and .upper() should handle most issues
-                safe_part = merchant_trade_no[3:]  # After "SUB" prefix
+                # Extract part after "SUB" prefix for validation
 
                 # At minimum, should not contain obvious problem characters
                 forbidden_chars = [" ", "\n", "\t", "<", ">", "&", "%"]
                 for char in forbidden_chars:
-                    assert (
-                        char not in merchant_trade_no
-                    ), (
+                    assert char not in merchant_trade_no, (
                         f"Forbidden character '{char}' in MerchantTradeNo: "
                         f"{merchant_trade_no}"
                     )
@@ -254,17 +240,15 @@ class TestMerchantTradeNoGeneration:
                 merchant_trade_no = f"SUB{extracted}{user_id.upper()}"
                 expected_full = f"SUB{expected_suffix}TESTUSER"
 
-                assert (
-                    merchant_trade_no == expected_full
-                ), (
+                assert merchant_trade_no == expected_full, (
                     f"Full generation mismatch: expected {expected_full}, "
                     f"got {merchant_trade_no}"
                 )
 
                 # Still within limits
-                assert (
-                    len(merchant_trade_no) <= 20
-                ), f"Generated ID too long: {merchant_trade_no}"
+                assert len(merchant_trade_no) <= 20, (
+                    f"Generated ID too long: {merchant_trade_no}"
+                )
 
     def test_regression_original_bug_scenario(self, service):
         """Test the exact scenario that caused the original 21-character bug"""
@@ -277,29 +261,23 @@ class TestMerchantTradeNoGeneration:
 
         # OLD (buggy) logic that would have created 21 characters:
         buggy_merchant_trade_no = f"SUB{timestamp}{user_id[:8].upper()}"
-        assert (
-            len(buggy_merchant_trade_no) == 21
-        ), "Confirming old logic was 21 chars"
+        assert len(buggy_merchant_trade_no) == 21, "Confirming old logic was 21 chars"
 
         # NEW (fixed) logic that creates 17 characters:
         with patch("time.time", return_value=timestamp):
-            fixed_merchant_trade_no = (
-                f"SUB{str(timestamp)[-6:]}{user_id[:8].upper()}"
+            fixed_merchant_trade_no = f"SUB{str(timestamp)[-6:]}{user_id[:8].upper()}"
+
+            assert len(fixed_merchant_trade_no) == 17, "Fixed logic should be 17 chars"
+            assert fixed_merchant_trade_no == "SUB520128550E8400", (
+                "Exact expected value"
             )
 
-            assert (
-                len(fixed_merchant_trade_no) == 17
-            ), "Fixed logic should be 17 chars"
-            assert (
-                fixed_merchant_trade_no == "SUB520128550E8400"
-            ), "Exact expected value"
-
             # Most important: within ECPay limit
-            assert (
-                len(fixed_merchant_trade_no) <= 20
-            ), "Fixed logic must be within 20-character limit"
+            assert len(fixed_merchant_trade_no) <= 20, (
+                "Fixed logic must be within 20-character limit"
+            )
 
             # Verify they're different (regression prevention)
-            assert (
-                buggy_merchant_trade_no != fixed_merchant_trade_no
-            ), "Fixed logic should produce different result than buggy logic"
+            assert buggy_merchant_trade_no != fixed_merchant_trade_no, (
+                "Fixed logic should produce different result than buggy logic"
+            )

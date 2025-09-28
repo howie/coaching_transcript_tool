@@ -1,239 +1,243 @@
 """FastAPI dependencies for Clean Architecture dependency injection.
 
-This module provides dependency injection for use cases following Clean Architecture principles.
-All use cases are created through factories that inject the appropriate repository implementations.
+This module provides dependency injection for use cases following
+Clean Architecture principles.
+All use cases are created through factories that inject the appropriate
+repository implementations.
 """
 
 from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
-from .auth import get_current_user_dependency
-from ...infrastructure.factories import (
-    UsageTrackingServiceFactory,
-    SessionServiceFactory,
-    PlanServiceFactory,
-    SubscriptionServiceFactory,
-    TranscriptServiceFactory,
-    ClientServiceFactory,
-    CoachingSessionServiceFactory,
-    BillingAnalyticsServiceFactory,
-    CoachProfileServiceFactory,
-    create_session_repository,
+from ...core.services.billing_analytics_use_case import (
+    BillingAnalyticsChurnUseCase,
+    BillingAnalyticsCohortUseCase,
+    BillingAnalyticsExportUseCase,
+    BillingAnalyticsHealthScoreUseCase,
+    BillingAnalyticsOverviewUseCase,
+    BillingAnalyticsPlanPerformanceUseCase,
+    BillingAnalyticsRefreshUseCase,
+    BillingAnalyticsRevenueUseCase,
+    BillingAnalyticsSegmentationUseCase,
+    BillingAnalyticsUserDetailUseCase,
 )
-from ...core.services.usage_tracking_use_case import (
-    CreateUsageLogUseCase,
-    GetUserUsageUseCase,
-    GetUsageHistoryUseCase,
-    GetUserAnalyticsUseCase,
-    GetAdminAnalyticsUseCase,
-    GetSpecificUserUsageUseCase,
-    GetMonthlyUsageReportUseCase,
-    GetUsageTrendsUseCase,
-    GetUsagePredictionsUseCase,
-    GetUsageInsightsUseCase,
-    CreateUsageSnapshotUseCase,
-    ExportUsageDataUseCase,
+from ...core.services.client_management_use_case import (
+    ClientCreationUseCase,
+    ClientDeletionUseCase,
+    ClientOptionsUseCase,
+    ClientRetrievalUseCase,
+    ClientUpdateUseCase,
 )
-from ...core.services.session_management_use_case import (
-    SessionCreationUseCase,
-    SessionRetrievalUseCase,
-    SessionStatusUpdateUseCase,
-    SessionTranscriptUpdateUseCase,
-    SessionUploadManagementUseCase,
-    SessionTranscriptionManagementUseCase,
-    SessionExportUseCase,
-    SessionStatusRetrievalUseCase,
-    SessionTranscriptUploadUseCase,
+from ...core.services.coach_profile_management_use_case import (
+    CoachProfileManagementUseCase,
 )
-from ...core.services.speaker_role_management_use_case import (
-    SpeakerRoleAssignmentUseCase,
-    SegmentRoleAssignmentUseCase,
-    SpeakerRoleRetrievalUseCase,
+from ...core.services.coaching_session_management_use_case import (
+    CoachingSessionCreationUseCase,
+    CoachingSessionDeletionUseCase,
+    CoachingSessionOptionsUseCase,
+    CoachingSessionRetrievalUseCase,
+    CoachingSessionUpdateUseCase,
 )
+from ...core.services.dashboard_summary_use_case import DashboardSummaryUseCase
 from ...core.services.plan_management_use_case import (
     PlanRetrievalUseCase,
     PlanValidationUseCase,
 )
+from ...core.services.session_management_use_case import (
+    SessionCreationUseCase,
+    SessionExportUseCase,
+    SessionRetrievalUseCase,
+    SessionStatusRetrievalUseCase,
+    SessionStatusUpdateUseCase,
+    SessionTranscriptionManagementUseCase,
+    SessionTranscriptUpdateUseCase,
+    SessionTranscriptUploadUseCase,
+    SessionUploadManagementUseCase,
+)
+from ...core.services.speaker_role_management_use_case import (
+    SegmentRoleAssignmentUseCase,
+    SpeakerRoleAssignmentUseCase,
+    SpeakerRoleRetrievalUseCase,
+)
 from ...core.services.subscription_management_use_case import (
     SubscriptionCreationUseCase,
-    SubscriptionRetrievalUseCase,
     SubscriptionModificationUseCase,
+    SubscriptionRetrievalUseCase,
 )
 from ...core.services.transcript_upload_use_case import TranscriptUploadUseCase
-from ...core.services.client_management_use_case import (
-    ClientRetrievalUseCase,
-    ClientCreationUseCase,
-    ClientUpdateUseCase,
-    ClientDeletionUseCase,
-    ClientOptionsUseCase,
+from ...core.services.usage_tracking_use_case import (
+    CreateUsageLogUseCase,
+    CreateUsageSnapshotUseCase,
+    ExportUsageDataUseCase,
+    GetAdminAnalyticsUseCase,
+    GetMonthlyUsageReportUseCase,
+    GetSpecificUserUsageUseCase,
+    GetUsageHistoryUseCase,
+    GetUsageInsightsUseCase,
+    GetUsagePredictionsUseCase,
+    GetUsageTrendsUseCase,
+    GetUserAnalyticsUseCase,
+    GetUserUsageUseCase,
 )
-from ...core.services.coaching_session_management_use_case import (
-    CoachingSessionRetrievalUseCase,
-    CoachingSessionCreationUseCase,
-    CoachingSessionUpdateUseCase,
-    CoachingSessionDeletionUseCase,
-    CoachingSessionOptionsUseCase,
+from ...infrastructure.factories import (
+    BillingAnalyticsServiceFactory,
+    ClientServiceFactory,
+    CoachingSessionServiceFactory,
+    CoachProfileServiceFactory,
+    PlanServiceFactory,
+    SessionServiceFactory,
+    SubscriptionServiceFactory,
+    TranscriptServiceFactory,
+    UsageTrackingServiceFactory,
+    create_session_repository,
 )
-from ...core.services.coach_profile_management_use_case import CoachProfileManagementUseCase
-from ...core.services.dashboard_summary_use_case import DashboardSummaryUseCase
-from ...core.services.billing_analytics_use_case import (
-    BillingAnalyticsOverviewUseCase,
-    BillingAnalyticsRevenueUseCase,
-    BillingAnalyticsSegmentationUseCase,
-    BillingAnalyticsUserDetailUseCase,
-    BillingAnalyticsCohortUseCase,
-    BillingAnalyticsChurnUseCase,
-    BillingAnalyticsPlanPerformanceUseCase,
-    BillingAnalyticsExportUseCase,
-    BillingAnalyticsRefreshUseCase,
-    BillingAnalyticsHealthScoreUseCase,
-)
+from .auth import get_current_user_dependency
 
 
 def get_usage_log_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> CreateUsageLogUseCase:
     """Dependency to inject CreateUsageLogUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_usage_log_use_case(db)
 
 
 def get_user_usage_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> GetUserUsageUseCase:
     """Dependency to inject GetUserUsageUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_user_usage_use_case(db)
 
 
 def get_usage_history_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> GetUsageHistoryUseCase:
     """Dependency to inject GetUsageHistoryUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_usage_history_use_case(db)
 
 
 def get_user_analytics_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> GetUserAnalyticsUseCase:
     """Dependency to inject GetUserAnalyticsUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_user_analytics_use_case(db)
 
 
 def get_admin_analytics_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> GetAdminAnalyticsUseCase:
     """Dependency to inject GetAdminAnalyticsUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_admin_analytics_use_case(db)
 
 
 def get_specific_user_usage_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> GetSpecificUserUsageUseCase:
     """Dependency to inject GetSpecificUserUsageUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_specific_user_usage_use_case(db)
 
 
 def get_monthly_usage_report_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> GetMonthlyUsageReportUseCase:
     """Dependency to inject GetMonthlyUsageReportUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_monthly_usage_report_use_case(db)
 
 
 def get_usage_trends_use_case(
-    db: Session = Depends(get_db)
-) -> 'GetUsageTrendsUseCase':
+    db: Session = Depends(get_db),
+) -> "GetUsageTrendsUseCase":
     """Dependency to inject GetUsageTrendsUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_usage_trends_use_case(db)
 
 
 def get_usage_predictions_use_case(
-    db: Session = Depends(get_db)
-) -> 'GetUsagePredictionsUseCase':
+    db: Session = Depends(get_db),
+) -> "GetUsagePredictionsUseCase":
     """Dependency to inject GetUsagePredictionsUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_usage_predictions_use_case(db)
 
 
 def get_usage_insights_use_case(
-    db: Session = Depends(get_db)
-) -> 'GetUsageInsightsUseCase':
+    db: Session = Depends(get_db),
+) -> "GetUsageInsightsUseCase":
     """Dependency to inject GetUsageInsightsUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_usage_insights_use_case(db)
 
 
 def get_usage_snapshot_use_case(
-    db: Session = Depends(get_db)
-) -> 'CreateUsageSnapshotUseCase':
+    db: Session = Depends(get_db),
+) -> "CreateUsageSnapshotUseCase":
     """Dependency to inject CreateUsageSnapshotUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_usage_snapshot_use_case(db)
 
 
 def get_export_usage_data_use_case(
-    db: Session = Depends(get_db)
-) -> 'ExportUsageDataUseCase':
+    db: Session = Depends(get_db),
+) -> "ExportUsageDataUseCase":
     """Dependency to inject ExportUsageDataUseCase with proper repositories."""
     return UsageTrackingServiceFactory.create_export_usage_data_use_case(db)
 
 
 # Session Management Dependencies
 def get_session_creation_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SessionCreationUseCase:
     """Dependency to inject SessionCreationUseCase."""
     return SessionServiceFactory.create_session_creation_use_case(db)
 
 
 def get_session_retrieval_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SessionRetrievalUseCase:
     """Dependency to inject SessionRetrievalUseCase."""
     return SessionServiceFactory.create_session_retrieval_use_case(db)
 
 
 def get_session_status_update_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SessionStatusUpdateUseCase:
     """Dependency to inject SessionStatusUpdateUseCase."""
     return SessionServiceFactory.create_session_status_update_use_case(db)
 
 
 def get_session_transcript_update_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SessionTranscriptUpdateUseCase:
     """Dependency to inject SessionTranscriptUpdateUseCase."""
     return SessionServiceFactory.create_session_transcript_update_use_case(db)
 
 
 def get_session_upload_management_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SessionUploadManagementUseCase:
     """Dependency to inject SessionUploadManagementUseCase."""
     return SessionServiceFactory.create_session_upload_management_use_case(db)
 
 
 def get_session_transcription_management_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SessionTranscriptionManagementUseCase:
     """Dependency to inject SessionTranscriptionManagementUseCase."""
     return SessionServiceFactory.create_session_transcription_management_use_case(db)
 
 
 def get_session_export_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SessionExportUseCase:
     """Dependency to inject SessionExportUseCase."""
     return SessionServiceFactory.create_session_export_use_case(db)
 
 
 def get_session_status_retrieval_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SessionStatusRetrievalUseCase:
     """Dependency to inject SessionStatusRetrievalUseCase."""
     return SessionServiceFactory.create_session_status_retrieval_use_case(db)
 
 
 def get_session_transcript_upload_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SessionTranscriptUploadUseCase:
     """Dependency to inject SessionTranscriptUploadUseCase."""
     return SessionServiceFactory.create_session_transcript_upload_use_case(db)
@@ -241,14 +245,14 @@ def get_session_transcript_upload_use_case(
 
 # Plan Management Dependencies
 def get_plan_retrieval_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> PlanRetrievalUseCase:
     """Dependency to inject PlanRetrievalUseCase."""
     return PlanServiceFactory.create_plan_retrieval_use_case(db)
 
 
 def get_plan_validation_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> PlanValidationUseCase:
     """Dependency to inject PlanValidationUseCase."""
     return PlanServiceFactory.create_plan_validation_use_case(db)
@@ -256,21 +260,21 @@ def get_plan_validation_use_case(
 
 # Subscription Management Dependencies
 def get_subscription_creation_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SubscriptionCreationUseCase:
     """Dependency to inject SubscriptionCreationUseCase."""
     return SubscriptionServiceFactory.create_subscription_creation_use_case(db)
 
 
 def get_subscription_retrieval_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SubscriptionRetrievalUseCase:
     """Dependency to inject SubscriptionRetrievalUseCase."""
     return SubscriptionServiceFactory.create_subscription_retrieval_use_case(db)
 
 
 def get_subscription_modification_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> SubscriptionModificationUseCase:
     """Dependency to inject SubscriptionModificationUseCase."""
     return SubscriptionServiceFactory.create_subscription_modification_use_case(db)
@@ -278,43 +282,44 @@ def get_subscription_modification_use_case(
 
 # Admin Permission Dependencies
 async def require_super_admin(
-    current_user = Depends(get_current_user_dependency),
+    current_user=Depends(get_current_user_dependency),
 ) -> None:
     """Dependency to ensure the current user has super admin permissions."""
     from ...core.models.user import UserRole
+
     if not current_user or current_user.role != UserRole.SUPER_ADMIN:
-        raise HTTPException(
-            status_code=403,
-            detail="Super admin access required"
-        )
+        raise HTTPException(status_code=403, detail="Super admin access required")
 
 
 async def require_admin(
-    current_user = Depends(get_current_user_dependency),
+    current_user=Depends(get_current_user_dependency),
 ) -> None:
     """Dependency to ensure the current user has admin permissions."""
     from ...core.models.user import UserRole
-    if not current_user or current_user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
-        raise HTTPException(
-            status_code=403,
-            detail="Admin access required"
-        )
+
+    if not current_user or current_user.role not in [
+        UserRole.ADMIN,
+        UserRole.SUPER_ADMIN,
+    ]:
+        raise HTTPException(status_code=403, detail="Admin access required")
 
 
 async def require_staff(
-    current_user = Depends(get_current_user_dependency),
+    current_user=Depends(get_current_user_dependency),
 ) -> None:
     """Dependency to ensure the current user has staff permissions or higher."""
     from ...core.models.user import UserRole
-    if not current_user or current_user.role not in [UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN]:
-        raise HTTPException(
-            status_code=403,
-            detail="Staff access required"
-        )
+
+    if not current_user or current_user.role not in [
+        UserRole.STAFF,
+        UserRole.ADMIN,
+        UserRole.SUPER_ADMIN,
+    ]:
+        raise HTTPException(status_code=403, detail="Staff access required")
 
 
 async def get_current_user_with_permissions(
-    current_user = Depends(get_current_user_dependency),
+    current_user=Depends(get_current_user_dependency),
 ):
     """Dependency to get current user with permission context."""
     return current_user
@@ -334,6 +339,7 @@ def get_segment_role_assignment_use_case(
 ) -> SegmentRoleAssignmentUseCase:
     """Dependency to get SegmentRoleAssignmentUseCase with repository injection."""
     from ...infrastructure.factories import SpeakerRoleServiceFactory
+
     return SpeakerRoleServiceFactory.create_segment_role_assignment_use_case(db)
 
 
@@ -353,28 +359,28 @@ def get_transcript_upload_use_case(
 
 # Client Management Dependencies
 def get_client_retrieval_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> ClientRetrievalUseCase:
     """Dependency to inject ClientRetrievalUseCase."""
     return ClientServiceFactory.create_client_retrieval_use_case(db)
 
 
 def get_client_creation_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> ClientCreationUseCase:
     """Dependency to inject ClientCreationUseCase."""
     return ClientServiceFactory.create_client_creation_use_case(db)
 
 
 def get_client_update_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> ClientUpdateUseCase:
     """Dependency to inject ClientUpdateUseCase."""
     return ClientServiceFactory.create_client_update_use_case(db)
 
 
 def get_client_deletion_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> ClientDeletionUseCase:
     """Dependency to inject ClientDeletionUseCase."""
     return ClientServiceFactory.create_client_deletion_use_case(db)
@@ -387,28 +393,28 @@ def get_client_options_use_case() -> ClientOptionsUseCase:
 
 # Coaching Session Management Dependencies
 def get_coaching_session_retrieval_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> CoachingSessionRetrievalUseCase:
     """Dependency to inject CoachingSessionRetrievalUseCase."""
     return CoachingSessionServiceFactory.create_coaching_session_retrieval_use_case(db)
 
 
 def get_coaching_session_creation_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> CoachingSessionCreationUseCase:
     """Dependency to inject CoachingSessionCreationUseCase."""
     return CoachingSessionServiceFactory.create_coaching_session_creation_use_case(db)
 
 
 def get_coaching_session_update_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> CoachingSessionUpdateUseCase:
     """Dependency to inject CoachingSessionUpdateUseCase."""
     return CoachingSessionServiceFactory.create_coaching_session_update_use_case(db)
 
 
 def get_coaching_session_deletion_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> CoachingSessionDeletionUseCase:
     """Dependency to inject CoachingSessionDeletionUseCase."""
     return CoachingSessionServiceFactory.create_coaching_session_deletion_use_case(db)
@@ -421,11 +427,15 @@ def get_coaching_session_options_use_case() -> CoachingSessionOptionsUseCase:
 
 # Dashboard Summary Dependencies
 def get_dashboard_summary_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> DashboardSummaryUseCase:
     """Dependency to inject DashboardSummaryUseCase."""
-    from ...infrastructure.db.repositories.coaching_session_repository import SQLAlchemyCoachingSessionRepository
-    from ...infrastructure.db.repositories.session_repository import SQLAlchemySessionRepository
+    from ...infrastructure.db.repositories.coaching_session_repository import (
+        SQLAlchemyCoachingSessionRepository,
+    )
+    from ...infrastructure.db.repositories.session_repository import (
+        SQLAlchemySessionRepository,
+    )
 
     coaching_session_repo = SQLAlchemyCoachingSessionRepository(db)
     session_repo = SQLAlchemySessionRepository(db)
@@ -438,77 +448,89 @@ def get_dashboard_summary_use_case(
 
 # Billing Analytics Dependencies
 def get_billing_analytics_overview_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> BillingAnalyticsOverviewUseCase:
     """Dependency to inject BillingAnalyticsOverviewUseCase."""
     return BillingAnalyticsServiceFactory.create_billing_analytics_overview_use_case(db)
 
 
 def get_billing_analytics_revenue_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> BillingAnalyticsRevenueUseCase:
     """Dependency to inject BillingAnalyticsRevenueUseCase."""
     return BillingAnalyticsServiceFactory.create_billing_analytics_revenue_use_case(db)
 
 
 def get_billing_analytics_segmentation_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> BillingAnalyticsSegmentationUseCase:
     """Dependency to inject BillingAnalyticsSegmentationUseCase."""
-    return BillingAnalyticsServiceFactory.create_billing_analytics_segmentation_use_case(db)
+    return (
+        BillingAnalyticsServiceFactory.create_billing_analytics_segmentation_use_case(
+            db
+        )
+    )
 
 
 def get_billing_analytics_user_detail_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> BillingAnalyticsUserDetailUseCase:
     """Dependency to inject BillingAnalyticsUserDetailUseCase."""
-    return BillingAnalyticsServiceFactory.create_billing_analytics_user_detail_use_case(db)
+    return BillingAnalyticsServiceFactory.create_billing_analytics_user_detail_use_case(
+        db
+    )
 
 
 def get_billing_analytics_cohort_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> BillingAnalyticsCohortUseCase:
     """Dependency to inject BillingAnalyticsCohortUseCase."""
     return BillingAnalyticsServiceFactory.create_billing_analytics_cohort_use_case(db)
 
 
 def get_billing_analytics_churn_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> BillingAnalyticsChurnUseCase:
     """Dependency to inject BillingAnalyticsChurnUseCase."""
     return BillingAnalyticsServiceFactory.create_billing_analytics_churn_use_case(db)
 
 
 def get_billing_analytics_plan_performance_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> BillingAnalyticsPlanPerformanceUseCase:
     """Dependency to inject BillingAnalyticsPlanPerformanceUseCase."""
-    return BillingAnalyticsServiceFactory.create_billing_analytics_plan_performance_use_case(db)
+    return BillingAnalyticsServiceFactory.create_billing_analytics_plan_performance_use_case(
+        db
+    )
 
 
 def get_billing_analytics_export_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> BillingAnalyticsExportUseCase:
     """Dependency to inject BillingAnalyticsExportUseCase."""
     return BillingAnalyticsServiceFactory.create_billing_analytics_export_use_case(db)
 
 
 def get_billing_analytics_refresh_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> BillingAnalyticsRefreshUseCase:
     """Dependency to inject BillingAnalyticsRefreshUseCase."""
     return BillingAnalyticsServiceFactory.create_billing_analytics_refresh_use_case(db)
 
 
 def get_billing_analytics_health_score_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> BillingAnalyticsHealthScoreUseCase:
     """Dependency to inject BillingAnalyticsHealthScoreUseCase."""
-    return BillingAnalyticsServiceFactory.create_billing_analytics_health_score_use_case(db)
+    return (
+        BillingAnalyticsServiceFactory.create_billing_analytics_health_score_use_case(
+            db
+        )
+    )
 
 
 def get_coach_profile_management_use_case(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> CoachProfileManagementUseCase:
     """Dependency to inject CoachProfileManagementUseCase."""
     return CoachProfileServiceFactory.create_coach_profile_management_use_case(db)

@@ -5,18 +5,22 @@ to ensure data persistence, specifically for the coaching session transcription_
 update issue that was reported.
 """
 
-import pytest
+from datetime import date, datetime
 from uuid import uuid4
-from datetime import datetime, date
 
+import pytest
+
+from coaching_assistant.models.client import Client
+from coaching_assistant.models.coaching_session import (
+    CoachingSession,
+    SessionSource,
+)
+from coaching_assistant.models.session import Session, SessionStatus
+from coaching_assistant.models.user import User, UserPlan
 from src.coaching_assistant.core.database import get_db
 from src.coaching_assistant.infrastructure.db.repositories.coaching_session_repository import (
     SQLAlchemyCoachingSessionRepository,
 )
-from coaching_assistant.models.coaching_session import CoachingSession, SessionSource
-from coaching_assistant.models.session import Session, SessionStatus
-from coaching_assistant.models.client import Client
-from coaching_assistant.models.user import User, UserPlan
 
 
 @pytest.mark.integration
@@ -72,9 +76,11 @@ class TestDatabaseTransactionPersistence:
 
         try:
             # Data should be persisted due to automatic commit
-            persisted_session = db_session2.query(CoachingSession).filter_by(
-                id=coaching_session_id
-            ).first()
+            persisted_session = (
+                db_session2.query(CoachingSession)
+                .filter_by(id=coaching_session_id)
+                .first()
+            )
 
             assert persisted_session is not None
             assert persisted_session.notes == "Transaction persistence test"
@@ -88,7 +94,8 @@ class TestDatabaseTransactionPersistence:
 
     def test_coaching_session_transcription_id_persistence(self, db_engine):
         """Test the specific bug: transcription_session_id updates persist correctly."""
-        # Phase 1: Create initial coaching session (simulates frontend session creation)
+        # Phase 1: Create initial coaching session (simulates frontend session
+        # creation)
         db_gen1 = get_db()
         db_session1 = next(db_gen1)
 
@@ -153,10 +160,10 @@ class TestDatabaseTransactionPersistence:
             assert retrieved_session is not None
             assert retrieved_session.transcription_session_id is None  # Initially null
 
-            # Update with transcription session ID (this was failing to persist)
+            # Update with transcription session ID (this was failing to
+            # persist)
             updated_session = repo.update_transcription_session_id(
-                coaching_session_id,
-                transcription_session_id
+                coaching_session_id, transcription_session_id
             )
 
             assert updated_session.transcription_session_id == transcription_session_id
@@ -168,7 +175,8 @@ class TestDatabaseTransactionPersistence:
                 pass
 
         # Phase 3: Verify persistence in a new session (simulates page refresh)
-        # This is where the bug was detected - transcription_session_id was null
+        # This is where the bug was detected - transcription_session_id was
+        # null
         db_gen3 = get_db()
         db_session3 = next(db_gen3)
 
@@ -183,9 +191,11 @@ class TestDatabaseTransactionPersistence:
             assert final_session.transcription_session_id is not None
 
             # Also verify the transcription session exists
-            transcription = db_session3.query(Session).filter_by(
-                id=transcription_session_id
-            ).first()
+            transcription = (
+                db_session3.query(Session)
+                .filter_by(id=transcription_session_id)
+                .first()
+            )
             assert transcription is not None
             assert transcription.title == "Audio Upload Session"
 
@@ -210,7 +220,7 @@ class TestDatabaseTransactionPersistence:
             )
             db_session.add(user)
             db_session.flush()
-            user_id = user.id
+            user.id
 
             # Force an error by violating a constraint
             # (creating duplicate user with same google_id)
@@ -286,7 +296,7 @@ class TestDatabaseTransactionPersistence:
                     duration_min=30 + i * 15,
                     fee_currency="USD",
                     fee_amount=100 + i * 50,
-                    notes=f"Multi repo session {i+1}",
+                    notes=f"Multi repo session {i + 1}",
                 )
                 saved_session = repo.save(coaching_session)
                 session_ids.append(saved_session.id)
@@ -307,7 +317,7 @@ class TestDatabaseTransactionPersistence:
             for i, session_id in enumerate(session_ids):
                 session = repo2.get_by_id(session_id)
                 assert session is not None
-                assert session.notes == f"Multi repo session {i+1}"
+                assert session.notes == f"Multi repo session {i + 1}"
                 assert session.duration_min == 30 + i * 15
                 assert session.fee_amount == 100 + i * 50
 

@@ -4,14 +4,14 @@ Unit Tests for Receipt Generation Logic
 Tests the business logic for generating receipt data independent of API layer
 """
 
-from datetime import datetime, date
-from uuid import uuid4
+from datetime import date, datetime
 from unittest.mock import Mock, patch
+from uuid import uuid4
 
 from coaching_assistant.models import (
-    User,
     SaasSubscription,
     SubscriptionPayment,
+    User,
 )
 from coaching_assistant.models.ecpay_subscription import (
     PaymentStatus,
@@ -62,9 +62,7 @@ class TestReceiptGeneration:
             "payment": {
                 "amount": payment.amount / 100,  # Convert from cents
                 "currency": payment.currency,
-                "payment_date": payment.processed_at.strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                ),
+                "payment_date": payment.processed_at.strftime("%Y-%m-%d %H:%M:%S"),
                 "payment_method": "信用卡 (ECPay)",
             },
             "company": {
@@ -122,7 +120,8 @@ class TestReceiptGeneration:
         assert len(receipt_id) == 12  # RCP- (4) + 8 characters
         assert receipt_id[4:].isupper()
 
-        # Verify uniqueness (different UUIDs should generate different receipt IDs)
+        # Verify uniqueness (different UUIDs should generate different receipt
+        # IDs)
         payment_id_2 = uuid4()
         receipt_id_2 = f"RCP-{str(payment_id_2)[:8].upper()}"
 
@@ -177,9 +176,7 @@ class TestReceiptGeneration:
         user_with_name.name = "John Doe"
         user_with_name.email = "john.doe@example.com"
 
-        display_name = (
-            user_with_name.name or user_with_name.email.split("@")[0]
-        )
+        display_name = user_with_name.name or user_with_name.email.split("@")[0]
         assert display_name == "John Doe"
 
         # Test with empty name
@@ -195,9 +192,7 @@ class TestReceiptGeneration:
         user_empty_name.name = ""
         user_empty_name.email = "empty@company.com"
 
-        display_name = (
-            user_empty_name.name or user_empty_name.email.split("@")[0]
-        )
+        display_name = user_empty_name.name or user_empty_name.email.split("@")[0]
         assert display_name == "empty"
 
     def test_receipt_issue_date_fallback(self):
@@ -214,9 +209,7 @@ class TestReceiptGeneration:
         payment_no_date = Mock(spec=SubscriptionPayment)
         payment_no_date.processed_at = None
 
-        with patch(
-            "coaching_assistant.api.v1.subscriptions.date"
-        ) as mock_date:
+        with patch("coaching_assistant.api.v1.subscriptions.date") as mock_date:
             mock_date.today.return_value = date(2025, 8, 31)
             issue_date = mock_date.today().strftime("%Y-%m-%d")
             assert issue_date == "2025-08-31"

@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException, status
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
 
 from ..core.processor import format_transcript
@@ -43,9 +43,7 @@ async def get_openai_schema():
 
 @router.post("/format")
 async def format_transcript_endpoint(
-    file: UploadFile = File(
-        ..., description="The VTT transcript file to process."
-    ),
+    file: UploadFile = File(..., description="The VTT transcript file to process."),
     output_format: str = Form(
         "markdown",
         description="The desired output format ('markdown' or 'excel').",
@@ -71,7 +69,8 @@ async def format_transcript_endpoint(
     logger.info(
         f"Received format request - file: '{file.filename}', "
         f"format: '{output_format}', coach: '{coach_name}', "
-        f"client: '{client_name}', traditional: {convert_to_traditional_chinese}"
+        f"client: '{client_name}', "
+        f"traditional: {convert_to_traditional_chinese}"
     )
 
     try:
@@ -83,9 +82,7 @@ async def format_transcript_endpoint(
 
         # 檔案類型檢查
         if file.content_type and not file.content_type.startswith("text/"):
-            logger.warning(
-                f"Potentially unsupported content type: {file.content_type}"
-            )
+            logger.warning(f"Potentially unsupported content type: {file.content_type}")
 
         file_content = await file.read()
 
@@ -102,9 +99,7 @@ async def format_transcript_endpoint(
         )
 
         filename = file.filename or "transcript"
-        base_filename = (
-            filename.rsplit(".", 1)[0] if "." in filename else filename
-        )
+        base_filename = filename.rsplit(".", 1)[0] if "." in filename else filename
 
         # 清理檔案名稱，移除可能導致問題的字符
         import re
@@ -113,7 +108,9 @@ async def format_transcript_endpoint(
 
         if output_format.lower() == "excel":
             output_filename = f"{safe_filename}.xlsx"
-            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            media_type = (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
             content_stream = io.BytesIO(result)
         elif output_format.lower() == "markdown":
             output_filename = f"{safe_filename}.md"
@@ -122,7 +119,10 @@ async def format_transcript_endpoint(
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid output format '{output_format}'. Supported formats: 'markdown', 'excel'",
+                detail=(
+                    f"Invalid output format '{output_format}'. "
+                    "Supported formats: 'markdown', 'excel'"
+                ),
             )
 
         logger.info(
@@ -133,24 +133,18 @@ async def format_transcript_endpoint(
             content_stream,
             media_type=media_type,
             headers={
-                "Content-Disposition": f"attachment; filename={output_filename}"
+                "Content-Disposition": (f"attachment; filename={output_filename}")
             },
         )
 
     except UnrecognizedFormatError as e:
-        logger.warning(
-            f"Unrecognized format error for file '{file.filename}': {e}"
-        )
-        raise HTTPException(
-            status_code=400, detail=f"Unrecognized file format: {e}"
-        )
+        logger.warning(f"Unrecognized format error for file '{file.filename}': {e}")
+        raise HTTPException(status_code=400, detail=f"Unrecognized file format: {e}")
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
-        logger.exception(
-            f"Unexpected error processing file '{file.filename}':"
-        )
+        logger.exception(f"Unexpected error processing file '{file.filename}':")
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error while processing file: {str(e)}",

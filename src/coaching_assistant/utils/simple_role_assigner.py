@@ -12,8 +12,8 @@ Future improvements could include:
 """
 
 import logging
-from typing import Dict, List, Tuple
 from dataclasses import dataclass
+from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +91,7 @@ class SimpleRoleAssigner:
             # For Chinese text, we count characters as a proxy for words
             content = segment.content
             if self._is_chinese_text(content):
-                word_count = len(
-                    [c for c in content if "\u4e00" <= c <= "\u9fff"]
-                )
+                word_count = len([c for c in content if "\u4e00" <= c <= "\u9fff"])
             else:
                 word_count = len(content.split())
 
@@ -112,9 +110,7 @@ class SimpleRoleAssigner:
             for speaker_id, data in metrics.items()
         }
 
-    def assign_roles(
-        self, segments: List
-    ) -> Tuple[Dict[int, str], Dict[str, float]]:
+    def assign_roles(self, segments: List) -> Tuple[Dict[int, str], Dict[str, float]]:
         """
         Assign coach/client roles based on speaking ratios.
 
@@ -183,13 +179,9 @@ class SimpleRoleAssigner:
             # Confidence calculation
             if ratio_difference > 0.3:  # Clear difference (e.g., 70/30 split)
                 confidence = 0.9
-            elif (
-                ratio_difference > 0.2
-            ):  # Moderate difference (e.g., 60/40 split)
+            elif ratio_difference > 0.2:  # Moderate difference (e.g., 60/40 split)
                 confidence = 0.7
-            elif (
-                ratio_difference > 0.1
-            ):  # Small difference (e.g., 55/45 split)
+            elif ratio_difference > 0.1:  # Small difference (e.g., 55/45 split)
                 confidence = 0.5
             else:  # Very small difference
                 confidence = 0.3
@@ -197,9 +189,9 @@ class SimpleRoleAssigner:
             # Log the decision
             logger.info(
                 f"Role assignment based on speaking ratios:\n"
-                f"  Client (ID {[k for k,v in roles.items() if v=='client'][0]}): "
+                f"  Client (ID {[k for k, v in roles.items() if v == 'client'][0]}): "
                 f"{client_ratio:.1%} of conversation\n"
-                f"  Coach (ID {[k for k,v in roles.items() if v=='coach'][0]}): "
+                f"  Coach (ID {[k for k, v in roles.items() if v == 'coach'][0]}): "
                 f"{coach_ratio:.1%} of conversation\n"
                 f"  Confidence: {confidence:.1%}"
             )

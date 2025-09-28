@@ -1,12 +1,13 @@
 """Transcript repository implementation using SQLAlchemy with Clean Architecture."""
 
-from typing import List, Dict
 from datetime import datetime
+from typing import Dict, List
 from uuid import UUID
+
 from sqlalchemy.orm import Session
 
-from ....core.repositories.ports import TranscriptRepoPort
 from ....core.models.transcript import TranscriptSegment
+from ....core.repositories.ports import TranscriptRepoPort
 from ..models.transcript_model import TranscriptSegmentModel
 
 
@@ -26,7 +27,9 @@ class TranscriptRepository(TranscriptRepoPort):
         )
         return [segment.to_domain() for segment in orm_segments]
 
-    def save_segments(self, segments: List[TranscriptSegment]) -> List[TranscriptSegment]:
+    def save_segments(
+        self, segments: List[TranscriptSegment]
+    ) -> List[TranscriptSegment]:
         """Save multiple transcript segments."""
         orm_segments = []
         for segment in segments:
@@ -82,7 +85,9 @@ class TranscriptRepository(TranscriptRepoPort):
 
         orm_segment_map = {orm_segment.id: orm_segment for orm_segment in orm_segments}
         missing_ids = [
-            str(segment_id) for segment_id in segment_ids if segment_id not in orm_segment_map
+            str(segment_id)
+            for segment_id in segment_ids
+            if segment_id not in orm_segment_map
         ]
 
         if missing_ids:
@@ -98,7 +103,8 @@ class TranscriptRepository(TranscriptRepoPort):
 
         self.db_session.flush()
 
-        # Return the domain segments that were supplied (already reflect new state)
+        # Return the domain segments that were supplied (already reflect new
+        # state)
         return segments
 
     def delete_by_session_id(self, session_id: UUID) -> bool:

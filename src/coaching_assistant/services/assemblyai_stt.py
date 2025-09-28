@@ -1,30 +1,33 @@
 """AssemblyAI Speech-to-Text provider implementation."""
 
+import logging
 import re
 import time
-import logging
-import requests
 from decimal import Decimal
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from .stt_provider import (
-    STTProvider,
-    TranscriptSegment,
-    TranscriptionResult,
-    STTProviderError,
-    STTProviderUnavailableError,
-    STTProviderQuotaExceededError,
-    STTProviderInvalidAudioError,
-)
+import requests
+
 from ..core.config import settings
 from ..utils.chinese_converter import convert_to_traditional
+from .stt_provider import (
+    STTProvider,
+    STTProviderError,
+    STTProviderInvalidAudioError,
+    STTProviderQuotaExceededError,
+    STTProviderUnavailableError,
+    TranscriptionResult,
+    TranscriptSegment,
+)
 
 logger = logging.getLogger(__name__)
 
 
 # AssemblyAI language code mapping
 ASSEMBLYAI_LANGUAGE_MAP = {
-    "cmn-Hant-TW": "zh",  # Map Traditional Chinese to Simplified (with post-processing)
+    "cmn-Hant-TW": (
+        "zh"
+    ),  # Map Traditional Chinese to Simplified (with post-processing)
     "zh-TW": "zh",  # Map to 'zh' + post-process to Traditional
     "cmn-Hans-CN": "zh",  # Simplified Chinese (native support)
     "zh-CN": "zh",  # Simplified Chinese (native support)
@@ -47,9 +50,7 @@ class AssemblyAIProvider(STTProvider):
         """Initialize AssemblyAI client."""
         self.api_key = settings.ASSEMBLYAI_API_KEY
         if not self.api_key:
-            raise STTProviderError(
-                "ASSEMBLYAI_API_KEY is not set in configuration"
-            )
+            raise STTProviderError("ASSEMBLYAI_API_KEY is not set in configuration")
 
         self.headers = {
             "authorization": self.api_key,
@@ -58,13 +59,9 @@ class AssemblyAIProvider(STTProvider):
 
         # Model selection (best or nano)
         self.model = getattr(settings, "ASSEMBLYAI_MODEL", "best")
-        self.speakers_expected = getattr(
-            settings, "ASSEMBLYAI_SPEAKERS_EXPECTED", 2
-        )
+        self.speakers_expected = getattr(settings, "ASSEMBLYAI_SPEAKERS_EXPECTED", 2)
 
-        logger.info(
-            f"AssemblyAI provider initialized with model: {self.model}"
-        )
+        logger.info(f"AssemblyAI provider initialized with model: {self.model}")
 
     def _map_language_code(self, language: str) -> str:
         """Map input language code to AssemblyAI language code."""
@@ -73,9 +70,7 @@ class AssemblyAIProvider(STTProvider):
 
         # Map to AssemblyAI language code
         mapped_code = ASSEMBLYAI_LANGUAGE_MAP.get(language, language)
-        logger.debug(
-            f"Mapped language '{language}' to AssemblyAI code '{mapped_code}'"
-        )
+        logger.debug(f"Mapped language '{language}' to AssemblyAI code '{mapped_code}'")
         return mapped_code
 
     def _needs_traditional_conversion(self, language: str) -> bool:
@@ -99,13 +94,15 @@ class AssemblyAIProvider(STTProvider):
                 return ord(speaker_id.upper()) - ord("A") + 1
             except (ValueError, TypeError):
                 logger.warning(
-                    f"Failed to convert speaker ID '{speaker_id}' to integer, defaulting to 1"
+                    f"Failed to convert speaker ID '{speaker_id}' to "
+                    f"integer, defaulting to 1"
                 )
                 return 1
 
         # Fallback for any other type
         logger.warning(
-            f"Unexpected speaker ID type: {type(speaker_id)}, value: {speaker_id}, defaulting to 1"
+            f"Unexpected speaker ID type: {type(speaker_id)}, "
+            f"value: {speaker_id}, defaulting to 1"
         )
         return 1
 
@@ -170,7 +167,9 @@ class AssemblyAIProvider(STTProvider):
         return processed_segments
 
     def _upload_audio(self, audio_uri: str) -> str:
-        """Upload audio file to AssemblyAI or return URL if already accessible."""
+        """
+        Upload audio file to AssemblyAI or return URL if already accessible.
+        """
         # If it's already an HTTP/HTTPS URL, return it directly
         if audio_uri.startswith(("http://", "https://")):
             logger.info(f"Using direct URL for AssemblyAI: {audio_uri}")
@@ -185,23 +184,22 @@ class AssemblyAIProvider(STTProvider):
                 # Format: gs://bucket-name/path/to/file.ext
                 gcs_parts = audio_uri.replace("gs://", "").split("/", 1)
                 if len(gcs_parts) != 2:
-                    raise STTProviderError(
-                        f"Invalid GCS URI format: {audio_uri}"
-                    )
+                    raise STTProviderError(f"Invalid GCS URI format: {audio_uri}")
 
                 bucket_name, blob_name = gcs_parts
 
                 # Import GCSUploader here to avoid circular imports
-                from ..utils.gcs_uploader import GCSUploader
                 from ..core.config import settings
+                from ..utils.gcs_uploader import GCSUploader
 
                 # Create GCS uploader with the same bucket and credentials
                 uploader = GCSUploader(
                     bucket_name=bucket_name,
-                    credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+                    credentials_json=(settings.GOOGLE_APPLICATION_CREDENTIALS_JSON),
                 )
 
-                # Generate signed read URL (valid for 6 hours for transcription + retries)
+                # Generate signed read URL (valid for 6 hours for transcription
+                # + retries)
                 signed_url = uploader.generate_signed_read_url(
                     blob_name=blob_name,
                     expiration_minutes=360,  # 6 hours to handle retries and long transcriptions
@@ -213,12 +211,8 @@ class AssemblyAIProvider(STTProvider):
                 return signed_url
 
             except Exception as e:
-                logger.error(
-                    f"Failed to generate signed URL from GCS URI: {e}"
-                )
-                raise STTProviderError(
-                    f"Failed to convert GCS URI to signed URL: {e}"
-                )
+                logger.error(f"Failed to generate signed URL from GCS URI: {e}")
+                raise STTProviderError(f"Failed to convert GCS URI to signed URL: {e}")
 
         # If it's a local file path, upload it to AssemblyAI
         logger.info(f"Uploading local file to AssemblyAI: {audio_uri}")
@@ -278,13 +272,9 @@ class AssemblyAIProvider(STTProvider):
         except requests.exceptions.HTTPError as e:
             status_code = getattr(e.response, "status_code", None)
             if status_code == 429:
-                raise STTProviderQuotaExceededError(
-                    "AssemblyAI rate limit exceeded"
-                )
+                raise STTProviderQuotaExceededError("AssemblyAI rate limit exceeded")
             elif status_code == 400:
-                raise STTProviderInvalidAudioError(
-                    f"Invalid audio or request: {e}"
-                )
+                raise STTProviderInvalidAudioError(f"Invalid audio or request: {e}")
             else:
                 raise STTProviderError(f"Failed to submit transcription: {e}")
         except Exception as e:
@@ -296,9 +286,7 @@ class AssemblyAIProvider(STTProvider):
                         "AssemblyAI rate limit exceeded"
                     )
                 elif status_code == 400:
-                    raise STTProviderInvalidAudioError(
-                        f"Invalid audio or request: {e}"
-                    )
+                    raise STTProviderInvalidAudioError(f"Invalid audio or request: {e}")
 
             logger.error(f"Failed to submit transcription: {e}")
             raise STTProviderError(f"Failed to submit transcription: {e}")
@@ -309,9 +297,7 @@ class AssemblyAIProvider(STTProvider):
         """Poll for transcription completion with optional progress updates."""
         polling_url = f"{self.BASE_URL}/transcript/{transcript_id}"
         polling_interval = 30  # Poll every 30 seconds (reduced from 1 second)
-        max_retries = (
-            240  # Max 2 hours (240 * 30 seconds = 7200 seconds = 2 hours)
-        )
+        max_retries = 240  # Max 2 hours (240 * 30 seconds = 7200 seconds = 2 hours)
         retry_count = 0
         start_time = time.time()
 
@@ -342,7 +328,8 @@ class AssemblyAIProvider(STTProvider):
 
                     # Log detailed error information
                     logger.error(
-                        f"AssemblyAI transcription failed for transcript {transcript_id}"
+                        f"AssemblyAI transcription failed for transcript "
+                        f"{transcript_id}"
                     )
                     logger.error(f"Error message: {error_msg}")
                     logger.error(f"Full error response: {result}")
@@ -357,7 +344,7 @@ class AssemblyAIProvider(STTProvider):
                         logger.warning("SIGNED URL EXPIRATION DETECTED")
                         logger.warning("=" * 80)
                         logger.warning(
-                            f"The signed URL has expired and AssemblyAI cannot download the audio file."
+                            "The signed URL has expired and AssemblyAI cannot download the audio file."
                         )
                         logger.warning(f"Error: {error_msg}")
                         logger.warning("This typically happens when:")
@@ -367,14 +354,12 @@ class AssemblyAIProvider(STTProvider):
                         logger.warning(
                             "2. AssemblyAI queue processing took longer than expected"
                         )
-                        logger.warning(
-                            "3. The audio file was uploaded hours ago"
-                        )
+                        logger.warning("3. The audio file was uploaded hours ago")
                         logger.warning("=" * 80)
 
-                        # This is a non-retryable error since the URL won't get refreshed
+                        # This is a non-retryable error since the URL won't get
+                        # refreshed
                         error_msg = f"Signed URL expired - audio file no longer accessible: {error_msg}"
-
                     # Check if it's a server error that might be transient
                     elif (
                         "server error" in error_msg.lower()
@@ -383,9 +368,7 @@ class AssemblyAIProvider(STTProvider):
                         logger.warning("=" * 80)
                         logger.warning("AssemblyAI SERVICE ISSUE DETECTED")
                         logger.warning("=" * 80)
-                        logger.warning(
-                            f"AssemblyAI is experiencing server issues."
-                        )
+                        logger.warning("AssemblyAI is experiencing server issues.")
                         logger.warning(f"Error: {error_msg}")
                         logger.warning(
                             "This is likely a temporary issue on AssemblyAI's side."
@@ -399,34 +382,29 @@ class AssemblyAIProvider(STTProvider):
                         logger.warning("=" * 80)
 
                         # Mark as a temporary error that could be retried later
-                        error_msg = (
-                            f"AssemblyAI temporary server error: {error_msg}"
-                        )
+                        error_msg = f"AssemblyAI temporary server error: {error_msg}"
 
-                    raise STTProviderError(
-                        f"Transcription failed: {error_msg}"
-                    )
+                    raise STTProviderError(f"Transcription failed: {error_msg}")
 
                 # Update progress based on elapsed time (rough estimation)
                 if (
                     progress_callback
                 ):  # Update progress on every poll (now every 30 seconds)
                     elapsed_minutes = (time.time() - start_time) / 60.0
-                    # More conservative progress estimation with 30-second intervals
-                    # Assume typical transcription takes 2-10 minutes depending on audio length
-                    estimated_progress = min(
-                        90, 30 + (elapsed_minutes / 10.0) * 60
-                    )
+                    # More conservative progress estimation with
+                    # 30-second intervals
+                    # Assume typical transcription takes 2-10 minutes depending
+                    # on audio length
+                    estimated_progress = min(90, 30 + (elapsed_minutes / 10.0) * 60)
                     progress_callback(
                         int(estimated_progress),
                         f"Processing with AssemblyAI... ({elapsed_minutes:.1f}min, {status})",
                         elapsed_minutes,
                     )
 
-                # Still processing, wait and retry (30 seconds instead of 1 second)
-                if (
-                    retry_count < max_retries - 1
-                ):  # Don't sleep on the last attempt
+                # Still processing, wait and retry (30 seconds instead of 1
+                # second)
+                if retry_count < max_retries - 1:  # Don't sleep on the last attempt
                     logger.debug(
                         f"Waiting {polling_interval} seconds before next poll..."
                     )
@@ -436,18 +414,15 @@ class AssemblyAIProvider(STTProvider):
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 404:
                     logger.error(f"Transcript not found: {transcript_id}")
-                    raise STTProviderError(
-                        f"Transcript not found: {transcript_id}"
-                    )
+                    raise STTProviderError(f"Transcript not found: {transcript_id}")
                 elif e.response.status_code >= 500:
                     # Server errors - might be temporary
                     logger.warning(
                         f"AssemblyAI server error (HTTP {e.response.status_code}): {e}"
                     )
-                    logger.warning(
-                        "This may be a temporary issue. Will retry..."
-                    )
-                    # Don't raise immediately for server errors, continue polling
+                    logger.warning("This may be a temporary issue. Will retry...")
+                    # Don't raise immediately for server errors, continue
+                    # polling
                     if retry_count < max_retries - 1:
                         time.sleep(polling_interval)
                         retry_count += 1
@@ -502,11 +477,10 @@ class AssemblyAIProvider(STTProvider):
     ) -> TranscriptionResult:
         """Parse AssemblyAI transcript result into our format."""
         segments = []
-        needs_conversion = self._needs_traditional_conversion(
-            original_language
-        )
+        needs_conversion = self._needs_traditional_conversion(original_language)
 
-        # Check if we will use LeMUR optimization - if so, skip preprocessing to avoid duplication
+        # Check if we will use LeMUR optimization - if so, skip preprocessing
+        # to avoid duplication
         language_code = result.get("language_code") or ""
         will_use_lemur = (
             language_code == "zh"
@@ -527,18 +501,14 @@ class AssemblyAIProvider(STTProvider):
                     result.get("language_code") == "zh"
                     or "zh" in (result.get("language_code") or "")
                 ) and not will_use_lemur:
-                    # Only preprocess if we won't use LeMUR (to avoid duplication)
+                    # Only preprocess if we won't use LeMUR (to avoid
+                    # duplication)
                     text = self._process_chinese_text(text, needs_conversion)
-                    logger.debug(
-                        "Applied local preprocessing (LeMUR not used)"
-                    )
+                    logger.debug("Applied local preprocessing (LeMUR not used)")
 
                 segment = TranscriptSegment(
-                    speaker_id=self._convert_speaker_id(
-                        utterance.get("speaker", 0)
-                    ),
-                    start_seconds=utterance["start"]
-                    / 1000.0,  # Convert ms to seconds
+                    speaker_id=self._convert_speaker_id(utterance.get("speaker", 0)),
+                    start_seconds=utterance["start"] / 1000.0,  # Convert ms to seconds
                     end_seconds=utterance["end"] / 1000.0,
                     content=text,
                     confidence=utterance.get("confidence", 1.0),
@@ -563,7 +533,8 @@ class AssemblyAIProvider(STTProvider):
 
                     current_sentence.append(word["text"])
 
-                    # Check if this word ends a sentence (include more Chinese punctuation) OR segment is getting too long
+                    # Check if this word ends a sentence (include more Chinese
+                    # punctuation) OR segment is getting too long
                     should_break = (
                         word["text"].endswith(
                             (".", "!", "?", "。", "！", "？", "；", "：", "，")
@@ -578,17 +549,13 @@ class AssemblyAIProvider(STTProvider):
                             result.get("language_code") == "zh"
                             or "zh" in (result.get("language_code") or "")
                         ) and not will_use_lemur:
-                            # Only preprocess if we won't use LeMUR (to avoid duplication)
-                            text = self._process_chinese_text(
-                                text, needs_conversion
-                            )
-                            logger.debug(
-                                "Applied local preprocessing (LeMUR not used)"
-                            )
+                            # Only preprocess if we won't use LeMUR (to avoid
+                            # duplication)
+                            text = self._process_chinese_text(text, needs_conversion)
+                            logger.debug("Applied local preprocessing (LeMUR not used)")
 
                         segment = TranscriptSegment(
-                            speaker_id=current_speaker
-                            or 0,  # Already converted above
+                            speaker_id=current_speaker or 0,  # Already converted above
                             start_seconds=current_start / 1000.0,
                             end_seconds=word["end"] / 1000.0,
                             content=text,
@@ -608,17 +575,13 @@ class AssemblyAIProvider(STTProvider):
                         result.get("language_code") == "zh"
                         or "zh" in (result.get("language_code") or "")
                     ) and not will_use_lemur:
-                        # Only preprocess if we won't use LeMUR (to avoid duplication)
-                        text = self._process_chinese_text(
-                            text, needs_conversion
-                        )
-                        logger.debug(
-                            "Applied local preprocessing (LeMUR not used)"
-                        )
+                        # Only preprocess if we won't use LeMUR (to avoid
+                        # duplication)
+                        text = self._process_chinese_text(text, needs_conversion)
+                        logger.debug("Applied local preprocessing (LeMUR not used)")
 
                     segment = TranscriptSegment(
-                        speaker_id=current_speaker
-                        or 0,  # Already converted above
+                        speaker_id=current_speaker or 0,  # Already converted above
                         start_seconds=current_start / 1000.0,
                         end_seconds=result["words"][-1]["end"] / 1000.0,
                         content=text,
@@ -636,11 +599,10 @@ class AssemblyAIProvider(STTProvider):
                     )
                     and not will_use_lemur
                 ):
-                    # Only preprocess if we won't use LeMUR (to avoid duplication)
+                    # Only preprocess if we won't use LeMUR (to avoid
+                    # duplication)
                     text = self._process_chinese_text(text, needs_conversion)
-                    logger.debug(
-                        "Applied local preprocessing (LeMUR not used)"
-                    )
+                    logger.debug("Applied local preprocessing (LeMUR not used)")
 
                 if text:
                     segment = TranscriptSegment(
@@ -674,9 +636,10 @@ class AssemblyAIProvider(STTProvider):
                 )
 
             # Skip early role assignment - will be done after LeMUR processing to avoid conflicts
-            # This preserves the original speaker format (A/B) for LeMUR processing
+            # This preserves the original speaker format (A/B) for LeMUR
+            # processing
             logger.info(
-                f"Skipping early role assignment, preserving original speaker format for LeMUR"
+                "Skipping early role assignment, preserving original speaker format for LeMUR"
             )
 
             if speakers_detected < 2:
@@ -694,9 +657,7 @@ class AssemblyAIProvider(STTProvider):
             total_duration = max(s.end_seconds for s in segments)
 
         # Prepare provider metadata
-        unique_speakers = (
-            set(s.speaker_id for s in segments) if segments else set()
-        )
+        unique_speakers = set(s.speaker_id for s in segments) if segments else set()
         speakers_detected = len(unique_speakers)
 
         provider_metadata = {
@@ -715,8 +676,9 @@ class AssemblyAIProvider(STTProvider):
             "speakers_expected": self.speakers_expected,
             "speakers_detected": speakers_detected,
             "speakers_detected_ids": sorted(unique_speakers),
-            "speaker_diarization_mismatch": speakers_detected
-            != self.speakers_expected,
+            "speaker_diarization_mismatch": (
+                speakers_detected != self.speakers_expected
+            ),
             # Store raw AssemblyAI response for transcript smoothing
             "raw_assemblyai_response": {
                 "utterances": result.get("utterances", []),
@@ -759,8 +721,8 @@ class AssemblyAIProvider(STTProvider):
                     "🧠 Auto-applying LeMUR-based transcript smoothing for Chinese language"
                 )
                 from .lemur_transcript_smoother import (
-                    smooth_transcript_with_lemur,
                     LeMURTranscriptSmoother,
+                    smooth_transcript_with_lemur,
                 )
 
                 # Prepare segments for LeMUR processing
@@ -798,15 +760,14 @@ class AssemblyAIProvider(STTProvider):
                 # Apply LeMUR-based smoothing with COMBINED PROCESSING MODE
                 import asyncio
 
-                logger.info(
-                    "🔄 USING COMBINED PROCESSING MODE for auto-optimization"
-                )
+                logger.info("🔄 USING COMBINED PROCESSING MODE for auto-optimization")
                 smoothed_result = asyncio.run(
                     smooth_transcript_with_lemur(
                         segments=merged_segments,  # Use merged segments instead of original
                         session_language=language_code or "zh-TW",
                         is_coaching_session=True,
-                        use_combined_processing=True,  # Force combined mode for comprehensive processing
+                        use_combined_processing=True,
+                        # Force combined mode for comprehensive processing
                     )
                 )
 
@@ -815,27 +776,30 @@ class AssemblyAIProvider(STTProvider):
                     optimized_segments = []
                     for lemur_segment in smoothed_result.segments:
                         # Keep speaker format as returned by LeMUR
-                        # If LeMUR returned role names, map them back to A/B format temporarily
+                        # If LeMUR returned role names, map them back to A/B
+                        # format temporarily
                         if lemur_segment.speaker in [
                             "教練",
                             "Coach",
                             "客戶",
                             "Client",
                         ]:
-                            # This shouldn't happen with updated prompts, but handle gracefully
+                            # This shouldn't happen with updated prompts, but
+                            # handle gracefully
                             speaker_id = (
                                 lemur_segment.speaker
                             )  # Keep the role name temporarily
                         else:
-                            # LeMUR should return A/B format, convert to expected speaker_id if needed
-                            speaker_id = (
-                                lemur_segment.speaker
-                            )  # Should be "A" or "B"
+                            # LeMUR should return A/B format, convert to
+                            # expected speaker_id if needed
+                            speaker_id = lemur_segment.speaker  # Should be "A" or "B"
 
                         # Map final speaker format for database storage
-                        # LeMUR should return A/B or role names, we need to convert to appropriate format
+                        # LeMUR should return A/B or role names, we need to
+                        # convert to appropriate format
                         if speaker_id in ["A", "B"]:
-                            # Convert A/B to numeric IDs for database (A=1, B=2)
+                            # Convert A/B to numeric IDs for database (A=1,
+                            # B=2)
                             final_speaker_id = ord(speaker_id) - ord("A") + 1
                         elif speaker_id in ["教練", "Coach"]:
                             # Map roles to numeric IDs (教練/Coach = 1)
@@ -874,7 +838,8 @@ class AssemblyAIProvider(STTProvider):
                         smoothed_result.processing_notes
                     )
 
-                    # Convert LeMUR speaker mapping to database role assignments
+                    # Convert LeMUR speaker mapping to database role
+                    # assignments
                     if smoothed_result.speaker_mapping:
                         role_assignments = {}
                         for (
@@ -926,15 +891,14 @@ class AssemblyAIProvider(STTProvider):
                     logger.warning(
                         "LeMUR auto-smoothing failed or returned no segments, using original"
                     )
-                    # If we skipped preprocessing because we expected LeMUR to work, apply it now
+                    # If we skipped preprocessing because we expected LeMUR to
+                    # work, apply it now
                     if will_use_lemur:
                         logger.info(
                             "🔄 Applying fallback preprocessing since LeMUR failed"
                         )
-                        optimized_segments = (
-                            self._apply_fallback_preprocessing(
-                                segments, result, needs_conversion
-                            )
+                        optimized_segments = self._apply_fallback_preprocessing(
+                            segments, result, needs_conversion
                         )
 
             except Exception as e:
@@ -943,11 +907,10 @@ class AssemblyAIProvider(STTProvider):
                 )
                 logger.exception("Full LeMUR error traceback:")
                 provider_metadata["lemur_smoothing_error"] = str(e)
-                # If we skipped preprocessing because we expected LeMUR to work, apply it now
+                # If we skipped preprocessing because we expected LeMUR to
+                # work, apply it now
                 if will_use_lemur:
-                    logger.info(
-                        "🔄 Applying fallback preprocessing since LeMUR failed"
-                    )
+                    logger.info("🔄 Applying fallback preprocessing since LeMUR failed")
                     optimized_segments = self._apply_fallback_preprocessing(
                         segments, result, needs_conversion
                     )
@@ -1007,14 +970,10 @@ class AssemblyAIProvider(STTProvider):
             )
 
             # Poll for completion with progress updates
-            result = self._poll_transcription_status(
-                transcript_id, progress_callback
-            )
+            result = self._poll_transcription_status(transcript_id, progress_callback)
 
             # Parse and return result
-            return self._parse_transcript_result(
-                result, language, enable_diarization
-            )
+            return self._parse_transcript_result(result, language, enable_diarization)
 
         except (
             STTProviderError,

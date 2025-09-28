@@ -1,50 +1,49 @@
 """Session API endpoints for audio transcription."""
 
+import io
+import json
+import logging
+import re
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID, uuid4
+
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
     Query,
     UploadFile,
-    File as FastAPIFile,
     status,
 )
+from fastapi import File as FastAPIFile
 from fastapi.responses import StreamingResponse
-from sqlalchemy import desc
 from pydantic import BaseModel, Field
-from datetime import datetime, timedelta
-import io
-import json
-import logging
-import re
 
-# TEMPORARY: Still needed for legacy endpoints that haven't been migrated to Clean Architecture
+from ...api.v1.dependencies import (
+    get_segment_role_assignment_use_case,
+    get_session_creation_use_case,
+    get_session_export_use_case,
+    get_session_retrieval_use_case,
+    get_session_status_retrieval_use_case,
+    get_session_transcript_update_use_case,
+    get_session_transcript_upload_use_case,
+    get_session_transcription_management_use_case,
+    get_session_upload_management_use_case,
+    get_speaker_role_assignment_use_case,
+    get_speaker_role_retrieval_use_case,
+)
+from ...core.config import settings
+
+# TEMPORARY: Still needed for legacy endpoints that haven't been migrated
+# to Clean Architecture
 from ...core.models.session import Session, SessionStatus
 from ...core.models.transcript import TranscriptSegment
 from ...core.models.user import User
-from .auth import get_current_user_dependency
-from ...api.v1.dependencies import (
-    get_session_creation_use_case,
-    get_session_retrieval_use_case,
-    get_session_status_update_use_case,
-    get_session_transcript_update_use_case,
-    get_session_upload_management_use_case,
-    get_session_transcription_management_use_case,
-    get_session_export_use_case,
-    get_session_status_retrieval_use_case,
-    get_session_transcript_upload_use_case,
-    get_speaker_role_assignment_use_case,
-    get_segment_role_assignment_use_case,
-    get_speaker_role_retrieval_use_case,
-)
-from ...utils.gcs_uploader import GCSUploader
-from ...tasks.transcription_tasks import transcribe_audio
-from ...core.config import settings
 from ...exporters.excel import generate_excel
-from ...services.usage_tracking import UsageTrackingService
-from ...services.plan_limits import get_global_plan_limits
+from ...tasks.transcription_tasks import transcribe_audio
+from ...utils.gcs_uploader import GCSUploader
+from .auth import get_current_user_dependency
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -61,7 +60,10 @@ class SessionCreate(BaseModel):
     stt_provider: str = Field(
         default="auto",
         pattern="^(auto|google|assemblyai)$",
-        description="STT provider to use ('auto' uses settings default, 'google', or 'assemblyai')",
+        description=(
+            "STT provider to use ('auto' uses settings default, "
+            "'google', or 'assemblyai')"
+        ),
     )
 
 
@@ -86,7 +88,8 @@ class SessionResponse(BaseModel):
 
     @classmethod
     def from_session(cls, session: Session):
-        # Calculate duration_minutes from duration_seconds for legacy compatibility
+        # Calculate duration_minutes from duration_seconds for legacy
+        # compatibility
         duration_minutes = None
         if session.duration_seconds:
             duration_minutes = round(session.duration_seconds / 60, 1)
@@ -100,7 +103,9 @@ class SessionResponse(BaseModel):
             audio_filename=session.audio_filename,
             duration_seconds=session.duration_seconds,
             duration_minutes=duration_minutes,
-            segments_count=getattr(session, "segments_count", 0),  # Default to 0 for legacy compatibility
+            segments_count=getattr(
+                session, "segments_count", 0
+            ),  # Default to 0 for legacy compatibility
             error_message=session.error_message,
             stt_cost_usd=session.stt_cost_usd,
             provider_metadata=getattr(session, "provider_metadata", None),
@@ -185,9 +190,13 @@ async def create_session(
                     "error": "session_limit_exceeded",
                     "message": error_message,
                     "plan": current_user.plan.value,
-                    "current_usage": getattr(current_user, 'session_count', 0),
-                    "limit": int(error_message.split(": ")[-1]) if ": " in error_message else None
-                }
+                    "current_usage": getattr(current_user, "session_count", 0),
+                    "limit": (
+                        int(error_message.split(": ")[-1])
+                        if ": " in error_message
+                        else None
+                    ),
+                },
             )
         elif "Total minutes limit exceeded" in error_message:
             raise HTTPException(
@@ -196,15 +205,18 @@ async def create_session(
                     "error": "transcription_limit_exceeded",
                     "message": error_message,
                     "plan": current_user.plan.value,
-                    "current_usage": getattr(current_user, 'usage_minutes', 0),
-                    "limit": int(error_message.split(": ")[-1]) if ": " in error_message else None
-                }
+                    "current_usage": getattr(current_user, "usage_minutes", 0),
+                    "limit": (
+                        int(error_message.split(": ")[-1])
+                        if ": " in error_message
+                        else None
+                    ),
+                },
             )
         else:
             # Generic business rule violation
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_message
+                status_code=status.HTTP_400_BAD_REQUEST, detail=error_message
             )
 
 
@@ -296,9 +308,7 @@ async def get_session(
 @router.post("/{session_id}/upload-url", response_model=UploadUrlResponse)
 async def get_upload_url(
     session_id: UUID,
-    filename: str = Query(
-        ..., pattern=r"^[^\/\\]+\.(mp3|wav|flac|ogg|mp4|m4a)$"
-    ),
+    filename: str = Query(..., pattern=r"^[^\/\\]+\.(mp3|wav|flac|ogg|mp4|m4a)$"),
     file_size_mb: float = Query(
         ..., description="File size in MB for plan limit validation"
     ),
@@ -309,7 +319,8 @@ async def get_upload_url(
     from ...exceptions import DomainException
 
     logger.info(
-        f"📤 UPLOAD URL REQUEST - Session: {session_id}, User: {current_user.id}, Filename: {filename}, Size: {file_size_mb}MB"
+        f"📤 UPLOAD URL REQUEST - Session: {session_id}, "
+        f"User: {current_user.id}, Filename: {filename}, Size: {file_size_mb}MB"
     )
 
     try:
@@ -321,8 +332,8 @@ async def get_upload_url(
             file_size_mb=file_size_mb,
         )
 
-        session = result["session"]
-        user_plan = result["user_plan"]
+        result["session"]
+        result["user_plan"]
 
         # Generate GCS path
         file_extension = filename.split(".")[-1].lower()
@@ -352,7 +363,7 @@ async def get_upload_url(
             credentials_json=settings.GOOGLE_APPLICATION_CREDENTIALS_JSON,
         )
 
-        logger.info(f"🔗 Generating signed upload URL with 60min expiration...")
+        logger.info("🔗 Generating signed upload URL with 60min expiration...")
         upload_url, expires_at = uploader.generate_signed_upload_url(
             blob_name=gcs_path,
             content_type=content_type,
@@ -367,7 +378,7 @@ async def get_upload_url(
             gcs_audio_path=full_gcs_path,
         )
 
-        logger.info(f"✅ Upload URL generated successfully!")
+        logger.info("✅ Upload URL generated successfully!")
         logger.info(f"🔗 Upload URL: {upload_url[:100]}...{upload_url[-20:]}")
         logger.info(f"⏰ Expires at: {expires_at}")
         logger.info(f"💾 Session updated with GCS path: {full_gcs_path}")
@@ -395,18 +406,24 @@ async def get_upload_url(
     except ValueError as e:
         # Handle session not found
         if "Session not found" in str(e):
-            logger.warning(f"❌ Upload URL request failed - Session {session_id} not found for user {current_user.id}")
+            logger.warning(
+                f"❌ Upload URL request failed - Session {session_id} "
+                f"not found for user {current_user.id}"
+            )
             raise HTTPException(status_code=404, detail="Session not found")
         else:
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"❌ Failed to generate upload URL for session {session_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to generate upload URL: {str(e)}")
+        logger.error(
+            f"❌ Failed to generate upload URL for session {session_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate upload URL: {str(e)}"
+        )
 
 
-@router.post(
-    "/{session_id}/confirm-upload", response_model=UploadConfirmResponse
-)
+@router.post("/{session_id}/confirm-upload", response_model=UploadConfirmResponse)
 async def confirm_upload(
     session_id: UUID,
     current_user: User = Depends(get_current_user_dependency),
@@ -414,7 +431,9 @@ async def confirm_upload(
 ):
     """Confirm that audio file was successfully uploaded to GCS."""
     logger.info(
-        f"🔍 UPLOAD CONFIRMATION REQUEST - Session: {session_id}, User: {current_user.id}"
+        f"🔍 UPLOAD CONFIRMATION REQUEST - Session: {session_id}, User: {
+            current_user.id
+        }"
     )
 
     try:
@@ -449,7 +468,7 @@ async def confirm_upload(
         # Format: gs://bucket/path/to/file -> path/to/file
         blob_name = gcs_path.replace(f"gs://{settings.AUDIO_STORAGE_BUCKET}/", "")
 
-        logger.info(f"🔍 Checking file existence in GCS...")
+        logger.info("🔍 Checking file existence in GCS...")
         logger.info(f"🪣 Bucket: {settings.AUDIO_STORAGE_BUCKET}")
         logger.info(f"📄 Blob name: {blob_name}")
         logger.info(f"🔗 Full path: {gcs_path}")
@@ -464,10 +483,11 @@ async def confirm_upload(
                 session_id=session_id,
                 user_id=current_user.id,
             )
-            logger.info(f"✅ Session status updated to PENDING")
+            logger.info("✅ Session status updated to PENDING")
 
             logger.info(
-                f"✅ File confirmed for session {session_id}: {blob_name} ({file_size} bytes)"
+                f"✅ File confirmed for session {session_id}: "
+                f"{blob_name} ({file_size} bytes)"
             )
 
             return UploadConfirmResponse(
@@ -478,7 +498,9 @@ async def confirm_upload(
             )
         else:
             logger.warning(f"❌ File not found for session {session_id}: {blob_name}")
-            logger.info(f"💡 Suggestion: Use 'gcloud storage ls {gcs_path}' to check manually")
+            logger.info(
+                f"💡 Suggestion: Use 'gcloud storage ls {gcs_path}' to check manually"
+            )
 
             return UploadConfirmResponse(
                 file_exists=False,
@@ -491,7 +513,8 @@ async def confirm_upload(
         # Handle session not found
         if "Session not found" in str(e):
             logger.warning(
-                f"❌ Upload confirmation failed - Session {session_id} not found for user {current_user.id}"
+                f"❌ Upload confirmation failed - Session {session_id} "
+                f"not found for user {current_user.id}"
             )
             raise HTTPException(status_code=404, detail="Session not found")
         else:
@@ -513,7 +536,9 @@ async def confirm_upload(
 async def start_transcription(
     session_id: UUID,
     current_user: User = Depends(get_current_user_dependency),
-    transcription_management_use_case=Depends(get_session_transcription_management_use_case),
+    transcription_management_use_case=Depends(
+        get_session_transcription_management_use_case
+    ),
 ):
     """Start transcription processing for uploaded audio."""
     # Note: Transcription limits removed in Phase 2 - now unlimited
@@ -593,13 +618,16 @@ async def start_transcription(
 async def retry_transcription(
     session_id: UUID,
     current_user: User = Depends(get_current_user_dependency),
-    transcription_management_use_case=Depends(get_session_transcription_management_use_case),
+    transcription_management_use_case=Depends(
+        get_session_transcription_management_use_case
+    ),
 ):
     """Retry transcription for failed sessions."""
     from ...exceptions import DomainException
 
     try:
-        # Use case validates session ownership, status, and clears existing data
+        # Use case validates session ownership, status, and clears existing
+        # data
         transcription_data = transcription_management_use_case.retry_transcription(
             session_id=session_id,
             user_id=current_user.id,
@@ -681,7 +709,8 @@ async def export_transcript(
     from ...exceptions import DomainException
 
     try:
-        # Use case validates session ownership, status, and gets transcript data
+        # Use case validates session ownership, status, and gets transcript
+        # data
         export_data = export_use_case.export_transcript(
             session_id=session_id,
             user_id=current_user.id,
@@ -693,23 +722,33 @@ async def export_transcript(
 
         # Generate transcript content based on format
         if format == "json":
-            content = _export_json(session, segments, speaker_role_use_case, current_user.id)
+            content = _export_json(
+                session, segments, speaker_role_use_case, current_user.id
+            )
             media_type = "application/json"
             response_io = io.StringIO(content)
         elif format == "vtt":
-            content = _export_vtt(session, segments, speaker_role_use_case, current_user.id)
+            content = _export_vtt(
+                session, segments, speaker_role_use_case, current_user.id
+            )
             media_type = "text/vtt"
             response_io = io.StringIO(content)
         elif format == "srt":
-            content = _export_srt(session, segments, speaker_role_use_case, current_user.id)
+            content = _export_srt(
+                session, segments, speaker_role_use_case, current_user.id
+            )
             media_type = "text/srt"
             response_io = io.StringIO(content)
         elif format == "txt":
-            content = _export_txt(session, segments, speaker_role_use_case, current_user.id)
+            content = _export_txt(
+                session, segments, speaker_role_use_case, current_user.id
+            )
             media_type = "text/plain"
             response_io = io.StringIO(content)
         elif format == "xlsx":
-            excel_buffer = _export_xlsx(session, segments, speaker_role_use_case, current_user.id)
+            excel_buffer = _export_xlsx(
+                session, segments, speaker_role_use_case, current_user.id
+            )
             media_type = (
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
@@ -745,10 +784,12 @@ async def export_transcript(
         else:
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error in export_transcript for session {session_id}: {e}")
+        logger.error(
+            f"Unexpected error in export_transcript for session {session_id}: {e}"
+        )
         raise HTTPException(
             status_code=500,
-            detail="An unexpected error occurred while exporting transcript"
+            detail="An unexpected error occurred while exporting transcript",
         )
 
 
@@ -785,7 +826,9 @@ async def get_session_status(
 
         # Debug logging
         logger.info(
-            f"🔍 STATUS API DEBUG - Session {session_id}: progress={processing_status['progress_percentage']}%, status={session.status}, message='{processing_status['message']}'"
+            f"🔍 STATUS API DEBUG - Session {session_id}: "
+            f"progress={processing_status['progress_percentage']}%, "
+            f"status={session.status}, message='{processing_status['message']}'"
         )
 
         return response
@@ -814,7 +857,7 @@ async def update_speaker_roles(
     session_id: UUID,
     request: SpeakerRoleUpdateRequest,
     current_user: User = Depends(get_current_user_dependency),
-    speaker_role_use_case = Depends(get_speaker_role_assignment_use_case),
+    speaker_role_use_case=Depends(get_speaker_role_assignment_use_case),
 ):
     """Update speaker role assignments for a session."""
     try:
@@ -831,7 +874,9 @@ async def update_speaker_roles(
             raise HTTPException(status_code=404, detail="Session not found")
         elif "Access denied" in error_msg:
             raise HTTPException(status_code=403, detail="Access denied")
-        elif "Cannot update speaker roles" in error_msg or "Session status" in error_msg:
+        elif (
+            "Cannot update speaker roles" in error_msg or "Session status" in error_msg
+        ):
             raise HTTPException(status_code=400, detail=error_msg)
         elif "Invalid" in error_msg:
             raise HTTPException(status_code=400, detail=error_msg)
@@ -844,7 +889,7 @@ async def update_segment_roles(
     session_id: UUID,
     request: SegmentRoleUpdateRequest,
     current_user: User = Depends(get_current_user_dependency),
-    segment_role_use_case = Depends(get_segment_role_assignment_use_case),
+    segment_role_use_case=Depends(get_segment_role_assignment_use_case),
 ):
     """Update individual segment role assignments for a session."""
     try:
@@ -861,7 +906,9 @@ async def update_segment_roles(
             raise HTTPException(status_code=404, detail="Session not found")
         elif "Access denied" in error_msg:
             raise HTTPException(status_code=403, detail="Access denied")
-        elif "Cannot update segment roles" in error_msg or "Session status" in error_msg:
+        elif (
+            "Cannot update segment roles" in error_msg or "Session status" in error_msg
+        ):
             raise HTTPException(status_code=400, detail=error_msg)
         elif "Invalid" in error_msg:
             raise HTTPException(status_code=400, detail=error_msg)
@@ -878,7 +925,9 @@ async def update_segment_content(
 ):
     """Update transcript segment content for a session."""
     logger.info(
-        f"Segment content update requested for session {session_id} by user {current_user.id}, "
+        f"Segment content update requested for session {session_id} by user {
+            current_user.id
+        }, "
         f"updating {len(request.segment_content)} segments"
     )
 
@@ -890,7 +939,9 @@ async def update_segment_content(
         )
 
         logger.info(
-            f"Successfully updated {len(updated_segments)} segments for session {session_id}"
+            f"Successfully updated {len(updated_segments)} segments for session {
+                session_id
+            }"
         )
 
         return {
@@ -900,63 +951,84 @@ async def update_segment_content(
         }
     except ValueError as error:
         error_message = str(error)
-        logger.warning(f"Segment content update validation error for session {session_id}: {error_message}")
+        logger.warning(
+            f"Segment content update validation error for session {session_id}: {error_message}"
+        )
 
         if error_message == "Session not found":
             raise HTTPException(
                 status_code=404,
-                detail=f"Session {session_id} not found or does not belong to the current user"
+                detail=f"Session {session_id} not found or does not belong to the current user",
             )
         if error_message == "Access denied":
             raise HTTPException(
                 status_code=403,
-                detail="You do not have permission to edit this session's transcript"
+                detail="You do not have permission to edit this session's transcript",
             )
         if error_message.startswith("Invalid segment ID format"):
             raise HTTPException(
                 status_code=400,
-                detail=f"{error_message}. Please ensure segment IDs are valid UUIDs."
+                detail=f"{error_message}. Please ensure segment IDs are valid UUIDs.",
             )
         if error_message.startswith("Segment not found"):
             raise HTTPException(
                 status_code=404,
-                detail=f"{error_message}. The segment may have been deleted or does not belong to this session."
+                detail=(
+                    f"{error_message}. The segment may have been deleted or "
+                    "does not belong to this session."
+                ),
             )
         if error_message.startswith("Segment content cannot be empty"):
             raise HTTPException(
                 status_code=400,
-                detail="Segment content cannot be empty. Use an empty string if you want to clear the content."
+                detail=(
+                    "Segment content cannot be empty. Use an empty string if you "
+                    "want to clear the content."
+                ),
             )
         if error_message == "No segment content provided":
             raise HTTPException(
                 status_code=400,
-                detail="No segment content provided. Please include at least one segment to update."
+                detail=(
+                    "No segment content provided. Please include at least one "
+                    "segment to update."
+                ),
             )
         if error_message.startswith("Cannot update segment content"):
             raise HTTPException(
                 status_code=400,
-                detail=f"{error_message}. Only completed sessions can have their transcripts edited."
+                detail=(
+                    f"{error_message}. Only completed sessions can have their "
+                    "transcripts edited."
+                ),
             )
 
         # Generic validation error
-        logger.error(f"Unhandled validation error for session {session_id}: {error_message}")
+        logger.error(
+            f"Unhandled validation error for session {session_id}: {error_message}"
+        )
         raise HTTPException(
-            status_code=400,
-            detail=f"Validation error: {error_message}"
+            status_code=400, detail=f"Validation error: {error_message}"
         )
     except Exception as e:
         logger.error(
             f"Unexpected error updating segment content for session {session_id}: {e}",
-            exc_info=True
+            exc_info=True,
         )
         raise HTTPException(
             status_code=500,
-            detail="An internal error occurred while updating segment content. Please try again later."
+            detail=(
+                "An internal error occurred while updating segment content. "
+                "Please try again later."
+            ),
         )
 
 
 def _export_json(
-    session: Session, segments: List[TranscriptSegment], speaker_role_use_case, user_id: UUID
+    session: Session,
+    segments: List[TranscriptSegment],
+    speaker_role_use_case,
+    user_id: UUID,
 ) -> str:
     """Export transcript as JSON."""
     # Get role assignments using the speaker role use case
@@ -975,7 +1047,9 @@ def _export_json(
         "duration_seconds": session.duration_seconds,
         "language": session.language,
         "created_at": session.created_at.isoformat(),
-        "role_assignments": role_assignments,  # Speaker-level roles (for compatibility)
+        "role_assignments": (
+            role_assignments
+        ),  # Speaker-level roles (for compatibility)
         "segment_roles": segment_roles,  # Segment-level roles (new)
         "segments": [
             {
@@ -997,7 +1071,10 @@ def _export_json(
 
 
 def _export_vtt(
-    session: Session, segments: List[TranscriptSegment], speaker_role_use_case, user_id: UUID
+    session: Session,
+    segments: List[TranscriptSegment],
+    speaker_role_use_case,
+    user_id: UUID,
 ) -> str:
     """Export transcript as WebVTT."""
     # Get role assignments using the speaker role use case
@@ -1005,7 +1082,7 @@ def _export_vtt(
         session_id=session.id, user_id=user_id
     )
     role_assignments = {
-        speaker_id: ("教練" if role.upper() == "COACH" else "客戶")
+        speaker_id: "教練" if role.upper() == "COACH" else "客戶"
         for speaker_id, role in role_assignments_raw.items()
     }
 
@@ -1014,7 +1091,7 @@ def _export_vtt(
         session_id=session.id, user_id=user_id
     )
     segment_roles = {
-        segment_id: ("教練" if role.upper() == "COACH" else "客戶")
+        segment_id: "教練" if role.upper() == "COACH" else "客戶"
         for segment_id, role in segment_roles_raw.items()
     }
 
@@ -1036,7 +1113,10 @@ def _export_vtt(
 
 
 def _export_srt(
-    session: Session, segments: List[TranscriptSegment], speaker_role_use_case, user_id: UUID
+    session: Session,
+    segments: List[TranscriptSegment],
+    speaker_role_use_case,
+    user_id: UUID,
 ) -> str:
     """Export transcript as SRT."""
     # Get role assignments using the speaker role use case
@@ -1044,7 +1124,7 @@ def _export_srt(
         session_id=session.id, user_id=user_id
     )
     role_assignments = {
-        speaker_id: ("教練" if role.upper() == "COACH" else "客戶")
+        speaker_id: "教練" if role.upper() == "COACH" else "客戶"
         for speaker_id, role in role_assignments_raw.items()
     }
 
@@ -1053,7 +1133,7 @@ def _export_srt(
         session_id=session.id, user_id=user_id
     )
     segment_roles = {
-        segment_id: ("教練" if role.upper() == "COACH" else "客戶")
+        segment_id: "教練" if role.upper() == "COACH" else "客戶"
         for segment_id, role in segment_roles_raw.items()
     }
 
@@ -1076,7 +1156,10 @@ def _export_srt(
 
 
 def _export_txt(
-    session: Session, segments: List[TranscriptSegment], speaker_role_use_case, user_id: UUID
+    session: Session,
+    segments: List[TranscriptSegment],
+    speaker_role_use_case,
+    user_id: UUID,
 ) -> str:
     """Export transcript as plain text."""
     # Get role assignments using the speaker role use case
@@ -1084,7 +1167,7 @@ def _export_txt(
         session_id=session.id, user_id=user_id
     )
     role_assignments = {
-        speaker_id: ("教練" if role.upper() == "COACH" else "客戶")
+        speaker_id: "教練" if role.upper() == "COACH" else "客戶"
         for speaker_id, role in role_assignments_raw.items()
     }
 
@@ -1093,7 +1176,7 @@ def _export_txt(
         session_id=session.id, user_id=user_id
     )
     segment_roles = {
-        segment_id: ("教練" if role.upper() == "COACH" else "客戶")
+        segment_id: "教練" if role.upper() == "COACH" else "客戶"
         for segment_id, role in segment_roles_raw.items()
     }
 
@@ -1119,7 +1202,10 @@ def _export_txt(
 
 
 def _export_xlsx(
-    session: Session, segments: List[TranscriptSegment], speaker_role_use_case, user_id: UUID
+    session: Session,
+    segments: List[TranscriptSegment],
+    speaker_role_use_case,
+    user_id: UUID,
 ) -> io.BytesIO:
     """Export transcript as Excel file."""
     # Get role assignments using the speaker role use case
@@ -1128,7 +1214,7 @@ def _export_xlsx(
     )
     # Normalize to English labels for the Excel dataset; map later to Chinese
     role_assignments = {
-        speaker_id: ("Coach" if role.upper() == "COACH" else "Client")
+        speaker_id: "Coach" if role.upper() == "COACH" else "Client"
         for speaker_id, role in role_assignments_raw.items()
     }
 
@@ -1137,7 +1223,7 @@ def _export_xlsx(
         session_id=session.id, user_id=user_id
     )
     segment_roles = {
-        segment_id: ("Coach" if role.upper() == "COACH" else "Client")
+        segment_id: "Coach" if role.upper() == "COACH" else "Client"
         for segment_id, role in segment_roles_raw.items()
     }
 
@@ -1162,8 +1248,11 @@ def _export_xlsx(
             # Explicit fallback: make it clear no role is assigned
             speaker_label = f"Speaker {seg.speaker_id} (未指定角色)"
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.warning(f"No role assigned for speaker {seg.speaker_id} in session {session.id}")
+            logger.warning(
+                f"No role assigned for speaker {seg.speaker_id} in session {session.id}"
+            )
 
         # Format timestamp - only show start time
         start_time = _format_timestamp_vtt(seg.start_seconds)
@@ -1207,7 +1296,9 @@ async def upload_session_transcript(
     from ...exceptions import DomainException
 
     logger.info(
-        f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, filename={file.filename}"
+        f"🔍 Transcript upload request: session_id={session_id}, user_id={
+            current_user.id
+        }, filename={file.filename}"
     )
 
     try:
@@ -1259,7 +1350,9 @@ async def upload_session_transcript(
             raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:
         if "Session not found" in str(e):
-            raise HTTPException(status_code=404, detail="Session not found or access denied")
+            raise HTTPException(
+                status_code=404, detail="Session not found or access denied"
+            )
         else:
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -1299,21 +1392,19 @@ def _parse_vtt_content(content: str) -> List[dict]:
                 if i < len(lines):
                     content_line = lines[i].strip()
 
-                    # Extract speaker and content from VTT format like "<v Speaker>Content"
+                    # Extract speaker and content from VTT format like "<v
+                    # Speaker>Content"
                     speaker_id = 1
                     content_text = content_line
 
-                    speaker_match = re.match(
-                        r"<v\s+([^>]+)>\s*(.*)", content_line
-                    )
+                    speaker_match = re.match(r"<v\s+([^>]+)>\s*(.*)", content_line)
                     if speaker_match:
                         speaker_name = speaker_match.group(1)
                         content_text = speaker_match.group(2)
                         # Simple speaker ID assignment based on name
                         speaker_id = (
                             2
-                            if "客戶" in speaker_name
-                            or "Client" in speaker_name
+                            if "客戶" in speaker_name or "Client" in speaker_name
                             else 1
                         )
 
@@ -1352,12 +1443,8 @@ def _parse_srt_content(content: str) -> List[dict]:
         )
 
         if timestamp_match:
-            start_time = _parse_timestamp(
-                timestamp_match.group(1).replace(",", ".")
-            )
-            end_time = _parse_timestamp(
-                timestamp_match.group(2).replace(",", ".")
-            )
+            start_time = _parse_timestamp(timestamp_match.group(1).replace(",", "."))
+            end_time = _parse_timestamp(timestamp_match.group(2).replace(",", "."))
 
             # Content (lines 2+)
             content_lines = lines[2:]
@@ -1372,9 +1459,7 @@ def _parse_srt_content(content: str) -> List[dict]:
                 speaker_name = speaker_match.group(1)
                 content_text = speaker_match.group(2)
                 speaker_id = (
-                    2
-                    if "客戶" in speaker_name or "Client" in speaker_name
-                    else 1
+                    2 if "客戶" in speaker_name or "Client" in speaker_name else 1
                 )
 
             segments.append(
@@ -1404,10 +1489,7 @@ def _parse_timestamp(timestamp_str: str) -> float:
     if "." in seconds_str:
         seconds, milliseconds = seconds_str.split(".")
         total_seconds = (
-            hours * 3600
-            + minutes * 60
-            + int(seconds)
-            + int(milliseconds) / 1000
+            hours * 3600 + minutes * 60 + int(seconds) + int(milliseconds) / 1000
         )
     else:
         total_seconds = hours * 3600 + minutes * 60 + int(seconds_str)

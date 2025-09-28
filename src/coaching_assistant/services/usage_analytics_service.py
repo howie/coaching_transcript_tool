@@ -2,16 +2,16 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Tuple
+from typing import Any, Dict, List, Tuple
 from uuid import UUID
 
-from sqlalchemy.orm import Session
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
-from ..models.usage_history import UsageHistory
-from ..models.usage_log import UsageLog, TranscriptionType
-from ..models.user import User
 from ..models.session import Session as TranscriptionSession
+from ..models.usage_history import UsageHistory
+from ..models.usage_log import TranscriptionType, UsageLog
+from ..models.user import User
 from ..services.plan_limits import get_global_plan_limits
 
 logger = logging.getLogger(__name__)
@@ -28,9 +28,7 @@ class UsageAnalyticsService:
         self, user_id: UUID, period_type: str = "hourly"
     ) -> UsageHistory:
         """Record current usage snapshot for a user."""
-        logger.info(
-            f"📊 Recording {period_type} usage snapshot for user {user_id}"
-        )
+        logger.info(f"📊 Recording {period_type} usage snapshot for user {user_id}")
 
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -38,14 +36,10 @@ class UsageAnalyticsService:
 
         # Calculate period boundaries
         now = datetime.utcnow()
-        period_start, period_end = self._calculate_period_boundaries(
-            now, period_type
-        )
+        period_start, period_end = self._calculate_period_boundaries(now, period_type)
 
         # Aggregate current usage data
-        usage_data = self._aggregate_usage_data(
-            user_id, period_start, period_end
-        )
+        usage_data = self._aggregate_usage_data(user_id, period_start, period_end)
 
         # Check if snapshot already exists
         existing = (
@@ -82,9 +76,7 @@ class UsageAnalyticsService:
             )
             self.db.add(snapshot)
             self.db.commit()
-            logger.info(
-                f"✅ Created new {period_type} snapshot for user {user_id}"
-            )
+            logger.info(f"✅ Created new {period_type} snapshot for user {user_id}")
             return snapshot
 
     def get_usage_trends(
@@ -102,9 +94,7 @@ class UsageAnalyticsService:
         if group_by == "day":
             period_type_filter = "daily"
         elif group_by == "week":
-            period_type_filter = (
-                "daily"  # We'll aggregate daily data into weeks
-            )
+            period_type_filter = "daily"  # We'll aggregate daily data into weeks
         elif group_by == "month":
             period_type_filter = "monthly"
         else:
@@ -149,9 +139,7 @@ class UsageAnalyticsService:
                 }
             )
 
-        logger.info(
-            f"✅ Retrieved {len(trends)} trend data points for user {user_id}"
-        )
+        logger.info(f"✅ Retrieved {len(trends)} trend data points for user {user_id}")
         return trends
 
     def predict_usage(self, user_id: UUID) -> Dict[str, Any]:
@@ -162,25 +150,19 @@ class UsageAnalyticsService:
         historical_data = self.get_usage_trends(user_id, "90d", "day")
 
         if len(historical_data) < 7:
-            logger.warning(
-                f"⚠️ Insufficient data for predictions for user {user_id}"
-            )
+            logger.warning(f"⚠️ Insufficient data for predictions for user {user_id}")
             return {
                 "predicted_sessions": 0,
                 "predicted_minutes": 0,
                 "estimated_limit_date": None,
                 "confidence": 0.0,
-                "recommendation": "Insufficient historical data for predictions",
+                "recommendation": ("Insufficient historical data for predictions"),
             }
 
         # Simple trend analysis (can be enhanced with ML later)
         recent_days = historical_data[-14:]  # Last 2 weeks
-        avg_daily_sessions = sum(d["sessions"] for d in recent_days) / len(
-            recent_days
-        )
-        avg_daily_minutes = sum(d["minutes"] for d in recent_days) / len(
-            recent_days
-        )
+        avg_daily_sessions = sum(d["sessions"] for d in recent_days) / len(recent_days)
+        avg_daily_minutes = sum(d["minutes"] for d in recent_days) / len(recent_days)
 
         # Calculate growth rate
         early_period = historical_data[: len(historical_data) // 2]
@@ -197,9 +179,7 @@ class UsageAnalyticsService:
             else 0
         )
 
-        growth_rate = (
-            ((late_avg - early_avg) / early_avg * 100) if early_avg > 0 else 0
-        )
+        growth_rate = ((late_avg - early_avg) / early_avg * 100) if early_avg > 0 else 0
 
         # Predict next 30 days
         days_in_month = 30
@@ -225,9 +205,7 @@ class UsageAnalyticsService:
         )
 
         # Calculate confidence based on data consistency
-        confidence = (
-            min(len(historical_data) / 30, 1.0) * 0.8
-        )  # Max 80% confidence
+        confidence = min(len(historical_data) / 30, 1.0) * 0.8  # Max 80% confidence
 
         prediction = {
             "predicted_sessions": int(predicted_sessions),
@@ -239,7 +217,9 @@ class UsageAnalyticsService:
             "current_trend": (
                 "growing"
                 if growth_rate > 5
-                else "stable" if growth_rate > -5 else "declining"
+                else "stable"
+                if growth_rate > -5
+                else "declining"
             ),
         }
 
@@ -270,8 +250,12 @@ class UsageAnalyticsService:
                 {
                     "type": "pattern",
                     "title": "Peak Usage Day",
-                    "message": f"You use the platform most on {patterns['peak_day']}s",
-                    "suggestion": "Consider scheduling heavy transcription tasks on this day",
+                    "message": (
+                        f"You use the platform most on {patterns['peak_day']}s"
+                    ),
+                    "suggestion": (
+                        "Consider scheduling heavy transcription tasks on this day"
+                    ),
                     "priority": "medium",
                     "action": None,
                 }
@@ -284,7 +268,9 @@ class UsageAnalyticsService:
                 {
                     "type": "optimization",
                     "title": "Low Plan Utilization",
-                    "message": f"You're using only {utilization:.1f}% of your {user.plan.value.upper()} plan",
+                    "message": (
+                        f"You're using only {utilization:.1f}% of your {user.plan.value.upper()} plan"
+                    ),
                     "suggestion": "Consider downgrading to save costs",
                     "priority": "low",
                     "action": "downgrade",
@@ -295,7 +281,9 @@ class UsageAnalyticsService:
                 {
                     "type": "warning",
                     "title": "High Plan Utilization",
-                    "message": f"You're using {utilization:.1f}% of your plan capacity",
+                    "message": (
+                        f"You're using {utilization:.1f}% of your plan capacity"
+                    ),
                     "suggestion": "Consider upgrading to avoid hitting limits",
                     "priority": "high",
                     "action": "upgrade",
@@ -309,7 +297,7 @@ class UsageAnalyticsService:
                 {
                     "type": "trend",
                     "title": "Rapid Usage Growth",
-                    "message": f"Your usage has grown {growth_rate:.1f}% this month",
+                    "message": (f"Your usage has grown {growth_rate:.1f}% this month"),
                     "suggestion": "You may need to upgrade your plan soon",
                     "priority": "high",
                     "action": "upgrade",
@@ -320,8 +308,10 @@ class UsageAnalyticsService:
                 {
                     "type": "trend",
                     "title": "Declining Usage",
-                    "message": f"Your usage has decreased {abs(growth_rate):.1f}% this month",
-                    "suggestion": "Consider if your current plan is still optimal",
+                    "message": (
+                        f"Your usage has decreased {abs(growth_rate):.1f}% this month"
+                    ),
+                    "suggestion": ("Consider if your current plan is still optimal"),
                     "priority": "low",
                     "action": "review",
                 }
@@ -334,16 +324,16 @@ class UsageAnalyticsService:
                 {
                     "type": "cost",
                     "title": "Cost Analysis",
-                    "message": f"Your average cost is ${cost_per_minute:.3f} per minute",
+                    "message": (
+                        f"Your average cost is ${cost_per_minute:.3f} per minute"
+                    ),
                     "suggestion": "Track your most efficient usage patterns",
                     "priority": "low",
                     "action": None,
                 }
             )
 
-        logger.info(
-            f"✅ Generated {len(insights)} insights for user {user_id}"
-        )
+        logger.info(f"✅ Generated {len(insights)} insights for user {user_id}")
         return insights
 
     def _calculate_period_boundaries(
@@ -354,14 +344,10 @@ class UsageAnalyticsService:
             start = timestamp.replace(minute=0, second=0, microsecond=0)
             end = start + timedelta(hours=1)
         elif period_type == "daily":
-            start = timestamp.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
+            start = timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
             end = start + timedelta(days=1)
         elif period_type == "monthly":
-            start = timestamp.replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
+            start = timestamp.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             if start.month == 12:
                 end = start.replace(year=start.year + 1, month=1)
             else:
@@ -404,9 +390,7 @@ class UsageAnalyticsService:
         # Calculate aggregated metrics
         total_minutes = sum(log.duration_minutes for log in usage_logs)
         total_cost = sum(float(log.cost_usd or 0) for log in usage_logs)
-        billable_transcriptions = len(
-            [log for log in usage_logs if log.is_billable]
-        )
+        billable_transcriptions = len([log for log in usage_logs if log.is_billable])
         free_retries = len(
             [
                 log
@@ -417,9 +401,7 @@ class UsageAnalyticsService:
 
         # Provider breakdown
         google_minutes = sum(
-            log.duration_minutes
-            for log in usage_logs
-            if log.stt_provider == "google"
+            log.duration_minutes for log in usage_logs if log.stt_provider == "google"
         )
         assemblyai_minutes = sum(
             log.duration_minutes
@@ -428,24 +410,18 @@ class UsageAnalyticsService:
         )
 
         # Calculate performance metrics
-        completed_logs = [
-            log for log in usage_logs if log.transcription_completed_at
-        ]
+        completed_logs = [log for log in usage_logs if log.transcription_completed_at]
         avg_processing_time = 0
         if completed_logs:
             processing_times = [
                 (
-                    log.transcription_completed_at
-                    - log.transcription_started_at
+                    log.transcription_completed_at - log.transcription_started_at
                 ).total_seconds()
                 for log in completed_logs
-                if log.transcription_started_at
-                and log.transcription_completed_at
+                if log.transcription_started_at and log.transcription_completed_at
             ]
             if processing_times:
-                avg_processing_time = sum(processing_times) / len(
-                    processing_times
-                )
+                avg_processing_time = sum(processing_times) / len(processing_times)
 
         # Get user's current plan info
         user = self.db.query(User).filter(User.id == user_id).first()
@@ -462,28 +438,31 @@ class UsageAnalyticsService:
 
         # Calculate storage usage from session file sizes
         storage_used_mb = sum(
-            getattr(session, 'audio_file_size_mb', 0) or 0
-            for session in sessions
+            getattr(session, "audio_file_size_mb", 0) or 0 for session in sessions
         )
 
         # Track exports by format from usage logs
         export_logs = [
-            log for log in usage_logs
-            if log.operation_type and 'export' in log.operation_type.lower()
+            log
+            for log in usage_logs
+            if log.operation_type and "export" in log.operation_type.lower()
         ]
         exports_by_format = {}
         for log in export_logs:
             # Extract format from operation_type (e.g., "export_csv" -> "csv")
-            if '_' in log.operation_type:
-                format_type = log.operation_type.split('_')[-1].lower()
+            if "_" in log.operation_type:
+                format_type = log.operation_type.split("_")[-1].lower()
                 current_count = exports_by_format.get(format_type, 0)
                 exports_by_format[format_type] = current_count + 1
 
         # Track failed transcriptions from usage logs
-        failed_transcriptions = len([
-            log for log in usage_logs
-            if log.status and log.status.lower() in ['failed', 'error']
-        ])
+        failed_transcriptions = len(
+            [
+                log
+                for log in usage_logs
+                if log.status and log.status.lower() in ["failed", "error"]
+            ]
+        )
 
         # Calculate API calls from total usage log entries
         api_calls_made = len(usage_logs)
@@ -522,15 +501,17 @@ class UsageAnalyticsService:
         # Create timeline events for session start/end
         events = []
         for session in sessions:
-            if hasattr(session, 'created_at') and session.created_at:
-                events.append((session.created_at, 'start'))
+            if hasattr(session, "created_at") and session.created_at:
+                events.append((session.created_at, "start"))
 
-                # Use updated_at as end time if available, otherwise assume 1 hour duration
-                end_time = getattr(session, 'updated_at', None)
+                # Use updated_at as end time if available, otherwise assume 1
+                # hour duration
+                end_time = getattr(session, "updated_at", None)
                 if not end_time:
                     from datetime import timedelta
+
                     end_time = session.created_at + timedelta(hours=1)
-                events.append((end_time, 'end'))
+                events.append((end_time, "end"))
 
         # Sort events by timestamp
         events.sort(key=lambda x: x[0])
@@ -540,7 +521,7 @@ class UsageAnalyticsService:
         peak_concurrent = 0
 
         for timestamp, event_type in events:
-            if event_type == 'start':
+            if event_type == "start":
                 current_concurrent += 1
                 peak_concurrent = max(peak_concurrent, current_concurrent)
             else:  # end
@@ -572,9 +553,7 @@ class UsageAnalyticsService:
         group_by: str,
     ) -> List[Dict[str, Any]]:
         """Aggregate usage logs when no history data is available."""
-        logger.info(
-            f"📊 Falling back to usage log aggregation for user {user_id}"
-        )
+        logger.info(f"📊 Falling back to usage log aggregation for user {user_id}")
 
         # This is a simplified version - should be enhanced for production
         usage_logs = (
@@ -618,8 +597,7 @@ class UsageAnalyticsService:
                     "cost": data["cost"],
                     "utilization": 0,
                     "success_rate": 100,  # Assume success if in logs
-                    "avg_duration": data["minutes"]
-                    / max(data["transcriptions"], 1),
+                    "avg_duration": (data["minutes"] / max(data["transcriptions"], 1)),
                 }
             )
 
@@ -648,30 +626,22 @@ class UsageAnalyticsService:
         # Calculate growth rate (comparing first half to second half)
         mid_point = len(usage_data) // 2
         if mid_point > 0:
-            early_avg = (
-                sum(d["sessions"] for d in usage_data[:mid_point]) / mid_point
-            )
+            early_avg = sum(d["sessions"] for d in usage_data[:mid_point]) / mid_point
             late_avg = sum(d["sessions"] for d in usage_data[mid_point:]) / (
                 len(usage_data) - mid_point
             )
             growth_rate = (
-                ((late_avg - early_avg) / early_avg * 100)
-                if early_avg > 0
-                else 0
+                ((late_avg - early_avg) / early_avg * 100) if early_avg > 0 else 0
             )
         else:
             growth_rate = 0
 
         # Find peak usage day (simplified - could be enhanced)
-        peak_day = (
-            "Monday"  # Placeholder - would need actual day-of-week analysis
-        )
+        peak_day = "Monday"  # Placeholder - would need actual day-of-week analysis
 
         # Calculate average cost per minute
         total_cost = sum(d.get("cost", 0) for d in usage_data)
-        avg_cost_per_minute = (
-            total_cost / total_minutes if total_minutes > 0 else 0
-        )
+        avg_cost_per_minute = total_cost / total_minutes if total_minutes > 0 else 0
 
         return {
             "utilization": utilization,
@@ -694,20 +664,14 @@ class UsageAnalyticsService:
         current_limits = self.plan_limits.get_plan_limit(current_plan.lower())
 
         # Check if predicted usage exceeds current plan
-        if (
-            predicted_minutes > current_limits.max_minutes * 0.8
-        ):  # 80% threshold
+        if predicted_minutes > current_limits.max_minutes * 0.8:  # 80% threshold
             if current_plan.lower() == "free":
                 return "Consider upgrading to PRO plan to handle your growing usage"
             elif current_plan.lower() == "pro":
-                return (
-                    "Consider upgrading to ENTERPRISE plan for unlimited usage"
-                )
+                return "Consider upgrading to ENTERPRISE plan for unlimited usage"
             else:
                 return "Your usage is well within your ENTERPRISE plan limits"
-        elif (
-            predicted_minutes < current_limits.max_minutes * 0.3
-        ):  # 30% threshold
+        elif predicted_minutes < current_limits.max_minutes * 0.3:  # 30% threshold
             if current_plan.lower() == "enterprise":
                 return "You may be over-paying - consider PRO plan for your usage level"
             elif current_plan.lower() == "pro":

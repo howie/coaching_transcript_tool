@@ -5,6 +5,7 @@ Fix production migration version to match deployed code
 
 import os
 import sys
+
 from sqlalchemy import create_engine, text
 
 # Production database URL from environment variable
@@ -13,6 +14,7 @@ PRODUCTION_DB_URL = os.getenv("PRODUCTION_DATABASE_URL")
 if not PRODUCTION_DB_URL:
     print("❌ PRODUCTION_DATABASE_URL environment variable is not set")
     sys.exit(1)
+
 
 def fix_migration_version():
     """Fix migration version to match deployed code"""
@@ -33,10 +35,13 @@ def fix_migration_version():
             target_version = "04a3991223d9"
 
             print(f"🔧 Updating migration version to {target_version}...")
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 UPDATE alembic_version
                 SET version_num = :version
-            """), {"version": target_version})
+            """),
+                {"version": target_version},
+            )
 
             conn.commit()
             print(f"✅ Migration version updated to {target_version}")
@@ -49,6 +54,7 @@ def fix_migration_version():
     except Exception as e:
         print(f"❌ Error: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     print("🚨 FIXING PRODUCTION MIGRATION VERSION 🚨")

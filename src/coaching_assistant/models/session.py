@@ -1,9 +1,11 @@
 """Session model and related enums."""
 
 import enum
-from sqlalchemy import Column, String, Integer, ForeignKey, Enum, Text, JSON
+
+from sqlalchemy import JSON, Column, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 
@@ -117,9 +119,7 @@ class Session(BaseModel):
                 return role.role.value
         return f"Speaker {speaker_id}"
 
-    def update_status(
-        self, new_status: SessionStatus, error_message: str = None
-    ):
+    def update_status(self, new_status: SessionStatus, error_message: str = None):
         """Update session status with optional error message."""
         self.status = new_status
         if error_message:
@@ -150,7 +150,11 @@ class Session(BaseModel):
             language=domain_session.language,
             audio_filename=domain_session.audio_filename,
             duration_seconds=domain_session.duration_seconds,
-            status=SessionStatus(domain_session.status.value) if domain_session.status else SessionStatus.UPLOADING,
+            status=(
+                SessionStatus(domain_session.status.value)
+                if domain_session.status
+                else SessionStatus.UPLOADING
+            ),
             error_message=domain_session.error_message,
             gcs_audio_path=domain_session.gcs_audio_path,
             stt_provider=domain_session.stt_provider,
@@ -168,7 +172,11 @@ class Session(BaseModel):
         self.language = domain_session.language
         self.audio_filename = domain_session.audio_filename
         self.duration_seconds = domain_session.duration_seconds
-        self.status = SessionStatus(domain_session.status.value) if domain_session.status else SessionStatus.UPLOADING
+        self.status = (
+            SessionStatus(domain_session.status.value)
+            if domain_session.status
+            else SessionStatus.UPLOADING
+        )
         self.error_message = domain_session.error_message
         self.gcs_audio_path = domain_session.gcs_audio_path
         self.stt_provider = domain_session.stt_provider

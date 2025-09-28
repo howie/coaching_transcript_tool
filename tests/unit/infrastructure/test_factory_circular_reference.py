@@ -1,18 +1,21 @@
 """Test to ensure no circular references in factory methods."""
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
 from sqlalchemy.orm import Session
 
+from src.coaching_assistant.infrastructure.db.repositories.subscription_repository import (
+    create_subscription_repository,
+)
 from src.coaching_assistant.infrastructure.factories import (
+    PlanServiceFactory,
     RepositoryFactory,
-    UsageTrackingServiceFactory,
     SessionServiceFactory,
     SpeakerRoleServiceFactory,
-    PlanServiceFactory,
     SubscriptionServiceFactory,
+    UsageTrackingServiceFactory,
 )
-from src.coaching_assistant.infrastructure.db.repositories.subscription_repository import create_subscription_repository
 
 
 class TestFactoryCircularReference:
@@ -30,11 +33,11 @@ class TestFactoryCircularReference:
 
         # Verify it returns a SubscriptionRepository instance
         assert repo is not None
-        assert hasattr(repo, 'get_subscription_by_user_id')
-        assert hasattr(repo, 'save_subscription')
-        assert hasattr(repo, 'save_credit_authorization')
-        assert hasattr(repo, 'save_payment')
-        assert hasattr(repo, 'update_subscription_status')
+        assert hasattr(repo, "get_subscription_by_user_id")
+        assert hasattr(repo, "save_subscription")
+        assert hasattr(repo, "save_credit_authorization")
+        assert hasattr(repo, "save_payment")
+        assert hasattr(repo, "update_subscription_status")
 
         # Verify it has the correct session
         assert repo.db_session == mock_session
@@ -42,20 +45,26 @@ class TestFactoryCircularReference:
     def test_subscription_retrieval_use_case_creation(self, mock_session):
         """Test that use case can be created without errors."""
         # This should work without recursion
-        use_case = SubscriptionServiceFactory.create_subscription_retrieval_use_case(mock_session)
+        use_case = SubscriptionServiceFactory.create_subscription_retrieval_use_case(
+            mock_session
+        )
 
         assert use_case is not None
-        assert hasattr(use_case, 'get_current_subscription')
+        assert hasattr(use_case, "get_current_subscription")
 
     def test_subscription_creation_use_case_creation(self, mock_session):
         """Test that subscription creation use case can be created."""
-        use_case = SubscriptionServiceFactory.create_subscription_creation_use_case(mock_session)
+        use_case = SubscriptionServiceFactory.create_subscription_creation_use_case(
+            mock_session
+        )
 
         assert use_case is not None
 
     def test_subscription_modification_use_case_creation(self, mock_session):
         """Test that subscription modification use case can be created."""
-        use_case = SubscriptionServiceFactory.create_subscription_modification_use_case(mock_session)
+        use_case = SubscriptionServiceFactory.create_subscription_modification_use_case(
+            mock_session
+        )
 
         assert use_case is not None
 
@@ -166,22 +175,32 @@ class TestSessionServiceFactory:
 
     def test_create_session_status_update_use_case(self, mock_session):
         """Test SessionStatusUpdateUseCase creation."""
-        use_case = SessionServiceFactory.create_session_status_update_use_case(mock_session)
+        use_case = SessionServiceFactory.create_session_status_update_use_case(
+            mock_session
+        )
         assert use_case is not None
 
     def test_create_session_transcript_update_use_case(self, mock_session):
         """Test SessionTranscriptUpdateUseCase creation."""
-        use_case = SessionServiceFactory.create_session_transcript_update_use_case(mock_session)
+        use_case = SessionServiceFactory.create_session_transcript_update_use_case(
+            mock_session
+        )
         assert use_case is not None
 
     def test_create_session_upload_management_use_case(self, mock_session):
         """Test SessionUploadManagementUseCase creation."""
-        use_case = SessionServiceFactory.create_session_upload_management_use_case(mock_session)
+        use_case = SessionServiceFactory.create_session_upload_management_use_case(
+            mock_session
+        )
         assert use_case is not None
 
     def test_create_session_transcription_management_use_case(self, mock_session):
         """Test SessionTranscriptionManagementUseCase creation."""
-        use_case = SessionServiceFactory.create_session_transcription_management_use_case(mock_session)
+        use_case = (
+            SessionServiceFactory.create_session_transcription_management_use_case(
+                mock_session
+            )
+        )
         assert use_case is not None
 
     def test_create_session_export_use_case(self, mock_session):
@@ -191,17 +210,23 @@ class TestSessionServiceFactory:
 
     def test_create_session_status_retrieval_use_case(self, mock_session):
         """Test SessionStatusRetrievalUseCase creation."""
-        use_case = SessionServiceFactory.create_session_status_retrieval_use_case(mock_session)
+        use_case = SessionServiceFactory.create_session_status_retrieval_use_case(
+            mock_session
+        )
         assert use_case is not None
 
     def test_create_session_transcript_upload_use_case(self, mock_session):
         """Test SessionTranscriptUploadUseCase creation."""
-        use_case = SessionServiceFactory.create_session_transcript_upload_use_case(mock_session)
+        use_case = SessionServiceFactory.create_session_transcript_upload_use_case(
+            mock_session
+        )
         assert use_case is not None
 
     def test_create_speaker_role_retrieval_use_case(self, mock_session):
         """Test SpeakerRoleRetrievalUseCase creation."""
-        use_case = SessionServiceFactory.create_speaker_role_retrieval_use_case(mock_session)
+        use_case = SessionServiceFactory.create_speaker_role_retrieval_use_case(
+            mock_session
+        )
         assert use_case is not None
 
     def test_create_speaker_role_repository(self, mock_session):
@@ -225,17 +250,23 @@ class TestSpeakerRoleServiceFactory:
 
     def test_create_speaker_role_assignment_use_case(self, mock_session):
         """Test SpeakerRoleAssignmentUseCase creation."""
-        use_case = SpeakerRoleServiceFactory.create_speaker_role_assignment_use_case(mock_session)
+        use_case = SpeakerRoleServiceFactory.create_speaker_role_assignment_use_case(
+            mock_session
+        )
         assert use_case is not None
 
     def test_create_segment_role_assignment_use_case(self, mock_session):
         """Test SegmentRoleAssignmentUseCase creation."""
-        use_case = SpeakerRoleServiceFactory.create_segment_role_assignment_use_case(mock_session)
+        use_case = SpeakerRoleServiceFactory.create_segment_role_assignment_use_case(
+            mock_session
+        )
         assert use_case is not None
 
     def test_create_speaker_role_retrieval_use_case(self, mock_session):
         """Test SpeakerRoleRetrievalUseCase creation."""
-        use_case = SpeakerRoleServiceFactory.create_speaker_role_retrieval_use_case(mock_session)
+        use_case = SpeakerRoleServiceFactory.create_speaker_role_retrieval_use_case(
+            mock_session
+        )
         assert use_case is not None
 
 
@@ -270,9 +301,13 @@ class TestLegacyCompatibilityFunctions:
         """Test that factory pattern migration is complete (legacy functions removed)."""
         # WP6-Cleanup-3: Legacy compatibility functions have been removed
         # All API endpoints now use factory pattern directly
-        direct_service = UsageTrackingServiceFactory.create_usage_log_use_case(mock_session)
+        direct_service = UsageTrackingServiceFactory.create_usage_log_use_case(
+            mock_session
+        )
         assert direct_service is not None
-        print("✅ Factory pattern migration complete - no legacy compatibility functions")
+        print(
+            "✅ Factory pattern migration complete - no legacy compatibility functions"
+        )
 
 
 class TestFactoryMemoryManagement:
@@ -292,7 +327,9 @@ class TestFactoryMemoryManagement:
 
         # Test use case factories
         for _ in range(20):
-            use_case = UsageTrackingServiceFactory.create_usage_log_use_case(mock_session)
+            use_case = UsageTrackingServiceFactory.create_usage_log_use_case(
+                mock_session
+            )
             assert use_case is not None
 
     def test_factory_dependency_injection_consistency(self, mock_session):

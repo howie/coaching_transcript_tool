@@ -2,18 +2,20 @@
 
 import enum
 import json
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
     Boolean,
-    Text,
-    ForeignKey,
+    Column,
     Float,
+    ForeignKey,
+    Integer,
+    String,
     Table,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 
@@ -105,7 +107,8 @@ class CoachProfile(BaseModel):
     city = Column(String(100))
     timezone = Column(String(50))
 
-    # Language settings (stored as JSON array for simplicity, or use association table)
+    # Language settings (stored as JSON array for simplicity, or use
+    # association table)
     coaching_languages = Column(Text)  # JSON array of language codes
 
     # Communication tools (stored as JSON object)
@@ -117,9 +120,7 @@ class CoachProfile(BaseModel):
         String(50)
     )  # Using String instead of Enum for flexibility
     training_institution = Column(String(255))
-    certifications = Column(
-        Text
-    )  # Can store multiple certifications as JSON array
+    certifications = Column(Text)  # Can store multiple certifications as JSON array
     linkedin_url = Column(String(512))
     personal_website = Column(String(512))
 
@@ -140,7 +141,9 @@ class CoachProfile(BaseModel):
     )
 
     def __repr__(self):
-        return f"<CoachProfile(display_name={self.display_name}, user_id={self.user_id})>"
+        return (
+            f"<CoachProfile(display_name={self.display_name}, user_id={self.user_id})>"
+        )
 
     def get_coaching_languages(self):
         """Get coaching languages as list."""
@@ -204,17 +207,13 @@ class CoachingPlan(BaseModel):
     )
 
     # Plan details
-    plan_type = Column(
-        String(50), nullable=False
-    )  # Using String for flexibility
+    plan_type = Column(String(50), nullable=False)  # Using String for flexibility
     title = Column(String(255), nullable=False)
     description = Column(Text)
 
     # Pricing
     duration_minutes = Column(Integer)  # Duration per session
-    number_of_sessions = Column(
-        Integer, default=1
-    )  # Number of sessions in package
+    number_of_sessions = Column(Integer, default=1)  # Number of sessions in package
     price = Column(Float, nullable=False)
     currency = Column(String(10), default="NTD")
 
@@ -229,9 +228,7 @@ class CoachingPlan(BaseModel):
     cancellation_notice_hours = Column(Integer, default=24)
 
     # Relationship
-    coach_profile = relationship(
-        "CoachProfile", back_populates="coaching_plans"
-    )
+    coach_profile = relationship("CoachProfile", back_populates="coaching_plans")
 
     def __repr__(self):
         return f"<CoachingPlan(title={self.title}, type={self.plan_type}, price={self.price})>"

@@ -5,18 +5,18 @@ Tests the core functions that handle LeMUR response parsing, Chinese text cleani
 and segment merging to ensure they work correctly with various input formats.
 """
 
-import pytest
+import os
+import sys
 from unittest.mock import patch
 
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
+import pytest
 
 from coaching_assistant.services.lemur_transcript_smoother import (
     LeMURTranscriptSmoother,
     SmoothingContext,
 )
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 
 class TestLeMURResponseParsing:
@@ -126,9 +126,9 @@ class TestChineseTextCleaning:
 
         for input_text, expected in test_cases:
             result = self.smoother._clean_chinese_text_spacing(input_text)
-            assert (
-                result == expected
-            ), f"Input: '{input_text}', Expected: '{expected}', Got: '{result}'"
+            assert result == expected, (
+                f"Input: '{input_text}', Expected: '{expected}', Got: '{result}'"
+            )
 
     def test_handle_punctuation_spacing(self):
         """Test handling of spaces around Chinese punctuation."""
@@ -141,9 +141,9 @@ class TestChineseTextCleaning:
 
         for input_text, expected in test_cases:
             result = self.smoother._clean_chinese_text_spacing(input_text)
-            assert (
-                result == expected
-            ), f"Input: '{input_text}', Expected: '{expected}', Got: '{result}'"
+            assert result == expected, (
+                f"Input: '{input_text}', Expected: '{expected}', Got: '{result}'"
+            )
 
     def test_preserve_english_spaces(self):
         """Test that spaces between English words are preserved."""
@@ -265,7 +265,9 @@ class TestRealWorldCases:
         # This is the actual segment from the log
         problematic_segment = {
             "speaker": "B",
-            "text": "嗯 對 確實 嗯 好 那 我们 今天 就 先 暂时 结束 在 这边 LisaOK 吗 OK 我 没有 问题 好 谢谢 你 谢谢 谢谢 好.",
+            "text": (
+                "嗯 對 確實 嗯 好 那 我们 今天 就 先 暂时 结束 在 这边 LisaOK 吗 OK 我 没有 问题 好 谢谢 你 谢谢 谢谢 好."
+            ),
             "start": 1785376,
             "end": 1804782,
         }

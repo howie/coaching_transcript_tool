@@ -1,21 +1,21 @@
 """Admin API endpoints for role management and system administration."""
 
 from datetime import datetime
-from typing import Optional, List
+from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Body, status, Request
-from sqlalchemy.orm import Session
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...core.models.user import User, UserRole
 from ...services.permissions import PermissionService
 from .dependencies import (
-    require_super_admin,
-    require_admin,
     get_current_user_with_permissions,
+    require_admin,
+    require_super_admin,
 )
-
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -196,9 +196,7 @@ async def get_role_audit_log(
     for log in audit_logs:
         # Get user details for better display
         user = db.query(User).filter(User.id == log.user_id).first()
-        changed_by = (
-            db.query(User).filter(User.id == log.changed_by_id).first()
-        )
+        changed_by = db.query(User).filter(User.id == log.changed_by_id).first()
 
         result.append(
             RoleAuditLogResponse(

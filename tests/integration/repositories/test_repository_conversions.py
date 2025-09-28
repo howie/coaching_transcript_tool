@@ -4,21 +4,34 @@ These tests verify that repository _to_domain() and _from_domain() methods
 correctly handle enum conversions and prevent data type mismatches.
 """
 
-import pytest
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
+
+from src.coaching_assistant.core.models.coaching_session import (
+    CoachingSession as DomainCoachingSession,
+)
+from src.coaching_assistant.core.models.coaching_session import (
+    SessionSource as DomainSessionSource,
+)
+from src.coaching_assistant.core.models.user import User as DomainUser
+from src.coaching_assistant.core.models.user import UserPlan as DomainUserPlan
 from src.coaching_assistant.infrastructure.db.repositories.coaching_session_repository import (
-    SQLAlchemyCoachingSessionRepository
+    SQLAlchemyCoachingSessionRepository,
 )
 from src.coaching_assistant.infrastructure.db.repositories.user_repository import (
-    SQLAlchemyUserRepository
+    SQLAlchemyUserRepository,
 )
-from src.coaching_assistant.core.models.coaching_session import CoachingSession as DomainCoachingSession, SessionSource as DomainSessionSource
-from src.coaching_assistant.core.models.user import User as DomainUser, UserPlan as DomainUserPlan
-from src.coaching_assistant.models.coaching_session import CoachingSession as CoachingSessionModel, SessionSource as DatabaseSessionSource
-from src.coaching_assistant.models.user import User as UserModel, UserPlan as DatabaseUserPlan
+from src.coaching_assistant.models.coaching_session import (
+    CoachingSession as CoachingSessionModel,
+)
+from src.coaching_assistant.models.coaching_session import (
+    SessionSource as DatabaseSessionSource,
+)
+from src.coaching_assistant.models.user import User as UserModel
+from src.coaching_assistant.models.user import UserPlan as DatabaseUserPlan
 
 
 @pytest.fixture
@@ -48,7 +61,7 @@ def sample_domain_coaching_session():
         transcription_session_id=uuid4(),
         notes="Test session notes",
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
 
 
@@ -67,7 +80,7 @@ def sample_database_coaching_session():
         transcription_session_id=uuid4(),
         notes="Test session notes",
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
 
 
@@ -80,7 +93,7 @@ def sample_domain_user():
         name="Test User",
         plan=DomainUserPlan.STUDENT,
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
 
 
@@ -93,34 +106,49 @@ def sample_database_user():
         name="Test User",
         plan=DatabaseUserPlan.STUDENT,
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
 
 
 class TestCoachingSessionRepositoryConversions:
     """Test CoachingSessionRepository conversion methods."""
 
-    def test_to_domain_conversion(self, coaching_session_repository, sample_database_coaching_session):
+    def test_to_domain_conversion(
+        self, coaching_session_repository, sample_database_coaching_session
+    ):
         """Test _to_domain() method correctly converts database model to domain model."""
-        domain_session = coaching_session_repository._to_domain(sample_database_coaching_session)
+        domain_session = coaching_session_repository._to_domain(
+            sample_database_coaching_session
+        )
 
         # Verify basic fields
         assert isinstance(domain_session, DomainCoachingSession)
         assert domain_session.id == sample_database_coaching_session.id
         assert domain_session.user_id == sample_database_coaching_session.user_id
         assert domain_session.client_id == sample_database_coaching_session.client_id
-        assert domain_session.session_date == sample_database_coaching_session.session_date
-        assert domain_session.duration_min == sample_database_coaching_session.duration_min
-        assert domain_session.fee_currency == sample_database_coaching_session.fee_currency
+        assert (
+            domain_session.session_date == sample_database_coaching_session.session_date
+        )
+        assert (
+            domain_session.duration_min == sample_database_coaching_session.duration_min
+        )
+        assert (
+            domain_session.fee_currency == sample_database_coaching_session.fee_currency
+        )
         assert domain_session.fee_amount == sample_database_coaching_session.fee_amount
-        assert domain_session.transcription_session_id == sample_database_coaching_session.transcription_session_id
+        assert (
+            domain_session.transcription_session_id
+            == sample_database_coaching_session.transcription_session_id
+        )
         assert domain_session.notes == sample_database_coaching_session.notes
         assert domain_session.created_at == sample_database_coaching_session.created_at
         assert domain_session.updated_at == sample_database_coaching_session.updated_at
 
         # Verify enum conversion
         assert isinstance(domain_session.source, DomainSessionSource)
-        assert domain_session.source.value == sample_database_coaching_session.source.value
+        assert (
+            domain_session.source.value == sample_database_coaching_session.source.value
+        )
 
     def test_to_domain_with_all_enum_values(self, coaching_session_repository):
         """Test _to_domain() with all possible SessionSource enum values."""
@@ -128,7 +156,10 @@ class TestCoachingSessionRepositoryConversions:
             (DatabaseSessionSource.CLIENT, DomainSessionSource.CLIENT),
             (DatabaseSessionSource.FRIEND, DomainSessionSource.FRIEND),
             (DatabaseSessionSource.CLASSMATE, DomainSessionSource.CLASSMATE),
-            (DatabaseSessionSource.SUBORDINATE, DomainSessionSource.SUBORDINATE),
+            (
+                DatabaseSessionSource.SUBORDINATE,
+                DomainSessionSource.SUBORDINATE,
+            ),
         ]
 
         for db_enum, expected_domain_enum in enum_test_cases:
@@ -142,15 +173,19 @@ class TestCoachingSessionRepositoryConversions:
                 fee_currency="TWD",
                 fee_amount=Decimal("1000.00"),
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
             )
 
             domain_model = coaching_session_repository._to_domain(db_model)
             assert domain_model.source == expected_domain_enum
 
-    def test_create_orm_session_conversion(self, coaching_session_repository, sample_domain_coaching_session):
+    def test_create_orm_session_conversion(
+        self, coaching_session_repository, sample_domain_coaching_session
+    ):
         """Test _create_orm_session() method correctly converts domain model to database model."""
-        db_session = coaching_session_repository._create_orm_session(sample_domain_coaching_session)
+        db_session = coaching_session_repository._create_orm_session(
+            sample_domain_coaching_session
+        )
 
         # Verify basic fields
         assert isinstance(db_session, CoachingSessionModel)
@@ -161,7 +196,10 @@ class TestCoachingSessionRepositoryConversions:
         assert db_session.duration_min == sample_domain_coaching_session.duration_min
         assert db_session.fee_currency == sample_domain_coaching_session.fee_currency
         assert db_session.fee_amount == sample_domain_coaching_session.fee_amount
-        assert db_session.transcription_session_id == sample_domain_coaching_session.transcription_session_id
+        assert (
+            db_session.transcription_session_id
+            == sample_domain_coaching_session.transcription_session_id
+        )
         assert db_session.notes == sample_domain_coaching_session.notes
         assert db_session.created_at == sample_domain_coaching_session.created_at
         assert db_session.updated_at == sample_domain_coaching_session.updated_at
@@ -176,7 +214,10 @@ class TestCoachingSessionRepositoryConversions:
             (DomainSessionSource.CLIENT, DatabaseSessionSource.CLIENT),
             (DomainSessionSource.FRIEND, DatabaseSessionSource.FRIEND),
             (DomainSessionSource.CLASSMATE, DatabaseSessionSource.CLASSMATE),
-            (DomainSessionSource.SUBORDINATE, DatabaseSessionSource.SUBORDINATE),
+            (
+                DomainSessionSource.SUBORDINATE,
+                DatabaseSessionSource.SUBORDINATE,
+            ),
         ]
 
         for domain_enum, expected_db_enum in enum_test_cases:
@@ -190,16 +231,20 @@ class TestCoachingSessionRepositoryConversions:
                 fee_currency="TWD",
                 fee_amount=Decimal("1000.00"),
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
             )
 
             db_model = coaching_session_repository._create_orm_session(domain_model)
             assert db_model.source == expected_db_enum
 
-    def test_round_trip_conversion(self, coaching_session_repository, sample_domain_coaching_session):
+    def test_round_trip_conversion(
+        self, coaching_session_repository, sample_domain_coaching_session
+    ):
         """Test that domain → database → domain conversion preserves all data."""
         # Domain → Database
-        db_session = coaching_session_repository._create_orm_session(sample_domain_coaching_session)
+        db_session = coaching_session_repository._create_orm_session(
+            sample_domain_coaching_session
+        )
 
         # Database → Domain
         round_trip_domain = coaching_session_repository._to_domain(db_session)
@@ -208,12 +253,24 @@ class TestCoachingSessionRepositoryConversions:
         assert round_trip_domain.id == sample_domain_coaching_session.id
         assert round_trip_domain.user_id == sample_domain_coaching_session.user_id
         assert round_trip_domain.client_id == sample_domain_coaching_session.client_id
-        assert round_trip_domain.session_date == sample_domain_coaching_session.session_date
+        assert (
+            round_trip_domain.session_date
+            == sample_domain_coaching_session.session_date
+        )
         assert round_trip_domain.source == sample_domain_coaching_session.source
-        assert round_trip_domain.duration_min == sample_domain_coaching_session.duration_min
-        assert round_trip_domain.fee_currency == sample_domain_coaching_session.fee_currency
+        assert (
+            round_trip_domain.duration_min
+            == sample_domain_coaching_session.duration_min
+        )
+        assert (
+            round_trip_domain.fee_currency
+            == sample_domain_coaching_session.fee_currency
+        )
         assert round_trip_domain.fee_amount == sample_domain_coaching_session.fee_amount
-        assert round_trip_domain.transcription_session_id == sample_domain_coaching_session.transcription_session_id
+        assert (
+            round_trip_domain.transcription_session_id
+            == sample_domain_coaching_session.transcription_session_id
+        )
         assert round_trip_domain.notes == sample_domain_coaching_session.notes
         assert round_trip_domain.created_at == sample_domain_coaching_session.created_at
         assert round_trip_domain.updated_at == sample_domain_coaching_session.updated_at
@@ -237,7 +294,7 @@ class TestCoachingSessionRepositoryConversions:
             transcription_session_id=None,  # Optional field
             notes=None,  # Optional field
             created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
 
         domain_model = coaching_session_repository._to_domain(db_model)
@@ -280,7 +337,7 @@ class TestUserRepositoryConversions:
                 name="Test User",
                 plan=db_enum,
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
             )
 
             domain_model = user_repository._to_domain(db_model)
@@ -337,7 +394,7 @@ class TestConversionEdgeCases:
             fee_currency="TWD",
             fee_amount=Decimal("1000.00"),
             created_at=utc_time,
-            updated_at=utc_time
+            updated_at=utc_time,
         )
 
         # Convert and verify datetime preservation
@@ -361,7 +418,7 @@ class TestConversionEdgeCases:
             fee_currency="TWD",
             fee_amount=precise_amount,
             created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
 
         # Convert and verify decimal precision is preserved

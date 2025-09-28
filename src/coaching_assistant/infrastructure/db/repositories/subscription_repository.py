@@ -3,20 +3,21 @@
 import logging
 from typing import List, Optional
 from uuid import UUID
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 
-from ....core.repositories.ports import SubscriptionRepoPort
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from ....core.models.subscription import (
+    ECPayCreditAuthorization,
     SaasSubscription,
     SubscriptionPayment,
-    ECPayCreditAuthorization,
     SubscriptionStatus,
 )
+from ....core.repositories.ports import SubscriptionRepoPort
 from ..models.subscription_model import (
+    ECPayCreditAuthorizationModel,
     SaasSubscriptionModel,
     SubscriptionPaymentModel,
-    ECPayCreditAuthorizationModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,9 @@ class SubscriptionRepository(SubscriptionRepoPort):
         try:
             # Validate session state before query
             if not self.db_session.is_active:
-                logger.warning(f"Database session is not active for subscription query, user {user_id}")
+                logger.warning(
+                    f"Database session is not active for subscription query, user {user_id}"
+                )
                 return None
 
             orm_subscription = (
@@ -54,11 +57,15 @@ class SubscriptionRepository(SubscriptionRepoPort):
 
             return orm_subscription.to_domain() if orm_subscription else None
         except SQLAlchemyError as e:
-            logger.error(f"Database error in get_subscription_by_user_id for user {user_id}: {e}")
+            logger.error(
+                f"Database error in get_subscription_by_user_id for user {user_id}: {e}"
+            )
             self.db_session.rollback()
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in get_subscription_by_user_id for user {user_id}: {e}")
+            logger.error(
+                f"Unexpected error in get_subscription_by_user_id for user {user_id}: {e}"
+            )
             self.db_session.rollback()
             raise
 
@@ -85,7 +92,9 @@ class SubscriptionRepository(SubscriptionRepoPort):
         try:
             # Validate session state before query
             if not self.db_session.is_active:
-                logger.warning(f"Database session is not active for authorization query, user {user_id}")
+                logger.warning(
+                    f"Database session is not active for authorization query, user {user_id}"
+                )
                 return None
 
             orm_auth = (
@@ -97,11 +106,15 @@ class SubscriptionRepository(SubscriptionRepoPort):
 
             return orm_auth.to_domain() if orm_auth else None
         except SQLAlchemyError as e:
-            logger.error(f"Database error in get_credit_authorization_by_user_id for user {user_id}: {e}")
+            logger.error(
+                f"Database error in get_credit_authorization_by_user_id for user {user_id}: {e}"
+            )
             self.db_session.rollback()
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in get_credit_authorization_by_user_id for user {user_id}: {e}")
+            logger.error(
+                f"Unexpected error in get_credit_authorization_by_user_id for user {user_id}: {e}"
+            )
             self.db_session.rollback()
             raise
 
@@ -152,6 +165,8 @@ class SubscriptionRepository(SubscriptionRepoPort):
         return orm_subscription.to_domain()
 
 
-def create_subscription_repository(db_session: Session) -> SubscriptionRepoPort:
+def create_subscription_repository(
+    db_session: Session,
+) -> SubscriptionRepoPort:
     """Factory function to create SubscriptionRepository instance."""
     return SubscriptionRepository(db_session)

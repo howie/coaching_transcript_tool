@@ -17,8 +17,7 @@ def get_version_info():
             / "version.json",  # From src/coaching_assistant
             Path(__file__).parent.parent.parent.parent
             / "version.json",  # From packages/core-logic
-            Path.cwd().parent.parent
-            / "version.json",  # Relative from core-logic
+            Path.cwd().parent.parent / "version.json",  # Relative from core-logic
             Path("/app/version.json"),  # Docker container path
             Path("version.json"),  # Current directory
         ]

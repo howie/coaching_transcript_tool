@@ -4,23 +4,23 @@
 測試資料庫連接和模型表格建立
 """
 
-import os
 import sys
 
 sys.path.insert(0, "packages/core-logic/src")
 
 try:
     from sqlalchemy import create_engine, text
+
     from coaching_assistant.models import (
         Base,
-        User,
         Session,
-        TranscriptSegment,
         SessionRole,
+        TranscriptSegment,
+        User,
     )
-    from coaching_assistant.models.user import UserPlan
     from coaching_assistant.models.session import SessionStatus
     from coaching_assistant.models.transcript import SpeakerRole
+    from coaching_assistant.models.user import UserPlan
 
     print("✅ 成功匯入所有模型")
 
@@ -48,9 +48,9 @@ try:
         result = conn.execute(
             text(
                 """
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' 
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
             ORDER BY table_name;
         """
             )

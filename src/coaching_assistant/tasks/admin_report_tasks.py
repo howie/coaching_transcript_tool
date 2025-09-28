@@ -3,19 +3,19 @@
 import logging
 import os
 import smtplib
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 try:
-    from email.mime.text import MimeText
-    from email.mime.multipart import MimeMultipart
-    from email.mime.base import MimeBase
     from email import encoders
+    from email.mime.base import MimeBase
+    from email.mime.multipart import MimeMultipart
+    from email.mime.text import MimeText
 except ImportError:
     # Fallback for Python 3.13+ compatibility
-    import email.mime.text as mime_text
-    import email.mime.multipart as mime_multipart
-    import email.mime.base as mime_base
     import email.encoders as encoders
+    import email.mime.base as mime_base
+    import email.mime.multipart as mime_multipart
+    import email.mime.text as mime_text
 
     MimeText = mime_text.MIMEText
     MimeMultipart = mime_multipart.MIMEMultipart
@@ -24,12 +24,12 @@ from typing import List, Optional
 
 from celery import shared_task
 
+from ..core.config import Settings
+from ..core.database import get_db_session
 from ..core.services.admin_daily_report import (
     AdminDailyReportService,
     DailyReportData,
 )
-from ..core.database import get_db_session
-from ..core.config import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +106,7 @@ def generate_and_send_daily_report(
             return {
                 "status": "success",
                 "report_date": report_data.report_date,
-                "recipients_count": (
-                    len(recipient_emails) if recipient_emails else 0
-                ),
+                "recipients_count": (len(recipient_emails) if recipient_emails else 0),
                 "key_metrics": {
                     "total_users": report_data.total_users,
                     "new_users": report_data.new_users_count,
@@ -116,9 +114,7 @@ def generate_and_send_daily_report(
                     "total_sessions": report_data.total_sessions,
                     "completed_sessions": report_data.completed_sessions,
                     "error_rate": report_data.error_rate,
-                    "total_minutes": float(
-                        report_data.total_minutes_processed
-                    ),
+                    "total_minutes": float(report_data.total_minutes_processed),
                 },
             }
 
@@ -148,9 +144,7 @@ def generate_and_send_daily_report(
 
 
 @shared_task(bind=True)
-def schedule_weekly_summary_report(
-    self, week_start_date_str: Optional[str] = None
-):
+def schedule_weekly_summary_report(self, week_start_date_str: Optional[str] = None):
     """
     Generate weekly summary report (aggregation of daily reports).
 
@@ -169,9 +163,9 @@ def schedule_weekly_summary_report(
             today = datetime.now(timezone.utc).date()
             days_since_monday = today.weekday()
             last_monday = today - timedelta(days=days_since_monday + 7)
-            week_start = datetime.combine(
-                last_monday, datetime.min.time()
-            ).replace(tzinfo=timezone.utc)
+            week_start = datetime.combine(last_monday, datetime.min.time()).replace(
+                tzinfo=timezone.utc
+            )
 
         week_end = week_start + timedelta(days=7)
 
@@ -230,11 +224,7 @@ def _get_default_admin_emails(settings: Settings) -> List[str]:
     admin_emails_env = os.getenv("ADMIN_REPORT_EMAILS", "")
 
     if admin_emails_env:
-        return [
-            email.strip()
-            for email in admin_emails_env.split(",")
-            if email.strip()
-        ]
+        return [email.strip() for email in admin_emails_env.split(",") if email.strip()]
 
     # Fallback to default admin emails (you should configure these)
     default_emails = [
@@ -324,7 +314,7 @@ def _send_failure_alert(
             <h2 style="color: #dc2626;">⚠️ Daily Report Generation Failed</h2>
             <p><strong>Target Date:</strong> {target_date}</p>
             <p><strong>Error:</strong> {error_message}</p>
-            <p><strong>Time:</strong> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
+            <p><strong>Time:</strong> {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}</p>
             <p>Please check the system logs for more details.</p>
         </body>
         </html>
@@ -375,9 +365,7 @@ def _aggregate_weekly_data(daily_reports: List[DailyReportData]) -> dict:
         weekly_summary["total_sessions_week"] += daily.total_sessions
         weekly_summary["completed_sessions_week"] += daily.completed_sessions
         weekly_summary["failed_sessions_week"] += daily.failed_sessions
-        weekly_summary["total_minutes_week"] += float(
-            daily.total_minutes_processed
-        )
+        weekly_summary["total_minutes_week"] += float(daily.total_minutes_processed)
         weekly_summary["total_cost_week"] += float(daily.total_cost_usd)
 
         if daily.total_sessions > 0:
@@ -453,17 +441,17 @@ def _format_weekly_report_email(
     <body>
         <div class="header">
             <h1>📅 Weekly Admin Report</h1>
-            <h2>{week_start.strftime('%Y-%m-%d')} to {week_end.strftime('%Y-%m-%d')}</h2>
+            <h2>{week_start.strftime("%Y-%m-%d")} to {week_end.strftime("%Y-%m-%d")}</h2>
         </div>
 
         <div class="section">
             <h3>📊 Weekly Summary</h3>
             <div class="metric">
-                <div class="metric-value">{weekly_data['new_users_week']}</div>
+                <div class="metric-value">{weekly_data["new_users_week"]}</div>
                 <div class="metric-label">New Users</div>
             </div>
             <div class="metric">
-                <div class="metric-value">{weekly_data['total_sessions_week']}</div>
+                <div class="metric-value">{weekly_data["total_sessions_week"]}</div>
                 <div class="metric-label">Total Sessions</div>
             </div>
             <div class="metric">
@@ -471,11 +459,11 @@ def _format_weekly_report_email(
                 <div class="metric-label">Success Rate</div>
             </div>
             <div class="metric">
-                <div class="metric-value">{weekly_data['total_minutes_week']:.0f}</div>
+                <div class="metric-value">{weekly_data["total_minutes_week"]:.0f}</div>
                 <div class="metric-label">Minutes Processed</div>
             </div>
             <div class="metric">
-                <div class="metric-value">${weekly_data['total_cost_week']:.4f}</div>
+                <div class="metric-value">${weekly_data["total_cost_week"]:.4f}</div>
                 <div class="metric-label">Total Cost</div>
             </div>
         </div>
@@ -484,7 +472,7 @@ def _format_weekly_report_email(
             <h3>📈 Daily Breakdown</h3>
             <table class="table">
                 <tr><th>Date</th><th>New Users</th><th>Sessions</th><th>Completed</th><th>Minutes</th></tr>
-                {''.join(daily_rows)}
+                {"".join(daily_rows)}
             </table>
         </div>
     </body>
@@ -507,9 +495,7 @@ def _send_weekly_report_email(
     smtp_password = os.getenv("SMTP_PASSWORD")
 
     if not all([smtp_user, smtp_password]):
-        logger.warning(
-            "⚠️ SMTP credentials not configured, weekly email not sent"
-        )
+        logger.warning("⚠️ SMTP credentials not configured, weekly email not sent")
         return
 
     try:
@@ -530,9 +516,7 @@ def _send_weekly_report_email(
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, recipients, msg.as_string())
 
-        logger.info(
-            f"📧 Weekly report email sent to {len(recipients)} recipients"
-        )
+        logger.info(f"📧 Weekly report email sent to {len(recipients)} recipients")
 
     except Exception as e:
         logger.error(f"❌ Failed to send weekly report: {str(e)}")

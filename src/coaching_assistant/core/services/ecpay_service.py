@@ -1,22 +1,27 @@
 """ECPay subscription service for SaaS billing."""
 
 import hashlib
-import urllib.parse
 import logging
 import time
-from datetime import datetime, timedelta, date
-from typing import Dict, Any, Optional
+import urllib.parse
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, Optional
 
 from ..config import Settings
-from ..repositories.ports import NotificationPort, ECPayClientPort, SubscriptionRepoPort, UserRepoPort
-from ..models.user import User
 from ..models.subscription import (
+    ECPayAuthStatus,
     ECPayCreditAuthorization,
+    PaymentStatus,
     SaasSubscription,
     SubscriptionPayment,
-    ECPayAuthStatus,
     SubscriptionStatus,
-    PaymentStatus,
+)
+from ..models.user import User
+from ..repositories.ports import (
+    ECPayClientPort,
+    NotificationPort,
+    SubscriptionRepoPort,
+    UserRepoPort,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,7 +36,7 @@ class ECPaySubscriptionService:
         subscription_repo: SubscriptionRepoPort,
         settings: Settings,
         ecpay_client: ECPayClientPort,
-        notification_service: NotificationPort
+        notification_service: NotificationPort,
     ):
         self.user_repo = user_repo
         self.subscription_repo = subscription_repo
@@ -47,16 +52,12 @@ class ECPaySubscriptionService:
 
         # API URLs (keeping for backwards compatibility)
         if self.environment == "sandbox":
-            self.aio_url = (
-                "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5"
-            )
+            self.aio_url = "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5"
             self.credit_detail_url = (
                 "https://payment-stage.ecpay.com.tw/CreditDetail/DoAction"
             )
         else:
-            self.aio_url = (
-                "https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5"
-            )
+            self.aio_url = "https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5"
             self.credit_detail_url = (
                 "https://payment.ecpay.com.tw/CreditDetail/DoAction"
             )
@@ -70,27 +71,26 @@ class ECPaySubscriptionService:
             # Get plan pricing
             plan_pricing = self._get_plan_pricing(plan_id, billing_cycle)
             if not plan_pricing:
-                raise ValueError(
-                    f"Invalid plan: {plan_id} with cycle: {billing_cycle}"
-                )
+                raise ValueError(f"Invalid plan: {plan_id} with cycle: {billing_cycle}")
 
             # Generate unique merchant member ID and trade number
             timestamp = int(time.time())
             # Sanitize user ID to ensure safe characters (alphanumeric only)
-            safe_user_prefix = "".join(
-                c for c in user_id[:8].upper() if c.isalnum()
-            )[:8]
+            safe_user_prefix = "".join(c for c in user_id[:8].upper() if c.isalnum())[
+                :8
+            ]
             # Pad with zeros if too short after sanitization
             safe_user_prefix = safe_user_prefix.ljust(8, "0")[:8]
 
             merchant_member_id = f"USER{safe_user_prefix}{timestamp}"
             # ECPay MerchantTradeNo must be <= 20 characters
-            # Format: SUB + last 6 digits of timestamp + sanitized 8 chars of user_id
+            # Format: SUB + last 6 digits of timestamp + sanitized 8 chars of
+            # user_id
             merchant_trade_no = f"SUB{str(timestamp)[-6:]}{safe_user_prefix}"
 
-            # Prepare authorization data for ECPay AioCheckOut recurring payment API
-            auth_data = {
-                # Required basic fields
+            # Prepare authorization data for ECPay AioCheckOut recurring
+            # payment API
+            auth_data = {  # Required basic fields
                 "MerchantID": self.merchant_id,
                 "MerchantMemberID": merchant_member_id,
                 "MerchantTradeNo": merchant_trade_no,
@@ -99,8 +99,10 @@ class ECPaySubscriptionService:
                 ),  # Convert to string for ECPay
                 # Note: ECPay V5 API does not have ProductDesc field, only TradeDesc and ItemName
                 # URLs for callbacks
-                "OrderResultURL": f"{self.settings.FRONTEND_URL}/api/subscription/result",
-                "ReturnURL": f"{self.settings.API_BASE_URL}/api/webhooks/ecpay-auth",
+                "OrderResultURL": (
+                    f"{self.settings.FRONTEND_URL}/api/subscription/result"
+                ),
+                "ReturnURL": (f"{self.settings.API_BASE_URL}/api/webhooks/ecpay-auth"),
                 "ClientBackURL": f"{self.settings.FRONTEND_URL}/billing",
                 # Credit card recurring payment specific fields
                 "PeriodType": (
@@ -119,24 +121,24 @@ class ECPaySubscriptionService:
                 "ChoosePayment": "Credit",
                 # Additional required fields for credit card authorization
                 "TradeDesc": "教練助手訂閱",  # Chinese trade description
-                "ItemName": f"訂閱方案#1#個#{plan_pricing['amount_twd'] // 100}",  # Already string format
+                "ItemName": (
+                    f"訂閱方案#1#個#{plan_pricing['amount_twd'] // 100}"
+                ),  # Already string format
                 "Remark": "",  # Empty to avoid any format issues
                 "ChooseSubPayment": "",  # Empty for general credit card
                 "PlatformID": "",
                 "EncryptType": "1",
                 # Required fields for ECPay payments
-                "MerchantTradeDate": datetime.now().strftime(
-                    "%Y/%m/%d %H:%M:%S"
+                "MerchantTradeDate": (
+                    datetime.now().strftime("%Y/%m/%d %H:%M:%S")
                 ),  # Trade date
                 "ExpireDate": "7",  # Order expires in 7 days
                 # Note: TradeNo is ECPay-generated, should NOT be included in order creation
                 # Credit card authorization specific fields
                 "BindingCard": "0",  # 0=不記憶卡號, 1=記憶卡號
                 "CustomField1": plan_id,  # Store plan ID for reference
-                "CustomField2": billing_cycle,  # Store billing cycle for reference
-                "CustomField3": user_id[
-                    :8
-                ],  # Store user ID prefix for reference
+                "CustomField2": (billing_cycle),  # Store billing cycle for reference
+                "CustomField3": user_id[:8],  # Store user ID prefix for reference
                 "CustomField4": "",
                 # Additional fields that might be required
                 "NeedExtraPaidInfo": "N",  # Don't need extra payment info
@@ -154,7 +156,7 @@ class ECPaySubscriptionService:
             logger.info(
                 f"🕐 MerchantTradeDate: '{auth_data['MerchantTradeDate']}' (length: {len(auth_data['MerchantTradeDate'])})"
             )
-            logger.info(f"📋 完整參數列表 (按 ASCII 排序):")
+            logger.info("📋 完整參數列表 (按 ASCII 排序):")
 
             # 按 ASCII 排序輸出所有參數（與前端一致）
             for key in sorted(auth_data.keys()):
@@ -173,7 +175,7 @@ class ECPaySubscriptionService:
                 "PeriodType",
                 "ExecTimes",
             ]
-            logger.info(f"🔍 關鍵參數檢查:")
+            logger.info("🔍 關鍵參數檢查:")
             for field in critical_fields:
                 if field in auth_data:
                     value = auth_data[field]
@@ -182,23 +184,19 @@ class ECPaySubscriptionService:
                     )
 
             # CheckMacValue 計算結果（使用修正後的官方規範方法）
-            logger.info(f"🔐 CheckMacValue 計算結果 (官方8步法):")
+            logger.info("🔐 CheckMacValue 計算結果 (官方8步法):")
             logger.info(f"   計算出的值: {calculated_mac}")
             logger.info(f"   值長度: {len(calculated_mac)}")
             logger.info(
-                f"   ✅ 使用嚴格官方規範: A-Z排序 → URL編碼 → 小寫 → .NET替換 → SHA256大寫"
+                "   ✅ 使用嚴格官方規範: A-Z排序 → URL編碼 → 小寫 → .NET替換 → SHA256大寫"
             )
 
             # 輸出完整 JSON 供比較
             import json
 
-            logger.info(f"📤 後端生成的完整參數 JSON:")
-            sorted_auth_data = {
-                k: auth_data[k] for k in sorted(auth_data.keys())
-            }
-            logger.info(
-                json.dumps(sorted_auth_data, ensure_ascii=False, indent=2)
-            )
+            logger.info("📤 後端生成的完整參數 JSON:")
+            sorted_auth_data = {k: auth_data[k] for k in sorted(auth_data.keys())}
+            logger.info(json.dumps(sorted_auth_data, ensure_ascii=False, indent=2))
 
             # Create authorization record
             auth_record = ECPayCreditAuthorization(
@@ -219,7 +217,7 @@ class ECPaySubscriptionService:
             )
 
             return {
-                "action_url": self.aio_url,  # Use AioCheckOut for recurring payments
+                "action_url": (self.aio_url),  # Use AioCheckOut for recurring payments
                 "form_data": auth_data,
                 "merchant_member_id": merchant_member_id,
                 "auth_id": str(auth_record.id),
@@ -248,16 +246,13 @@ class ECPaySubscriptionService:
             auth_record = (
                 self.db.query(ECPayCreditAuthorization)
                 .filter(
-                    ECPayCreditAuthorization.merchant_member_id
-                    == merchant_member_id
+                    ECPayCreditAuthorization.merchant_member_id == merchant_member_id
                 )
                 .first()
             )
 
             if not auth_record:
-                logger.error(
-                    f"Authorization record not found: {merchant_member_id}"
-                )
+                logger.error(f"Authorization record not found: {merchant_member_id}")
                 return False
 
             rtn_code = callback_data.get("RtnCode")
@@ -272,22 +267,16 @@ class ECPaySubscriptionService:
 
                 # Calculate next payment date
                 if auth_record.period_type == "M":
-                    auth_record.next_pay_date = date.today() + timedelta(
-                        days=30
-                    )
+                    auth_record.next_pay_date = date.today() + timedelta(days=30)
                 else:  # Y
-                    auth_record.next_pay_date = date.today() + timedelta(
-                        days=365
-                    )
+                    auth_record.next_pay_date = date.today() + timedelta(days=365)
 
                 # Create subscription
                 subscription = self._create_subscription(auth_record)
 
                 # Upgrade user plan
                 user = (
-                    self.db.query(User)
-                    .filter(User.id == auth_record.user_id)
-                    .first()
+                    self.db.query(User).filter(User.id == auth_record.user_id).first()
                 )
                 if user:
                     # Map plan_id to UserPlan enum
@@ -297,15 +286,11 @@ class ECPaySubscriptionService:
                         "PRO": UserPlan.PRO,
                         "ENTERPRISE": UserPlan.ENTERPRISE,
                     }
-                    user.plan = plan_mapping.get(
-                        subscription.plan_id, UserPlan.FREE
-                    )
+                    user.plan = plan_mapping.get(subscription.plan_id, UserPlan.FREE)
 
                 self.db.commit()
 
-                logger.info(
-                    f"Authorization successful for {merchant_member_id}"
-                )
+                logger.info(f"Authorization successful for {merchant_member_id}")
                 return True
 
             else:  # Failed
@@ -334,24 +319,19 @@ class ECPaySubscriptionService:
             merchant_member_id = webhook_data.get("MerchantMemberID")
             gwsr = webhook_data.get("gwsr")
             rtn_code = webhook_data.get("RtnCode")
-            amount = (
-                int(webhook_data.get("amount", "0")) * 100
-            )  # Convert to cents
+            amount = int(webhook_data.get("amount", "0")) * 100  # Convert to cents
 
             # Find authorization and subscription
             auth_record = (
                 self.db.query(ECPayCreditAuthorization)
                 .filter(
-                    ECPayCreditAuthorization.merchant_member_id
-                    == merchant_member_id
+                    ECPayCreditAuthorization.merchant_member_id == merchant_member_id
                 )
                 .first()
             )
 
             if not auth_record:
-                logger.error(
-                    f"Auth record not found for payment: {merchant_member_id}"
-                )
+                logger.error(f"Auth record not found for payment: {merchant_member_id}")
                 return False
 
             subscription = (
@@ -392,13 +372,13 @@ class ECPaySubscriptionService:
 
                 # Extend subscription period
                 if auth_record.period_type == "M":
-                    new_period_start = (
-                        subscription.current_period_end + timedelta(days=1)
+                    new_period_start = subscription.current_period_end + timedelta(
+                        days=1
                     )
                     new_period_end = new_period_start + timedelta(days=30)
                 else:  # Y
-                    new_period_start = (
-                        subscription.current_period_end + timedelta(days=1)
+                    new_period_start = subscription.current_period_end + timedelta(
+                        days=1
                     )
                     new_period_end = new_period_start + timedelta(days=365)
 
@@ -413,13 +393,14 @@ class ECPaySubscriptionService:
                 # Send success notifications
                 # Schedule notifications in background
                 import asyncio
-                asyncio.create_task(self._handle_payment_success_notifications(
-                    subscription, payment_record
-                ))
 
-                logger.info(
-                    f"Payment successful: {gwsr}, subscription extended"
+                asyncio.create_task(
+                    self._handle_payment_success_notifications(
+                        subscription, payment_record
+                    )
                 )
+
+                logger.info(f"Payment successful: {gwsr}, subscription extended")
 
             else:  # Payment failed
                 payment_record.status = PaymentStatus.FAILED.value
@@ -431,9 +412,12 @@ class ECPaySubscriptionService:
                 # Send failure notifications
                 # Schedule notifications in background
                 import asyncio
-                asyncio.create_task(self._handle_payment_failure_notifications(
-                    subscription, payment_record
-                ))
+
+                asyncio.create_task(
+                    self._handle_payment_failure_notifications(
+                        subscription, payment_record
+                    )
+                )
 
                 logger.warning(
                     f"Payment failed: {gwsr}, reason: {payment_record.failure_reason}"
@@ -495,8 +479,7 @@ class ECPaySubscriptionService:
             .filter(
                 SubscriptionPayment.subscription_id == subscription.id,
                 SubscriptionPayment.status == PaymentStatus.FAILED.value,
-                SubscriptionPayment.created_at
-                >= datetime.now() - timedelta(days=7),
+                SubscriptionPayment.created_at >= datetime.now() - timedelta(days=7),
             )
             .count()
         )
@@ -507,18 +490,14 @@ class ECPaySubscriptionService:
         if recent_failures == 1:
             # First failure - mark as past due, start grace period
             subscription.status = SubscriptionStatus.PAST_DUE.value
-            subscription.grace_period_ends_at = datetime.now() + timedelta(
-                days=7
-            )
+            subscription.grace_period_ends_at = datetime.now() + timedelta(days=7)
             logger.warning(
                 f"🟡 First payment failure for subscription {subscription.id} - grace period started"
             )
 
         elif recent_failures == 2:
             # Second failure - extend grace period slightly
-            subscription.grace_period_ends_at = datetime.now() + timedelta(
-                days=3
-            )
+            subscription.grace_period_ends_at = datetime.now() + timedelta(days=3)
             logger.warning(
                 f"🟠 Second payment failure for subscription {subscription.id} - grace period extended"
             )
@@ -544,9 +523,7 @@ class ECPaySubscriptionService:
         self._schedule_payment_retry(subscription, payment)
 
         # Send payment failure notifications
-        self._send_payment_failure_notification(
-            subscription, payment, recent_failures
-        )
+        self._send_payment_failure_notification(subscription, payment, recent_failures)
 
     def _get_plan_pricing(
         self, plan_id: str, billing_cycle: str
@@ -591,17 +568,13 @@ class ECPaySubscriptionService:
 
         # Update subscription to FREE plan
         subscription.plan_id = "FREE"
-        subscription.status = (
-            SubscriptionStatus.ACTIVE.value
-        )  # Active but on FREE
+        subscription.status = SubscriptionStatus.ACTIVE.value  # Active but on FREE
         subscription.amount_twd = 0
         subscription.downgraded_at = datetime.now()
         subscription.downgrade_reason = "payment_failure"
 
         # Update user plan
-        user = (
-            self.db.query(User).filter(User.id == subscription.user_id).first()
-        )
+        user = self.db.query(User).filter(User.id == subscription.user_id).first()
         if user:
             user.plan = "FREE"
             user.updated_at = datetime.now()
@@ -642,9 +615,7 @@ class ECPaySubscriptionService:
     ):
         """Send payment failure notifications to user."""
 
-        user = (
-            self.db.query(User).filter(User.id == subscription.user_id).first()
-        )
+        user = self.db.query(User).filter(User.id == subscription.user_id).first()
         if not user:
             logger.error(f"User not found for subscription {subscription.id}")
             return
@@ -690,9 +661,17 @@ class ECPaySubscriptionService:
                     "amount": subscription.amount_twd,
                     "plan_name": subscription.plan_id,
                     "failure_count": notification_data.get("failure_count", 0),
-                    "next_retry_date": payment.next_retry_at.strftime("%Y-%m-%d") if payment.next_retry_at else "N/A",
-                    "grace_period_ends": subscription.grace_period_ends_at.strftime("%Y-%m-%d") if subscription.grace_period_ends_at else "N/A"
-                }
+                    "next_retry_date": (
+                        payment.next_retry_at.strftime("%Y-%m-%d")
+                        if payment.next_retry_at
+                        else "N/A"
+                    ),
+                    "grace_period_ends": (
+                        subscription.grace_period_ends_at.strftime("%Y-%m-%d")
+                        if subscription.grace_period_ends_at
+                        else "N/A"
+                    ),
+                },
             )
             logger.info(f"📧 Payment failure notification sent to {user.email}")
         except Exception as e:
@@ -701,13 +680,6 @@ class ECPaySubscriptionService:
         logger.info(
             f"📧 Payment failure notification processed: {notification_type} for {user.email}"
         )
-
-    def _handle_payment_failure_notifications(
-        self, subscription: SaasSubscription, payment: SubscriptionPayment
-    ):
-        """Legacy method - now handled in _send_payment_failure_notification."""
-        # This method is kept for backward compatibility
-        # The actual notification logic has been moved to _send_payment_failure_notification
 
     def _generate_check_mac_value(self, data: Dict[str, str]) -> str:
         """
@@ -737,10 +709,7 @@ class ECPaySubscriptionService:
         query_string = "&".join(param_strings)
 
         # Step 4: Add HashKey and HashIV
-        raw_string = (
-            f"HashKey={self.hash_key}&{query_string}&HashIV={self.hash_iv}"
-        )
-
+        raw_string = f"HashKey={self.hash_key}&{query_string}&HashIV={self.hash_iv}"
         # Step 5: URL encode entire string
         encoded_string = urllib.parse.quote_plus(raw_string)
 
@@ -790,14 +759,18 @@ class ECPaySubscriptionService:
             try:
                 cancel_result = await self.ecpay_client.cancel_credit_authorization(
                     auth_code=auth_record.auth_code,
-                    merchant_trade_no=auth_record.merchant_trade_no
+                    merchant_trade_no=auth_record.merchant_trade_no,
                 )
 
                 if cancel_result.get("success"):
-                    logger.info(f"✅ ECPay authorization cancelled successfully: {auth_record.auth_code}")
+                    logger.info(
+                        f"✅ ECPay authorization cancelled successfully: {auth_record.auth_code}"
+                    )
                     auth_record.auth_status = ECPayAuthStatus.CANCELLED.value
                 else:
-                    logger.error(f"❌ ECPay cancel failed: {cancel_result.get('message')}")
+                    logger.error(
+                        f"❌ ECPay cancel failed: {cancel_result.get('message')}"
+                    )
                     return False
 
             except Exception as e:
@@ -837,39 +810,36 @@ class ECPaySubscriptionService:
             expired_subscriptions = (
                 self.db.query(SaasSubscription)
                 .filter(
-                    SaasSubscription.status
-                    == SubscriptionStatus.PAST_DUE.value,
+                    SaasSubscription.status == SubscriptionStatus.PAST_DUE.value,
                     SaasSubscription.grace_period_ends_at < datetime.now(),
                 )
                 .all()
             )
 
             for subscription in expired_subscriptions:
-                logger.info(
-                    f"⏰ Processing expired subscription: {subscription.id}"
-                )
+                logger.info(f"⏰ Processing expired subscription: {subscription.id}")
                 self._downgrade_to_free_plan(subscription)
 
                 # Send final downgrade notification
                 user = (
-                    self.db.query(User)
-                    .filter(User.id == subscription.user_id)
-                    .first()
+                    self.db.query(User).filter(User.id == subscription.user_id).first()
                 )
                 if user:
-                    logger.info(
-                        f"📧 Sending downgrade notification to {user.email}"
-                    )
+                    logger.info(f"📧 Sending downgrade notification to {user.email}")
                     # Send downgrade notification email
                     try:
-                        await self.notification_service.send_plan_downgrade_notification(
-                            user_email=user.email,
-                            downgrade_details={
-                                "old_plan": subscription.plan_name,
-                                "new_plan": "FREE",
-                                "effective_date": datetime.now().strftime("%Y-%m-%d"),
-                                "reason": "Payment failure after grace period"
-                            }
+                        await (
+                            self.notification_service.send_plan_downgrade_notification(
+                                user_email=user.email,
+                                downgrade_details={
+                                    "old_plan": subscription.plan_name,
+                                    "new_plan": "FREE",
+                                    "effective_date": (
+                                        datetime.now().strftime("%Y-%m-%d")
+                                    ),
+                                    "reason": "Payment failure after grace period",
+                                },
+                            )
                         )
                         logger.info(f"📧 Downgrade notification sent to {user.email}")
                     except Exception as e:
@@ -898,8 +868,7 @@ class ECPaySubscriptionService:
                 .filter(
                     SubscriptionPayment.status == PaymentStatus.FAILED.value,
                     SubscriptionPayment.next_retry_at <= datetime.now(),
-                    SubscriptionPayment.retry_count
-                    < SubscriptionPayment.max_retries,
+                    SubscriptionPayment.retry_count < SubscriptionPayment.max_retries,
                 )
                 .all()
             )
@@ -915,16 +884,12 @@ class ECPaySubscriptionService:
                 )
 
                 if not subscription:
-                    logger.error(
-                        f"Subscription not found for payment {payment.id}"
-                    )
+                    logger.error(f"Subscription not found for payment {payment.id}")
                     continue
 
                 auth_record = (
                     self.db.query(ECPayCreditAuthorization)
-                    .filter(
-                        ECPayCreditAuthorization.id == subscription.auth_id
-                    )
+                    .filter(ECPayCreditAuthorization.id == subscription.auth_id)
                     .first()
                 )
 
@@ -939,30 +904,34 @@ class ECPaySubscriptionService:
                     retry_result = await self.ecpay_client.retry_payment(
                         auth_code=auth_record.auth_code,
                         merchant_trade_no=auth_record.merchant_trade_no,
-                        amount=subscription.amount_twd
+                        amount=subscription.amount_twd,
                     )
 
                     payment.retry_count += 1
                     payment.last_retry_at = datetime.now()
 
                     if retry_result.get("success"):
-                        logger.info(f"✅ ECPay payment retry successful for subscription {subscription.id}")
+                        logger.info(
+                            f"✅ ECPay payment retry successful for subscription {subscription.id}"
+                        )
                         payment.status = PaymentStatus.PAID.value
                         subscription.status = SubscriptionStatus.ACTIVE.value
 
                         # Send success notification
                         await self.notification_service.send_payment_retry_notification(
-                            user_email=user.email,
+                            user_email=subscription.user.email,
                             retry_details={
                                 "amount": subscription.amount_twd,
                                 "plan_name": subscription.plan_id,
-                                "payment_date": datetime.now().strftime("%Y-%m-%d"),
-                                "retry_count": payment.retry_count
-                            }
+                                "payment_date": (datetime.now().strftime("%Y-%m-%d")),
+                                "retry_count": payment.retry_count,
+                            },
                         )
                         continue
                     else:
-                        logger.error(f"❌ ECPay retry failed: {retry_result.get('message')}")
+                        logger.error(
+                            f"❌ ECPay retry failed: {retry_result.get('message')}"
+                        )
 
                 except Exception as e:
                     logger.error(f"❌ ECPay retry API call failed: {e}")
@@ -977,9 +946,7 @@ class ECPaySubscriptionService:
                         payment.next_retry_at = datetime.now() + timedelta(
                             days=next_delay
                         )
-                        logger.info(
-                            f"📅 Next retry scheduled in {next_delay} days"
-                        )
+                        logger.info(f"📅 Next retry scheduled in {next_delay} days")
                     else:
                         payment.next_retry_at = None
                         logger.warning(
@@ -987,15 +954,11 @@ class ECPaySubscriptionService:
                         )
                 else:
                     payment.next_retry_at = None
-                    logger.warning(
-                        f"❌ Payment retry limit exceeded: {payment.id}"
-                    )
+                    logger.warning(f"❌ Payment retry limit exceeded: {payment.id}")
 
             if payments_to_retry:
                 self.db.commit()
-                logger.info(
-                    f"✅ Processed {len(payments_to_retry)} payment retries"
-                )
+                logger.info(f"✅ Processed {len(payments_to_retry)} payment retries")
 
             return True
 
@@ -1038,9 +1001,7 @@ class ECPaySubscriptionService:
         )
 
         # Get new plan pricing
-        new_plan_pricing = self._get_plan_pricing(
-            new_plan_id, new_billing_cycle
-        )
+        new_plan_pricing = self._get_plan_pricing(new_plan_id, new_billing_cycle)
         if not new_plan_pricing:
             raise ValueError(
                 f"Invalid plan: {new_plan_id} with cycle: {new_billing_cycle}"
@@ -1078,9 +1039,7 @@ class ECPaySubscriptionService:
             )
 
             # Get new plan details
-            new_plan_pricing = self._get_plan_pricing(
-                new_plan_id, new_billing_cycle
-            )
+            new_plan_pricing = self._get_plan_pricing(new_plan_id, new_billing_cycle)
 
             # Process net charge via ECPay if required
             if proration["net_charge"] > 0:
@@ -1090,15 +1049,17 @@ class ECPaySubscriptionService:
 
                 try:
                     # Process the additional charge via ECPay
-                    merchant_trade_no = f"UPGRADE_{subscription.id}_{int(datetime.now().timestamp())}"
+                    merchant_trade_no = (
+                        f"UPGRADE_{subscription.id}_{int(datetime.now().timestamp())}"
+                    )
                     payment_result = await self.ecpay_client.process_payment(
                         merchant_trade_no=merchant_trade_no,
                         amount=proration["net_charge"],
-                        item_name=f"Plan upgrade to {new_plan_id}"
+                        item_name=f"Plan upgrade to {new_plan_id}",
                     )
 
                     if payment_result.get("success"):
-                        logger.info(f"✅ Prorated payment processed successfully")
+                        logger.info("✅ Prorated payment processed successfully")
 
                         # Create payment record
                         payment = SubscriptionPayment(
@@ -1108,12 +1069,14 @@ class ECPaySubscriptionService:
                             status=PaymentStatus.PAID.value,
                             payment_date=datetime.now(),
                             retry_count=0,
-                            max_retries=3
+                            max_retries=3,
                         )
                         self.db.add(payment)
 
                     else:
-                        logger.error(f"❌ Prorated payment failed: {payment_result.get('message')}")
+                        logger.error(
+                            f"❌ Prorated payment failed: {payment_result.get('message')}"
+                        )
                         raise Exception("Payment processing failed")
 
                 except Exception as e:
@@ -1128,18 +1091,12 @@ class ECPaySubscriptionService:
 
             # Update ECPay authorization amount if needed
             if subscription.auth_record:
-                subscription.auth_record.period_amount = new_plan_pricing[
-                    "amount_twd"
-                ]
-                subscription.auth_record.auth_amount = new_plan_pricing[
-                    "amount_twd"
-                ]
+                subscription.auth_record.period_amount = new_plan_pricing["amount_twd"]
+                subscription.auth_record.auth_amount = new_plan_pricing["amount_twd"]
 
             self.db.commit()
 
-            logger.info(
-                f"Subscription {subscription.id} upgraded to {new_plan_id}"
-            )
+            logger.info(f"Subscription {subscription.id} upgraded to {new_plan_id}")
 
             return {
                 "subscription": subscription,
@@ -1162,10 +1119,7 @@ class ECPaySubscriptionService:
         try:
             # Handle FREE plan downgrade specially (no pricing needed)
             if new_plan_id == "FREE":
-                new_plan_pricing = {
-                    "amount_twd": 0,
-                    "plan_name": "免費方案"
-                }
+                new_plan_pricing = {"amount_twd": 0, "plan_name": "免費方案"}
             else:
                 # Get new plan details
                 new_plan_pricing = self._get_plan_pricing(
@@ -1212,9 +1166,7 @@ class ECPaySubscriptionService:
                 # Immediate cancellation
                 subscription.status = SubscriptionStatus.CANCELLED.value
                 subscription.cancelled_at = datetime.now()
-                subscription.cancellation_reason = (
-                    reason or "Immediate cancellation"
-                )
+                subscription.cancellation_reason = reason or "Immediate cancellation"
 
                 # Cancel ECPay authorization
                 if subscription.auth_record:
@@ -1225,14 +1177,18 @@ class ECPaySubscriptionService:
                 # Call ECPay API to cancel authorization
                 try:
                     cancel_result = await self.ecpay_client.cancel_credit_authorization(
-                        auth_code=auth_record.auth_code,
-                        merchant_trade_no=auth_record.merchant_trade_no
+                        auth_code=subscription.auth_record.auth_code,
+                        merchant_trade_no=subscription.auth_record.merchant_trade_no,
                     )
 
                     if cancel_result.get("success"):
-                        logger.info(f"✅ ECPay authorization cancelled successfully for subscription {subscription.id}")
+                        logger.info(
+                            f"✅ ECPay authorization cancelled successfully for subscription {subscription.id}"
+                        )
                     else:
-                        logger.error(f"❌ ECPay cancel failed: {cancel_result.get('message')}")
+                        logger.error(
+                            f"❌ ECPay cancel failed: {cancel_result.get('message')}"
+                        )
 
                 except Exception as e:
                     logger.error(f"❌ ECPay API call failed during cancellation: {e}")
@@ -1247,19 +1203,19 @@ class ECPaySubscriptionService:
                 else:
                     days_in_cycle = 30  # default
 
-                days_since_renewal = (effective_date - subscription.current_period_start).days
+                days_since_renewal = (
+                    effective_date - subscription.current_period_start
+                ).days
                 refund_amount = self.ecpay_client.calculate_refund_amount(
                     original_amount=subscription.amount_twd,
                     days_used=days_since_renewal,
-                    total_days=days_in_cycle
+                    total_days=days_in_cycle,
                 )
 
             else:
                 # Period-end cancellation
                 subscription.cancel_at_period_end = True
-                subscription.cancellation_reason = (
-                    reason or "Period-end cancellation"
-                )
+                subscription.cancellation_reason = reason or "Period-end cancellation"
 
                 effective_date = subscription.current_period_end
                 refund_amount = 0
@@ -1332,9 +1288,7 @@ class ECPaySubscriptionService:
                 )
 
             # Log notification (in production, this would send email/SMS)
-            logger.info(
-                f"📧 Notification: {notification_type} for user {user.email}"
-            )
+            logger.info(f"📧 Notification: {notification_type} for user {user.email}")
             logger.info(f"📊 Notification data: {notification_data}")
 
             # Send actual notification via notification service
@@ -1344,14 +1298,22 @@ class ECPaySubscriptionService:
                         user_email=user.email,
                         cancellation_details={
                             "plan_name": subscription.plan_name,
-                            "effective_date": effective_date.strftime("%Y-%m-%d"),
-                            "refund_amount": refund_amount,
-                            "reason": subscription.cancellation_reason or "User requested"
-                        }
+                            "effective_date": (
+                                (subscription.cancelled_at or datetime.now()).strftime(
+                                    "%Y-%m-%d"
+                                )
+                            ),
+                            "refund_amount": (
+                                0
+                            ),  # TODO: Calculate based on subscription data
+                            "reason": (
+                                subscription.cancellation_reason or "User requested"
+                            ),
+                        },
                     )
                     logger.info(f"📧 Cancellation notification sent to {user.email}")
                 else:
-                    logger.info(f"📧 Notification skipped - subscription not cancelled")
+                    logger.info("📧 Notification skipped - subscription not cancelled")
 
             except Exception as e:
                 logger.error(f"❌ Failed to send cancellation notification: {e}")

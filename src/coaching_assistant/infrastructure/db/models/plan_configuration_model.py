@@ -1,19 +1,19 @@
 """PlanConfigurationModel ORM with domain model conversion."""
 
-from sqlalchemy import Column, String, Integer, JSON, Boolean, Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime
-from typing import Dict, Any
 import uuid
 
-from .base import BaseModel
-from ....core.models.user import UserPlan
+from sqlalchemy import JSON, Boolean, Column, Integer, String
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import UUID
+
 from ....core.models.plan_configuration import (
     PlanConfiguration,
-    PlanLimits,
     PlanFeatures,
+    PlanLimits,
     PlanPricing,
 )
+from ....core.models.user import UserPlan
+from .base import BaseModel
 
 
 class PlanConfigurationModel(BaseModel):
@@ -117,7 +117,7 @@ class PlanConfigurationModel(BaseModel):
         limits_dict = {
             "max_sessions": plan_config.limits.max_sessions,
             "max_total_minutes": plan_config.limits.max_total_minutes,
-            "max_transcription_count": plan_config.limits.max_transcription_count,
+            "max_transcription_count": (plan_config.limits.max_transcription_count),
             "max_file_size_mb": plan_config.limits.max_file_size_mb,
             "export_formats": plan_config.limits.export_formats,
             "concurrent_processing": plan_config.limits.concurrent_processing,
@@ -168,7 +168,7 @@ class PlanConfigurationModel(BaseModel):
         self.limits = {
             "max_sessions": plan_config.limits.max_sessions,
             "max_total_minutes": plan_config.limits.max_total_minutes,
-            "max_transcription_count": plan_config.limits.max_transcription_count,
+            "max_transcription_count": (plan_config.limits.max_transcription_count),
             "max_file_size_mb": plan_config.limits.max_file_size_mb,
             "export_formats": plan_config.limits.export_formats,
             "concurrent_processing": plan_config.limits.concurrent_processing,

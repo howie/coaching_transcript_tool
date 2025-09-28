@@ -7,11 +7,13 @@ import os
 import sys
 
 # Add the src directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from coaching_assistant.infrastructure.db.session import get_database_session
-from coaching_assistant.core.config import Settings
 from sqlalchemy import text
+
+from coaching_assistant.core.config import Settings
+from coaching_assistant.infrastructure.db.session import get_database_session
+
 
 def add_missing_enum_values():
     """Add missing enum values to userplan enum."""
@@ -23,18 +25,20 @@ def add_missing_enum_values():
         session = get_database_session(settings)
         try:
             # Check current enum values
-            result = session.execute(text("""
+            result = session.execute(
+                text("""
                 SELECT enumlabel
                 FROM pg_enum
                 WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'userplan')
                 ORDER BY enumsortorder;
-            """))
+            """)
+            )
             current_values = [row[0] for row in result]
             print(f"📋 Current enum values: {current_values}")
 
             # Add missing values if not present
             missing_values = []
-            required_values = ['student', 'coaching_school']
+            required_values = ["student", "coaching_school"]
 
             for value in required_values:
                 if value not in current_values:
@@ -44,7 +48,9 @@ def add_missing_enum_values():
                 print(f"➕ Adding missing enum values: {missing_values}")
                 for value in missing_values:
                     try:
-                        session.execute(text(f"ALTER TYPE userplan ADD VALUE '{value}'"))
+                        session.execute(
+                            text(f"ALTER TYPE userplan ADD VALUE '{value}'")
+                        )
                         session.commit()
                         print(f"✅ Added enum value: {value}")
                     except Exception as e:
@@ -52,12 +58,14 @@ def add_missing_enum_values():
                         session.rollback()
 
                 # Verify the additions
-                result = session.execute(text("""
+                result = session.execute(
+                    text("""
                     SELECT enumlabel
                     FROM pg_enum
                     WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'userplan')
                     ORDER BY enumsortorder;
-                """))
+                """)
+                )
                 new_values = [row[0] for row in result]
                 print(f"🔄 Updated enum values: {new_values}")
             else:
@@ -71,6 +79,7 @@ def add_missing_enum_values():
 
     print("✅ Enum values update completed")
     return True
+
 
 if __name__ == "__main__":
     success = add_missing_enum_values()

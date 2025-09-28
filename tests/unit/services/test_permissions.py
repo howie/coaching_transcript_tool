@@ -1,14 +1,15 @@
 """Comprehensive tests for the permission system."""
 
-import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock
-from fastapi import HTTPException
-from sqlalchemy.orm import Session
 from uuid import uuid4
 
-from coaching_assistant.models.user import User, UserRole
+import pytest
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
 from coaching_assistant.models.role_audit_log import RoleAuditLog
+from coaching_assistant.models.user import User, UserRole
 from coaching_assistant.services.permissions import PermissionService
 
 
@@ -24,28 +25,28 @@ class TestUserRoleHierarchy:
         super_admin_user = User(role=UserRole.SUPER_ADMIN)
 
         # Test USER role
-        assert regular_user.has_role(UserRole.USER) == True
-        assert regular_user.has_role(UserRole.STAFF) == False
-        assert regular_user.has_role(UserRole.ADMIN) == False
-        assert regular_user.has_role(UserRole.SUPER_ADMIN) == False
+        assert regular_user.has_role(UserRole.USER) is True
+        assert regular_user.has_role(UserRole.STAFF) is False
+        assert regular_user.has_role(UserRole.ADMIN) is False
+        assert regular_user.has_role(UserRole.SUPER_ADMIN) is False
 
         # Test STAFF role
-        assert staff_user.has_role(UserRole.USER) == True
-        assert staff_user.has_role(UserRole.STAFF) == True
-        assert staff_user.has_role(UserRole.ADMIN) == False
-        assert staff_user.has_role(UserRole.SUPER_ADMIN) == False
+        assert staff_user.has_role(UserRole.USER) is True
+        assert staff_user.has_role(UserRole.STAFF) is True
+        assert staff_user.has_role(UserRole.ADMIN) is False
+        assert staff_user.has_role(UserRole.SUPER_ADMIN) is False
 
         # Test ADMIN role
-        assert admin_user.has_role(UserRole.USER) == True
-        assert admin_user.has_role(UserRole.STAFF) == True
-        assert admin_user.has_role(UserRole.ADMIN) == True
-        assert admin_user.has_role(UserRole.SUPER_ADMIN) == False
+        assert admin_user.has_role(UserRole.USER) is True
+        assert admin_user.has_role(UserRole.STAFF) is True
+        assert admin_user.has_role(UserRole.ADMIN) is True
+        assert admin_user.has_role(UserRole.SUPER_ADMIN) is False
 
         # Test SUPER_ADMIN role
-        assert super_admin_user.has_role(UserRole.USER) == True
-        assert super_admin_user.has_role(UserRole.STAFF) == True
-        assert super_admin_user.has_role(UserRole.ADMIN) == True
-        assert super_admin_user.has_role(UserRole.SUPER_ADMIN) == True
+        assert super_admin_user.has_role(UserRole.USER) is True
+        assert super_admin_user.has_role(UserRole.STAFF) is True
+        assert super_admin_user.has_role(UserRole.ADMIN) is True
+        assert super_admin_user.has_role(UserRole.SUPER_ADMIN) is True
 
     def test_is_admin_method(self):
         """Test is_admin helper method."""
@@ -54,10 +55,10 @@ class TestUserRoleHierarchy:
         admin_user = User(role=UserRole.ADMIN)
         super_admin_user = User(role=UserRole.SUPER_ADMIN)
 
-        assert regular_user.is_admin() == False
-        assert staff_user.is_admin() == False
-        assert admin_user.is_admin() == True
-        assert super_admin_user.is_admin() == True
+        assert regular_user.is_admin() is False
+        assert staff_user.is_admin() is False
+        assert admin_user.is_admin() is True
+        assert super_admin_user.is_admin() is True
 
     def test_is_staff_method(self):
         """Test is_staff helper method."""
@@ -66,10 +67,10 @@ class TestUserRoleHierarchy:
         admin_user = User(role=UserRole.ADMIN)
         super_admin_user = User(role=UserRole.SUPER_ADMIN)
 
-        assert regular_user.is_staff() == False
-        assert staff_user.is_staff() == True
-        assert admin_user.is_staff() == True
-        assert super_admin_user.is_staff() == True
+        assert regular_user.is_staff() is False
+        assert staff_user.is_staff() is True
+        assert admin_user.is_staff() is True
+        assert super_admin_user.is_staff() is True
 
     def test_is_super_admin_method(self):
         """Test is_super_admin helper method."""
@@ -78,10 +79,10 @@ class TestUserRoleHierarchy:
         admin_user = User(role=UserRole.ADMIN)
         super_admin_user = User(role=UserRole.SUPER_ADMIN)
 
-        assert regular_user.is_super_admin() == False
-        assert staff_user.is_super_admin() == False
-        assert admin_user.is_super_admin() == False
-        assert super_admin_user.is_super_admin() == True
+        assert regular_user.is_super_admin() is False
+        assert staff_user.is_super_admin() is False
+        assert admin_user.is_super_admin() is False
+        assert super_admin_user.is_super_admin() is True
 
 
 class TestPermissionService:
@@ -177,10 +178,7 @@ class TestPermissionService:
             )
 
         assert exc_info.value.status_code == 403
-        assert (
-            "Only super administrators can grant roles"
-            in exc_info.value.detail
-        )
+        assert "Only super administrators can grant roles" in exc_info.value.detail
 
     def test_grant_role_user_not_found(self):
         """Test granting role to non-existent user."""
@@ -238,16 +236,16 @@ class TestPermissionService:
         """Test IP allowlist when no restriction is configured."""
         user = User(allowed_ip_addresses=None)
 
-        assert self.service.check_ip_allowlist(user, "192.168.1.1") == True
-        assert self.service.check_ip_allowlist(user, "10.0.0.1") == True
+        assert self.service.check_ip_allowlist(user, "192.168.1.1") is True
+        assert self.service.check_ip_allowlist(user, "10.0.0.1") is True
 
     def test_check_ip_allowlist_with_restriction(self):
         """Test IP allowlist with configured restrictions."""
         user = User(allowed_ip_addresses=["192.168.1.1", "10.0.0.1"])
 
-        assert self.service.check_ip_allowlist(user, "192.168.1.1") == True
-        assert self.service.check_ip_allowlist(user, "10.0.0.1") == True
-        assert self.service.check_ip_allowlist(user, "172.16.0.1") == False
+        assert self.service.check_ip_allowlist(user, "192.168.1.1") is True
+        assert self.service.check_ip_allowlist(user, "10.0.0.1") is True
+        assert self.service.check_ip_allowlist(user, "172.16.0.1") is False
 
     def test_get_users_by_role(self):
         """Test getting users by role."""
@@ -340,7 +338,7 @@ class TestPermissionIntegration:
 
         # Verify role was granted
         assert updated_user.role == UserRole.ADMIN
-        assert updated_user.is_admin() == True
+        assert updated_user.is_admin() is True
 
         # Check audit log
         audit_logs = service.get_role_audit_log(user_id=regular_user.id)
@@ -357,7 +355,7 @@ class TestPermissionIntegration:
 
         # Verify role was revoked
         assert revoked_user.role == UserRole.USER
-        assert revoked_user.is_admin() == False
+        assert revoked_user.is_admin() is False
 
         # Check updated audit log
         audit_logs = service.get_role_audit_log(user_id=regular_user.id)

@@ -1,19 +1,21 @@
 """Usage log model for tracking individual transcription events."""
 
 import enum
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Boolean,
-    ForeignKey,
     DECIMAL,
+    JSON,
+    Boolean,
+    Column,
     DateTime,
     Enum,
+    ForeignKey,
+    Integer,
+    String,
 )
-from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import JSON
+from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 
@@ -127,9 +129,7 @@ class UsageLog(BaseModel):
             "billing_reason": self.billing_reason,
             "user_plan": self.user_plan,
             "language": self.language,
-            "created_at": (
-                self.created_at.isoformat() if self.created_at else None
-            ),
+            "created_at": (self.created_at.isoformat() if self.created_at else None),
             "transcription_completed_at": (
                 self.transcription_completed_at.isoformat()
                 if self.transcription_completed_at

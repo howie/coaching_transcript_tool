@@ -1,17 +1,18 @@
 """Usage tracking service for comprehensive usage analytics."""
 
-from typing import Dict, Any, Optional, Union
+import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Any, Dict, Optional, Union
 from uuid import UUID
-from sqlalchemy.orm import Session as DBSession
-from sqlalchemy import and_
-import logging
 
-from ..models.user import User, UserPlan
+from sqlalchemy import and_
+from sqlalchemy.orm import Session as DBSession
+
 from ..models.session import Session as SessionModel
-from ..models.usage_log import UsageLog, TranscriptionType
 from ..models.usage_analytics import UsageAnalytics
+from ..models.usage_log import TranscriptionType, UsageLog
+from ..models.user import User, UserPlan
 
 logger = logging.getLogger(__name__)
 
@@ -108,9 +109,7 @@ class UsageTrackingService:
         if cost_usd is None and is_billable:
             # Basic cost calculation (can be enhanced later)
             # Google STT: ~$0.016 per minute, AssemblyAI: ~$0.01 per minute
-            rate_per_minute = (
-                0.016 if session.stt_provider == "google" else 0.01
-            )
+            rate_per_minute = 0.016 if session.stt_provider == "google" else 0.01
             cost_usd = (
                 (session.duration_seconds / 60.0) * rate_per_minute
                 if session.duration_seconds
@@ -123,15 +122,11 @@ class UsageTrackingService:
             session_id=session.id,
             client_id=getattr(session, "client_id", None),
             duration_minutes=(
-                int(session.duration_seconds / 60)
-                if session.duration_seconds
-                else 0
+                int(session.duration_seconds / 60) if session.duration_seconds else 0
             ),
             duration_seconds=session.duration_seconds or 0,
             cost_usd=(
-                Decimal(str(cost_usd))
-                if is_billable and cost_usd
-                else Decimal("0")
+                Decimal(str(cost_usd)) if is_billable and cost_usd else Decimal("0")
             ),
             stt_provider=session.stt_provider,
             transcription_type=transcription_type,
@@ -177,8 +172,7 @@ class UsageTrackingService:
         )
         if (
             not user.current_month_start
-            or user.current_month_start.replace(tzinfo=timezone.utc)
-            < current_month
+            or user.current_month_start.replace(tzinfo=timezone.utc) < current_month
         ):
             logger.info(f"🔄 Resetting monthly usage for user {user.id}")
             user.usage_minutes = 0
@@ -215,12 +209,9 @@ class UsageTrackingService:
         )
         if (
             not user.current_month_start
-            or user.current_month_start.replace(tzinfo=timezone.utc)
-            < current_month
+            or user.current_month_start.replace(tzinfo=timezone.utc) < current_month
         ):
-            logger.info(
-                f"🔄 Resetting monthly session count for user {user.id}"
-            )
+            logger.info(f"🔄 Resetting monthly session count for user {user.id}")
             user.session_count = 0
             user.usage_minutes = 0
             user.transcription_count = 0
@@ -255,9 +246,7 @@ class UsageTrackingService:
 
         if not analytics:
             # Create new monthly analytics record
-            logger.info(
-                f"📝 Creating new monthly analytics record for {month_year}"
-            )
+            logger.info(f"📝 Creating new monthly analytics record for {month_year}")
             analytics = UsageAnalytics(
                 user_id=user_id,
                 month_year=month_year,
@@ -277,9 +266,7 @@ class UsageTrackingService:
         elif usage_log.transcription_type == TranscriptionType.RETRY_FAILED:
             analytics.free_retries = (analytics.free_retries or 0) + 1
         elif usage_log.transcription_type == TranscriptionType.RETRY_SUCCESS:
-            analytics.paid_retranscriptions = (
-                analytics.paid_retranscriptions or 0
-            ) + 1
+            analytics.paid_retranscriptions = (analytics.paid_retranscriptions or 0) + 1
 
         analytics.transcriptions_completed = (
             analytics.transcriptions_completed or 0
@@ -287,9 +274,9 @@ class UsageTrackingService:
         analytics.total_minutes_processed = Decimal(
             str(analytics.total_minutes_processed or 0)
         ) + Decimal(str(usage_log.duration_minutes))
-        analytics.total_cost_usd = Decimal(
-            str(analytics.total_cost_usd or 0)
-        ) + (usage_log.cost_usd or Decimal("0"))
+        analytics.total_cost_usd = Decimal(str(analytics.total_cost_usd or 0)) + (
+            usage_log.cost_usd or Decimal("0")
+        )
 
         # Update provider breakdown
         if usage_log.stt_provider == "google":
@@ -308,9 +295,7 @@ class UsageTrackingService:
             f"✅ Monthly analytics updated: transcriptions={analytics.transcriptions_completed}, minutes={analytics.total_minutes_processed}"
         )
 
-    def get_user_usage_summary(
-        self, user_id: Union[str, UUID]
-    ) -> Dict[str, Any]:
+    def get_user_usage_summary(self, user_id: Union[str, UUID]) -> Dict[str, Any]:
         """Get comprehensive usage summary for user."""
 
         logger.info(f"📊 Getting usage summary for user {user_id}")
@@ -368,7 +353,7 @@ class UsageTrackingService:
             },
             "lifetime_totals": {
                 "sessions_created": user.total_sessions_created,
-                "transcriptions_generated": user.total_transcriptions_generated,
+                "transcriptions_generated": (user.total_transcriptions_generated),
                 "minutes_processed": float(user.total_minutes_processed),
                 "cost_usd": float(user.total_cost_usd),
             },
@@ -405,9 +390,7 @@ class UsageTrackingService:
     ) -> Dict[str, Any]:
         """Get system-wide analytics for admins."""
 
-        logger.info(
-            f"📊 Getting admin analytics from {start_date} to {end_date}"
-        )
+        logger.info(f"📊 Getting admin analytics from {start_date} to {end_date}")
 
         if not start_date:
             start_date = datetime.now(timezone.utc) - timedelta(
@@ -432,12 +415,8 @@ class UsageTrackingService:
         # Calculate aggregate metrics
         total_transcriptions = len(usage_logs)
         total_minutes = sum(log.duration_minutes for log in usage_logs)
-        total_cost = sum(
-            float(log.cost_usd) for log in usage_logs if log.cost_usd
-        )
-        billable_transcriptions = len(
-            [log for log in usage_logs if log.is_billable]
-        )
+        total_cost = sum(float(log.cost_usd) for log in usage_logs if log.cost_usd)
+        billable_transcriptions = len([log for log in usage_logs if log.is_billable])
 
         # Plan distribution
         plan_stats = {}
@@ -447,9 +426,7 @@ class UsageTrackingService:
                 plan_stats[plan] = {"count": 0, "minutes": 0, "cost": 0.0}
             plan_stats[plan]["count"] += 1
             plan_stats[plan]["minutes"] += log.duration_minutes
-            plan_stats[plan]["cost"] += (
-                float(log.cost_usd) if log.cost_usd else 0.0
-            )
+            plan_stats[plan]["cost"] += float(log.cost_usd) if log.cost_usd else 0.0
 
         # Provider breakdown
         provider_stats = {}
@@ -500,9 +477,7 @@ class UsageTrackingService:
     ) -> Dict[str, Any]:
         """Get detailed usage history for a user."""
 
-        logger.info(
-            f"📊 Getting {months} months of usage history for user {user_id}"
-        )
+        logger.info(f"📊 Getting {months} months of usage history for user {user_id}")
 
         # Convert string to UUID if needed
         if isinstance(user_id, str):
@@ -523,9 +498,7 @@ class UsageTrackingService:
         )
 
         return {
-            "user_id": (
-                str(user_id) if not isinstance(user_id, str) else user_id
-            ),
+            "user_id": (str(user_id) if not isinstance(user_id, str) else user_id),
             "months_requested": months,
             "start_date": start_date.isoformat(),
             "total_logs": len(usage_logs),
@@ -576,9 +549,7 @@ class UsageTrackingService:
         )
 
         return {
-            "user_id": (
-                str(user_id) if not isinstance(user_id, str) else user_id
-            ),
+            "user_id": (str(user_id) if not isinstance(user_id, str) else user_id),
             "plan": user.plan.value,
             "analytics_period": "12_months",
             "monthly_data": [
@@ -586,24 +557,22 @@ class UsageTrackingService:
                     "month_year": analytics.month_year,
                     "plan": analytics.primary_plan,
                     "sessions_created": analytics.sessions_created,
-                    "transcriptions_completed": analytics.transcriptions_completed,
-                    "minutes_processed": float(
-                        analytics.total_minutes_processed
-                    ),
+                    "transcriptions_completed": (analytics.transcriptions_completed),
+                    "minutes_processed": float(analytics.total_minutes_processed),
                     "cost_usd": float(analytics.total_cost_usd),
                     "billing_breakdown": {
                         "original": analytics.original_transcriptions,
                         "free_retries": analytics.free_retries,
-                        "paid_retranscriptions": analytics.paid_retranscriptions,
+                        "paid_retranscriptions": (analytics.paid_retranscriptions),
                     },
                     "provider_breakdown": {
                         "google_minutes": float(analytics.google_stt_minutes),
-                        "assemblyai_minutes": float(
-                            analytics.assemblyai_minutes
-                        ),
+                        "assemblyai_minutes": float(analytics.assemblyai_minutes),
                     },
-                    "avg_duration_minutes": analytics.avg_session_duration_minutes,
-                    "avg_cost_per_transcription": analytics.avg_cost_per_transcription,
+                    "avg_duration_minutes": (analytics.avg_session_duration_minutes),
+                    "avg_cost_per_transcription": (
+                        analytics.avg_cost_per_transcription
+                    ),
                 }
                 for analytics in monthly_analytics
             ],
@@ -612,10 +581,6 @@ class UsageTrackingService:
     def _get_month_end(self, date: datetime) -> datetime:
         """Get end of month for given date."""
         if date.month == 12:
-            return date.replace(
-                year=date.year + 1, month=1, day=1
-            ) - timedelta(days=1)
+            return date.replace(year=date.year + 1, month=1, day=1) - timedelta(days=1)
         else:
-            return date.replace(month=date.month + 1, day=1) - timedelta(
-                days=1
-            )
+            return date.replace(month=date.month + 1, day=1) - timedelta(days=1)

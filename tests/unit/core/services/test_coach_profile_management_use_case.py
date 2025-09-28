@@ -1,18 +1,21 @@
 """Unit tests for CoachProfileManagementUseCase."""
 
-import pytest
 from unittest.mock import Mock
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-from src.coaching_assistant.core.services.coach_profile_management_use_case import CoachProfileManagementUseCase
+import pytest
+
 from src.coaching_assistant.core.models.coach_profile import (
-    CoachProfile,
-    CoachingLanguage,
-    CommunicationTool,
     CoachExperience,
+    CoachingLanguage,
+    CoachProfile,
+    CommunicationTool,
 )
 from src.coaching_assistant.core.models.coaching_plan import CoachingPlan
 from src.coaching_assistant.core.models.user import User, UserPlan
+from src.coaching_assistant.core.services.coach_profile_management_use_case import (
+    CoachProfileManagementUseCase,
+)
 
 
 class TestCoachProfileManagementUseCase:
@@ -46,7 +49,10 @@ class TestCoachProfileManagementUseCase:
             bio="Experienced coach",
             experience_level=CoachExperience.ADVANCED,
             languages=[CoachingLanguage.ENGLISH, CoachingLanguage.MANDARIN],
-            communication_tools=[CommunicationTool.ZOOM, CommunicationTool.LINE],
+            communication_tools=[
+                CommunicationTool.ZOOM,
+                CommunicationTool.LINE,
+            ],
             is_public=True,
         )
 
@@ -72,7 +78,9 @@ class TestCoachProfileManagementUseCase:
         # Assert
         assert result == self.sample_profile
         self.mock_user_repo.get_by_id.assert_called_once_with(self.user_id)
-        self.mock_coach_profile_repo.get_by_user_id.assert_called_once_with(self.user_id)
+        self.mock_coach_profile_repo.get_by_user_id.assert_called_once_with(
+            self.user_id
+        )
 
     def test_get_profile_user_not_found(self):
         """Test profile retrieval when user doesn't exist."""
@@ -201,14 +209,18 @@ class TestCoachProfileManagementUseCase:
         # Arrange
         self.mock_user_repo.get_by_id.return_value = self.sample_user
         self.mock_coach_profile_repo.get_by_user_id.return_value = self.sample_profile
-        self.mock_coach_profile_repo.get_coaching_plans_by_profile_id.return_value = [self.sample_plan]
+        self.mock_coach_profile_repo.get_coaching_plans_by_profile_id.return_value = [
+            self.sample_plan
+        ]
 
         # Act
         result = self.use_case.get_coaching_plans(self.user_id)
 
         # Assert
         assert result == [self.sample_plan]
-        self.mock_coach_profile_repo.get_coaching_plans_by_profile_id.assert_called_once_with(self.profile_id)
+        self.mock_coach_profile_repo.get_coaching_plans_by_profile_id.assert_called_once_with(
+            self.profile_id
+        )
 
     def test_get_coaching_plans_no_profile(self):
         """Test coaching plans retrieval when profile doesn't exist."""
@@ -239,7 +251,9 @@ class TestCoachProfileManagementUseCase:
         # Assert
         assert result == self.sample_plan
         assert plan_data.coach_profile_id == self.profile_id
-        self.mock_coach_profile_repo.save_coaching_plan.assert_called_once_with(plan_data)
+        self.mock_coach_profile_repo.save_coaching_plan.assert_called_once_with(
+            plan_data
+        )
 
     def test_create_plan_no_profile(self):
         """Test coaching plan creation when profile doesn't exist."""
@@ -258,7 +272,9 @@ class TestCoachProfileManagementUseCase:
         # Arrange
         self.mock_user_repo.get_by_id.return_value = self.sample_user
         self.mock_coach_profile_repo.get_by_user_id.return_value = self.sample_profile
-        self.mock_coach_profile_repo.get_coaching_plan_by_id.return_value = self.sample_plan
+        self.mock_coach_profile_repo.get_coaching_plan_by_id.return_value = (
+            self.sample_plan
+        )
 
         updated_plan = CoachingPlan(
             title="Updated Coaching",
@@ -273,7 +289,9 @@ class TestCoachProfileManagementUseCase:
         assert result == updated_plan
         assert updated_plan.id == self.plan_id
         assert updated_plan.coach_profile_id == self.profile_id
-        self.mock_coach_profile_repo.save_coaching_plan.assert_called_once_with(updated_plan)
+        self.mock_coach_profile_repo.save_coaching_plan.assert_called_once_with(
+            updated_plan
+        )
 
     def test_update_plan_not_found(self):
         """Test coaching plan update when plan doesn't exist."""
@@ -313,7 +331,9 @@ class TestCoachProfileManagementUseCase:
         # Arrange
         self.mock_user_repo.get_by_id.return_value = self.sample_user
         self.mock_coach_profile_repo.get_by_user_id.return_value = self.sample_profile
-        self.mock_coach_profile_repo.get_coaching_plan_by_id.return_value = self.sample_plan
+        self.mock_coach_profile_repo.get_coaching_plan_by_id.return_value = (
+            self.sample_plan
+        )
         self.mock_coach_profile_repo.delete_coaching_plan.return_value = True
 
         # Act
@@ -321,7 +341,9 @@ class TestCoachProfileManagementUseCase:
 
         # Assert
         assert result is True
-        self.mock_coach_profile_repo.delete_coaching_plan.assert_called_once_with(self.plan_id)
+        self.mock_coach_profile_repo.delete_coaching_plan.assert_called_once_with(
+            self.plan_id
+        )
 
     def test_delete_plan_not_found(self):
         """Test coaching plan deletion when plan doesn't exist."""
@@ -359,7 +381,9 @@ class TestCoachProfileManagementUseCase:
         """Test getting all verified coaches."""
         # Arrange
         verified_coaches = [self.sample_profile]
-        self.mock_coach_profile_repo.get_all_verified_coaches.return_value = verified_coaches
+        self.mock_coach_profile_repo.get_all_verified_coaches.return_value = (
+            verified_coaches
+        )
 
         # Act
         result = self.use_case.get_all_verified_coaches()

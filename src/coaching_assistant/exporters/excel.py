@@ -2,10 +2,12 @@
 """
 Module for exporting transcript data to Excel format.
 """
-from typing import List, Dict, Any
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+
 import io
+from typing import Any, Dict, List
+
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
 
 
 def calculate_column_widths(worksheet) -> None:
@@ -30,9 +32,7 @@ def calculate_column_widths(worksheet) -> None:
                 max_length = max(max_length, len(str(cell.value)))
 
         # Add some padding and set the column width
-        adjusted_width = (
-            max_length + 2
-        ) * 1.1  # Add padding and a little extra
+        adjusted_width = (max_length + 2) * 1.1  # Add padding and a little extra
 
         # Apply min and max width constraints
         if adjusted_width < min_width:
@@ -93,17 +93,20 @@ def generate_excel(
         max_lines = 1
         for cell in row:
             if cell.value:
-                # Estimate number of lines based on content length and column width
+                # Estimate number of lines based on content length and column
+                # width
                 col_width = ws.column_dimensions[cell.column_letter].width
                 if col_width > 0:  # Make sure column width is valid
-                    # Rough estimate: ~10 characters per inch, 1 line per 2 inches
+                    # Rough estimate: ~10 characters per inch, 1 line per 2
+                    # inches
                     content_length = len(str(cell.value))
                     estimated_lines = max(
                         1, int((content_length / (col_width * 1.5)) + 0.5)
                     )
                     max_lines = max(max_lines, estimated_lines)
 
-        # Set row height (15 points per line, minimum 30 points, maximum 300 points)
+        # Set row height (15 points per line, minimum 30 points, maximum 300
+        # points)
         row_height = min(max(30, max_lines * 15), 300)
         ws.row_dimensions[row_idx].height = row_height
 
@@ -144,9 +147,7 @@ def _apply_styles(ws, data, font_size, coach_color, client_color):
         )
 
     for row_idx, item in enumerate(data, start=2):
-        fill = (
-            coach_fill if item["speaker"] in ["Coach", "教練"] else client_fill
-        )
+        fill = coach_fill if item["speaker"] in ["Coach", "教練"] else client_fill
         for col_idx in range(1, 4):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.font = cell_font

@@ -6,11 +6,19 @@ data type errors like the SessionSource.CLIENT enum mismatch bug.
 
 import pytest
 
-from src.coaching_assistant.core.models.coaching_session import SessionSource as DomainSessionSource
-from src.coaching_assistant.models.coaching_session import SessionSource as DatabaseSessionSource
-from src.coaching_assistant.core.models.transcript import SpeakerRole as DomainSpeakerRole
-from src.coaching_assistant.models.transcript import SpeakerRole as DatabaseSpeakerRole
+from src.coaching_assistant.core.models.coaching_session import (
+    SessionSource as DomainSessionSource,
+)
+from src.coaching_assistant.core.models.transcript import (
+    SpeakerRole as DomainSpeakerRole,
+)
 from src.coaching_assistant.core.models.user import UserPlan as DomainUserPlan
+from src.coaching_assistant.models.coaching_session import (
+    SessionSource as DatabaseSessionSource,
+)
+from src.coaching_assistant.models.transcript import (
+    SpeakerRole as DatabaseSpeakerRole,
+)
 from src.coaching_assistant.models.user import UserPlan as DatabaseUserPlan
 
 
@@ -23,7 +31,10 @@ class TestSessionSourceConversion:
             (DomainSessionSource.CLIENT, DatabaseSessionSource.CLIENT),
             (DomainSessionSource.FRIEND, DatabaseSessionSource.FRIEND),
             (DomainSessionSource.CLASSMATE, DatabaseSessionSource.CLASSMATE),
-            (DomainSessionSource.SUBORDINATE, DatabaseSessionSource.SUBORDINATE),
+            (
+                DomainSessionSource.SUBORDINATE,
+                DatabaseSessionSource.SUBORDINATE,
+            ),
         ]
 
         for domain_value, expected_db_value in conversions:
@@ -38,7 +49,10 @@ class TestSessionSourceConversion:
             (DatabaseSessionSource.CLIENT, DomainSessionSource.CLIENT),
             (DatabaseSessionSource.FRIEND, DomainSessionSource.FRIEND),
             (DatabaseSessionSource.CLASSMATE, DomainSessionSource.CLASSMATE),
-            (DatabaseSessionSource.SUBORDINATE, DomainSessionSource.SUBORDINATE),
+            (
+                DatabaseSessionSource.SUBORDINATE,
+                DomainSessionSource.SUBORDINATE,
+            ),
         ]
 
         for db_value, expected_domain_value in conversions:
@@ -214,7 +228,9 @@ class TestEnumConversionHelpers:
         """Test handling of None values in enum conversions."""
         # This tests edge cases where enum fields might be None
         # Important for optional enum fields in domain models
-        assert None is None  # Placeholder - actual None handling depends on implementation
+        assert (
+            None is None
+        )  # Placeholder - actual None handling depends on implementation
 
     def test_case_sensitivity(self):
         """Test that enum values are case sensitive."""

@@ -9,13 +9,14 @@ This module provides a language-agnostic framework for:
 Uses Factory Pattern to support different languages with specialized processors.
 """
 
-import re
 import logging
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Union
-from pydantic import BaseModel, field_validator
 from enum import Enum
+from typing import List, Optional, Tuple, Union
+
+from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -145,9 +146,7 @@ class BaseProcessorConfig:
     """Base processor configuration."""
 
     smoothing: BaseSmoothingConfig = field(default_factory=BaseSmoothingConfig)
-    punctuation: BasePunctuationConfig = field(
-        default_factory=BasePunctuationConfig
-    )
+    punctuation: BasePunctuationConfig = field(default_factory=BasePunctuationConfig)
 
 
 # Internal helper classes
@@ -267,18 +266,14 @@ class EnglishSmoothingConfig(BaseSmoothingConfig):
 class ChineseProcessorConfig(BaseProcessorConfig):
     """Chinese processor configuration."""
 
-    smoothing: ChineseSmoothingConfig = field(
-        default_factory=ChineseSmoothingConfig
-    )
+    smoothing: ChineseSmoothingConfig = field(default_factory=ChineseSmoothingConfig)
 
 
 @dataclass
 class EnglishProcessorConfig(BaseProcessorConfig):
     """English processor configuration."""
 
-    smoothing: EnglishSmoothingConfig = field(
-        default_factory=EnglishSmoothingConfig
-    )
+    smoothing: EnglishSmoothingConfig = field(default_factory=EnglishSmoothingConfig)
 
 
 # Language-Specific Processors
@@ -514,8 +509,7 @@ class EnglishProcessor(LanguageProcessor):
 
         # Exclamation indicators
         if any(
-            word in text_lower
-            for word in ["wow", "amazing", "incredible", "fantastic"]
+            word in text_lower for word in ["wow", "amazing", "incredible", "fantastic"]
         ):
             return "!"
 
@@ -543,14 +537,10 @@ class LanguageProcessorFactory:
     }
 
     @classmethod
-    def create_processor(
-        cls, language: SupportedLanguage
-    ) -> LanguageProcessor:
+    def create_processor(cls, language: SupportedLanguage) -> LanguageProcessor:
         """Create a processor for the specified language."""
         if language not in cls._processors:
-            raise UnsupportedLanguageError(
-                f"Language {language} is not supported"
-            )
+            raise UnsupportedLanguageError(f"Language {language} is not supported")
 
         return cls._processors[language]()
 
@@ -586,16 +576,12 @@ class SpeakerBoundarySmoother:
         self.language_processor = language_processor
         self.stats = HeuristicStats()
 
-    def smooth_boundaries(
-        self, utterances: List[Utterance]
-    ) -> List[Utterance]:
+    def smooth_boundaries(self, utterances: List[Utterance]) -> List[Utterance]:
         """Apply multi-pass iterative smoothing to speaker boundaries."""
         smoothed = utterances.copy()
 
         for pass_num in range(self.config.n_pass):
-            logger.debug(
-                f"Starting smoothing pass {pass_num + 1}/{self.config.n_pass}"
-            )
+            logger.debug(f"Starting smoothing pass {pass_num + 1}/{self.config.n_pass}")
             changed = False
             new_smoothed = []
 
@@ -609,12 +595,14 @@ class SpeakerBoundarySmoother:
                         merged_utterance, remaining_utterance = merge_result
                         new_smoothed.append(merged_utterance)
 
-                        # If there's a remaining utterance, we need to consider it in next iteration
+                        # If there's a remaining utterance, we need to consider
+                        # it in next iteration
                         if remaining_utterance:
                             # Replace the next utterance with the remaining one
                             smoothed[i + 1] = remaining_utterance
                         else:
-                            # No remaining utterance, skip the next one completely
+                            # No remaining utterance, skip the next one
+                            # completely
                             i += 1
 
                         changed = True
@@ -628,9 +616,7 @@ class SpeakerBoundarySmoother:
 
             smoothed = new_smoothed
             if not changed:
-                logger.debug(
-                    f"No changes in pass {pass_num + 1}, stopping early"
-                )
+                logger.debug(f"No changes in pass {pass_num + 1}, stopping early")
                 break
 
         logger.info(f"Boundary smoothing completed. Stats: {self.stats}")
@@ -681,7 +667,6 @@ class SpeakerBoundarySmoother:
                 current.words[-1].text if current.words else ""
             )
         ):
-
             words_to_move = self._get_words_within_duration(
                 next_utt.words, self.config.th_short_head_sec
             )
@@ -690,9 +675,7 @@ class SpeakerBoundarySmoother:
                 self._calculate_total_duration(words_to_move)
                 <= self.config.th_max_move_sec
             ):
-                return self._merge_words_to_previous(
-                    current, next_utt, words_to_move
-                )
+                return self._merge_words_to_previous(current, next_utt, words_to_move)
 
         return None
 
@@ -715,14 +698,8 @@ class SpeakerBoundarySmoother:
         filler_words = self.language_processor.get_filler_words()
         th_filler_max_sec = getattr(self.config, "th_filler_max_sec", 0.6)
 
-        if (
-            first_word.text in filler_words
-            and word_duration < th_filler_max_sec
-        ):
-
-            return self._merge_words_to_previous(
-                current, next_utt, [first_word]
-            )
+        if first_word.text in filler_words and word_duration < th_filler_max_sec:
+            return self._merge_words_to_previous(current, next_utt, [first_word])
 
         return None
 
@@ -760,9 +737,7 @@ class SpeakerBoundarySmoother:
                 self._calculate_total_duration(echo_words)
                 <= self.config.th_echo_max_sec
             ):
-                return self._merge_words_to_previous(
-                    current, next_utt, echo_words
-                )
+                return self._merge_words_to_previous(current, next_utt, echo_words)
 
         return None
 
@@ -823,9 +798,7 @@ class SpeakerBoundarySmoother:
         previous_text = "".join(word.text for word in previous_words)
         return quoted_content in previous_text
 
-    def _get_quoted_words(
-        self, words: List[WordTimestamp]
-    ) -> List[WordTimestamp]:
+    def _get_quoted_words(self, words: List[WordTimestamp]) -> List[WordTimestamp]:
         """Get words that are within quotation marks."""
         result = []
         in_quote = False
@@ -924,9 +897,7 @@ class PunctuationRepairer:
         self.config = config
         self.language_processor = language_processor
 
-    def repair_punctuation(
-        self, utterances: List[Utterance]
-    ) -> List[ProcessedSegment]:
+    def repair_punctuation(self, utterances: List[Utterance]) -> List[ProcessedSegment]:
         """Repair punctuation and split sentences based on pause timing."""
         all_words = self._flatten_words_with_speaker(utterances)
         sentences = self._split_into_sentences(all_words)
@@ -977,10 +948,7 @@ class PunctuationRepairer:
 
                 if gap > self.config.th_sent_gap_sec:
                     sentence_text = "".join(w.text for w in current_sentence)
-                    if (
-                        len(sentence_text.strip())
-                        >= self.config.min_sentence_length
-                    ):
+                    if len(sentence_text.strip()) >= self.config.min_sentence_length:
                         sentences.append(current_sentence)
                         current_sentence = []
 
@@ -1001,18 +969,14 @@ class PunctuationRepairer:
         text_with_punct = self.language_processor.normalize_punctuation(
             text + punctuation
         )
-        text_with_punct = self.language_processor.process_smart_quotes(
-            text_with_punct
-        )
+        text_with_punct = self.language_processor.process_smart_quotes(text_with_punct)
 
         return ProcessedSegment(
             speaker=words[0].speaker,
             start_ms=words[0].start,
             end_ms=words[-1].end,
             text=text_with_punct,
-            source_utterance_indices=list(
-                set(word.utterance_index for word in words)
-            ),
+            source_utterance_indices=list(set(word.utterance_index for word in words)),
             note=f"添加標點：{punctuation}",
         )
 
@@ -1047,9 +1011,7 @@ class TranscriptSmoothingService:
         self._validate_input(transcript_json)
 
         # Parse input
-        transcript_input = TranscriptInput(
-            **transcript_json, language=language
-        )
+        transcript_input = TranscriptInput(**transcript_json, language=language)
 
         # Detect/determine language
         if language == "auto":
@@ -1099,21 +1061,14 @@ class TranscriptSmoothingService:
         smoothed_utterances = boundary_smoother.smooth_boundaries(
             transcript_input.utterances
         )
-        final_segments = punctuation_repairer.repair_punctuation(
-            smoothed_utterances
-        )
+        final_segments = punctuation_repairer.repair_punctuation(smoothed_utterances)
 
         # Calculate statistics
-        original_word_count = sum(
-            len(utt.words) for utt in transcript_input.utterances
-        )
         moved_word_count = (
             boundary_smoother.stats.short_first_segment
             + boundary_smoother.stats.filler_words
         )
-        merged_segments = len(transcript_input.utterances) - len(
-            smoothed_utterances
-        )
+        merged_segments = len(transcript_input.utterances) - len(smoothed_utterances)
         split_segments = len(final_segments) - len(smoothed_utterances)
 
         stats = ProcessingStats(
@@ -1132,9 +1087,7 @@ class TranscriptSmoothingService:
     def _validate_input(self, transcript_json: dict) -> None:
         """Validate input transcript data."""
         if "utterances" not in transcript_json:
-            raise TranscriptProcessingError(
-                "Utterances missing from transcript"
-            )
+            raise TranscriptProcessingError("Utterances missing from transcript")
 
         utterances = transcript_json["utterances"]
         if not utterances:
@@ -1146,9 +1099,7 @@ class TranscriptSmoothingService:
                     f"Words missing in utterance {i}; cannot perform smoothing"
                 )
 
-    def _update_config_from_kwargs(
-        self, config: BaseProcessorConfig, **kwargs
-    ):
+    def _update_config_from_kwargs(self, config: BaseProcessorConfig, **kwargs):
         """Update configuration from keyword arguments."""
         # Update smoothing config
         for key, value in kwargs.items():

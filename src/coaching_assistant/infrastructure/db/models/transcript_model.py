@@ -1,19 +1,25 @@
 """TranscriptSegment, SessionRole, and SegmentRole ORM models with domain conversion."""
 
-from sqlalchemy import Column, Integer, ForeignKey, Float, Text, Enum as SQLEnum, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
-from datetime import datetime
-from typing import List, Optional
 import uuid
 
-from .base import BaseModel
-from ....core.models.transcript import (
-    TranscriptSegment,
-    SessionRole,
-    SegmentRole,
-    SpeakerRole,
+from sqlalchemy import (
+    Column,
+    Float,
+    ForeignKey,
+    Integer,
+    Text,
+    UniqueConstraint,
 )
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import UUID
+
+from ....core.models.transcript import (
+    SegmentRole,
+    SessionRole,
+    SpeakerRole,
+    TranscriptSegment,
+)
+from .base import BaseModel
 
 
 class TranscriptSegmentModel(BaseModel):
@@ -64,7 +70,8 @@ class TranscriptSegmentModel(BaseModel):
             end_seconds=self.end_seconds,
             content=self.content,
             confidence=self.confidence,
-            speaker_role=SpeakerRole.UNKNOWN,  # Default value, role handled via separate table
+            speaker_role=SpeakerRole.UNKNOWN,
+            # Default value, role handled via separate table
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -121,9 +128,7 @@ class SessionRoleModel(BaseModel):
 
     # Ensure unique speaker_id per session
     __table_args__ = (
-        UniqueConstraint(
-            "session_id", "speaker_id", name="unique_session_speaker"
-        ),
+        UniqueConstraint("session_id", "speaker_id", name="unique_session_speaker"),
     )
 
     def to_domain(self) -> SessionRole:

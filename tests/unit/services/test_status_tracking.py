@@ -3,9 +3,10 @@
 Test script for the new status tracking implementation.
 """
 
-import requests
 import sys
 from datetime import datetime
+
+import requests
 
 # Configuration
 BASE_URL = "http://localhost:8000"
@@ -40,14 +41,10 @@ def test_status_endpoint_structure():
             )
             return True
         elif response.status_code == 401:
-            print_step(
-                "Status endpoint requires authentication (expected)", True
-            )
+            print_step("Status endpoint requires authentication (expected)", True)
             return True
         else:
-            print_step(
-                f"Unexpected status code: {response.status_code}", False
-            )
+            print_step(f"Unexpected status code: {response.status_code}", False)
             return False
 
     except requests.exceptions.ConnectionError:
@@ -63,8 +60,9 @@ def test_database_schema():
     print_step("Testing database schema")
 
     try:
-        from sqlalchemy import create_engine, text
         import os
+
+        from sqlalchemy import create_engine, text
 
         # Get database URL from environment
         db_url = os.environ.get("DATABASE_URL")
@@ -157,22 +155,16 @@ def test_api_documentation():
                 # Check if it has the GET method
                 endpoint = paths[status_path]
                 if "get" in endpoint:
-                    print_step(
-                        "GET method documented for status endpoint", True
-                    )
+                    print_step("GET method documented for status endpoint", True)
                     return True
                 else:
-                    print_step(
-                        "GET method not found in status endpoint", False
-                    )
+                    print_step("GET method not found in status endpoint", False)
                     return False
             else:
                 print_step("Status endpoint not found in OpenAPI spec", False)
                 return False
         else:
-            print_step(
-                f"Cannot access OpenAPI spec: {response.status_code}", False
-            )
+            print_step(f"Cannot access OpenAPI spec: {response.status_code}", False)
             return False
 
     except Exception as e:

@@ -1,29 +1,29 @@
 """API endpoints for usage tracking and analytics."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from typing import Optional, Dict, Any
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import Any, Dict, Optional
 
-from .auth import get_current_user_dependency
-from ..dependencies import require_admin  # Use the new permission system
+from fastapi import APIRouter, Depends, HTTPException, Query
+
 from ...core.models.user import User
-from .dependencies import (
-    get_user_usage_use_case,
-    get_usage_history_use_case,
-    get_user_analytics_use_case,
-    get_admin_analytics_use_case,
-    get_specific_user_usage_use_case,
-    get_monthly_usage_report_use_case,
-)
 from ...core.services.usage_tracking_use_case import (
-    GetUserUsageUseCase,
+    GetAdminAnalyticsUseCase,
+    GetMonthlyUsageReportUseCase,
+    GetSpecificUserUsageUseCase,
     GetUsageHistoryUseCase,
     GetUserAnalyticsUseCase,
-    GetAdminAnalyticsUseCase,
-    GetSpecificUserUsageUseCase,
-    GetMonthlyUsageReportUseCase,
+    GetUserUsageUseCase,
+)
+from ..dependencies import require_admin  # Use the new permission system
+from .auth import get_current_user_dependency
+from .dependencies import (
+    get_admin_analytics_use_case,
+    get_monthly_usage_report_use_case,
+    get_specific_user_usage_use_case,
+    get_usage_history_use_case,
+    get_user_analytics_use_case,
+    get_user_usage_use_case,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,18 +50,16 @@ async def get_usage_summary(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"❌ System error getting usage summary: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail="Failed to get usage summary"
-        )
+        raise HTTPException(status_code=500, detail="Failed to get usage summary")
 
 
 @router.get("/history")
 async def get_usage_history(
-    months: int = Query(
-        3, ge=1, le=12, description="Number of months of history"
-    ),
+    months: int = Query(3, ge=1, le=12, description="Number of months of history"),
     current_user: User = Depends(get_current_user_dependency),
-    get_usage_history_use_case: GetUsageHistoryUseCase = Depends(get_usage_history_use_case),
+    get_usage_history_use_case: GetUsageHistoryUseCase = Depends(
+        get_usage_history_use_case
+    ),
 ) -> Dict[str, Any]:
     """Get user's detailed usage history.
 
@@ -82,15 +80,15 @@ async def get_usage_history(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"❌ System error getting usage history: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail="Failed to get usage history"
-        )
+        raise HTTPException(status_code=500, detail="Failed to get usage history")
 
 
 @router.get("/analytics")
 async def get_user_analytics(
     current_user: User = Depends(get_current_user_dependency),
-    get_user_analytics_use_case: GetUserAnalyticsUseCase = Depends(get_user_analytics_use_case),
+    get_user_analytics_use_case: GetUserAnalyticsUseCase = Depends(
+        get_user_analytics_use_case
+    ),
 ) -> Dict[str, Any]:
     """Get user's usage analytics and trends.
 
@@ -110,9 +108,7 @@ async def get_user_analytics(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"❌ System error getting usage analytics: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail="Failed to get usage analytics"
-        )
+        raise HTTPException(status_code=500, detail="Failed to get usage analytics")
 
 
 @router.get("/current-month")
@@ -168,14 +164,14 @@ async def get_admin_usage_analytics(
     start_date: Optional[datetime] = Query(
         None, description="Start date for analytics"
     ),
-    end_date: Optional[datetime] = Query(
-        None, description="End date for analytics"
-    ),
+    end_date: Optional[datetime] = Query(None, description="End date for analytics"),
     plan_filter: Optional[str] = Query(
         None, description="Filter by plan (free, pro, enterprise)"
     ),
     admin_user: User = Depends(require_admin),
-    get_admin_analytics_use_case: GetAdminAnalyticsUseCase = Depends(get_admin_analytics_use_case),
+    get_admin_analytics_use_case: GetAdminAnalyticsUseCase = Depends(
+        get_admin_analytics_use_case
+    ),
 ) -> Dict[str, Any]:
     """Get system-wide usage analytics (Admin only).
 
@@ -200,16 +196,16 @@ async def get_admin_usage_analytics(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"❌ System error getting admin analytics: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail="Failed to get admin analytics"
-        )
+        raise HTTPException(status_code=500, detail="Failed to get admin analytics")
 
 
 @router.get("/admin/user/{user_id}")
 async def get_specific_user_usage(
     user_id: str,
-    admin_user = Depends(require_admin),
-    get_specific_user_usage_use_case: GetSpecificUserUsageUseCase = Depends(get_specific_user_usage_use_case),
+    admin_user=Depends(require_admin),
+    get_specific_user_usage_use_case: GetSpecificUserUsageUseCase = Depends(
+        get_specific_user_usage_use_case
+    ),
 ) -> Dict[str, Any]:
     """Get usage summary for a specific user (Admin only).
 
@@ -219,9 +215,7 @@ async def get_specific_user_usage(
     Returns the same data as /usage/summary but for any user.
     """
 
-    logger.info(
-        f"📊 Admin {admin_user.id} requesting usage for user {user_id}"
-    )
+    logger.info(f"📊 Admin {admin_user.id} requesting usage for user {user_id}")
 
     try:
         return get_specific_user_usage_use_case.execute(user_id)
@@ -236,8 +230,10 @@ async def get_specific_user_usage(
 @router.get("/admin/monthly-report")
 async def get_monthly_usage_report(
     month_year: str = Query(..., description="Month in YYYY-MM format"),
-    admin_user = Depends(require_admin),
-    get_monthly_usage_report_use_case: GetMonthlyUsageReportUseCase = Depends(get_monthly_usage_report_use_case),
+    admin_user=Depends(require_admin),
+    get_monthly_usage_report_use_case: GetMonthlyUsageReportUseCase = Depends(
+        get_monthly_usage_report_use_case
+    ),
 ) -> Dict[str, Any]:
     """Get detailed monthly usage report (Admin only).
 
@@ -247,9 +243,7 @@ async def get_monthly_usage_report(
     Returns aggregated data for all users for the specified month.
     """
 
-    logger.info(
-        f"📊 Admin {admin_user.id} requesting monthly report for {month_year}"
-    )
+    logger.info(f"📊 Admin {admin_user.id} requesting monthly report for {month_year}")
 
     try:
         return get_monthly_usage_report_use_case.execute(month_year)

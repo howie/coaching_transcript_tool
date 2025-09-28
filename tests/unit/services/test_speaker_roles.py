@@ -9,7 +9,8 @@ from coaching_assistant.models.transcript import (
 def test_speaker_roles_update():
     """Test updating speaker roles for a completed session."""
     # This is a unit test that validates the logic, not a full integration test
-    # The actual API would require authentication setup which is complex in tests
+    # The actual API would require authentication setup which is complex in
+    # tests
 
     # Test the SpeakerRole enum
     assert SpeakerRole.COACH.value == "COACH"
@@ -52,9 +53,7 @@ def test_role_assignment_logic():
         assert role_str in ["coach", "client"]
 
         # Convert to enum
-        role_enum = (
-            SpeakerRole.COACH if role_str == "coach" else SpeakerRole.CLIENT
-        )
+        role_enum = SpeakerRole.COACH if role_str == "coach" else SpeakerRole.CLIENT
         assert role_enum in [SpeakerRole.COACH, SpeakerRole.CLIENT]
 
 

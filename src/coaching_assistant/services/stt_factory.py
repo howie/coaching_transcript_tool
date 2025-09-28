@@ -2,10 +2,11 @@
 
 import logging
 from typing import Literal, Optional
-from .stt_provider import STTProvider, STTProviderError
-from .google_stt import GoogleSTTProvider
-from .assemblyai_stt import AssemblyAIProvider
+
 from ..core.config import settings
+from .assemblyai_stt import AssemblyAIProvider
+from .google_stt import GoogleSTTProvider
+from .stt_provider import STTProvider, STTProviderError
 
 logger = logging.getLogger(__name__)
 
@@ -51,17 +52,11 @@ class STTProviderFactory:
                 return AssemblyAIProvider()
             elif provider_type == "whisper":
                 # TODO: Implement WhisperSTTProvider when needed
-                raise NotImplementedError(
-                    "Whisper STT provider not yet implemented"
-                )
+                raise NotImplementedError("Whisper STT provider not yet implemented")
             else:
-                raise ValueError(
-                    f"Unsupported STT provider type: {provider_type}"
-                )
+                raise ValueError(f"Unsupported STT provider type: {provider_type}")
         except Exception as e:
-            logger.error(
-                f"Failed to create STT provider '{provider_type}': {e}"
-            )
+            logger.error(f"Failed to create STT provider '{provider_type}': {e}")
             raise STTProviderError(
                 f"Failed to create STT provider '{provider_type}': {e}"
             )

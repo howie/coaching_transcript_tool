@@ -5,31 +5,28 @@ operations. All external dependencies are injected through repository ports.
 """
 
 from __future__ import annotations
-from typing import List, Optional, Dict, Any
-from uuid import UUID, uuid4
-from datetime import datetime
-from decimal import Decimal
-from dataclasses import replace
-from copy import deepcopy
 
-from ..repositories.ports import (
-    SessionRepoPort,
-    UserRepoPort,
-    UsageLogRepoPort,
-    TranscriptRepoPort,
-    PlanConfigurationRepoPort,
-)
-from ..models.session import Session, SessionStatus
-from ..models.user import User, UserPlan
-from ..models.usage_log import UsageLog, TranscriptionType
-from ..models.transcript import TranscriptSegment
+import logging
+import re
+from copy import deepcopy
+from dataclasses import replace
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+from uuid import UUID, uuid4
+
 from ...exceptions import DomainException
 from ..config import settings
-import logging
-import json
-import re
-import io
-from datetime import timedelta
+from ..models.session import Session, SessionStatus
+from ..models.transcript import TranscriptSegment
+from ..models.usage_log import TranscriptionType, UsageLog
+from ..models.user import User
+from ..repositories.ports import (
+    PlanConfigurationRepoPort,
+    SessionRepoPort,
+    TranscriptRepoPort,
+    UsageLogRepoPort,
+    UserRepoPort,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -139,18 +136,23 @@ class SessionCreationUseCase:
         max_sessions = limits.max_sessions if limits else -1
         max_minutes = limits.max_total_minutes if limits else -1
 
-        # Use current billing period for all limits (avoids counting historical usage)
+        # Use current billing period for all limits (avoids counting historical
+        # usage)
         billing_period_start = user.current_month_start
 
         # Check session count limit
         if max_sessions > 0:
-            current_session_count = self.session_repo.count_user_sessions(user.id, since=billing_period_start)
+            current_session_count = self.session_repo.count_user_sessions(
+                user.id, since=billing_period_start
+            )
             if current_session_count >= max_sessions:
                 raise DomainException(f"Session limit exceeded: {max_sessions}")
 
         # Check total minutes limit
         if max_minutes > 0:
-            current_total_minutes = self.session_repo.get_total_duration_minutes(user.id, since=billing_period_start)
+            current_total_minutes = self.session_repo.get_total_duration_minutes(
+                user.id, since=billing_period_start
+            )
             if current_total_minutes >= max_minutes:
                 raise DomainException(f"Total minutes limit exceeded: {max_minutes}")
 
@@ -207,11 +209,11 @@ class SessionRetrievalUseCase:
         self, session_id: UUID, user_id: UUID
     ) -> Optional[Dict[str, Any]]:
         """Get session with its transcript segments.
-        
+
         Args:
             session_id: Session ID
             user_id: User ID for ownership validation
-            
+
         Returns:
             Dictionary with session and transcript data, None if not found
         """
@@ -220,7 +222,7 @@ class SessionRetrievalUseCase:
             return None
 
         transcript_segments = self.transcript_repo.get_by_session_id(session_id)
-        
+
         return {
             "session": session,
             "transcript_segments": transcript_segments,
@@ -279,11 +281,23 @@ class SessionStatusUpdateUseCase:
     ) -> None:
         """Validate if status transition is allowed."""
         valid_transitions = {
-            SessionStatus.UPLOADING: [SessionStatus.PENDING, SessionStatus.FAILED],
-            SessionStatus.PENDING: [SessionStatus.PROCESSING, SessionStatus.FAILED],
-            SessionStatus.PROCESSING: [SessionStatus.COMPLETED, SessionStatus.FAILED],
+            SessionStatus.UPLOADING: [
+                SessionStatus.PENDING,
+                SessionStatus.FAILED,
+            ],
+            SessionStatus.PENDING: [
+                SessionStatus.PROCESSING,
+                SessionStatus.FAILED,
+            ],
+            SessionStatus.PROCESSING: [
+                SessionStatus.COMPLETED,
+                SessionStatus.FAILED,
+            ],
             SessionStatus.COMPLETED: [SessionStatus.PROCESSING],  # Allow reprocessing
-            SessionStatus.FAILED: [SessionStatus.PROCESSING, SessionStatus.UPLOADING],
+            SessionStatus.FAILED: [
+                SessionStatus.PROCESSING,
+                SessionStatus.UPLOADING,
+            ],
             SessionStatus.CANCELLED: [SessionStatus.UPLOADING],  # Allow restart
         }
 
@@ -340,15 +354,15 @@ class SessionTranscriptUpdateUseCase:
         user_id: UUID,
     ) -> List[TranscriptSegment]:
         """Update speaker roles for session transcript.
-        
+
         Args:
             session_id: Session ID
             role_mappings: Dictionary mapping speaker names to roles
             user_id: User ID for ownership validation
-            
+
         Returns:
             Updated transcript segments
-            
+
         Raises:
             ValueError: If session not found or not owned by user
         """
@@ -449,7 +463,9 @@ class SessionTranscriptUpdateUseCase:
 
         existing_segments = self.transcript_repo.get_by_session_id(session_id)
         segments_by_id = {
-            segment.id: segment for segment in existing_segments if segment.id is not None
+            segment.id: segment
+            for segment in existing_segments
+            if segment.id is not None
         }
 
         missing_segments = [
@@ -533,7 +549,10 @@ class SessionUploadManagementUseCase:
         if not session or session.user_id != user_id:
             raise ValueError("Session not found or access denied")
 
-        if session.status not in [SessionStatus.UPLOADING, SessionStatus.FAILED]:
+        if session.status not in [
+            SessionStatus.UPLOADING,
+            SessionStatus.FAILED,
+        ]:
             raise DomainException(
                 f"Cannot upload to session with status {session.status.value}. "
                 f"Upload is only allowed for sessions in UPLOADING or FAILED status."
@@ -686,7 +705,10 @@ class SessionTranscriptionManagementUseCase:
             raise ValueError("Session not found or access denied")
 
         # Validate session status
-        if session.status not in [SessionStatus.UPLOADING, SessionStatus.PENDING]:
+        if session.status not in [
+            SessionStatus.UPLOADING,
+            SessionStatus.PENDING,
+        ]:
             raise DomainException(
                 f"Cannot start transcription for session with status {session.status.value}"
             )
@@ -698,7 +720,7 @@ class SessionTranscriptionManagementUseCase:
         session = replace(
             session,
             status=SessionStatus.PROCESSING,
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
         session = self.session_repo.save(session)
 
@@ -741,9 +763,7 @@ class SessionTranscriptionManagementUseCase:
             )
 
         if not session.gcs_audio_path:
-            raise DomainException(
-                "No audio file found. Please re-upload the file."
-            )
+            raise DomainException("No audio file found. Please re-upload the file.")
 
         # Clear existing data and reset status
         session = replace(
@@ -751,7 +771,7 @@ class SessionTranscriptionManagementUseCase:
             status=SessionStatus.PROCESSING,
             error_message=None,
             transcription_job_id=None,
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
 
         # Clear existing transcript segments and processing status
@@ -792,9 +812,7 @@ class SessionTranscriptionManagementUseCase:
             raise ValueError("Session not found or access denied")
 
         session = replace(
-            session,
-            transcription_job_id=job_id,
-            updated_at=datetime.utcnow()
+            session, transcription_job_id=job_id, updated_at=datetime.utcnow()
         )
 
         return self.session_repo.save(session)
@@ -849,7 +867,9 @@ class SessionExportUseCase:
         # Validate format
         valid_formats = ["json", "vtt", "srt", "txt", "xlsx"]
         if format not in valid_formats:
-            raise DomainException(f"Invalid format. Supported: {', '.join(valid_formats)}")
+            raise DomainException(
+                f"Invalid format. Supported: {', '.join(valid_formats)}"
+            )
 
         return {
             "session": session,
@@ -929,7 +949,7 @@ class SessionStatusRetrievalUseCase:
             SessionStatus.PROCESSING: {
                 "progress_percentage": self._calculate_processing_progress(session),
                 "message": self._get_processing_message(session),
-                "started_at": session.transcription_started_at or session.updated_at,
+                "started_at": (session.transcription_started_at or session.updated_at),
                 "estimated_completion": self._estimate_completion_time(session),
                 "processing_speed": self._calculate_processing_speed(session),
                 "duration_processed": self._get_duration_processed(session),
@@ -938,8 +958,10 @@ class SessionStatusRetrievalUseCase:
             SessionStatus.COMPLETED: {
                 "progress_percentage": 100,
                 "message": "Transcription complete!",
-                "started_at": session.transcription_started_at or session.updated_at,
-                "estimated_completion": session.transcription_completed_at or session.updated_at,
+                "started_at": (session.transcription_started_at or session.updated_at),
+                "estimated_completion": (
+                    session.transcription_completed_at or session.updated_at
+                ),
                 "processing_speed": None,
                 "duration_processed": session.duration_seconds,
                 "duration_total": session.duration_seconds,
@@ -964,15 +986,18 @@ class SessionStatusRetrievalUseCase:
             },
         }
 
-        return status_map.get(session.status, {
-            "progress_percentage": 0,
-            "message": "Unknown status",
-            "started_at": None,
-            "estimated_completion": None,
-            "processing_speed": None,
-            "duration_processed": None,
-            "duration_total": session.duration_seconds,
-        })
+        return status_map.get(
+            session.status,
+            {
+                "progress_percentage": 0,
+                "message": "Unknown status",
+                "started_at": None,
+                "estimated_completion": None,
+                "processing_speed": None,
+                "duration_processed": None,
+                "duration_total": session.duration_seconds,
+            },
+        )
 
     def _calculate_processing_progress(self, session: Session) -> int:
         """Calculate processing progress percentage for processing sessions."""
@@ -980,12 +1005,14 @@ class SessionStatusRetrievalUseCase:
             return 0
 
         # If we have actual progress from session, use it
-        if hasattr(session, 'progress_percentage') and session.progress_percentage > 0:
+        if hasattr(session, "progress_percentage") and session.progress_percentage > 0:
             return min(95, session.progress_percentage)  # Cap at 95% until complete
 
         # Time-based progress estimate
         if session.transcription_started_at and session.duration_seconds:
-            elapsed = (datetime.utcnow() - session.transcription_started_at).total_seconds()
+            elapsed = (
+                datetime.utcnow() - session.transcription_started_at
+            ).total_seconds()
             # Assume 4x real-time processing speed
             expected_total = session.duration_seconds * 4
             if expected_total > 0:
@@ -1015,10 +1042,14 @@ class SessionStatusRetrievalUseCase:
             return None
 
         if session.transcription_started_at:
-            elapsed = (datetime.utcnow() - session.transcription_started_at).total_seconds()
+            elapsed = (
+                datetime.utcnow() - session.transcription_started_at
+            ).total_seconds()
             # Assume 4x real-time processing
             estimated_total = session.duration_seconds * 4
-            remaining = max(60, estimated_total - elapsed)  # At least 1 minute remaining
+            remaining = max(
+                60, estimated_total - elapsed
+            )  # At least 1 minute remaining
             return datetime.utcnow() + timedelta(seconds=remaining)
         else:
             # No start time, estimate 2 hours max
@@ -1026,14 +1057,17 @@ class SessionStatusRetrievalUseCase:
 
     def _calculate_processing_speed(self, session: Session) -> Optional[float]:
         """Calculate processing speed if available."""
-        if (session.status != SessionStatus.PROCESSING or
-            not session.transcription_started_at or
-            not session.duration_seconds):
+        if (
+            session.status != SessionStatus.PROCESSING
+            or not session.transcription_started_at
+            or not session.duration_seconds
+        ):
             return None
 
         elapsed = (datetime.utcnow() - session.transcription_started_at).total_seconds()
         if elapsed > 0:
-            # Rough estimate: assume we've processed proportionally to elapsed time
+            # Rough estimate: assume we've processed proportionally to elapsed
+            # time
             progress_ratio = self._calculate_processing_progress(session) / 100.0
             processed_duration = session.duration_seconds * progress_ratio
             if processed_duration > 0:
@@ -1165,7 +1199,7 @@ class SessionTranscriptUploadUseCase:
             session,
             duration_seconds=total_duration,
             status=SessionStatus.COMPLETED,
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
         session = self.session_repo.save(session)
 
@@ -1205,7 +1239,8 @@ class SessionTranscriptUploadUseCase:
                     if i < len(lines):
                         content_line = lines[i].strip()
 
-                        # Extract speaker and content from VTT format like "<v Speaker>Content"
+                        # Extract speaker and content from VTT format like "<v
+                        # Speaker>Content"
                         speaker_id = 1
                         content_text = content_line
 
@@ -1274,9 +1309,7 @@ class SessionTranscriptUploadUseCase:
                     speaker_name = speaker_match.group(1)
                     content_text = speaker_match.group(2)
                     speaker_id = (
-                        2
-                        if "客戶" in speaker_name or "Client" in speaker_name
-                        else 1
+                        2 if "客戶" in speaker_name or "Client" in speaker_name else 1
                     )
 
                 segments.append(
@@ -1305,10 +1338,7 @@ class SessionTranscriptUploadUseCase:
         if "." in seconds_str:
             seconds, milliseconds = seconds_str.split(".")
             total_seconds = (
-                hours * 3600
-                + minutes * 60
-                + int(seconds)
-                + int(milliseconds) / 1000
+                hours * 3600 + minutes * 60 + int(seconds) + int(milliseconds) / 1000
             )
         else:
             total_seconds = hours * 3600 + minutes * 60 + int(seconds_str)

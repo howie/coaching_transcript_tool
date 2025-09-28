@@ -7,17 +7,18 @@ and configuration system integration with the application.
 
 import os
 import tempfile
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from coaching_assistant.config.lemur_config import (
     LeMURConfigLoader,
-    get_lemur_config,
-    reload_lemur_config,
-    get_speaker_prompt,
-    get_punctuation_prompt,
     get_combined_prompt,
+    get_lemur_config,
+    get_punctuation_prompt,
+    get_speaker_prompt,
+    reload_lemur_config,
 )
 
 
@@ -173,7 +174,7 @@ templates:
     client_indicators: ["分享", "回答", "困惑", "目標"]
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             return f.name
 
@@ -200,7 +201,9 @@ templates:
             speaker_prompt = config.prompts.get_speaker_prompt("chinese", "default")
             assert "請分析以下對話轉錄" in speaker_prompt
 
-            punctuation_prompt = config.prompts.get_punctuation_prompt("chinese", "enhanced")
+            punctuation_prompt = config.prompts.get_punctuation_prompt(
+                "chinese", "enhanced"
+            )
             assert "深度優化中文轉錄" in punctuation_prompt
 
             combined_prompt = config.prompts.get_combined_prompt("chinese", "default")
@@ -215,7 +218,9 @@ templates:
 
         try:
             # Mock environment settings
-            with patch('coaching_assistant.config.lemur_config.settings') as mock_settings:
+            with patch(
+                "coaching_assistant.config.lemur_config.settings"
+            ) as mock_settings:
                 mock_settings.LEMUR_MODEL = "env_override_model"
                 mock_settings.LEMUR_MAX_OUTPUT_SIZE = "8000"
                 mock_settings.LEMUR_COMBINED_MODE = False
@@ -241,10 +246,7 @@ templates:
 
         try:
             loader = LeMURConfigLoader(config_file)
-            context = {
-                "transcript": "測試轉錄內容",
-                "speaker_count": 2
-            }
+            context = {"transcript": "測試轉錄內容", "speaker_count": 2}
 
             prompt = loader.get_prompt_with_context(
                 "speaker", "chinese", "enhanced", context
@@ -270,14 +272,18 @@ templates:
             chinese_speaker = config.prompts.get_speaker_prompt("chinese", "default")
             assert "請分析以下對話轉錄" in chinese_speaker
 
-            chinese_punctuation = config.prompts.get_punctuation_prompt("chinese", "default")
+            chinese_punctuation = config.prompts.get_punctuation_prompt(
+                "chinese", "default"
+            )
             assert "優化以下中文轉錄的標點符號" in chinese_punctuation
 
             # Test English prompts
             english_speaker = config.prompts.get_speaker_prompt("english", "default")
             assert "Analyze the following transcript" in english_speaker
 
-            english_punctuation = config.prompts.get_punctuation_prompt("english", "default")
+            english_punctuation = config.prompts.get_punctuation_prompt(
+                "english", "default"
+            )
             assert "Improve punctuation and readability" in english_punctuation
 
         finally:
@@ -312,10 +318,12 @@ templates:
         try:
             # Reset global state
             import coaching_assistant.config.lemur_config
+
             coaching_assistant.config.lemur_config._config_loader = None
 
             # Patch the default config path to use our test file
-            with patch.object(LeMURConfigLoader, '__init__') as mock_init:
+            with patch.object(LeMURConfigLoader, "__init__") as mock_init:
+
                 def init_with_test_path(self, config_path=None):
                     if config_path is None:
                         config_path = config_file
@@ -346,7 +354,10 @@ templates:
         try:
             # Reset global state and use test config
             import coaching_assistant.config.lemur_config
-            coaching_assistant.config.lemur_config._config_loader = LeMURConfigLoader(config_file)
+
+            coaching_assistant.config.lemur_config._config_loader = LeMURConfigLoader(
+                config_file
+            )
 
             # Test speaker prompt function
             speaker_prompt = get_speaker_prompt("chinese", "default")
@@ -372,11 +383,13 @@ templates:
         """Should handle missing configuration file gracefully."""
         # Reset global state
         import coaching_assistant.config.lemur_config
+
         coaching_assistant.config.lemur_config._config_loader = None
 
         nonexistent_path = "/nonexistent/config.yaml"
 
-        with patch.object(LeMURConfigLoader, '__init__') as mock_init:
+        with patch.object(LeMURConfigLoader, "__init__") as mock_init:
+
             def init_with_missing_path(self, config_path=None):
                 if config_path is None:
                     config_path = nonexistent_path
@@ -401,7 +414,7 @@ speaker_identification:
     default: "Minimal speaker prompt"
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(minimal_yaml)
             config_file = f.name
 
@@ -422,7 +435,9 @@ speaker_identification:
             assert speaker_prompt == "Minimal speaker prompt"
 
             # Missing prompts should return None
-            punctuation_prompt = config.prompts.get_punctuation_prompt("chinese", "default")
+            punctuation_prompt = config.prompts.get_punctuation_prompt(
+                "chinese", "default"
+            )
             assert punctuation_prompt is None
 
         finally:

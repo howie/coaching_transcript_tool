@@ -5,16 +5,19 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
 following Clean Architecture principles.
 """
 
-from typing import Optional, List, Dict, Any
-from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy.orm import Session as DBSession
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import func, and_, desc
+from typing import Any, Dict, List
+from uuid import UUID
 
+from sqlalchemy import and_, desc, func
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session as DBSession
+
+from ....core.models.usage_analytics import (
+    UsageAnalytics as UsageAnalyticsDomain,
+)
 from ....core.repositories.ports import UsageAnalyticsRepoPort
-from ....core.models.usage_analytics import UsageAnalytics as UsageAnalyticsDomain
 from ....models.usage_analytics import UsageAnalytics as UsageAnalyticsORM
 
 
@@ -51,7 +54,7 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
                 .filter(
                     and_(
                         UsageAnalyticsORM.user_id == user_id,
-                        UsageAnalyticsORM.month_year == month_year
+                        UsageAnalyticsORM.month_year == month_year,
                     )
                 )
                 .first()
@@ -67,7 +70,7 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
                 primary_plan="FREE",  # Default, should be updated
                 period_start=datetime(year, month, 1),
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
             )
 
             self.session.add(orm_analytics)
@@ -77,7 +80,9 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error creating/retrieving monthly analytics") from e
+            raise RuntimeError(
+                "Database error creating/retrieving monthly analytics"
+            ) from e
 
     def update(self, analytics: UsageAnalyticsDomain) -> UsageAnalyticsDomain:
         """Update analytics record.
@@ -98,7 +103,9 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
 
             # Update all fields from domain model
             orm_analytics.primary_plan = analytics.primary_plan
-            orm_analytics.plan_changed_during_month = analytics.plan_changed_during_month
+            orm_analytics.plan_changed_during_month = (
+                analytics.plan_changed_during_month
+            )
             orm_analytics.sessions_created = analytics.sessions_created
             orm_analytics.transcriptions_completed = analytics.transcriptions_completed
             orm_analytics.total_minutes_processed = analytics.total_minutes_processed
@@ -119,7 +126,7 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error updating analytics") from e
+            raise RuntimeError("Database error updating analytics") from e
 
     def get_by_user(self, user_id: UUID) -> List[UsageAnalyticsDomain]:
         """Get all analytics records for a user.
@@ -138,10 +145,15 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
                 .all()
             )
 
-            return [self._orm_to_domain(orm_analytics) for orm_analytics in orm_analytics_list]
+            return [
+                self._orm_to_domain(orm_analytics)
+                for orm_analytics in orm_analytics_list
+            ]
 
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving analytics for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error retrieving analytics for user {user_id}"
+            ) from e
 
     def get_by_month_year(self, month_year: str) -> List[UsageAnalyticsDomain]:
         """Get all analytics records for a specific month.
@@ -159,10 +171,15 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
                 .all()
             )
 
-            return [self._orm_to_domain(orm_analytics) for orm_analytics in orm_analytics_list]
+            return [
+                self._orm_to_domain(orm_analytics)
+                for orm_analytics in orm_analytics_list
+            ]
 
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving analytics for month {month_year}") from e
+            raise RuntimeError(
+                f"Database error retrieving analytics for month {month_year}"
+            ) from e
 
     def get_admin_analytics(self) -> Dict[str, Any]:
         """Get system-wide analytics for admin users.
@@ -173,34 +190,40 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
         try:
             # Get the latest 90 days of analytics data
             total_users = (
-                self.session.query(func.count(func.distinct(UsageAnalyticsORM.user_id)))
-                .scalar()
+                self.session.query(
+                    func.count(func.distinct(UsageAnalyticsORM.user_id))
+                ).scalar()
             ) or 0
 
             total_transcriptions = (
-                self.session.query(func.sum(UsageAnalyticsORM.transcriptions_completed))
-                .scalar()
+                self.session.query(
+                    func.sum(UsageAnalyticsORM.transcriptions_completed)
+                ).scalar()
             ) or 0
 
             total_minutes = (
-                self.session.query(func.sum(UsageAnalyticsORM.total_minutes_processed))
-                .scalar()
-            ) or Decimal('0')
+                self.session.query(
+                    func.sum(UsageAnalyticsORM.total_minutes_processed)
+                ).scalar()
+            ) or Decimal("0")
 
             total_cost = (
-                self.session.query(func.sum(UsageAnalyticsORM.total_cost_usd))
-                .scalar()
-            ) or Decimal('0')
+                self.session.query(func.sum(UsageAnalyticsORM.total_cost_usd)).scalar()
+            ) or Decimal("0")
 
             # Plan breakdown
             plan_breakdown = {}
             plan_stats = (
                 self.session.query(
                     UsageAnalyticsORM.primary_plan,
-                    func.count(func.distinct(UsageAnalyticsORM.user_id)).label('users'),
-                    func.sum(UsageAnalyticsORM.transcriptions_completed).label('transcriptions'),
-                    func.sum(UsageAnalyticsORM.total_minutes_processed).label('minutes'),
-                    func.sum(UsageAnalyticsORM.total_cost_usd).label('cost')
+                    func.count(func.distinct(UsageAnalyticsORM.user_id)).label("users"),
+                    func.sum(UsageAnalyticsORM.transcriptions_completed).label(
+                        "transcriptions"
+                    ),
+                    func.sum(UsageAnalyticsORM.total_minutes_processed).label(
+                        "minutes"
+                    ),
+                    func.sum(UsageAnalyticsORM.total_cost_usd).label("cost"),
                 )
                 .group_by(UsageAnalyticsORM.primary_plan)
                 .all()
@@ -211,19 +234,21 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
                     "users": users or 0,
                     "transcriptions": transcriptions or 0,
                     "minutes": float(minutes or 0),
-                    "cost": float(cost or 0)
+                    "cost": float(cost or 0),
                 }
 
             # Provider breakdown
             total_google_minutes = (
-                self.session.query(func.sum(UsageAnalyticsORM.google_stt_minutes))
-                .scalar()
-            ) or Decimal('0')
+                self.session.query(
+                    func.sum(UsageAnalyticsORM.google_stt_minutes)
+                ).scalar()
+            ) or Decimal("0")
 
             total_assemblyai_minutes = (
-                self.session.query(func.sum(UsageAnalyticsORM.assemblyai_minutes))
-                .scalar()
-            ) or Decimal('0')
+                self.session.query(
+                    func.sum(UsageAnalyticsORM.assemblyai_minutes)
+                ).scalar()
+            ) or Decimal("0")
 
             total_provider_minutes = total_google_minutes + total_assemblyai_minutes
 
@@ -234,7 +259,7 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
                         float(total_google_minutes / total_provider_minutes * 100)
                         if total_provider_minutes > 0
                         else 0
-                    )
+                    ),
                 },
                 "assemblyai": {
                     "minutes": float(total_assemblyai_minutes),
@@ -242,8 +267,8 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
                         float(total_assemblyai_minutes / total_provider_minutes * 100)
                         if total_provider_minutes > 0
                         else 0
-                    )
-                }
+                    ),
+                },
             }
 
             return {
@@ -254,11 +279,11 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
                 "total_cost_usd": float(total_cost),
                 "plan_breakdown": plan_breakdown,
                 "provider_breakdown": provider_breakdown,
-                "generated_at": datetime.utcnow().isoformat()
+                "generated_at": datetime.utcnow().isoformat(),
             }
 
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving admin analytics") from e
+            raise RuntimeError("Database error retrieving admin analytics") from e
 
     def _orm_to_domain(self, orm_analytics: UsageAnalyticsORM) -> UsageAnalyticsDomain:
         """Convert ORM model to domain entity.
@@ -293,7 +318,9 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
         )
 
 
-def create_usage_analytics_repository(session: DBSession) -> UsageAnalyticsRepoPort:
+def create_usage_analytics_repository(
+    session: DBSession,
+) -> UsageAnalyticsRepoPort:
     """Factory function to create a usage analytics repository.
 
     Args:

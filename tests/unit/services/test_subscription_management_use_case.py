@@ -1,26 +1,27 @@
 """Unit tests for subscription management use cases."""
 
-import pytest
+from datetime import date, datetime
 from unittest.mock import Mock, patch
-from uuid import uuid4, UUID
-from datetime import datetime, date
+from uuid import uuid4
+
+import pytest
 
 from src.coaching_assistant.core.services.subscription_management_use_case import (
     SubscriptionCreationUseCase,
-    SubscriptionRetrievalUseCase,
     SubscriptionModificationUseCase,
+    SubscriptionRetrievalUseCase,
 )
-from src.coaching_assistant.models.user import User, UserPlan
+from src.coaching_assistant.exceptions import DomainException
 from src.coaching_assistant.models.ecpay_subscription import (
+    ECPayAuthStatus,
+    ECPayCreditAuthorization,
+    PaymentStatus,
     SaasSubscription,
     SubscriptionPayment,
-    ECPayCreditAuthorization,
     SubscriptionStatus,
-    PaymentStatus,
-    ECPayAuthStatus,
 )
 from src.coaching_assistant.models.plan_configuration import PlanConfiguration
-from src.coaching_assistant.exceptions import DomainException
+from src.coaching_assistant.models.user import User, UserPlan
 
 
 @pytest.fixture
@@ -59,7 +60,7 @@ def sample_plan_config():
         id=1,
         plan_type=UserPlan.PRO,
         monthly_price_twd_cents=99900,  # 999 TWD
-        annual_price_twd_cents=999900,   # 9999 TWD
+        annual_price_twd_cents=999900,  # 9999 TWD
     )
 
 
@@ -82,7 +83,9 @@ class TestSubscriptionCreationUseCase:
         """Test successful authorization creation."""
         # Arrange
         self.mock_user_repo.get_by_id.return_value = sample_user
-        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = None
+        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = (
+            None
+        )
 
         mock_auth = ECPayCreditAuthorization(
             id=uuid4(),
@@ -163,10 +166,15 @@ class TestSubscriptionCreationUseCase:
             auth_status=ECPayAuthStatus.ACTIVE,
             created_at=datetime.utcnow(),
         )
-        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = existing_auth
+        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = (
+            existing_auth
+        )
 
         # Act & Assert
-        with pytest.raises(DomainException, match="already has an active credit card authorization"):
+        with pytest.raises(
+            DomainException,
+            match="already has an active credit card authorization",
+        ):
             self.use_case.create_authorization(
                 user_id=sample_user.id,
                 plan_id="PRO",
@@ -183,7 +191,9 @@ class TestSubscriptionCreationUseCase:
             user_id=sample_user.id,
             auth_status=ECPayAuthStatus.ACTIVE,
         )
-        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = mock_auth
+        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = (
+            mock_auth
+        )
         self.mock_subscription_repo.get_subscription_by_user_id.return_value = None
         self.mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
 
@@ -208,7 +218,9 @@ class TestSubscriptionCreationUseCase:
         assert result.user_id == sample_user.id
         assert result.plan_id == "PRO"
         assert result.billing_cycle == "monthly"
-        self.mock_user_repo.update_plan.assert_called_once_with(sample_user.id, UserPlan.PRO)
+        self.mock_user_repo.update_plan.assert_called_once_with(
+            sample_user.id, UserPlan.PRO
+        )
 
 
 class TestSubscriptionRetrievalUseCase:
@@ -240,7 +252,9 @@ class TestSubscriptionRetrievalUseCase:
             current_period_end=date.today(),
             created_at=datetime.utcnow(),
         )
-        self.mock_subscription_repo.get_subscription_by_user_id.return_value = mock_subscription
+        self.mock_subscription_repo.get_subscription_by_user_id.return_value = (
+            mock_subscription
+        )
 
         mock_auth = ECPayCreditAuthorization(
             id=uuid4(),
@@ -249,7 +263,9 @@ class TestSubscriptionRetrievalUseCase:
             auth_status=ECPayAuthStatus.ACTIVE,
             created_at=datetime.utcnow(),
         )
-        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = mock_auth
+        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = (
+            mock_auth
+        )
 
         # Act
         result = self.use_case.get_current_subscription(sample_user.id)
@@ -275,7 +291,9 @@ class TestSubscriptionRetrievalUseCase:
         # Arrange
         self.mock_user_repo.get_by_id.return_value = sample_user
         self.mock_subscription_repo.get_subscription_by_user_id.return_value = None
-        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = None
+        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = (
+            None
+        )
 
         # Act
         result = self.use_case.get_current_subscription(sample_user.id)
@@ -288,7 +306,9 @@ class TestSubscriptionRetrievalUseCase:
         """Test subscription retrieval with database errors."""
         # Arrange
         self.mock_user_repo.get_by_id.return_value = sample_user
-        self.mock_subscription_repo.get_subscription_by_user_id.side_effect = Exception("Database error")
+        self.mock_subscription_repo.get_subscription_by_user_id.side_effect = Exception(
+            "Database error"
+        )
 
         # Act
         result = self.use_case.get_current_subscription(sample_user.id)
@@ -305,7 +325,9 @@ class TestSubscriptionRetrievalUseCase:
             user_id=sample_user.id,
             plan_id="PRO",
         )
-        self.mock_subscription_repo.get_subscription_by_user_id.return_value = mock_subscription
+        self.mock_subscription_repo.get_subscription_by_user_id.return_value = (
+            mock_subscription
+        )
 
         mock_payments = [
             SubscriptionPayment(
@@ -318,7 +340,9 @@ class TestSubscriptionRetrievalUseCase:
                 created_at=datetime.utcnow(),
             )
         ]
-        self.mock_subscription_repo.get_payments_for_subscription.return_value = mock_payments
+        self.mock_subscription_repo.get_payments_for_subscription.return_value = (
+            mock_payments
+        )
 
         # Act
         result = self.use_case.get_subscription_payments(sample_user.id)
@@ -366,7 +390,9 @@ class TestSubscriptionModificationUseCase:
             billing_cycle="monthly",
             status=SubscriptionStatus.ACTIVE,
         )
-        self.mock_subscription_repo.get_subscription_by_user_id.return_value = mock_subscription
+        self.mock_subscription_repo.get_subscription_by_user_id.return_value = (
+            mock_subscription
+        )
         self.mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
         self.mock_subscription_repo.save_subscription.return_value = mock_subscription
 
@@ -382,7 +408,9 @@ class TestSubscriptionModificationUseCase:
         assert result["operation"] == "upgrade"
         assert result["old_plan"] == "STUDENT"
         assert result["new_plan"] == "PRO"
-        self.mock_user_repo.update_plan.assert_called_once_with(sample_user.id, UserPlan.PRO)
+        self.mock_user_repo.update_plan.assert_called_once_with(
+            sample_user.id, UserPlan.PRO
+        )
 
     def test_cancel_subscription_immediate(self, sample_user):
         """Test immediate subscription cancellation."""
@@ -393,8 +421,12 @@ class TestSubscriptionModificationUseCase:
             plan_id="PRO",
             status=SubscriptionStatus.ACTIVE,
         )
-        self.mock_subscription_repo.get_subscription_by_user_id.return_value = mock_subscription
-        self.mock_subscription_repo.update_subscription_status.return_value = mock_subscription
+        self.mock_subscription_repo.get_subscription_by_user_id.return_value = (
+            mock_subscription
+        )
+        self.mock_subscription_repo.update_subscription_status.return_value = (
+            mock_subscription
+        )
 
         # Act
         result = self.use_case.cancel_subscription(
@@ -406,7 +438,9 @@ class TestSubscriptionModificationUseCase:
         # Assert
         assert result["success"] is True
         assert "canceled" in result["message"]
-        self.mock_user_repo.update_plan.assert_called_once_with(sample_user.id, UserPlan.FREE)
+        self.mock_user_repo.update_plan.assert_called_once_with(
+            sample_user.id, UserPlan.FREE
+        )
         self.mock_subscription_repo.update_subscription_status.assert_called_once()
 
     def test_cancel_subscription_period_end(self, sample_user):
@@ -418,7 +452,9 @@ class TestSubscriptionModificationUseCase:
             plan_id="PRO",
             status=SubscriptionStatus.ACTIVE,
         )
-        self.mock_subscription_repo.get_subscription_by_user_id.return_value = mock_subscription
+        self.mock_subscription_repo.get_subscription_by_user_id.return_value = (
+            mock_subscription
+        )
         self.mock_subscription_repo.save_subscription.return_value = mock_subscription
 
         # Act
@@ -431,7 +467,8 @@ class TestSubscriptionModificationUseCase:
         # Assert
         assert result["success"] is True
         assert "scheduled for cancellation" in result["message"]
-        # User plan should not be updated immediately for period-end cancellation
+        # User plan should not be updated immediately for period-end
+        # cancellation
         self.mock_user_repo.update_plan.assert_not_called()
 
     def test_cancel_subscription_not_found(self, sample_user):
@@ -456,7 +493,9 @@ class TestSubscriptionModificationUseCase:
             plan_id="PRO",
             status=SubscriptionStatus.CANCELLED,
         )
-        self.mock_subscription_repo.get_subscription_by_user_id.return_value = mock_subscription
+        self.mock_subscription_repo.get_subscription_by_user_id.return_value = (
+            mock_subscription
+        )
 
         # Act & Assert
         with pytest.raises(DomainException, match="Subscription is not active"):
@@ -477,11 +516,15 @@ class TestSubscriptionModificationUseCase:
             amount_twd=49900,  # 499 TWD
             current_period_end=date(2024, 12, 31),
         )
-        self.mock_subscription_repo.get_subscription_by_user_id.return_value = mock_subscription
+        self.mock_subscription_repo.get_subscription_by_user_id.return_value = (
+            mock_subscription
+        )
         self.mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
 
         # Act
-        with patch('src.coaching_assistant.core.services.subscription_management_use_case.datetime') as mock_datetime:
+        with patch(
+            "src.coaching_assistant.core.services.subscription_management_use_case.datetime"
+        ) as mock_datetime:
             mock_datetime.utcnow.return_value.date.return_value = date(2024, 12, 1)
             result = self.use_case.calculate_proration(
                 user_id=sample_user.id,
@@ -493,7 +536,10 @@ class TestSubscriptionModificationUseCase:
         assert "current_plan_remaining_value" in result
         assert "new_plan_prorated_cost" in result
         assert "net_charge" in result
-        assert result["new_plan_prorated_cost"] == sample_plan_config.monthly_price_twd_cents
+        assert (
+            result["new_plan_prorated_cost"]
+            == sample_plan_config.monthly_price_twd_cents
+        )
 
     def test_calculate_proration_no_subscription(self, sample_user):
         """Test proration calculation when user has no subscription."""
@@ -515,7 +561,7 @@ class TestSubscriptionModificationUseCase:
             id=2,
             plan_type=UserPlan.STUDENT,
             monthly_price_twd_cents=49900,  # 499 TWD
-            annual_price_twd_cents=499900,   # 4999 TWD
+            annual_price_twd_cents=499900,  # 4999 TWD
         )
 
         mock_subscription = SaasSubscription(
@@ -525,7 +571,9 @@ class TestSubscriptionModificationUseCase:
             billing_cycle="monthly",
             status=SubscriptionStatus.ACTIVE,
         )
-        self.mock_subscription_repo.get_subscription_by_user_id.return_value = mock_subscription
+        self.mock_subscription_repo.get_subscription_by_user_id.return_value = (
+            mock_subscription
+        )
         self.mock_plan_config_repo.get_by_plan_type.return_value = student_config
         self.mock_subscription_repo.save_subscription.return_value = mock_subscription
 
@@ -541,4 +589,6 @@ class TestSubscriptionModificationUseCase:
         assert result["operation"] == "downgrade"
         assert result["old_plan"] == "PRO"
         assert result["new_plan"] == "STUDENT"
-        self.mock_user_repo.update_plan.assert_called_once_with(sample_user.id, UserPlan.STUDENT)
+        self.mock_user_repo.update_plan.assert_called_once_with(
+            sample_user.id, UserPlan.STUDENT
+        )

@@ -8,29 +8,27 @@ Tests cover:
 - Error handling and edge cases
 """
 
-import pytest
-import tempfile
 import os
-from unittest.mock import Mock, patch, AsyncMock
-from datetime import datetime, timedelta
+import tempfile
+from unittest.mock import AsyncMock, Mock, patch
+from uuid import uuid4
+
+import httpx
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from uuid import uuid4
-import httpx
 
-from coaching_assistant.main import app
-from coaching_assistant.core.database import get_db
-from coaching_assistant.models import Base
 from coaching_assistant.api.auth import (
-    verify_password,
-    get_password_hash,
     create_access_token,
     create_refresh_token,
-    pwd_context,
+    get_password_hash,
+    verify_password,
 )
-from coaching_assistant.models.user import User, UserPlan
 from coaching_assistant.core.config import settings
+from coaching_assistant.core.database import get_db
+from coaching_assistant.main import app
+from coaching_assistant.models import Base
 
 
 class TestConfig:
@@ -46,7 +44,8 @@ class TestConfig:
         try:
             # Create engine with the temporary database
             engine = create_engine(
-                f"sqlite:///{db_path}", connect_args={"check_same_thread": False}
+                f"sqlite:///{db_path}",
+                connect_args={"check_same_thread": False},
             )
 
             # Create all tables
@@ -86,12 +85,13 @@ class TestConfig:
         """Create a test client with the test database"""
         # Disable reCAPTCHA for tests
         from coaching_assistant.core.config import settings
+
         original_recaptcha_enabled = settings.RECAPTCHA_ENABLED
         settings.RECAPTCHA_ENABLED = False
-        
+
         with TestClient(app) as client:
             yield client
-            
+
         # Restore original setting
         settings.RECAPTCHA_ENABLED = original_recaptcha_enabled
 
@@ -224,10 +224,14 @@ class TestJWTTokens(TestConfig):
         from jose import jwt
 
         access_payload = jwt.decode(
-            access_token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+            access_token,
+            settings.SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
         )
         refresh_payload = jwt.decode(
-            refresh_token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+            refresh_token,
+            settings.SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
         )
 
         # Refresh token should expire later than access token
@@ -311,7 +315,10 @@ class TestLoginEndpoint(TestConfig):
         """Test login with wrong password"""
         response = test_client.post(
             "/api/v1/auth/login",
-            data={"username": sample_user_data["email"], "password": "wrongpassword"},
+            data={
+                "username": sample_user_data["email"],
+                "password": "wrongpassword",
+            },
         )
 
         assert response.status_code == 401
@@ -321,7 +328,10 @@ class TestLoginEndpoint(TestConfig):
         """Test login with non-existent user"""
         response = test_client.post(
             "/api/v1/auth/login",
-            data={"username": "nonexistent@example.com", "password": "password"},
+            data={
+                "username": "nonexistent@example.com",
+                "password": "password",
+            },
         )
 
         assert response.status_code == 401
@@ -454,7 +464,8 @@ class TestGoogleOAuthEndpoints(TestConfig):
 
         # Test the callback
         response = test_client.get(
-            "/api/v1/auth/google/callback?code=fake_auth_code", follow_redirects=False
+            "/api/v1/auth/google/callback?code=fake_auth_code",
+            follow_redirects=False,
         )
 
         assert response.status_code == 307  # Redirect to frontend
@@ -469,7 +480,8 @@ class TestGoogleOAuthEndpoints(TestConfig):
         self, mock_client, test_client, created_user
     ):
         """Test Google OAuth callback for existing user"""
-        # First, create a user manually with the same email that Google will return
+        # First, create a user manually with the same email that Google will
+        # return
         google_email = created_user["email"]  # Use the same email
 
         # Mock Google's responses
@@ -495,7 +507,8 @@ class TestGoogleOAuthEndpoints(TestConfig):
 
         # Test the callback
         response = test_client.get(
-            "/api/v1/auth/google/callback?code=fake_auth_code", follow_redirects=False
+            "/api/v1/auth/google/callback?code=fake_auth_code",
+            follow_redirects=False,
         )
 
         assert response.status_code == 307  # Redirect to frontend

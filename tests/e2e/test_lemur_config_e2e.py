@@ -7,15 +7,16 @@ and integration with actual LeMUR transcript processing services.
 
 import os
 import tempfile
-import pytest
 from unittest.mock import patch
 
+import pytest
+
 from coaching_assistant.config.lemur_config import (
-    get_lemur_config,
-    get_speaker_prompt,
-    get_punctuation_prompt,
-    get_combined_prompt,
     LeMURConfigLoader,
+    get_combined_prompt,
+    get_lemur_config,
+    get_punctuation_prompt,
+    get_speaker_prompt,
 )
 
 
@@ -213,7 +214,7 @@ metadata:
   prompt_variants: ["default", "coaching_session", "professional", "coaching_analysis"]
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             return f.name
 
@@ -241,7 +242,7 @@ metadata:
         # Test speaker identification workflow
         speaker_context = {
             "transcript": sample_transcript,
-            "session_phase": "exploration"
+            "session_phase": "exploration",
         }
 
         speaker_prompt = loader.get_prompt_with_context(
@@ -258,7 +259,7 @@ metadata:
         punctuation_context = {
             "transcript": sample_transcript,
             "conversation_type": "coaching",
-            "coaching_style": "solution_focused"
+            "coaching_style": "solution_focused",
         }
 
         punctuation_prompt = loader.get_prompt_with_context(
@@ -274,7 +275,7 @@ metadata:
             "transcript": sample_transcript,
             "duration": "45 minutes",
             "phase": "goal_setting",
-            "topics": "work_stress, time_management"
+            "topics": "work_stress, time_management",
         }
 
         combined_prompt = loader.get_prompt_with_context(
@@ -301,7 +302,9 @@ metadata:
         assert chinese_transcript in chinese_prompt
 
         # Test English coaching session
-        english_transcript = "Coach: How are you feeling today? Client: I feel confused."
+        english_transcript = (
+            "Coach: How are you feeling today? Client: I feel confused."
+        )
 
         english_prompt = loader.get_prompt_with_context(
             "speaker", "english", "default", {"transcript": english_transcript}
@@ -352,16 +355,28 @@ metadata:
         large_transcript = "C" * 20000  # 20K chars - above large threshold
 
         # Verify thresholds work as expected
-        assert len(short_transcript) < config.performance_settings.medium_transcript_threshold
-        assert (config.performance_settings.medium_transcript_threshold <
-                len(medium_transcript) < config.performance_settings.large_transcript_threshold)
-        assert len(large_transcript) > config.performance_settings.large_transcript_threshold
+        assert (
+            len(short_transcript)
+            < config.performance_settings.medium_transcript_threshold
+        )
+        assert (
+            config.performance_settings.medium_transcript_threshold
+            < len(medium_transcript)
+            < config.performance_settings.large_transcript_threshold
+        )
+        assert (
+            len(large_transcript)
+            > config.performance_settings.large_transcript_threshold
+        )
 
     def test_global_configuration_e2e(self, production_config):
         """Test E2E workflow using global configuration functions."""
         # Reset global state
         import coaching_assistant.config.lemur_config
-        coaching_assistant.config.lemur_config._config_loader = LeMURConfigLoader(production_config)
+
+        coaching_assistant.config.lemur_config._config_loader = LeMURConfigLoader(
+            production_config
+        )
 
         # Test global configuration access
         config = get_lemur_config()
@@ -392,17 +407,19 @@ metadata:
             **context,
             "duration": "60 minutes",
             "phase": "action_planning",
-            "topics": "career_development, self_confidence"
+            "topics": "career_development, self_confidence",
         }
 
-        combined_prompt = get_combined_prompt("chinese", "coaching_analysis", extended_context)
+        combined_prompt = get_combined_prompt(
+            "chinese", "coaching_analysis", extended_context
+        )
         assert coaching_transcript in combined_prompt
         assert "會談時長：60 minutes" in combined_prompt
 
     def test_environment_override_e2e(self, production_config):
         """Test E2E workflow with environment variable overrides."""
         # Test production config with environment overrides
-        with patch('coaching_assistant.config.lemur_config.settings') as mock_settings:
+        with patch("coaching_assistant.config.lemur_config.settings") as mock_settings:
             mock_settings.LEMUR_MODEL = "production_claude_4"
             mock_settings.LEMUR_MAX_OUTPUT_SIZE = "6000"
             mock_settings.LEMUR_COMBINED_MODE = False
@@ -441,8 +458,12 @@ metadata:
             elif prompt_type == "combined":
                 prompt = config.prompts.get_combined_prompt(language, variant)
 
-            assert prompt is not None, f"Missing {prompt_type}/{language}/{variant} prompt"
-            assert len(prompt.strip()) > 100, f"Prompt too short: {prompt_type}/{language}/{variant}"
+            assert prompt is not None, (
+                f"Missing {prompt_type}/{language}/{variant} prompt"
+            )
+            assert len(prompt.strip()) > 100, (
+                f"Prompt too short: {prompt_type}/{language}/{variant}"
+            )
 
         # Required English prompts
         english_speaker_prompt = config.prompts.get_speaker_prompt("english", "default")
@@ -451,7 +472,11 @@ metadata:
 
         # Fallback prompts should exist
         assert len(config.prompts.fallback_prompts) >= 3
-        for fallback_key in ["speaker_identification_error", "punctuation_error", "combined_processing_error"]:
+        for fallback_key in [
+            "speaker_identification_error",
+            "punctuation_error",
+            "combined_processing_error",
+        ]:
             assert fallback_key in config.prompts.fallback_prompts
 
     def test_configuration_validation_e2e(self, production_config):
@@ -460,8 +485,14 @@ metadata:
         config = loader.load_config()
 
         # Model configuration validation
-        assert config.default_model in ["claude_sonnet_4_20250514", "claude3_5_sonnet"]
-        assert config.fallback_model in ["claude3_5_sonnet", "claude_sonnet_4_20250514"]
+        assert config.default_model in [
+            "claude_sonnet_4_20250514",
+            "claude3_5_sonnet",
+        ]
+        assert config.fallback_model in [
+            "claude3_5_sonnet",
+            "claude_sonnet_4_20250514",
+        ]
         assert 1000 <= config.max_output_size <= 10000
         assert isinstance(config.combined_mode_enabled, bool)
 
@@ -484,4 +515,6 @@ metadata:
 
         # Fallback prompts should contain template variables
         for fallback_prompt in config.prompts.fallback_prompts.values():
-            assert "{transcript}" in fallback_prompt, "Fallback prompt missing {transcript} variable"
+            assert "{transcript}" in fallback_prompt, (
+                "Fallback prompt missing {transcript} variable"
+            )

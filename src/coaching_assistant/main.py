@@ -4,17 +4,17 @@ Main entry point for the Coaching Transcript Tool Backend API v2.0.
 重構後的 FastAPI 應用，移除了 Flask 依賴，純 FastAPI 架構。
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 import logging
 import os
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+
 from .api import (
-    health,
-    format_routes,
     debug,
-    dependencies,
+    format_routes,
+    health,
 )
 from .api.v1 import (
     admin,
@@ -35,11 +35,11 @@ from .api.v1 import (
     user,
 )
 from .api.webhooks import ecpay
-from .middleware.logging import setup_api_logging
-from .middleware.error_handler import error_handler
 from .core.config import settings
 from .core.env_validator import validate_environment
-from .version import VERSION, DISPLAY_VERSION
+from .middleware.error_handler import error_handler
+from .middleware.logging import setup_api_logging
+from .version import DISPLAY_VERSION, VERSION
 
 # 在任何其他初始化之前驗證環境變數
 print("🚀 Starting Coaching Transcript Tool Backend API...")
@@ -97,20 +97,36 @@ app.include_router(
 app.include_router(
     sessions.router, prefix="/api/v1/sessions", tags=["transcription-sessions"]
 )
+app.include_router(summary.router, prefix="/api/v1/dashboard", tags=["summary"])
 app.include_router(
-    summary.router, prefix="/api/v1/dashboard", tags=["summary"]
+    coach_profile.router, prefix="/api/coach-profile", tags=["coach-profile"]
 )
-app.include_router(coach_profile.router, prefix="/api/coach-profile", tags=["coach-profile"])
 app.include_router(usage_history.router, prefix="/api/v1/usage", tags=["usage-history"])
-app.include_router(usage.router, prefix="/api/v1/usage-tracking", tags=["usage-tracking"])
+app.include_router(
+    usage.router, prefix="/api/v1/usage-tracking", tags=["usage-tracking"]
+)
 app.include_router(plans.router, prefix="/api/v1/plans", tags=["plans"])
 app.include_router(plan_limits.router, prefix="/api/v1/plan", tags=["plan-limits"])
-app.include_router(transcript_smoothing.router, prefix="/api/v1/transcript", tags=["transcript-smoothing"])
-app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["subscriptions"])
+app.include_router(
+    transcript_smoothing.router,
+    prefix="/api/v1/transcript",
+    tags=["transcript-smoothing"],
+)
+app.include_router(
+    subscriptions.router,
+    prefix="/api/v1/subscriptions",
+    tags=["subscriptions"],
+)
 app.include_router(ecpay.router, prefix="/api/webhooks", tags=["webhooks"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
-app.include_router(admin_reports.router, prefix="/admin/reports", tags=["admin-reports"])
-app.include_router(billing_analytics.router, prefix="/api/v1/billing-analytics", tags=["billing-analytics"])
+app.include_router(
+    admin_reports.router, prefix="/admin/reports", tags=["admin-reports"]
+)
+app.include_router(
+    billing_analytics.router,
+    prefix="/api/v1/billing-analytics",
+    tags=["billing-analytics"],
+)
 
 # 僅在開發環境中載入偵錯路由
 if settings.ENVIRONMENT == "development":
@@ -130,9 +146,7 @@ async def root():
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info(
-        f"Starting Coaching Transcript Tool Backend API {DISPLAY_VERSION}"
-    )
+    logger.info(f"Starting Coaching Transcript Tool Backend API {DISPLAY_VERSION}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 

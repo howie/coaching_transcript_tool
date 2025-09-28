@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+
 from coaching_assistant.core.processor import format_transcript
 
 
@@ -37,16 +38,15 @@ def test_format_transcript_excel(sample_vtt_content):
         client_name="Candidate",
     )
     assert isinstance(result, bytes)
-    # Check if the bytes object is not empty and looks like an Excel file (starts with PK zip header)
+    # Check if the bytes object is not empty and looks like an Excel file
+    # (starts with PK zip header)
     assert len(result) > 0
     assert result.startswith(b"PK\x03\x04")
 
 
 def test_format_transcript_invalid_format(sample_vtt_content):
     """Tests that an invalid format raises a ValueError."""
-    with pytest.raises(
-        ValueError, match="Unsupported output format: invalid_format"
-    ):
+    with pytest.raises(ValueError, match="Unsupported output format: invalid_format"):
         format_transcript(
             file_content=sample_vtt_content.encode("utf-8"),
             original_filename="sample.vtt",

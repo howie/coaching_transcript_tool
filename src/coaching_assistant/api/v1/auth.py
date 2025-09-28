@@ -6,20 +6,29 @@ Google OAuth authentication routes.
 
 from datetime import datetime, timedelta
 from typing import Optional
-import httpx
 from uuid import UUID
-from jose import JWTError, jwt
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
-from fastapi.security import OAuth2PasswordRequestForm
+
+import httpx
+from fastapi import (
+    APIRouter,
+    Depends,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from fastapi.security import OAuth2PasswordRequestForm
+from jose import JWTError, jwt
 from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from ...core.config import settings
 from ...core.database import get_db
-from ...core.models.user import User as DomainUser, UserPlan
+from ...core.models.user import UserPlan
 from ...models.user import User  # Infrastructure model for SQLAlchemy queries
 
 router = APIRouter(tags=["authentication"])
@@ -72,29 +81,19 @@ def get_password_hash(password):
 
 def create_access_token(user_id: str) -> str:
     """建立 Access Token"""
-    expire = datetime.utcnow() + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode = {"sub": user_id, "exp": expire, "type": "access"}
-    return jwt.encode(
-        to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM
-    )
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
 def create_refresh_token(user_id: str) -> str:
     """建立 Refresh Token"""
-    expire = datetime.utcnow() + timedelta(
-        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
-    )
+    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode = {"sub": user_id, "exp": expire, "type": "refresh"}
-    return jwt.encode(
-        to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM
-    )
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
-async def verify_recaptcha(
-    token: str, remote_ip: str
-) -> tuple[bool, float, str]:
+async def verify_recaptcha(token: str, remote_ip: str) -> tuple[bool, float, str]:
     """Verify reCAPTCHA token with Google's API"""
     if not settings.RECAPTCHA_ENABLED:
         return True, 1.0, "signup"  # Skip verification if disabled
@@ -115,9 +114,7 @@ async def verify_recaptcha(
             )
 
         if resp.status_code != 200:
-            print(
-                f"reCAPTCHA verification failed with status {resp.status_code}"
-            )
+            print(f"reCAPTCHA verification failed with status {resp.status_code}")
             return False, 0.0, ""
 
         data = resp.json()
@@ -138,9 +135,7 @@ async def verify_recaptcha(
 
 
 @router.post("/signup", response_model=UserResponse)
-async def signup(
-    user: UserCreate, request: Request, db: Session = Depends(get_db)
-):
+async def signup(user: UserCreate, request: Request, db: Session = Depends(get_db)):
     # Verify reCAPTCHA if enabled
     if settings.RECAPTCHA_ENABLED:
         # Get client IP
@@ -153,18 +148,15 @@ async def signup(
 
         # Check verification result
         if not success or (action and action != "signup"):
-            raise HTTPException(
-                status_code=403, detail="Failed Human Verification"
-            )
+            raise HTTPException(status_code=403, detail="Failed Human Verification")
 
         # Check score threshold
         if score < settings.RECAPTCHA_MIN_SCORE:
             print(
-                f"reCAPTCHA score {score} below threshold {settings.RECAPTCHA_MIN_SCORE}"
+                f"reCAPTCHA score {score} below threshold "
+                f"{settings.RECAPTCHA_MIN_SCORE}"
             )
-            raise HTTPException(
-                status_code=403, detail="Failed Human Verification"
-            )
+            raise HTTPException(status_code=403, detail="Failed Human Verification")
 
     # Check if user already exists
     db_user = db.query(User).filter(User.email == user.email).first()
@@ -173,9 +165,7 @@ async def signup(
 
     # Create new user
     hashed_password = get_password_hash(user.password)
-    db_user = User(
-        email=user.email, hashed_password=hashed_password, name=user.name
-    )
+    db_user = User(email=user.email, hashed_password=hashed_password, name=user.name)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -188,9 +178,7 @@ async def login(
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(
-        form_data.password, user.hashed_password
-    ):
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -217,9 +205,13 @@ async def google_login(redirect_uri: Optional[str] = None):
     if not redirect_uri:
         # 在生產環境使用完整的 URL
         if settings.ENVIRONMENT == "production":
-            redirect_uri = f"https://api.doxa.com.tw{settings.API_V1_STR}/auth/google/callback"
+            redirect_uri = (
+                f"https://api.doxa.com.tw{settings.API_V1_STR}/auth/google/callback"
+            )
         else:
-            redirect_uri = f"http://localhost:8000{settings.API_V1_STR}/auth/google/callback"
+            redirect_uri = (
+                f"http://localhost:8000{settings.API_V1_STR}/auth/google/callback"
+            )
 
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
@@ -231,9 +223,7 @@ async def google_login(redirect_uri: Optional[str] = None):
     }
 
     # 建立授權 URL
-    auth_url = f"{GOOGLE_AUTH_URL}?" + "&".join(
-        [f"{k}={v}" for k, v in params.items()]
-    )
+    auth_url = f"{GOOGLE_AUTH_URL}?" + "&".join([f"{k}={v}" for k, v in params.items()])
 
     return RedirectResponse(url=auth_url)
 
@@ -241,9 +231,7 @@ async def google_login(redirect_uri: Optional[str] = None):
 @router.get("/google/callback")
 async def google_callback(
     code: str = Query(..., description="Authorization code from Google"),
-    state: Optional[str] = Query(
-        None, description="State parameter for security"
-    ),
+    state: Optional[str] = Query(None, description="State parameter for security"),
     db: Session = Depends(get_db),
 ):
     """
@@ -278,14 +266,14 @@ async def google_callback(
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             # 獲取 access token
-            token_response = await client.post(
-                GOOGLE_TOKEN_URL, data=token_data
-            )
+            token_response = await client.post(GOOGLE_TOKEN_URL, data=token_data)
 
             if token_response.status_code != 200:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Failed to exchange authorization code: {token_response.text}",
+                    detail=(
+                        f"Failed to exchange authorization code: {token_response.text}"
+                    ),
                 )
 
             tokens = token_response.json()
@@ -299,9 +287,7 @@ async def google_callback(
 
             # 2. 使用 access token 獲取用戶資訊
             headers = {"Authorization": f"Bearer {google_access_token}"}
-            userinfo_response = await client.get(
-                GOOGLE_USERINFO_URL, headers=headers
-            )
+            userinfo_response = await client.get(GOOGLE_USERINFO_URL, headers=headers)
 
             if userinfo_response.status_code != 200:
                 raise HTTPException(
@@ -314,12 +300,14 @@ async def google_callback(
     except httpx.ConnectTimeout:
         raise HTTPException(
             status_code=503,
-            detail="Unable to connect to Google services. Please try again later.",
+            detail=("Unable to connect to Google services. Please try again later."),
         )
     except httpx.ReadTimeout:
         raise HTTPException(
             status_code=503,
-            detail="Google services took too long to respond. Please try again later.",
+            detail=(
+                "Google services took too long to respond. Please try again later."
+            ),
         )
     except httpx.RequestError as e:
         raise HTTPException(
@@ -330,9 +318,7 @@ async def google_callback(
     # 3. 查找或建立用戶
     email = google_user.get("email")
     if not email:
-        raise HTTPException(
-            status_code=400, detail="Email not provided by Google"
-        )
+        raise HTTPException(status_code=400, detail="Email not provided by Google")
 
     # 查找現有用戶
     stmt = select(User).where(User.email == email)
@@ -369,15 +355,16 @@ async def google_callback(
         if settings.ENVIRONMENT == "production"
         else "http://localhost:3000"
     )
-    redirect_url = f"{frontend_url}/dashboard?access_token={access_token}&refresh_token={refresh_token}"
+    redirect_url = (
+        f"{frontend_url}/dashboard?access_token={access_token}"
+        f"&refresh_token={refresh_token}"
+    )
 
     return RedirectResponse(url=redirect_url)
 
 
 @router.post("/refresh")
-async def refresh_token(
-    request: RefreshTokenRequest, db: Session = Depends(get_db)
-):
+async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
     """
     使用 Refresh Token 獲取新的 Access Token
     """
@@ -413,7 +400,6 @@ async def refresh_token(
 
 
 # 依賴注入：獲取 Authorization header
-from fastapi import Header
 
 
 async def get_authorization_header(
@@ -435,6 +421,7 @@ async def get_current_user_dependency(
     # TEST_MODE: 如果啟用測試模式，返回測試用戶
     if settings.TEST_MODE:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.warning("🚨 TEST_MODE 已啟用 - 跳過認證檢查，使用測試用戶")
 
@@ -502,7 +489,11 @@ async def get_current_user(
         id=current_user.id,
         email=current_user.email,
         name=current_user.name,
-        plan=current_user.plan.value if hasattr(current_user.plan, 'value') else current_user.plan,
+        plan=(
+            current_user.plan.value
+            if hasattr(current_user.plan, "value")
+            else current_user.plan
+        ),
         auth_provider=current_user.auth_provider,
         google_connected=current_user.google_connected,
         preferences=current_user.get_preferences(),

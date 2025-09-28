@@ -2,24 +2,25 @@
 
 from typing import List, Optional
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ...core.models.user import User
 from ...core.services.client_management_use_case import (
-    ClientRetrievalUseCase,
     ClientCreationUseCase,
-    ClientUpdateUseCase,
     ClientDeletionUseCase,
-    ClientOptionsUseCase
+    ClientOptionsUseCase,
+    ClientRetrievalUseCase,
+    ClientUpdateUseCase,
 )
 from .auth import get_current_user_dependency
 from .dependencies import (
-    get_client_retrieval_use_case,
     get_client_creation_use_case,
-    get_client_update_use_case,
     get_client_deletion_use_case,
     get_client_options_use_case,
+    get_client_retrieval_use_case,
+    get_client_update_use_case,
 )
 
 router = APIRouter()
@@ -80,13 +81,15 @@ class ClientListResponse(BaseModel):
 
 # Helper function to convert domain model to response model
 def _client_to_response(client) -> ClientResponse:
-    """Convert domain Client to ClientResponse with temporary session/payment data.
+    """Convert domain Client to ClientResponse with temporary
+    session/payment data.
 
     Args:
         client: Client domain entity
 
     Returns:
-        ClientResponse with session_count and payment_total temporarily set to 0
+        ClientResponse with session_count and payment_total temporarily
+        set to 0
     """
     return ClientResponse(
         id=client.id,
@@ -99,9 +102,13 @@ def _client_to_response(client) -> ClientResponse:
         issue_types=client.issue_types,
         status=client.status,
         is_anonymized=client.is_anonymized,
-        anonymized_at=client.anonymized_at.isoformat() if client.anonymized_at else None,
-        session_count=0,  # TODO: Implement when CoachingSession repository is available
-        total_payment_amount=0,  # TODO: Implement when CoachingSession repository is available
+        anonymized_at=(
+            client.anonymized_at.isoformat() if client.anonymized_at else None
+        ),
+        session_count=0,  # TODO: Implement when CoachingSession
+        # repository is available
+        total_payment_amount=0,  # TODO: Implement when CoachingSession
+        # repository is available
         total_payment_currency="TWD",
         created_at=client.created_at.isoformat(),
         updated_at=client.updated_at.isoformat(),
@@ -122,7 +129,7 @@ async def list_clients(
             coach_id=current_user.id,
             query=query,
             page=page,
-            page_size=page_size
+            page_size=page_size,
         )
 
         # Convert domain entities to response models
@@ -215,7 +222,7 @@ async def create_client(
             source=client_data.source,
             client_type=client_data.client_type,
             issue_types=client_data.issue_types,
-            status=client_data.status or "first_session"
+            status=client_data.status or "first_session",
         )
 
         return _client_to_response(client)
@@ -253,7 +260,7 @@ async def update_client(
             source=update_data.get("source"),
             client_type=update_data.get("client_type"),
             issue_types=update_data.get("issue_types"),
-            status=update_data.get("status")
+            status=update_data.get("status"),
         )
 
         return _client_to_response(updated_client)
@@ -296,7 +303,8 @@ async def delete_client(
         elif "existing sessions" in error_msg:
             raise HTTPException(
                 status_code=409,
-                detail="Cannot delete client with existing sessions. Use anonymization instead.",
+                detail="Cannot delete client with existing sessions. "
+                "Use anonymization instead.",
             )
         raise HTTPException(status_code=400, detail=error_msg)
     except Exception:
@@ -319,9 +327,7 @@ async def anonymize_client(
         if "not found" in error_msg:
             raise HTTPException(status_code=404, detail="Client not found")
         elif "already anonymized" in error_msg:
-            raise HTTPException(
-                status_code=409, detail="Client is already anonymized"
-            )
+            raise HTTPException(status_code=409, detail="Client is already anonymized")
         raise HTTPException(status_code=400, detail=error_msg)
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")

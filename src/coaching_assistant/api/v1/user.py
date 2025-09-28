@@ -5,13 +5,13 @@ User management routes for the Coaching Transcript Tool Backend API.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, Depends, HTTPException
 from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...core.models.user import User, UserPlan
@@ -70,7 +70,11 @@ async def get_user_profile(
         id=current_user.id,
         email=current_user.email,
         name=current_user.name,
-        plan=current_user.plan.value if hasattr(current_user.plan, 'value') else current_user.plan,
+        plan=(
+            current_user.plan.value
+            if hasattr(current_user.plan, "value")
+            else current_user.plan
+        ),
         auth_provider=current_user.auth_provider,
         google_connected=current_user.google_connected,
         preferences=current_user.get_preferences(),
@@ -96,7 +100,11 @@ async def update_user_profile(
         id=current_user.id,
         email=current_user.email,
         name=current_user.name,
-        plan=current_user.plan.value if hasattr(current_user.plan, 'value') else current_user.plan,
+        plan=(
+            current_user.plan.value
+            if hasattr(current_user.plan, "value")
+            else current_user.plan
+        ),
         auth_provider=current_user.auth_provider,
         google_connected=current_user.google_connected,
         preferences=current_user.get_preferences(),
@@ -116,9 +124,7 @@ async def update_user_preferences(
     prefs_update = {}
     if preferences_data.language is not None:
         if preferences_data.language not in ["zh", "en", "system"]:
-            raise HTTPException(
-                status_code=400, detail="Invalid language preference"
-            )
+            raise HTTPException(status_code=400, detail="Invalid language preference")
         prefs_update["language"] = preferences_data.language
 
     # Update preferences
@@ -156,9 +162,7 @@ async def change_password(
     if not pwd_context.verify(
         password_data.current_password, current_user.hashed_password
     ):
-        raise HTTPException(
-            status_code=400, detail="Current password is incorrect"
-        )
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
 
     # Set new password
     current_user.hashed_password = pwd_context.hash(password_data.new_password)
@@ -236,7 +240,5 @@ async def submit_feedback(
     """
     提交用戶反饋
     """
-    logger.info(
-        f"Received user feedback from {current_user.email}: {feedback_data}"
-    )
+    logger.info(f"Received user feedback from {current_user.email}: {feedback_data}")
     return {"message": "Feedback received successfully"}

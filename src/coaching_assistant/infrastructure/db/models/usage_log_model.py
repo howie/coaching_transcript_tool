@@ -1,21 +1,33 @@
 """UsageLogModel ORM with domain model conversion."""
 
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, DECIMAL, DateTime, Enum, Float, Text, JSON
-from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
-from uuid import UUID as PyUUID
 from typing import Optional
+from uuid import UUID as PyUUID
 
-from .base import BaseModel
-from ....core.models.usage_log import UsageLog, TranscriptionType
+from sqlalchemy import (
+    DECIMAL,
+    JSON,
+    Boolean,
+    Column,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+
 from ....core.config import settings
+from ....core.models.usage_log import TranscriptionType, UsageLog
+from .base import BaseModel
 
 
 class UsageLogModel(BaseModel):
     """ORM model for UsageLog entity with SQLAlchemy mappings."""
 
-    __tablename__ = 'usage_logs'
+    __tablename__ = "usage_logs"
 
     # Core relationships
     session_id = Column(
@@ -36,12 +48,14 @@ class UsageLogModel(BaseModel):
     transcription_type = Column(
         Enum(TranscriptionType),
         default=TranscriptionType.ORIGINAL,
-        nullable=False
+        nullable=False,
     )
 
     # Billing information
     billable = Column(Boolean, default=True, nullable=False)
-    cost_cents = Column(Integer, default=0, nullable=False)  # Cost in cents for precise calculation
+    cost_cents = Column(
+        Integer, default=0, nullable=False
+    )  # Cost in cents for precise calculation
     currency = Column(String(10), default="TWD", nullable=False)
 
     # Processing details
@@ -75,7 +89,7 @@ class UsageLogModel(BaseModel):
         """Convert ORM model to domain model."""
         return UsageLog(
             id=PyUUID(str(self.id)) if self.id else None,
-            session_id=PyUUID(str(self.session_id)) if self.session_id else None,
+            session_id=(PyUUID(str(self.session_id)) if self.session_id else None),
             user_id=PyUUID(str(self.user_id)) if self.user_id else None,
             duration_minutes=self.duration_minutes or 0,
             transcription_type=self.transcription_type or TranscriptionType.ORIGINAL,
@@ -83,15 +97,16 @@ class UsageLogModel(BaseModel):
             cost_cents=self.cost_cents or 0,
             currency=self.currency or "TWD",
             stt_provider=(
-                (self.stt_provider or "").strip().lower()
-                or settings.STT_PROVIDER
+                (self.stt_provider or "").strip().lower() or settings.STT_PROVIDER
             ),
             processing_time_seconds=self.processing_time_seconds,
             confidence_score=self.confidence_score,
             word_count=self.word_count,
             character_count=self.character_count,
             speaker_count=self.speaker_count,
-            error_occurred=self.error_occurred if self.error_occurred is not None else False,
+            error_occurred=(
+                self.error_occurred if self.error_occurred is not None else False
+            ),
             error_message=self.error_message,
             retry_count=self.retry_count or 0,
             metadata=self.usage_metadata,
@@ -100,7 +115,7 @@ class UsageLogModel(BaseModel):
         )
 
     @classmethod
-    def from_domain(cls, usage_log: UsageLog) -> 'UsageLogModel':
+    def from_domain(cls, usage_log: UsageLog) -> "UsageLogModel":
         """Convert domain model to ORM model."""
         return cls(
             id=usage_log.id,
@@ -225,13 +240,10 @@ class UsageLogModel(BaseModel):
 
     def is_billable_usage(self) -> bool:
         """Check if this usage counts toward billing."""
-        return (
-            self.billable and
-            self.transcription_type in [
-                TranscriptionType.ORIGINAL,
-                TranscriptionType.RETRY_SUCCESS,
-            ]
-        )
+        return self.billable and self.transcription_type in [
+            TranscriptionType.ORIGINAL,
+            TranscriptionType.RETRY_SUCCESS,
+        ]
 
     def contributes_to_monthly_usage(self) -> bool:
         """Check if this log counts toward monthly usage limits."""

@@ -1,28 +1,25 @@
 #!/usr/bin/env python3
 import os
 import sys
-import pytest
 from datetime import datetime
+
+import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from fastapi.testclient import TestClient
-from unittest.mock import MagicMock
+
+from coaching_assistant.main import app
+from coaching_assistant.models import (
+    Base,
+    Session,
+    User,
+)
+from coaching_assistant.models.session import SessionStatus
+from coaching_assistant.models.user import UserPlan
 
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from coaching_assistant.models import (
-    Base,
-    User,
-    Session,
-    TranscriptSegment,
-    SessionRole,
-)
-from coaching_assistant.models.user import UserPlan
-from coaching_assistant.models.session import SessionStatus
-from coaching_assistant.models.transcript import SpeakerRole
-from coaching_assistant.main import app
 
 
 # Database fixtures
@@ -31,8 +28,9 @@ def engine():
     """Create an in-memory SQLite database for testing."""
     # Setup SQLite compatibility for PostgreSQL types
     from tests.unit.utils.test_helpers import setup_sqlite_compatibility
+
     setup_sqlite_compatibility()
-    
+
     engine = create_engine(
         "sqlite:///:memory:",
         poolclass=StaticPool,
@@ -48,7 +46,7 @@ def engine():
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
-    
+
     Base.metadata.create_all(engine)
 
     yield engine
@@ -117,18 +115,18 @@ def sample_vtt_path(data_dir):
 def client(db_session):
     """Create a FastAPI test client."""
     from coaching_assistant.core.database import get_db
-    
+
     def override_get_db():
         try:
             yield db_session
         finally:
             pass
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     with TestClient(app) as test_client:
         yield test_client
-    
+
     app.dependency_overrides.clear()
 
 
@@ -136,14 +134,14 @@ def client(db_session):
 def authenticated_client(client, test_user, db_session):
     """Create an authenticated test client."""
     from coaching_assistant.api.v1.auth import get_current_user_dependency
-    
+
     def override_get_current_user():
         return test_user
-    
+
     app.dependency_overrides[get_current_user_dependency] = override_get_current_user
-    
+
     yield client
-    
+
     del app.dependency_overrides[get_current_user_dependency]
 
 
@@ -151,6 +149,7 @@ def authenticated_client(client, test_user, db_session):
 def test_user(db_session):
     """Create a test user for API testing."""
     import uuid
+
     user = User(
         id=uuid.uuid4(),
         email="test@example.com",
@@ -161,7 +160,7 @@ def test_user(db_session):
         session_count=0,
         transcription_count=0,
         current_month_start=datetime.now().replace(day=1),
-        created_at=datetime.now()
+        created_at=datetime.now(),
     )
     db_session.add(user)
     db_session.commit()
@@ -175,7 +174,7 @@ def auth_headers(test_user):
     test_jwt_token = os.getenv("TEST_JWT_TOKEN")
     if test_jwt_token:
         return {"Authorization": f"Bearer {test_jwt_token}"}
-    
+
     # Fallback to mock token for tests that don't require real auth
     return {"Authorization": f"Bearer test-token-{test_user.id}"}
 
@@ -184,6 +183,7 @@ def auth_headers(test_user):
 def admin_user(db_session):
     """Create an admin user for testing."""
     import uuid
+
     admin = User(
         id=uuid.uuid4(),
         email="admin@example.com",
@@ -195,7 +195,7 @@ def admin_user(db_session):
         session_count=0,
         transcription_count=0,
         current_month_start=datetime.now().replace(day=1),
-        created_at=datetime.now()
+        created_at=datetime.now(),
     )
     db_session.add(admin)
     db_session.commit()
@@ -209,5 +209,5 @@ def admin_headers(admin_user):
     test_jwt_token = os.getenv("TEST_JWT_TOKEN")
     if test_jwt_token:
         return {"Authorization": f"Bearer {test_jwt_token}"}
-    
+
     return {"Authorization": f"Bearer admin-token-{admin_user.id}"}

@@ -1,24 +1,24 @@
 """Coach Profile API endpoints - Synchronous version."""
 
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, UUID4
 from datetime import datetime
+from typing import List, Optional
 
-from ...models import User
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import UUID4, BaseModel, Field
+
 from ...core.models.coach_profile import (
-    CoachProfile,
-    CoachingLanguage,
-    CommunicationTool,
     CoachExperience,
+    CoachingLanguage,
+    CoachProfile,
+    CommunicationTool,
 )
 from ...core.models.coaching_plan import CoachingPlan
 from ...core.services.coach_profile_management_use_case import (
     CoachProfileManagementUseCase,
 )
-from .dependencies import get_coach_profile_management_use_case
+from ...models import User
 from .auth import get_current_user_dependency
-
+from .dependencies import get_coach_profile_management_use_case
 
 router = APIRouter(tags=["coach-profile"])
 
@@ -198,9 +198,7 @@ def _profile_to_response(profile: CoachProfile) -> CoachProfileResponse:
             phone_number = profile.contact_phone
 
     # Convert communication tools to dict
-    communication_tools = {
-        tool.value: True for tool in profile.communication_tools
-    }
+    communication_tools = {tool.value: True for tool in profile.communication_tools}
 
     return CoachProfileResponse(
         id=profile.id,
@@ -217,9 +215,7 @@ def _profile_to_response(profile: CoachProfile) -> CoachProfileResponse:
         communication_tools=communication_tools,
         line_id=None,  # Not in domain model - legacy field
         coach_experience=(
-            profile.experience_level.value
-            if profile.experience_level
-            else None
+            profile.experience_level.value if profile.experience_level else None
         ),
         training_institution=None,  # Not in domain model - legacy field
         certifications=profile.certifications,
@@ -256,7 +252,9 @@ def _plan_to_response(plan: CoachingPlan) -> CoachingPlanResponse:
     )
 
 
-def _create_request_to_domain(profile_data: CoachProfileCreate) -> CoachProfile:
+def _create_request_to_domain(
+    profile_data: CoachProfileCreate,
+) -> CoachProfile:
     """Convert CoachProfileCreate request to domain model."""
     # Parse languages
     languages = []
@@ -316,7 +314,9 @@ def _create_request_to_domain(profile_data: CoachProfileCreate) -> CoachProfile:
     )
 
 
-def _update_request_to_domain(profile_data: CoachProfileUpdate, existing_profile: CoachProfile) -> CoachProfile:
+def _update_request_to_domain(
+    profile_data: CoachProfileUpdate, existing_profile: CoachProfile
+) -> CoachProfile:
     """Convert CoachProfileUpdate request to domain model."""
     # Start with existing profile
     updated_profile = CoachProfile(
@@ -368,7 +368,10 @@ def _update_request_to_domain(profile_data: CoachProfileUpdate, existing_profile
             updated_profile.location = None
 
     # Update phone
-    if profile_data.phone_country_code is not None or profile_data.phone_number is not None:
+    if (
+        profile_data.phone_country_code is not None
+        or profile_data.phone_number is not None
+    ):
         country_code = profile_data.phone_country_code
         number = profile_data.phone_number
         if country_code and number:
@@ -403,7 +406,9 @@ def _update_request_to_domain(profile_data: CoachProfileUpdate, existing_profile
     # Update experience level
     if profile_data.coach_experience is not None:
         try:
-            updated_profile.experience_level = CoachExperience(profile_data.coach_experience)
+            updated_profile.experience_level = CoachExperience(
+                profile_data.coach_experience
+            )
         except ValueError:
             pass
 
@@ -416,7 +421,9 @@ def _update_request_to_domain(profile_data: CoachProfileUpdate, existing_profile
     return updated_profile
 
 
-def _plan_create_request_to_domain(plan_data: CoachingPlanCreate) -> CoachingPlan:
+def _plan_create_request_to_domain(
+    plan_data: CoachingPlanCreate,
+) -> CoachingPlan:
     """Convert CoachingPlanCreate request to domain model."""
     return CoachingPlan(
         plan_type=plan_data.plan_type,
@@ -433,7 +440,9 @@ def _plan_create_request_to_domain(plan_data: CoachingPlanCreate) -> CoachingPla
     )
 
 
-def _plan_update_request_to_domain(plan_data: CoachingPlanUpdate, existing_plan: CoachingPlan) -> CoachingPlan:
+def _plan_update_request_to_domain(
+    plan_data: CoachingPlanUpdate, existing_plan: CoachingPlan
+) -> CoachingPlan:
     """Convert CoachingPlanUpdate request to domain model."""
     # Start with existing plan
     updated_plan = CoachingPlan(
@@ -467,7 +476,9 @@ def _plan_update_request_to_domain(plan_data: CoachingPlanUpdate, existing_plan:
 @router.get("/", response_model=Optional[CoachProfileResponse])
 def get_coach_profile(
     current_user: User = Depends(get_current_user_dependency),
-    use_case: CoachProfileManagementUseCase = Depends(get_coach_profile_management_use_case),
+    use_case: CoachProfileManagementUseCase = Depends(
+        get_coach_profile_management_use_case
+    ),
 ):
     """Get current user's coach profile."""
     try:
@@ -478,10 +489,7 @@ def get_coach_profile(
 
         return _profile_to_response(profile)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post(
@@ -503,10 +511,7 @@ def create_coach_profile(
         created_profile = use_case.create_profile(current_user.id, domain_profile)
         return _profile_to_response(created_profile)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.put("/", response_model=CoachProfileResponse)
@@ -534,10 +539,7 @@ def update_coach_profile(
         updated_profile = use_case.update_profile(current_user.id, domain_profile)
         return _profile_to_response(updated_profile)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
@@ -556,10 +558,7 @@ def delete_coach_profile(
                 detail="Coach profile not found",
             )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 # Coaching Plan endpoints
@@ -576,10 +575,7 @@ def get_coaching_plans(
 
         return [_plan_to_response(plan) for plan in plans]
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.post(
@@ -601,10 +597,7 @@ def create_coaching_plan(
         created_plan = use_case.create_plan(current_user.id, domain_plan)
         return _plan_to_response(created_plan)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.put("/plans/{plan_id}", response_model=CoachingPlanResponse)
@@ -635,10 +628,7 @@ def update_coaching_plan(
         updated_plan = use_case.update_plan(current_user.id, plan_id, domain_plan)
         return _plan_to_response(updated_plan)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.delete("/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -658,7 +648,4 @@ def delete_coaching_plan(
                 detail="Coaching plan not found",
             )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

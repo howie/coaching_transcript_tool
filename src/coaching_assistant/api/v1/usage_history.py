@@ -5,29 +5,28 @@ Provides historical usage data, trends, predictions, and insights for users.
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from ...core.models.user import User
 from ...core.services.usage_tracking_use_case import (
-    GetUsageHistoryUseCase,
-    GetUsageTrendsUseCase,
-    GetUsagePredictionsUseCase,
-    GetUsageInsightsUseCase,
     CreateUsageSnapshotUseCase,
     ExportUsageDataUseCase,
+    GetUsageHistoryUseCase,
+    GetUsageInsightsUseCase,
+    GetUsagePredictionsUseCase,
+    GetUsageTrendsUseCase,
 )
 from .auth import get_current_user_dependency
 from .dependencies import (
-    get_usage_history_use_case,
-    get_usage_trends_use_case,
-    get_usage_predictions_use_case,
-    get_usage_insights_use_case,
-    get_usage_snapshot_use_case,
     get_export_usage_data_use_case,
+    get_usage_history_use_case,
+    get_usage_insights_use_case,
+    get_usage_predictions_use_case,
+    get_usage_snapshot_use_case,
+    get_usage_trends_use_case,
 )
 
 logger = logging.getLogger(__name__)
@@ -109,9 +108,7 @@ async def usage_history_root():
 
 @router.get("/history", response_model=List[UsageHistoryResponse])
 async def get_usage_history(
-    period: str = Query(
-        "30d", description="Time period: 7d, 30d, 3m, 12m, or custom"
-    ),
+    period: str = Query("30d", description="Time period: 7d, 30d, 3m, 12m, or custom"),
     from_date: Optional[str] = Query(
         None, description="Start date (YYYY-MM-DD) for custom period"
     ),
@@ -122,7 +119,9 @@ async def get_usage_history(
         "daily", description="Aggregation level: hourly, daily, monthly"
     ),
     current_user: User = Depends(get_current_user_dependency),
-    usage_history_use_case: GetUsageHistoryUseCase = Depends(get_usage_history_use_case),
+    usage_history_use_case: GetUsageHistoryUseCase = Depends(
+        get_usage_history_use_case
+    ),
 ):
     """
     Get historical usage data for the current user.
@@ -140,15 +139,12 @@ async def get_usage_history(
             "30d": 1,
             "3m": 3,
             "12m": 12,
-            "custom": 12  # Max for custom periods
+            "custom": 12,  # Max for custom periods
         }
         months = months_mapping.get(period, 3)
 
         # Execute use case
-        result = usage_history_use_case.execute(
-            user_id=current_user.id,
-            months=months
-        )
+        result = usage_history_use_case.execute(user_id=current_user.id, months=months)
 
         # Convert to response format
         response_data = []
@@ -167,7 +163,7 @@ async def get_usage_history(
                 "export_activity": history_item.get("export_activity", {}),
                 "performance_metrics": history_item.get("performance_metrics", {}),
                 "created_at": history_item.get("created_at", ""),
-                "updated_at": history_item.get("updated_at", "")
+                "updated_at": history_item.get("updated_at", ""),
             }
             response_data.append(UsageHistoryResponse(**usage_history_dict))
 
@@ -203,9 +199,7 @@ async def get_usage_trends(
 
         # Execute use case
         trends_data = usage_trends_use_case.execute(
-            user_id=current_user.id,
-            period=period,
-            group_by=group_by
+            user_id=current_user.id, period=period, group_by=group_by
         )
 
         # Convert to response format
@@ -229,7 +223,9 @@ async def get_usage_trends(
 @router.get("/predictions", response_model=UsagePredictionResponse)
 async def get_usage_predictions(
     current_user: User = Depends(get_current_user_dependency),
-    usage_predictions_use_case: GetUsagePredictionsUseCase = Depends(get_usage_predictions_use_case),
+    usage_predictions_use_case: GetUsagePredictionsUseCase = Depends(
+        get_usage_predictions_use_case
+    ),
 ):
     """
     Get usage predictions based on historical patterns.
@@ -244,9 +240,7 @@ async def get_usage_predictions(
 
         response_data = UsagePredictionResponse(**predictions)
 
-        logger.info(
-            f"✅ Generated usage predictions for user {current_user.id}"
-        )
+        logger.info(f"✅ Generated usage predictions for user {current_user.id}")
         return response_data
 
     except Exception as e:
@@ -262,7 +256,9 @@ async def get_usage_predictions(
 @router.get("/insights", response_model=List[UsageInsightResponse])
 async def get_usage_insights(
     current_user: User = Depends(get_current_user_dependency),
-    usage_insights_use_case: GetUsageInsightsUseCase = Depends(get_usage_insights_use_case),
+    usage_insights_use_case: GetUsageInsightsUseCase = Depends(
+        get_usage_insights_use_case
+    ),
 ):
     """
     Get personalized usage insights and recommendations.
@@ -276,9 +272,7 @@ async def get_usage_insights(
         insights = usage_insights_use_case.execute(user_id=current_user.id)
 
         # Convert to response format
-        response_data = [
-            UsageInsightResponse(**insight) for insight in insights
-        ]
+        response_data = [UsageInsightResponse(**insight) for insight in insights]
 
         logger.info(
             f"✅ Generated {len(response_data)} insights for user {current_user.id}"
@@ -300,8 +294,12 @@ async def get_comprehensive_analytics(
     period: str = Query("30d", description="Time period for analysis"),
     current_user: User = Depends(get_current_user_dependency),
     usage_trends_use_case: GetUsageTrendsUseCase = Depends(get_usage_trends_use_case),
-    usage_predictions_use_case: GetUsagePredictionsUseCase = Depends(get_usage_predictions_use_case),
-    usage_insights_use_case: GetUsageInsightsUseCase = Depends(get_usage_insights_use_case),
+    usage_predictions_use_case: GetUsagePredictionsUseCase = Depends(
+        get_usage_predictions_use_case
+    ),
+    usage_insights_use_case: GetUsageInsightsUseCase = Depends(
+        get_usage_insights_use_case
+    ),
 ):
     """
     Get comprehensive usage analytics including trends, predictions, and insights.
@@ -309,9 +307,7 @@ async def get_comprehensive_analytics(
     Returns a complete analytics package for dashboard display.
     """
     try:
-        logger.info(
-            f"📊 Getting comprehensive analytics for user {current_user.id}"
-        )
+        logger.info(f"📊 Getting comprehensive analytics for user {current_user.id}")
 
         # Get all analytics data using use cases
         trends = usage_trends_use_case.execute(
@@ -325,9 +321,7 @@ async def get_comprehensive_analytics(
             "total_sessions": (
                 sum(t["sessions"] for t in trends[-7:]) if trends else 0
             ),
-            "total_minutes": (
-                sum(t["minutes"] for t in trends[-7:]) if trends else 0
-            ),
+            "total_minutes": (sum(t["minutes"] for t in trends[-7:]) if trends else 0),
             "total_transcriptions": (
                 sum(t["transcriptions"] for t in trends[-7:]) if trends else 0
             ),
@@ -346,20 +340,14 @@ async def get_comprehensive_analytics(
         summary = {
             "data_points": len(trends),
             "date_range": (
-                f"{trends[0]['date']} to {trends[-1]['date']}"
-                if trends
-                else "No data"
+                f"{trends[0]['date']} to {trends[-1]['date']}" if trends else "No data"
             ),
             "total_cost": sum(t["cost"] for t in trends),
             "avg_utilization": (
-                sum(t["utilization"] for t in trends) / len(trends)
-                if trends
-                else 0
+                sum(t["utilization"] for t in trends) / len(trends) if trends else 0
             ),
             "peak_usage_day": (
-                max(trends, key=lambda x: x["minutes"])["date"]
-                if trends
-                else None
+                max(trends, key=lambda x: x["minutes"])["date"] if trends else None
             ),
             "insights_count": len(insights),
             "prediction_confidence": predictions["confidence"],
@@ -373,9 +361,7 @@ async def get_comprehensive_analytics(
             summary=summary,
         )
 
-        logger.info(
-            f"✅ Generated comprehensive analytics for user {current_user.id}"
-        )
+        logger.info(f"✅ Generated comprehensive analytics for user {current_user.id}")
         return response_data
 
     except Exception as e:
@@ -394,7 +380,9 @@ async def create_usage_snapshot(
         "daily", description="Snapshot type: hourly, daily, monthly"
     ),
     current_user: User = Depends(get_current_user_dependency),
-    usage_snapshot_use_case: CreateUsageSnapshotUseCase = Depends(get_usage_snapshot_use_case),
+    usage_snapshot_use_case: CreateUsageSnapshotUseCase = Depends(
+        get_usage_snapshot_use_case
+    ),
 ):
     """
     Create a usage snapshot for the current period.
@@ -406,8 +394,7 @@ async def create_usage_snapshot(
 
         # Execute use case
         snapshot = usage_snapshot_use_case.execute(
-            user_id=current_user.id,
-            period_type=period_type
+            user_id=current_user.id, period_type=period_type
         )
 
         response_data = UsageHistoryResponse(**snapshot.to_dict())
@@ -430,7 +417,9 @@ async def export_usage_data(
     format: str = Query("json", description="Export format: xlsx, txt, json"),
     period: str = Query("30d", description="Time period to export"),
     current_user: User = Depends(get_current_user_dependency),
-    export_usage_data_use_case: ExportUsageDataUseCase = Depends(get_export_usage_data_use_case),
+    export_usage_data_use_case: ExportUsageDataUseCase = Depends(
+        get_export_usage_data_use_case
+    ),
 ):
     """
     Export usage data in specified format.
@@ -444,32 +433,39 @@ async def export_usage_data(
 
         # Execute use case to get export data
         export_result = export_usage_data_use_case.execute(
-            user_id=current_user.id,
-            format=format,
-            period=period
+            user_id=current_user.id, format=format, period=period
         )
 
         if format.lower() == "xlsx":
             # Create Excel export for usage data
             def export_usage_to_excel(data):
                 """Convert usage trends data to Excel format."""
-                from openpyxl import Workbook
-                from openpyxl.styles import Font, PatternFill, Alignment
                 import io
+
+                from openpyxl import Workbook
+                from openpyxl.styles import Font, PatternFill
 
                 wb = Workbook()
                 ws = wb.active
                 ws.title = "Usage History"
 
                 # Headers
-                headers = ["Date", "Sessions", "Minutes", "Transcriptions",
-                          "Exports", "Cost (USD)", "Storage (MB)"]
+                headers = [
+                    "Date",
+                    "Sessions",
+                    "Minutes",
+                    "Transcriptions",
+                    "Exports",
+                    "Cost (USD)",
+                    "Storage (MB)",
+                ]
                 ws.append(headers)
 
                 # Style header
                 header_font = Font(bold=True, color="FFFFFF")
-                header_fill = PatternFill(start_color="366092", end_color="366092",
-                                        fill_type="solid")
+                header_fill = PatternFill(
+                    start_color="366092", end_color="366092", fill_type="solid"
+                )
 
                 for col_num, header in enumerate(headers, 1):
                     cell = ws.cell(row=1, column=col_num)
@@ -478,15 +474,17 @@ async def export_usage_data(
 
                 # Add data rows
                 for item in data:
-                    ws.append([
-                        item.get('date', 'N/A'),
-                        item.get('sessions', 0),
-                        item.get('minutes', 0.0),
-                        item.get('transcriptions', 0),
-                        item.get('exports_generated', 0),
-                        item.get('cost', 0.0),
-                        item.get('storage_used_mb', 0.0)
-                    ])
+                    ws.append(
+                        [
+                            item.get("date", "N/A"),
+                            item.get("sessions", 0),
+                            item.get("minutes", 0.0),
+                            item.get("transcriptions", 0),
+                            item.get("exports_generated", 0),
+                            item.get("cost", 0.0),
+                            item.get("storage_used_mb", 0.0),
+                        ]
+                    )
 
                 # Auto-adjust column widths
                 for column in ws.columns:
@@ -496,7 +494,7 @@ async def export_usage_data(
                         try:
                             if len(str(cell.value)) > max_length:
                                 max_length = len(str(cell.value))
-                        except:
+                        except (AttributeError, TypeError, ValueError):
                             pass
                     adjusted_width = min(max_length + 2, 50)
                     ws.column_dimensions[column_letter].width = adjusted_width
@@ -514,7 +512,7 @@ async def export_usage_data(
                 "format": "xlsx",
                 "period": period,
                 "data": excel_data,
-                "filename": f"usage_history_{period}_{current_user.id}.xlsx"
+                "filename": f"usage_history_{period}_{current_user.id}.xlsx",
             }
         elif format.lower() in ["txt", "json"]:
             # Return the data from use case

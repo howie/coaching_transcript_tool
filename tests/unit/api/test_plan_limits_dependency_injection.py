@@ -3,20 +3,21 @@ Unit tests to catch dependency injection issues in plan limits API.
 These tests specifically catch the AttributeError that occurred in production.
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 from sqlalchemy.orm import Session
 
-from src.coaching_assistant.api.v1.plan_limits import (
-    validate_action,
-    get_current_usage,
-    increment_usage,
-)
-from src.coaching_assistant.api.v1.plan_limits import ValidateActionRequest
 from src.coaching_assistant.api.dependencies import (
     get_current_user_dependency,
 )
 from src.coaching_assistant.api.v1.auth import UserResponse
+from src.coaching_assistant.api.v1.plan_limits import (
+    ValidateActionRequest,
+    get_current_usage,
+    increment_usage,
+    validate_action,
+)
 from src.coaching_assistant.models.user import User, UserPlan
 
 
@@ -36,10 +37,7 @@ class TestDependencyInjectionCompatibility:
         # The default should be Depends(get_current_user_dependency)
         assert current_user_param.default is not inspect.Parameter.empty
         assert hasattr(current_user_param.default, "dependency")
-        assert (
-            current_user_param.default.dependency
-            == get_current_user_dependency
-        )
+        assert current_user_param.default.dependency == get_current_user_dependency
 
     def test_get_current_usage_uses_correct_dependency(self):
         """Test that get_current_usage uses get_current_user_dependency."""
@@ -50,10 +48,7 @@ class TestDependencyInjectionCompatibility:
 
         assert current_user_param.default is not inspect.Parameter.empty
         assert hasattr(current_user_param.default, "dependency")
-        assert (
-            current_user_param.default.dependency
-            == get_current_user_dependency
-        )
+        assert current_user_param.default.dependency == get_current_user_dependency
 
     def test_increment_usage_uses_correct_dependency(self):
         """Test that increment_usage uses get_current_user_dependency."""
@@ -64,10 +59,7 @@ class TestDependencyInjectionCompatibility:
 
         assert current_user_param.default is not inspect.Parameter.empty
         assert hasattr(current_user_param.default, "dependency")
-        assert (
-            current_user_param.default.dependency
-            == get_current_user_dependency
-        )
+        assert current_user_param.default.dependency == get_current_user_dependency
 
     def test_user_model_has_required_attributes(self):
         """Test that User model has all attributes required by plan limits."""
@@ -81,9 +73,7 @@ class TestDependencyInjectionCompatibility:
         ]
 
         for attr in required_attrs:
-            assert hasattr(
-                user, attr
-            ), f"User model missing required attribute: {attr}"
+            assert hasattr(user, attr), f"User model missing required attribute: {attr}"
 
     def test_user_response_does_not_have_usage_attributes(self):
         """Test that UserResponse model does NOT have usage attributes (expected behavior)."""
@@ -91,9 +81,9 @@ class TestDependencyInjectionCompatibility:
         usage_attrs = ["session_count", "transcription_count", "usage_minutes"]
 
         for attr in usage_attrs:
-            assert not hasattr(
-                UserResponse, attr
-            ), f"UserResponse should not have {attr}"
+            assert not hasattr(UserResponse, attr), (
+                f"UserResponse should not have {attr}"
+            )
 
     @patch("coaching_assistant.api.v1.plan_limits.get_db")
     def test_validate_action_with_user_attributes(self, mock_get_db):
@@ -109,18 +99,15 @@ class TestDependencyInjectionCompatibility:
         mock_db = Mock(spec=Session)
         mock_get_db.return_value = mock_db
 
-        # Create request
-        request = ValidateActionRequest(action="create_session")
+        # Create request (validated by test but not used in mocked scenario)
+        _ = ValidateActionRequest(action="create_session")
 
         # This should NOT raise AttributeError
         # We'll patch the function to test just the attribute access
         with (
             patch("coaching_assistant.api.v1.plan_limits.UsageTracker"),
-            patch(
-                "coaching_assistant.api.v1.plan_limits.PlanLimits.get_plan_limit"
-            ),
+            patch("coaching_assistant.api.v1.plan_limits.PlanLimits.get_plan_limit"),
         ):
-
             try:
                 # Test attribute access that would fail with UserResponse
                 session_count = mock_user.session_count
@@ -175,15 +162,11 @@ class TestUserModelContract:
         user = User()
 
         # These should be None initially (database default) or integers
-        assert user.session_count is None or isinstance(
-            user.session_count, int
-        )
+        assert user.session_count is None or isinstance(user.session_count, int)
         assert user.transcription_count is None or isinstance(
             user.transcription_count, int
         )
-        assert user.usage_minutes is None or isinstance(
-            user.usage_minutes, int
-        )
+        assert user.usage_minutes is None or isinstance(user.usage_minutes, int)
 
     def test_user_model_usage_attributes_support_null_coalescing(self):
         """Test that usage attributes work with 'or 0' pattern used in plan limits."""
@@ -215,11 +198,11 @@ class TestProductionErrorPrevention:
 
     def test_import_compatibility(self):
         """Test that we're importing the correct dependency function."""
-        from coaching_assistant.api.v1.plan_limits import (
-            get_current_user_dependency as imported_dependency,
-        )
         from coaching_assistant.api.auth import (
             get_current_user_dependency as auth_dependency,
+        )
+        from coaching_assistant.api.v1.plan_limits import (
+            get_current_user_dependency as imported_dependency,
         )
 
         # Should be the same function
@@ -252,7 +235,8 @@ class TestProductionErrorPrevention:
         mock_get_current_user_dependency.return_value = mock_user
         mock_get_db.return_value = Mock(spec=Session)
 
-        request = ValidateActionRequest(action="create_session")
+        # Create request (validated by test but not used in mocked scenario)
+        _ = ValidateActionRequest(action="create_session")
 
         # This should work without issues
         with (
@@ -261,7 +245,6 @@ class TestProductionErrorPrevention:
                 "coaching_assistant.api.v1.plan_limits.PlanLimits.get_plan_limit"
             ) as mock_plan_limits,
         ):
-
             # Mock the plan limits response
             mock_plan_limits.return_value = Mock(max_sessions=10)
 

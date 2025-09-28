@@ -1,8 +1,9 @@
 """Tests for UsageHistory model."""
 
-import pytest
 from datetime import datetime, timedelta
 from decimal import Decimal
+
+import pytest
 
 from coaching_assistant.models.usage_history import UsageHistory
 from coaching_assistant.models.user import User, UserPlan
@@ -14,9 +15,7 @@ class TestUsageHistory:
     def test_create_usage_history(self, db_session):
         """Test creating a usage history record."""
         # Create a test user first
-        user = User(
-            email="test@example.com", name="Test User", plan=UserPlan.FREE
-        )
+        user = User(email="test@example.com", name="Test User", plan=UserPlan.FREE)
         db_session.add(user)
         db_session.commit()
 
@@ -57,9 +56,7 @@ class TestUsageHistory:
     def test_usage_history_properties(self, db_session):
         """Test calculated properties of UsageHistory."""
         # Create a test user
-        user = User(
-            email="test@example.com", name="Test User", plan=UserPlan.PRO
-        )
+        user = User(email="test@example.com", name="Test User", plan=UserPlan.PRO)
         db_session.add(user)
         db_session.commit()
 
@@ -85,9 +82,7 @@ class TestUsageHistory:
         )  # 120 minutes / 4 transcriptions
 
         # Test success_rate
-        assert (
-            usage_history.success_rate == 80.0
-        )  # 4 successful / 5 total * 100
+        assert usage_history.success_rate == 80.0  # 4 successful / 5 total * 100
 
         # Test cost_per_minute
         assert usage_history.cost_per_minute == pytest.approx(
@@ -99,9 +94,7 @@ class TestUsageHistory:
 
     def test_usage_history_zero_division_safety(self, db_session):
         """Test that properties handle zero division gracefully."""
-        user = User(
-            email="test@example.com", name="Test User", plan=UserPlan.FREE
-        )
+        user = User(email="test@example.com", name="Test User", plan=UserPlan.FREE)
         db_session.add(user)
         db_session.commit()
 
@@ -126,9 +119,7 @@ class TestUsageHistory:
 
     def test_usage_history_to_dict(self, db_session):
         """Test converting UsageHistory to dictionary."""
-        user = User(
-            email="test@example.com", name="Test User", plan=UserPlan.PRO
-        )
+        user = User(email="test@example.com", name="Test User", plan=UserPlan.PRO)
         db_session.add(user)
         db_session.commit()
 
@@ -195,9 +186,7 @@ class TestUsageHistory:
 
     def test_create_snapshot_class_method(self, db_session):
         """Test creating UsageHistory using the create_snapshot class method."""
-        user = User(
-            email="test@example.com", name="Test User", plan=UserPlan.FREE
-        )
+        user = User(email="test@example.com", name="Test User", plan=UserPlan.FREE)
         db_session.add(user)
         db_session.commit()
 
@@ -247,9 +236,7 @@ class TestUsageHistory:
 
     def test_usage_history_unique_constraint(self, db_session):
         """Test that the unique constraint on user_id, period_type, period_start works."""
-        user = User(
-            email="test@example.com", name="Test User", plan=UserPlan.FREE
-        )
+        user = User(email="test@example.com", name="Test User", plan=UserPlan.FREE)
         db_session.add(user)
         db_session.commit()
 
@@ -270,7 +257,8 @@ class TestUsageHistory:
         db_session.add(usage_history1)
         db_session.commit()
 
-        # Try to create a duplicate record (same user, period_type, period_start)
+        # Try to create a duplicate record (same user, period_type,
+        # period_start)
         usage_history2 = UsageHistory(
             user_id=user.id,
             period_type="daily",
@@ -287,9 +275,7 @@ class TestUsageHistory:
 
     def test_usage_history_relationship_with_user(self, db_session):
         """Test the relationship between UsageHistory and User."""
-        user = User(
-            email="test@example.com", name="Test User", plan=UserPlan.PRO
-        )
+        user = User(email="test@example.com", name="Test User", plan=UserPlan.PRO)
         db_session.add(user)
         db_session.commit()
 
@@ -319,9 +305,7 @@ class TestUsageHistory:
 
     def test_usage_history_repr(self, db_session):
         """Test the string representation of UsageHistory."""
-        user = User(
-            email="test@example.com", name="Test User", plan=UserPlan.FREE
-        )
+        user = User(email="test@example.com", name="Test User", plan=UserPlan.FREE)
         db_session.add(user)
         db_session.commit()
 

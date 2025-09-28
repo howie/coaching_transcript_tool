@@ -5,15 +5,16 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
 following Clean Architecture principles.
 """
 
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy.orm import Session as DBSession
-from sqlalchemy.exc import SQLAlchemyError
+from typing import List, Optional
+from uuid import UUID
 
-from ....core.repositories.ports import UsageHistoryRepoPort
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session as DBSession
+
 from ....core.models.usage_history import UsageHistory
+from ....core.repositories.ports import UsageHistoryRepoPort
 from ....models.usage_history import UsageHistory as UsageHistoryModel
 
 
@@ -40,7 +41,9 @@ class SQLAlchemyUsageHistoryRepository(UsageHistoryRepoPort):
         try:
             if usage_history.id:
                 # Update existing usage history
-                orm_usage_history = self.session.get(UsageHistoryModel, usage_history.id)
+                orm_usage_history = self.session.get(
+                    UsageHistoryModel, usage_history.id
+                )
                 if orm_usage_history:
                     self._update_orm_from_domain(orm_usage_history, usage_history)
                 else:
@@ -57,7 +60,7 @@ class SQLAlchemyUsageHistoryRepository(UsageHistoryRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error saving usage history") from e
+            raise RuntimeError("Database error saving usage history") from e
 
     def get_by_user_and_period(
         self,
@@ -173,7 +176,9 @@ class SQLAlchemyUsageHistoryRepository(UsageHistoryRepoPort):
             updated_at=usage_history.updated_at,
         )
 
-    def _update_orm_from_domain(self, orm_entity: UsageHistoryModel, domain_entity: UsageHistory) -> None:
+    def _update_orm_from_domain(
+        self, orm_entity: UsageHistoryModel, domain_entity: UsageHistory
+    ) -> None:
         """Update ORM entity from domain entity.
 
         Args:
@@ -201,7 +206,9 @@ class SQLAlchemyUsageHistoryRepository(UsageHistoryRepoPort):
         orm_entity.google_stt_minutes = domain_entity.google_stt_minutes
         orm_entity.assemblyai_minutes = domain_entity.assemblyai_minutes
         orm_entity.exports_by_format = domain_entity.exports_by_format
-        orm_entity.avg_processing_time_seconds = domain_entity.avg_processing_time_seconds
+        orm_entity.avg_processing_time_seconds = (
+            domain_entity.avg_processing_time_seconds
+        )
         orm_entity.failed_transcriptions = domain_entity.failed_transcriptions
         orm_entity.updated_at = domain_entity.updated_at
 
@@ -237,14 +244,18 @@ class SQLAlchemyUsageHistoryRepository(UsageHistoryRepoPort):
             google_stt_minutes=Decimal(str(orm_entity.google_stt_minutes)),
             assemblyai_minutes=Decimal(str(orm_entity.assemblyai_minutes)),
             exports_by_format=orm_entity.exports_by_format or {},
-            avg_processing_time_seconds=Decimal(str(orm_entity.avg_processing_time_seconds)),
+            avg_processing_time_seconds=Decimal(
+                str(orm_entity.avg_processing_time_seconds)
+            ),
             failed_transcriptions=orm_entity.failed_transcriptions,
             created_at=orm_entity.created_at,
             updated_at=orm_entity.updated_at,
         )
 
 
-def create_usage_history_repository(session: DBSession) -> UsageHistoryRepoPort:
+def create_usage_history_repository(
+    session: DBSession,
+) -> UsageHistoryRepoPort:
     """Factory function to create a UsageHistoryRepository instance.
 
     Args:

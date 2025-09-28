@@ -1,18 +1,19 @@
 """Usage analytics model for pre-aggregated monthly data."""
 
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Boolean,
-    ForeignKey,
     DECIMAL,
+    JSON,
+    Boolean,
+    Column,
     DateTime,
+    ForeignKey,
+    Integer,
+    String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import JSON
+from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 
@@ -60,9 +61,7 @@ class UsageAnalytics(BaseModel):
     user = relationship("User", back_populates="usage_analytics")
 
     # Unique constraint on user_id and month_year
-    __table_args__ = (
-        UniqueConstraint("user_id", "month_year", name="uq_user_month"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "month_year", name="uq_user_month"),)
 
     def __repr__(self):
         return (
@@ -79,10 +78,7 @@ class UsageAnalytics(BaseModel):
     def avg_session_duration_minutes(self) -> float:
         """Calculate average session duration in minutes."""
         if self.transcriptions_completed > 0:
-            return (
-                float(self.total_minutes_processed)
-                / self.transcriptions_completed
-            )
+            return float(self.total_minutes_processed) / self.transcriptions_completed
         return 0.0
 
     @property
@@ -122,21 +118,11 @@ class UsageAnalytics(BaseModel):
                 "total": self.total_exports,
             },
             "period": {
-                "start": (
-                    self.period_start.isoformat()
-                    if self.period_start
-                    else None
-                ),
-                "end": (
-                    self.period_end.isoformat() if self.period_end else None
-                ),
+                "start": (self.period_start.isoformat() if self.period_start else None),
+                "end": (self.period_end.isoformat() if self.period_end else None),
             },
             "avg_session_duration_minutes": self.avg_session_duration_minutes,
             "avg_cost_per_transcription": self.avg_cost_per_transcription,
-            "created_at": (
-                self.created_at.isoformat() if self.created_at else None
-            ),
-            "updated_at": (
-                self.updated_at.isoformat() if self.updated_at else None
-            ),
+            "created_at": (self.created_at.isoformat() if self.created_at else None),
+            "updated_at": (self.updated_at.isoformat() if self.updated_at else None),
         }

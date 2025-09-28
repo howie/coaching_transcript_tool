@@ -1,6 +1,7 @@
 """Coaching plan domain model for Clean Architecture."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -10,6 +11,7 @@ from uuid import UUID
 
 class CoachingPlanType(Enum):
     """Types of coaching plans."""
+
     SINGLE_SESSION = "single_session"
     PACKAGE = "package"
     GROUP = "group"

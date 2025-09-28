@@ -1,10 +1,10 @@
 """Speech-to-Text provider abstraction layer."""
 
+import logging
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 from decimal import Decimal
-import logging
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

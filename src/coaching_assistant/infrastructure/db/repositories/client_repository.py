@@ -5,14 +5,15 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
 following Clean Architecture principles.
 """
 
-from typing import Optional, List
+from typing import List, Optional
 from uuid import UUID
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import and_, or_, func
 
-from ....core.repositories.ports import ClientRepoPort
+from sqlalchemy import and_, func, or_
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from ....core.models.client import Client as DomainClient
+from ....core.repositories.ports import ClientRepoPort
 from ....models.client import Client as ClientModel
 
 
@@ -82,7 +83,9 @@ class SQLAlchemyClientRepository(ClientRepoPort):
             orm_client = self.session.get(ClientModel, client_id)
             return self._to_domain(orm_client) if orm_client else None
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database connection error while retrieving client {client_id}") from e
+            raise RuntimeError(
+                f"Database connection error while retrieving client {client_id}"
+            ) from e
 
     def get_by_coach_id(self, coach_id: UUID) -> List[DomainClient]:
         """Get all clients for a coach.
@@ -102,7 +105,9 @@ class SQLAlchemyClientRepository(ClientRepoPort):
             )
             return [self._to_domain(orm_client) for orm_client in orm_clients]
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving clients for coach {coach_id}") from e
+            raise RuntimeError(
+                f"Database error retrieving clients for coach {coach_id}"
+            ) from e
 
     def save(self, client: DomainClient) -> DomainClient:
         """Save or update client entity.
@@ -183,7 +188,7 @@ class SQLAlchemyClientRepository(ClientRepoPort):
         try:
             search_filter = or_(
                 ClientModel.name.ilike(f"%{query}%"),
-                ClientModel.email.ilike(f"%{query}%")
+                ClientModel.email.ilike(f"%{query}%"),
             )
             query_filter = and_(ClientModel.user_id == coach_id, search_filter)
 
@@ -196,14 +201,16 @@ class SQLAlchemyClientRepository(ClientRepoPort):
             )
             return [self._to_domain(orm_client) for orm_client in orm_clients]
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error searching clients for coach {coach_id}") from e
+            raise RuntimeError(
+                f"Database error searching clients for coach {coach_id}"
+            ) from e
 
     def get_clients_paginated(
         self,
         coach_id: UUID,
         query: Optional[str] = None,
         page: int = 1,
-        page_size: int = 20
+        page_size: int = 20,
     ) -> tuple[List[DomainClient], int]:
         """Get paginated clients for a coach with optional search.
 
@@ -224,7 +231,7 @@ class SQLAlchemyClientRepository(ClientRepoPort):
             if query:
                 search_filter = or_(
                     ClientModel.name.ilike(f"%{query}%"),
-                    ClientModel.email.ilike(f"%{query}%")
+                    ClientModel.email.ilike(f"%{query}%"),
                 )
                 query_filter = and_(base_filter, search_filter)
             else:
@@ -248,7 +255,9 @@ class SQLAlchemyClientRepository(ClientRepoPort):
             return clients, total
 
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error getting paginated clients for coach {coach_id}") from e
+            raise RuntimeError(
+                f"Database error getting paginated clients for coach {coach_id}"
+            ) from e
 
     def get_client_with_ownership_check(
         self, client_id: UUID, coach_id: UUID
@@ -266,16 +275,24 @@ class SQLAlchemyClientRepository(ClientRepoPort):
             orm_client = (
                 self.session.query(ClientModel)
                 .filter(
-                    and_(ClientModel.id == client_id, ClientModel.user_id == coach_id)
+                    and_(
+                        ClientModel.id == client_id,
+                        ClientModel.user_id == coach_id,
+                    )
                 )
                 .first()
             )
             return self._to_domain(orm_client) if orm_client else None
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving client {client_id} for coach {coach_id}") from e
+            raise RuntimeError(
+                f"Database error retrieving client {client_id} for coach {coach_id}"
+            ) from e
 
     def check_email_exists_for_coach(
-        self, coach_id: UUID, email: str, exclude_client_id: Optional[UUID] = None
+        self,
+        coach_id: UUID,
+        email: str,
+        exclude_client_id: Optional[UUID] = None,
     ) -> bool:
         """Check if email exists for a coach's clients.
 
@@ -301,7 +318,9 @@ class SQLAlchemyClientRepository(ClientRepoPort):
 
             return query.first() is not None
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error checking email existence for coach {coach_id}") from e
+            raise RuntimeError(
+                f"Database error checking email existence for coach {coach_id}"
+            ) from e
 
     def get_anonymized_count_for_coach(self, coach_id: UUID) -> int:
         """Get count of anonymized clients for a coach.
@@ -318,13 +337,15 @@ class SQLAlchemyClientRepository(ClientRepoPort):
                 .filter(
                     and_(
                         ClientModel.user_id == coach_id,
-                        ClientModel.is_anonymized == True
+                        ClientModel.is_anonymized.is_(True),
                     )
                 )
                 .count()
             )
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error getting anonymized count for coach {coach_id}") from e
+            raise RuntimeError(
+                f"Database error getting anonymized count for coach {coach_id}"
+            ) from e
 
 
 # Factory function for dependency injection

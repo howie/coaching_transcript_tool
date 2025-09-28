@@ -1,15 +1,16 @@
 """Tests for BillingAnalyticsService."""
 
-import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
 from decimal import Decimal
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
+import pytest
+
+from coaching_assistant.models.billing_analytics import BillingAnalytics
 from coaching_assistant.services.billing_analytics_service import (
     BillingAnalyticsService,
 )
-from coaching_assistant.models.billing_analytics import BillingAnalytics
 
 
 class TestBillingAnalyticsService:
@@ -97,9 +98,7 @@ class TestBillingAnalyticsService:
         period_start = datetime.utcnow() - timedelta(days=30)
         period_end = datetime.utcnow()
 
-        overview = service.get_admin_overview(
-            period_start, period_end, "monthly"
-        )
+        overview = service.get_admin_overview(period_start, period_end, "monthly")
 
         # Verify structure
         assert "revenue_metrics" in overview
@@ -111,16 +110,14 @@ class TestBillingAnalyticsService:
         # Verify revenue metrics
         revenue_metrics = overview["revenue_metrics"]
         assert revenue_metrics["total_revenue"] == 99.99
-        assert revenue_metrics["gross_margin"] == 69.99  # 99.99 - 30.00 (25.00 provider cost + 5.00 one-time fees)
         assert (
-            revenue_metrics["avg_revenue_per_user"] == 49.995
-        )  # 99.99 / 2 users
+            revenue_metrics["gross_margin"] == 69.99
+        )  # 99.99 - 30.00 (25.00 provider cost + 5.00 one-time fees)
+        assert revenue_metrics["avg_revenue_per_user"] == 49.995  # 99.99 / 2 users
 
     def test_calculate_revenue_metrics(self, service, sample_billing_data):
         """Test revenue metrics calculation."""
-        revenue_metrics = service._calculate_revenue_metrics(
-            sample_billing_data
-        )
+        revenue_metrics = service._calculate_revenue_metrics(sample_billing_data)
 
         expected_total_revenue = 99.99  # Only PRO user has revenue
         expected_gross_margin = 69.99  # 99.99 - 30.00 (total costs)
@@ -128,10 +125,7 @@ class TestBillingAnalyticsService:
 
         assert revenue_metrics["total_revenue"] == expected_total_revenue
         assert revenue_metrics["gross_margin"] == expected_gross_margin
-        assert (
-            revenue_metrics["avg_revenue_per_user"]
-            == expected_avg_revenue_per_user
-        )
+        assert revenue_metrics["avg_revenue_per_user"] == expected_avg_revenue_per_user
         assert revenue_metrics["subscription_revenue"] == 99.99
         assert revenue_metrics["overage_revenue"] == 0.0
 
@@ -155,10 +149,7 @@ class TestBillingAnalyticsService:
         expected_avg_success_rate = 92.5  # (95.0 + 90.0) / 2
 
         assert usage_metrics["total_sessions"] == expected_total_sessions
-        assert (
-            usage_metrics["total_transcriptions"]
-            == expected_total_transcriptions
-        )
+        assert usage_metrics["total_transcriptions"] == expected_total_transcriptions
         assert usage_metrics["total_minutes"] == expected_total_minutes
         assert usage_metrics["success_rate"] == expected_avg_success_rate
         assert usage_metrics["unique_active_users"] == 2
@@ -184,9 +175,7 @@ class TestBillingAnalyticsService:
             assert "sessions" in trend
             assert "minutes" in trend
 
-    def test_get_customer_segmentation(
-        self, service, mock_db, sample_billing_data
-    ):
+    def test_get_customer_segmentation(self, service, mock_db, sample_billing_data):
         """Test customer segmentation analysis."""
         # Mock database query
         mock_query = Mock()
@@ -197,9 +186,7 @@ class TestBillingAnalyticsService:
         period_start = datetime.utcnow() - timedelta(days=30)
         period_end = datetime.utcnow()
 
-        segments = service.get_customer_segmentation(
-            period_start, period_end, False
-        )
+        segments = service.get_customer_segmentation(period_start, period_end, False)
 
         assert isinstance(segments, list)
         # Should analyze segments based on user_segment field
@@ -235,7 +222,11 @@ class TestBillingAnalyticsService:
         mock_ltv_query.filter.return_value = mock_ltv_query
         mock_ltv_query.scalar.return_value = 250.00  # Mock lifetime value
 
-        mock_db.query.side_effect = [mock_user_query, mock_billing_query, mock_ltv_query]
+        mock_db.query.side_effect = [
+            mock_user_query,
+            mock_billing_query,
+            mock_ltv_query,
+        ]
 
         # Mock usage analytics service
         service.usage_analytics_service.predict_usage.return_value = {
@@ -269,9 +260,7 @@ class TestBillingAnalyticsService:
         with pytest.raises(ValueError, match=f"User {user_id} not found"):
             service.get_user_analytics_detail(user_id)
 
-    def test_export_analytics_data_csv(
-        self, service, mock_db, sample_billing_data
-    ):
+    def test_export_analytics_data_csv(self, service, mock_db, sample_billing_data):
         """Test exporting analytics data to CSV format."""
         # Mock database query
         mock_query = Mock()
@@ -293,9 +282,7 @@ class TestBillingAnalyticsService:
         # CSV should contain headers
         assert "user_id" in export_result["data"]
 
-    def test_export_analytics_data_json(
-        self, service, mock_db, sample_billing_data
-    ):
+    def test_export_analytics_data_json(self, service, mock_db, sample_billing_data):
         """Test exporting analytics data to JSON format."""
         # Mock database query
         mock_query = Mock()
@@ -416,9 +403,7 @@ class TestBillingAnalyticsService:
         mock_db.query.return_value = mock_user_query
 
         # Mock refresh_user_analytics
-        service.refresh_user_analytics = Mock(
-            return_value={"records_updated": 1}
-        )
+        service.refresh_user_analytics = Mock(return_value={"records_updated": 1})
 
         result = service.refresh_all_analytics("monthly", False)
 
@@ -426,9 +411,7 @@ class TestBillingAnalyticsService:
         assert result["records_updated"] == 3
         assert service.refresh_user_analytics.call_count == 3
 
-    def test_get_health_score_distribution(
-        self, service, mock_db, sample_billing_data
-    ):
+    def test_get_health_score_distribution(self, service, mock_db, sample_billing_data):
         """Test getting health score distribution."""
         # Mock database query
         mock_query = Mock()

@@ -1,32 +1,34 @@
 """
 API endpoints for transcript smoothing and punctuation repair.
 
-Provides REST endpoints to smooth AssemblyAI transcripts and repair punctuation.
+Provides REST endpoints to smooth AssemblyAI transcripts and repair
+punctuation.
 """
 
 import logging
 import time
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional
+from sqlalchemy.orm import Session as DBSession
 
-from ...services.transcript_smoother import (
-    smooth_and_punctuate,
-    TranscriptProcessingError,
-    MissingWordsError,
-    UnsupportedLanguageError,
+from ...core.database import get_db
+from ...core.models.coaching_session import CoachingSession
+from ...core.models.session import Session
+from ...core.models.transcript import (
+    TranscriptSegment as TranscriptSegmentModel,
 )
 from ...services.lemur_transcript_smoother import (
     smooth_transcript_with_lemur,
 )
+from ...services.transcript_smoother import (
+    MissingWordsError,
+    TranscriptProcessingError,
+    UnsupportedLanguageError,
+    smooth_and_punctuate,
+)
 from .auth import get_current_user_dependency
-from ...core.models.session import Session
-from ...core.models.transcript import TranscriptSegment as TranscriptSegmentModel
-from ...core.models.coaching_session import CoachingSession
-from ...core.database import get_db
-from sqlalchemy.orm import Session as DBSession
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +68,9 @@ def resolve_transcript_session_id(
 
     if coaching_session and coaching_session.transcription_session_id:
         logger.info(
-            f"✅ Resolved coaching session {session_id} -> transcript session {coaching_session.transcription_session_id}"
+            f"✅ Resolved coaching session {session_id} -> transcript session {
+                coaching_session.transcription_session_id
+            }"
         )
         return str(coaching_session.transcription_session_id), True
 
@@ -82,13 +86,14 @@ def resolve_transcript_session_id(
         return session_id, False
 
     # Neither found
-    logger.warning(
-        f"❌ No session found for ID {session_id} and user {user_id}"
-    )
+    logger.warning(f"❌ No session found for ID {session_id} and user {user_id}")
     raise HTTPException(
         status_code=404,
         detail={
-            "error": "Session not found or access denied. Please check if the session ID is correct.",
+            "error": (
+                "Session not found or access denied. Please check if the "
+                "session ID is correct."
+            ),
             "error_type": "session_not_found",
             "success": False,
             "session_id": session_id,
@@ -144,7 +149,8 @@ class TranscriptSmoothingRequest(BaseModel):
     )
     custom_prompts: Optional[Dict[str, str]] = Field(
         None,
-        description="Custom prompts for speaker identification and punctuation improvement",
+        description="Custom prompts for speaker identification "
+        "and punctuation improvement",
         example={
             "speakerPrompt": "Custom speaker identification prompt...",
             "punctuationPrompt": "Custom punctuation improvement prompt...",
@@ -168,18 +174,10 @@ class ProcessedSegment(BaseModel):
 class HeuristicStats(BaseModel):
     """Statistics for heuristic rules applied."""
 
-    short_first_segment: int = Field(
-        0, description="Short head backfill applications"
-    )
-    filler_words: int = Field(
-        0, description="Filler word backfill applications"
-    )
-    no_terminal_punct: int = Field(
-        0, description="No terminal punctuation cases"
-    )
-    echo_backfill: int = Field(
-        0, description="Echo/quote backfill applications"
-    )
+    short_first_segment: int = Field(0, description="Short head backfill applications")
+    filler_words: int = Field(0, description="Filler word backfill applications")
+    no_terminal_punct: int = Field(0, description="No terminal punctuation cases")
+    echo_backfill: int = Field(0, description="Echo/quote backfill applications")
 
 
 class ProcessingStats(BaseModel):
@@ -190,16 +188,10 @@ class ProcessingStats(BaseModel):
     )
     merged_segments: int = Field(..., description="Number of segments merged")
     split_segments: int = Field(..., description="Number of segments split")
-    heuristic_hits: HeuristicStats = Field(
-        ..., description="Heuristic rule statistics"
-    )
+    heuristic_hits: HeuristicStats = Field(..., description="Heuristic rule statistics")
     language_detected: str = Field(..., description="Detected language")
-    processor_used: str = Field(
-        ..., description="Processor used for processing"
-    )
-    processing_time_ms: int = Field(
-        ..., description="Processing time in milliseconds"
-    )
+    processor_used: str = Field(..., description="Processor used for processing")
+    processing_time_ms: int = Field(..., description="Processing time in milliseconds")
 
 
 class TranscriptSmoothingResponse(BaseModel):
@@ -230,9 +222,7 @@ class LeMURSegment(BaseModel):
     )
     start_ms: int = Field(..., description="Start time in milliseconds")
     end_ms: int = Field(..., description="End time in milliseconds")
-    text: str = Field(
-        ..., description="Text with improved punctuation and structure"
-    )
+    text: str = Field(..., description="Text with improved punctuation and structure")
 
 
 class LeMURSmoothingResponse(BaseModel):
@@ -247,12 +237,8 @@ class LeMURSmoothingResponse(BaseModel):
     improvements_made: list[str] = Field(
         ..., description="List of improvements applied"
     )
-    processing_notes: str = Field(
-        ..., description="Notes about the processing"
-    )
-    processing_time_ms: int = Field(
-        ..., description="Processing time in milliseconds"
-    )
+    processing_notes: str = Field(..., description="Notes about the processing")
+    processing_time_ms: int = Field(..., description="Processing time in milliseconds")
     success: bool = Field(True, description="Whether processing succeeded")
 
 
@@ -284,10 +270,12 @@ class CombinedProcessingRequest(TranscriptSmoothingRequest):
     },
     summary="Smooth transcript and repair punctuation",
     description="""
-    Process AssemblyAI transcript to smooth speaker boundaries and repair punctuation.
+    Process AssemblyAI transcript to smooth speaker boundaries and repair
+    punctuation.
 
     This endpoint:
-    1. Smooths speaker boundary errors (backfills short segments, filler words, etc.)
+    1. Smooths speaker boundary errors (backfills short segments,
+       filler words, etc.)
     2. Repairs Chinese/English punctuation based on language rules
     3. Maintains timing information and speaker assignments
     4. Supports multiple languages with auto-detection
@@ -334,9 +322,7 @@ async def smooth_transcript(
         processing_time_ms = int((time.time() - start_time) * 1000)
 
         # Convert to response format
-        segments = [
-            ProcessedSegment(**segment) for segment in result["segments"]
-        ]
+        segments = [ProcessedSegment(**segment) for segment in result["segments"]]
 
         stats = ProcessingStats(
             **result["stats"], processing_time_ms=processing_time_ms
@@ -349,14 +335,10 @@ async def smooth_transcript(
             f"Processing time: {processing_time_ms}ms"
         )
 
-        return TranscriptSmoothingResponse(
-            segments=segments, stats=stats, success=True
-        )
+        return TranscriptSmoothingResponse(segments=segments, stats=stats, success=True)
 
     except MissingWordsError as e:
-        logger.warning(
-            f"Missing words error for user {current_user.email}: {e}"
-        )
+        logger.warning(f"Missing words error for user {current_user.email}: {e}")
         raise HTTPException(
             status_code=400,
             detail={
@@ -367,9 +349,7 @@ async def smooth_transcript(
         )
 
     except UnsupportedLanguageError as e:
-        logger.warning(
-            f"Unsupported language error for user {current_user.email}: {e}"
-        )
+        logger.warning(f"Unsupported language error for user {current_user.email}: {e}")
         raise HTTPException(
             status_code=400,
             detail={
@@ -380,9 +360,7 @@ async def smooth_transcript(
         )
 
     except TranscriptProcessingError as e:
-        logger.error(
-            f"Transcript processing error for user {current_user.email}: {e}"
-        )
+        logger.error(f"Transcript processing error for user {current_user.email}: {e}")
         raise HTTPException(
             status_code=422,
             detail={
@@ -394,7 +372,9 @@ async def smooth_transcript(
 
     except Exception as e:
         logger.error(
-            f"Unexpected error during transcript smoothing for user {current_user.email}: {e}",
+            f"Unexpected error during transcript smoothing for user {
+                current_user.email
+            }: {e}",
             exc_info=True,
         )
         raise HTTPException(
@@ -484,13 +464,12 @@ async def lemur_speaker_identification_endpoint(
     Useful when you only want to improve punctuation without changing speaker identification.
     """,
 )
-async def lemur_punctuation_optimization(
+async def lemur_punctuation_optimization_endpoint(
     request: TranscriptSmoothingRequest,
     current_user=Depends(get_current_user_dependency),
 ) -> LeMURSmoothingResponse:
-    """Process transcript using LeMUR for punctuation optimization only."""
-    # Implementation will be the same as speaker identification but with punctuation_optimization_only=True
-    # This is handled by the existing logic in the service
+    """Call the actual LeMUR punctuation optimization function."""
+    return await lemur_punctuation_optimization(request, current_user)
 
 
 @router.post(
@@ -503,7 +482,8 @@ async def lemur_punctuation_optimization(
     },
     summary="Combined LeMUR processing (Speaker + Punctuation)",
     description="""
-    Process AssemblyAI transcript using LeMUR for combined speaker identification and punctuation optimization.
+    Process AssemblyAI transcript using LeMUR for combined speaker
+    identification and punctuation optimization.
 
     This endpoint uses AssemblyAI's LeMUR service with Claude 4 Sonnet to:
     1. Identify speakers (Coach vs Client) in coaching context
@@ -548,7 +528,10 @@ async def lemur_combined_processing(
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "error": "No utterances found in transcript. LeMUR processing requires speaker-segmented transcript data.",
+                    "error": (
+                        "No utterances found in transcript. LeMUR processing "
+                        "requires speaker-segmented transcript data."
+                    ),
                     "error_type": "missing_utterances",
                     "success": False,
                 },
@@ -576,7 +559,9 @@ async def lemur_combined_processing(
             session_language = "en-US"
 
         logger.debug(
-            f"Processing {len(lemur_segments)} segments for combined processing with language: {session_language}"
+            f"Processing {
+                len(lemur_segments)
+            } segments for combined processing with language: {session_language}"
         )
 
         # Apply LeMUR-based combined processing
@@ -655,7 +640,9 @@ async def lemur_speaker_identification(
     """
     try:
         logger.info(
-            f"User {current_user.email} requested LeMUR-based speaker identification for "
+            f"User {
+                current_user.email
+            } requested LeMUR-based speaker identification for "
             f"language: {request.language}"
         )
 
@@ -666,7 +653,10 @@ async def lemur_speaker_identification(
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "error": "No utterances found in transcript. LeMUR processing requires speaker-segmented transcript data.",
+                    "error": (
+                        "No utterances found in transcript. LeMUR processing "
+                        "requires speaker-segmented transcript data."
+                    ),
                     "error_type": "missing_utterances",
                     "success": False,
                 },
@@ -694,7 +684,9 @@ async def lemur_speaker_identification(
             session_language = "en-US"
 
         logger.debug(
-            f"Processing {len(lemur_segments)} segments for speaker identification with language: {session_language}"
+            f"Processing {
+                len(lemur_segments)
+            } segments for speaker identification with language: {session_language}"
         )
 
         # Apply LeMUR-based speaker identification only
@@ -773,7 +765,9 @@ async def lemur_punctuation_optimization(
     """
     try:
         logger.info(
-            f"User {current_user.email} requested LeMUR-based punctuation optimization for "
+            f"User {
+                current_user.email
+            } requested LeMUR-based punctuation optimization for "
             f"language: {request.language}"
         )
 
@@ -784,7 +778,10 @@ async def lemur_punctuation_optimization(
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "error": "No utterances found in transcript. LeMUR processing requires speaker-segmented transcript data.",
+                    "error": (
+                        "No utterances found in transcript. LeMUR processing "
+                        "requires speaker-segmented transcript data."
+                    ),
                     "error_type": "missing_utterances",
                     "success": False,
                 },
@@ -812,7 +809,9 @@ async def lemur_punctuation_optimization(
             session_language = "en-US"
 
         logger.debug(
-            f"Processing {len(lemur_segments)} segments for punctuation optimization with language: {session_language}"
+            f"Processing {
+                len(lemur_segments)
+            } segments for punctuation optimization with language: {session_language}"
         )
 
         # Apply LeMUR-based punctuation optimization only
@@ -821,7 +820,8 @@ async def lemur_punctuation_optimization(
             session_language=session_language,
             is_coaching_session=True,
             custom_prompts=request.custom_prompts,
-            punctuation_optimization_only=True,  # New parameter for punctuation-only processing
+            punctuation_optimization_only=True,
+            # New parameter for punctuation-only processing
         )
 
         processing_time_ms = int((time.time() - start_time) * 1000)
@@ -901,7 +901,10 @@ async def lemur_smooth_transcript(
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "error": "No utterances found in transcript. LeMUR smoothing requires speaker-segmented transcript data.",
+                    "error": (
+                        "No utterances found in transcript. LeMUR smoothing "
+                        "requires speaker-segmented transcript data."
+                    ),
                     "error_type": "missing_utterances",
                     "success": False,
                 },
@@ -922,7 +925,8 @@ async def lemur_smooth_transcript(
         original_language = request.language
         session_language = request.language
         if session_language == "auto":
-            # Try to detect from transcript metadata or default to Chinese for coaching
+            # Try to detect from transcript metadata or default to Chinese for
+            # coaching
             detected_lang = request.transcript.get("language_code", "zh-TW")
             session_language = detected_lang
             logger.info(
@@ -942,7 +946,9 @@ async def lemur_smooth_transcript(
             logger.info(f"🌍 LANGUAGE: {session_language} (using as-is)")
 
         logger.info(
-            f"🚀 STARTING LEMUR PROCESSING: {len(lemur_segments)} segments | Language: {session_language} | Coaching Mode: True"
+            f"🚀 STARTING LEMUR PROCESSING: {len(lemur_segments)} segments | Language: {
+                session_language
+            } | Coaching Mode: True"
         )
 
         # Log sample of input text for verification
@@ -962,10 +968,12 @@ async def lemur_smooth_transcript(
         custom_prompts = request.custom_prompts
         if custom_prompts:
             logger.info(
-                f"Using custom prompts for LeMUR processing: {list(custom_prompts.keys())}"
+                f"Using custom prompts for LeMUR processing: "
+                f"{list(custom_prompts.keys())}"
             )
 
-        # Apply LeMUR-based smoothing with COMBINED PROCESSING (handles everything in one call)
+        # Apply LeMUR-based smoothing with COMBINED PROCESSING (handles
+        # everything in one call)
         logger.info(
             "🔄 FORCING COMBINED PROCESSING MODE - LeMUR will handle space removal, speaker ID, and punctuation"
         )
@@ -1053,8 +1061,8 @@ async def get_default_config(
     try:
         if language.lower() == "chinese":
             from ...services.transcript_smoother import (
-                ChineseSmoothingConfig,
                 ChineseProcessor,
+                ChineseSmoothingConfig,
             )
 
             config = ChineseSmoothingConfig()
@@ -1082,8 +1090,8 @@ async def get_default_config(
 
         elif language.lower() == "english":
             from ...services.transcript_smoother import (
-                EnglishSmoothingConfig,
                 EnglishProcessor,
+                EnglishSmoothingConfig,
             )
 
             config = EnglishSmoothingConfig()
@@ -1120,9 +1128,7 @@ async def get_default_config(
             )
 
     except Exception as e:
-        logger.error(
-            f"Error getting default config for language {language}: {e}"
-        )
+        logger.error(f"Error getting default config for language {language}: {e}")
         raise HTTPException(
             status_code=500,
             detail={
@@ -1155,7 +1161,7 @@ async def get_supported_languages(
             {
                 "code": "chinese",
                 "name": "Chinese (Traditional/Simplified)",
-                "description": "Chinese language with full-width punctuation repair",
+                "description": ("Chinese language with full-width punctuation repair"),
                 "auto_detected": True,
             },
             {
@@ -1167,7 +1173,9 @@ async def get_supported_languages(
             {
                 "code": "auto",
                 "name": "Auto-detect",
-                "description": "Automatically detect language from transcript content",
+                "description": (
+                    "Automatically detect language from transcript content"
+                ),
                 "auto_detected": False,
             },
         ],
@@ -1220,7 +1228,9 @@ async def lemur_speaker_identification_from_db(
     """
     try:
         logger.info(
-            f"User {current_user.email} requested DB-based speaker identification for session {session_id}"
+            f"User {
+                current_user.email
+            } requested DB-based speaker identification for session {session_id}"
         )
 
         # Extract custom prompts from request
@@ -1282,16 +1292,16 @@ async def lemur_speaker_identification_from_db(
                     "start": int(
                         segment.start_seconds * 1000
                     ),  # Convert to milliseconds
-                    "end": int(
-                        segment.end_seconds * 1000
-                    ),  # Convert to milliseconds
+                    "end": int(segment.end_seconds * 1000),  # Convert to milliseconds
                     "speaker": speaker_label,
                     "text": segment.content,
                 }
             )
 
         logger.info(
-            f"Loaded {len(lemur_segments)} segments from database for speaker identification"
+            f"Loaded {
+                len(lemur_segments)
+            } segments from database for speaker identification"
         )
 
         # Determine session language
@@ -1328,14 +1338,15 @@ async def lemur_speaker_identification_from_db(
                     # Keep original speaker_id if no clear mapping
                     new_speaker_id = db_segment.speaker_id
 
-                # Debug: Log first few speaker comparisons to show what LeMUR changed
+                # Debug: Log first few speaker comparisons to show what LeMUR
+                # changed
                 if speaker_comparisons_logged < 3:
-                    logger.info(f"🎭 SPEAKER COMPARISON {i+1}:")
+                    logger.info(f"🎭 SPEAKER COMPARISON {i + 1}:")
+                    logger.info(f"   Original: speaker_id={db_segment.speaker_id}")
                     logger.info(
-                        f"   Original: speaker_id={db_segment.speaker_id}"
-                    )
-                    logger.info(
-                        f"   Corrected: speaker='{corrected_segment.speaker}' → speaker_id={new_speaker_id}"
+                        f"   Corrected: speaker='{
+                            corrected_segment.speaker
+                        }' → speaker_id={new_speaker_id}"
                     )
                     logger.info(
                         f"   Changed: {db_segment.speaker_id != new_speaker_id}"
@@ -1370,7 +1381,9 @@ async def lemur_speaker_identification_from_db(
             )
 
         logger.info(
-            f"DB-based speaker identification completed: {len(response_segments)} segments, {segment_updates} updates"
+            f"DB-based speaker identification completed: {
+                len(response_segments)
+            } segments, {segment_updates} updates"
         )
 
         return LeMURSmoothingResponse(
@@ -1440,7 +1453,9 @@ async def lemur_punctuation_optimization_from_db(
     """
     try:
         logger.info(
-            f"User {current_user.email} requested DB-based punctuation optimization for session {session_id}"
+            f"User {
+                current_user.email
+            } requested DB-based punctuation optimization for session {session_id}"
         )
 
         # Extract custom prompts from request
@@ -1502,16 +1517,16 @@ async def lemur_punctuation_optimization_from_db(
                     "start": int(
                         segment.start_seconds * 1000
                     ),  # Convert to milliseconds
-                    "end": int(
-                        segment.end_seconds * 1000
-                    ),  # Convert to milliseconds
+                    "end": int(segment.end_seconds * 1000),  # Convert to milliseconds
                     "speaker": speaker_label,
                     "text": segment.content,
                 }
             )
 
         logger.info(
-            f"Loaded {len(lemur_segments)} segments from database for punctuation optimization"
+            f"Loaded {
+                len(lemur_segments)
+            } segments from database for punctuation optimization"
         )
 
         # Determine session language
@@ -1539,14 +1554,19 @@ async def lemur_punctuation_optimization_from_db(
             if i < len(db_segments):
                 db_segment = db_segments[i]
 
-                # Debug: Log first few content comparisons to show what LeMUR changed
+                # Debug: Log first few content comparisons to show what LeMUR
+                # changed
                 if content_comparisons_logged < 3:
-                    logger.info(f"📝 CONTENT COMPARISON {i+1}:")
+                    logger.info(f"📝 CONTENT COMPARISON {i + 1}:")
                     logger.info(
-                        f"   Original: '{db_segment.content[:100]}{'...' if len(db_segment.content) > 100 else ''}'"
+                        f"   Original: '{db_segment.content[:100]}{
+                            '...' if len(db_segment.content) > 100 else ''
+                        }'"
                     )
                     logger.info(
-                        f"   Improved: '{improved_segment.text[:100]}{'...' if len(improved_segment.text) > 100 else ''}'"
+                        f"   Improved: '{improved_segment.text[:100]}{
+                            '...' if len(improved_segment.text) > 100 else ''
+                        }'"
                     )
                     logger.info(
                         f"   Changed: {db_segment.content != improved_segment.text}"
@@ -1560,9 +1580,7 @@ async def lemur_punctuation_optimization_from_db(
         # Commit changes to database
         if segment_updates > 0:
             db.commit()
-            logger.info(
-                f"Updated {segment_updates} segments with improved punctuation"
-            )
+            logger.info(f"Updated {segment_updates} segments with improved punctuation")
         else:
             logger.info("No text content needed updating")
 
@@ -1581,7 +1599,9 @@ async def lemur_punctuation_optimization_from_db(
             )
 
         logger.info(
-            f"DB-based punctuation optimization completed: {len(response_segments)} segments, {segment_updates} updates"
+            f"DB-based punctuation optimization completed: {
+                len(response_segments)
+            } segments, {segment_updates} updates"
         )
 
         return LeMURSmoothingResponse(
@@ -1640,9 +1660,7 @@ async def get_raw_assemblyai_data(
         # Get the session
         session = (
             db.query(Session)
-            .filter(
-                Session.id == session_id, Session.user_id == current_user.id
-            )
+            .filter(Session.id == session_id, Session.user_id == current_user.id)
             .first()
         )
 
@@ -1665,7 +1683,7 @@ async def get_raw_assemblyai_data(
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "error": "Raw AssemblyAI data not available for this session",
+                    "error": ("Raw AssemblyAI data not available for this session"),
                     "error_type": "no_raw_data",
                     "stt_provider": session.stt_provider,
                     "success": False,
@@ -1675,7 +1693,9 @@ async def get_raw_assemblyai_data(
         raw_data = session.provider_metadata["raw_assemblyai_response"]
 
         logger.info(
-            f"Retrieved raw AssemblyAI data for session {session_id} by user {current_user.email}. "
+            f"Retrieved raw AssemblyAI data for session {session_id} by user {
+                current_user.email
+            }. "
             f"Utterances: {len(raw_data.get('utterances', []))}, "
             f"Words: {len(raw_data.get('words', []))}"
         )
@@ -1690,9 +1710,7 @@ async def get_raw_assemblyai_data(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            f"Error getting raw AssemblyAI data for session {session_id}: {e}"
-        )
+        logger.error(f"Error getting raw AssemblyAI data for session {session_id}: {e}")
         raise HTTPException(
             status_code=500,
             detail={

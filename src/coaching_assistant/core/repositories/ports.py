@@ -7,31 +7,31 @@ Following the Repository pattern and Dependency Inversion Principle.
 """
 
 from __future__ import annotations
-from typing import Protocol, Optional, List, Dict, Any
-from datetime import datetime, date
+
+from datetime import date, datetime
 from decimal import Decimal
+from typing import Any, Dict, List, Optional, Protocol
 from uuid import UUID
 
-# Domain types - using pure domain models only (Clean Architecture compliant)
-from ..models.user import User, UserPlan, UserRole
-from ..models.session import Session, SessionStatus
-from ..models.usage_log import UsageLog, TranscriptionType
-from ..models.usage_history import UsageHistory
-from ..models.usage_analytics import UsageAnalytics
-from ..models.plan_configuration import PlanConfiguration
-from ..models.subscription import (
-    SaasSubscription,
-    SubscriptionPayment,
-    ECPayCreditAuthorization,
-    SubscriptionStatus,
-    PaymentStatus,
-    ECPayAuthStatus,
-)
 from ..models.client import Client
-from ..models.coaching_session import CoachingSession
 from ..models.coach_profile import CoachProfile
 from ..models.coaching_plan import CoachingPlan
-from ..models.transcript import TranscriptSegment
+from ..models.coaching_session import CoachingSession
+from ..models.plan_configuration import PlanConfiguration
+from ..models.session import Session, SessionStatus
+from ..models.subscription import (
+    ECPayCreditAuthorization,
+    SaasSubscription,
+    SubscriptionPayment,
+    SubscriptionStatus,
+)
+from ..models.transcript import SegmentRole, SessionRole, TranscriptSegment
+from ..models.usage_analytics import UsageAnalytics
+from ..models.usage_history import UsageHistory
+from ..models.usage_log import UsageLog
+
+# Domain types - using pure domain models only (Clean Architecture compliant)
+from ..models.user import User, UserPlan
 
 
 class UserRepoPort(Protocol):
@@ -100,7 +100,9 @@ class SessionRepoPort(Protocol):
         """Get sessions within date range for user."""
         ...
 
-    def count_user_sessions(self, user_id: UUID, since: Optional[datetime] = None) -> int:
+    def count_user_sessions(
+        self, user_id: UUID, since: Optional[datetime] = None
+    ) -> int:
         """Count user sessions, optionally since a date."""
         ...
 
@@ -148,6 +150,24 @@ class UsageLogRepoPort(Protocol):
         self, user_id: UUID, period_start: datetime, period_end: datetime
     ) -> Dict[str, Any]:
         """Get aggregated usage summary for user in time period."""
+        ...
+
+    def create(self, usage_log: "UsageLog") -> "UsageLog":
+        """Create a new usage log entry."""
+        ...
+
+    def get_by_user_and_timeframe(
+        self, user_id: UUID, start_date: datetime, end_date: datetime
+    ) -> List["UsageLog"]:
+        """Get usage logs for a user within a timeframe."""
+        ...
+
+    def get_total_usage_for_user_this_month(self, user_id: UUID) -> Dict[str, Any]:
+        """Get total usage metrics for user in current month."""
+        ...
+
+    def get_user_usage_history(self, user_id: UUID, months: int) -> Dict[str, Any]:
+        """Get user usage history for specified number of months."""
         ...
 
 
@@ -382,7 +402,9 @@ class TranscriptRepoPort(Protocol):
         """Get all transcript segments for a session."""
         ...
 
-    def save_segments(self, segments: List[TranscriptSegment]) -> List[TranscriptSegment]:
+    def save_segments(
+        self, segments: List[TranscriptSegment]
+    ) -> List[TranscriptSegment]:
         """Save multiple transcript segments."""
         ...
 
@@ -399,44 +421,20 @@ class TranscriptRepoPort(Protocol):
         ...
 
 
-class UsageLogRepoPort(Protocol):
-    """Repository interface for UsageLog entity operations."""
-
-    def create(self, usage_log: 'UsageLog') -> 'UsageLog':
-        """Create a new usage log entry."""
-        ...
-
-    def get_by_user_and_timeframe(
-        self, user_id: UUID, start_date: datetime, end_date: datetime
-    ) -> List['UsageLog']:
-        """Get usage logs for a user within a timeframe."""
-        ...
-
-    def get_total_usage_for_user_this_month(self, user_id: UUID) -> Dict[str, Any]:
-        """Get total usage metrics for user in current month."""
-        ...
-
-    def get_user_usage_history(
-        self, user_id: UUID, months: int
-    ) -> Dict[str, Any]:
-        """Get user usage history for specified number of months."""
-        ...
-
-
 class UsageAnalyticsRepoPort(Protocol):
     """Repository interface for UsageAnalytics entity operations."""
 
     def get_or_create_monthly(
         self, user_id: UUID, year: int, month: int
-    ) -> 'UsageAnalytics':
+    ) -> "UsageAnalytics":
         """Get or create monthly analytics record."""
         ...
 
-    def update(self, analytics: 'UsageAnalytics') -> 'UsageAnalytics':
+    def update(self, analytics: "UsageAnalytics") -> "UsageAnalytics":
         """Update analytics record."""
         ...
 
-    def get_by_user(self, user_id: UUID) -> List['UsageAnalytics']:
+    def get_by_user(self, user_id: UUID) -> List["UsageAnalytics"]:
         """Get all analytics records for a user."""
         ...
 
@@ -444,7 +442,7 @@ class UsageAnalyticsRepoPort(Protocol):
         """Get system-wide analytics for admin users."""
         ...
 
-    def get_by_month_year(self, month_year: str) -> List['UsageAnalytics']:
+    def get_by_month_year(self, month_year: str) -> List["UsageAnalytics"]:
         """Get all analytics records for a specific month."""
         ...
 
@@ -533,19 +531,27 @@ class SegmentRoleRepoPort(Protocol):
 class NotificationPort(Protocol):
     """Port interface for notification services following Clean Architecture."""
 
-    async def send_payment_failure_notification(self, user_email: str, payment_details: Dict[str, Any]) -> bool:
+    async def send_payment_failure_notification(
+        self, user_email: str, payment_details: Dict[str, Any]
+    ) -> bool:
         """Send payment failure notification."""
         ...
 
-    async def send_payment_retry_notification(self, user_email: str, retry_details: Dict[str, Any]) -> bool:
+    async def send_payment_retry_notification(
+        self, user_email: str, retry_details: Dict[str, Any]
+    ) -> bool:
         """Send payment retry notification."""
         ...
 
-    async def send_subscription_cancellation_notification(self, user_email: str, cancellation_details: Dict[str, Any]) -> bool:
+    async def send_subscription_cancellation_notification(
+        self, user_email: str, cancellation_details: Dict[str, Any]
+    ) -> bool:
         """Send subscription cancellation notification."""
         ...
 
-    async def send_plan_downgrade_notification(self, user_email: str, downgrade_details: Dict[str, Any]) -> bool:
+    async def send_plan_downgrade_notification(
+        self, user_email: str, downgrade_details: Dict[str, Any]
+    ) -> bool:
         """Send plan downgrade notification."""
         ...
 
@@ -553,19 +559,27 @@ class NotificationPort(Protocol):
 class ECPayClientPort(Protocol):
     """Port interface for ECPay API client following Clean Architecture."""
 
-    async def cancel_credit_authorization(self, auth_code: str, merchant_trade_no: str) -> Dict[str, Any]:
+    async def cancel_credit_authorization(
+        self, auth_code: str, merchant_trade_no: str
+    ) -> Dict[str, Any]:
         """Cancel ECPay credit card authorization."""
         ...
 
-    async def retry_payment(self, auth_code: str, merchant_trade_no: str, amount: int) -> Dict[str, Any]:
+    async def retry_payment(
+        self, auth_code: str, merchant_trade_no: str, amount: int
+    ) -> Dict[str, Any]:
         """Retry payment for failed ECPay transaction."""
         ...
 
-    async def process_payment(self, merchant_trade_no: str, amount: int, item_name: str) -> Dict[str, Any]:
+    async def process_payment(
+        self, merchant_trade_no: str, amount: int, item_name: str
+    ) -> Dict[str, Any]:
         """Process new payment via ECPay."""
         ...
 
-    def calculate_refund_amount(self, original_amount: int, days_used: int, total_days: int) -> int:
+    def calculate_refund_amount(
+        self, original_amount: int, days_used: int, total_days: int
+    ) -> int:
         """Calculate prorated refund amount."""
         ...
 
@@ -577,7 +591,9 @@ class AdminAnalyticsRepoPort(Protocol):
         """Get total count of all users."""
         ...
 
-    def get_new_users_in_period(self, start: datetime, end: datetime) -> List[Dict[str, Any]]:
+    def get_new_users_in_period(
+        self, start: datetime, end: datetime
+    ) -> List[Dict[str, Any]]:
         """Get new users created within the specified period."""
         ...
 
@@ -589,7 +605,9 @@ class AdminAnalyticsRepoPort(Protocol):
         """Get user count distribution by plan type."""
         ...
 
-    def get_session_metrics_for_period(self, start: datetime, end: datetime) -> Dict[str, Any]:
+    def get_session_metrics_for_period(
+        self, start: datetime, end: datetime
+    ) -> Dict[str, Any]:
         """Get comprehensive session metrics for the specified period."""
         ...
 
@@ -601,14 +619,20 @@ class AdminAnalyticsRepoPort(Protocol):
         """Get count of staff logins in the specified period."""
         ...
 
-    def get_subscription_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+    def get_subscription_metrics(
+        self, start: datetime, end: datetime
+    ) -> Dict[str, Any]:
         """Get subscription and billing metrics for the specified period."""
         ...
 
-    def get_system_health_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+    def get_system_health_metrics(
+        self, start: datetime, end: datetime
+    ) -> Dict[str, Any]:
         """Get system health and performance metrics."""
         ...
 
-    def get_top_active_users(self, start: datetime, end: datetime, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_top_active_users(
+        self, start: datetime, end: datetime, limit: int = 10
+    ) -> List[Dict[str, Any]]:
         """Get top users by activity in the specified period."""
         ...

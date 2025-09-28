@@ -6,14 +6,14 @@ from datetime import datetime, timedelta
 from celery import shared_task
 from sqlalchemy.orm import Session
 
+from ..core.config import settings
 from ..core.database import get_db
 from ..core.services.ecpay_service import ECPaySubscriptionService
-from ..core.config import settings
 from ..models import (
+    PaymentStatus,
     SaasSubscription,
     SubscriptionPayment,
     SubscriptionStatus,
-    PaymentStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,12 +120,13 @@ def process_failed_payment_retry(self, payment_id: str):
         # Implement actual ECPay payment retry API call
         try:
             from ..infrastructure.factories import create_ecpay_service
+
             ecpay_service = create_ecpay_service()
 
             # Call the ECPay service retry method
             retry_success = ecpay_service.retry_failed_payments()
             success = retry_success
-            logger.info(f"✅ ECPay retry service called successfully")
+            logger.info("✅ ECPay retry service called successfully")
 
         except Exception as e:
             logger.error(f"❌ ECPay retry failed: {e}")
@@ -162,9 +163,7 @@ def process_failed_payment_retry(self, payment_id: str):
             # Check if max retries reached
             if payment.retry_count >= payment.max_retries:
                 payment.next_retry_at = None
-                logger.warning(
-                    f"⚠️ Max retries reached for payment {payment_id}"
-                )
+                logger.warning(f"⚠️ Max retries reached for payment {payment_id}")
 
                 # Handle final failure
                 ecpay_service._handle_failed_payment(subscription, payment)
@@ -173,9 +172,7 @@ def process_failed_payment_retry(self, payment_id: str):
                 retry_delays = [1, 3, 7]  # days
                 if payment.retry_count < len(retry_delays):
                     next_delay = retry_delays[payment.retry_count]
-                    payment.next_retry_at = datetime.now() + timedelta(
-                        days=next_delay
-                    )
+                    payment.next_retry_at = datetime.now() + timedelta(days=next_delay)
 
             db.commit()
             logger.warning(
@@ -217,6 +214,7 @@ def send_payment_failure_notifications(self, notification_data: dict):
         # Integrate with existing email service
         try:
             from ..infrastructure.factories import create_notification_service
+
             notification_service = create_notification_service()
 
             # Send appropriate notification based on type
@@ -227,10 +225,12 @@ def send_payment_failure_notifications(self, notification_data: dict):
                         "amount": notification_data.get("amount_twd", 0),
                         "plan_name": notification_data.get("plan_name", "Unknown"),
                         "failure_count": notification_data.get("failure_count", 0),
-                        "next_retry_date": notification_data.get("next_retry_date", "N/A")
-                    }
+                        "next_retry_date": notification_data.get(
+                            "next_retry_date", "N/A"
+                        ),
+                    },
                 )
-                logger.info(f"📧 Payment failure notification sent via email service")
+                logger.info("📧 Payment failure notification sent via email service")
 
         except Exception as e:
             logger.error(f"❌ Failed to send email notification: {e}")
@@ -238,16 +238,14 @@ def send_payment_failure_notifications(self, notification_data: dict):
 
         user_email = notification_data["user_email"]
         notification_type = notification_data["notification_type"]
-        subject = notification_data["subject"]
-        failure_count = notification_data["failure_count"]
+        notification_data["subject"]
+        notification_data["failure_count"]
 
         # Simulate email sending
         email_sent = _simulate_email_sending(notification_data)
 
         if email_sent:
-            logger.info(
-                f"✅ Payment failure notification sent to {user_email}"
-            )
+            logger.info(f"✅ Payment failure notification sent to {user_email}")
             return {"status": "sent", "notification_type": notification_type}
         else:
             logger.error(f"❌ Failed to send notification to {user_email}")
@@ -257,9 +255,7 @@ def send_payment_failure_notifications(self, notification_data: dict):
         logger.error(f"💥 Notification task failed: {e}")
 
         if self.retry_num < self.max_retries:
-            logger.info(
-                f"🔄 Retrying notification send (attempt {self.retry_num + 1})"
-            )
+            logger.info(f"🔄 Retrying notification send (attempt {self.retry_num + 1})")
             raise self.retry(countdown=300, exc=e)
 
         return {"status": "failed", "error": str(e)}
@@ -280,9 +276,7 @@ def cleanup_old_webhook_logs():
         from ..models import WebhookLog
 
         deleted_count = (
-            db.query(WebhookLog)
-            .filter(WebhookLog.received_at < cutoff_date)
-            .delete()
+            db.query(WebhookLog).filter(WebhookLog.received_at < cutoff_date).delete()
         )
 
         db.commit()
@@ -310,17 +304,13 @@ def _generate_maintenance_stats(db: Session) -> dict:
 
         past_due_count = (
             db.query(SaasSubscription)
-            .filter(
-                SaasSubscription.status == SubscriptionStatus.PAST_DUE.value
-            )
+            .filter(SaasSubscription.status == SubscriptionStatus.PAST_DUE.value)
             .count()
         )
 
         cancelled_count = (
             db.query(SaasSubscription)
-            .filter(
-                SaasSubscription.status == SubscriptionStatus.CANCELLED.value
-            )
+            .filter(SaasSubscription.status == SubscriptionStatus.CANCELLED.value)
             .count()
         )
 
@@ -329,8 +319,7 @@ def _generate_maintenance_stats(db: Session) -> dict:
             db.query(SubscriptionPayment)
             .filter(
                 SubscriptionPayment.status == PaymentStatus.FAILED.value,
-                SubscriptionPayment.created_at
-                >= datetime.now() - timedelta(days=7),
+                SubscriptionPayment.created_at >= datetime.now() - timedelta(days=7),
             )
             .count()
         )
@@ -340,8 +329,7 @@ def _generate_maintenance_stats(db: Session) -> dict:
             db.query(SubscriptionPayment)
             .filter(
                 SubscriptionPayment.status == PaymentStatus.SUCCESS.value,
-                SubscriptionPayment.created_at
-                >= datetime.now() - timedelta(days=7),
+                SubscriptionPayment.created_at >= datetime.now() - timedelta(days=7),
             )
             .count()
         )
@@ -349,9 +337,7 @@ def _generate_maintenance_stats(db: Session) -> dict:
         # Calculate success rate
         total_recent = recent_failures + recent_success
         success_rate = (
-            (recent_success / total_recent * 100)
-            if total_recent > 0
-            else 100.0
+            (recent_success / total_recent * 100) if total_recent > 0 else 100.0
         )
 
         return {
@@ -381,11 +367,14 @@ def _simulate_payment_retry(
     # Use actual ECPay payment retry via service
     try:
         from ..infrastructure.factories import create_ecpay_service
-        ecpay_service = create_ecpay_service()
+
+        create_ecpay_service()
 
         # Note: Individual payment retry logic is handled within retry_failed_payments()
         # This function is now a placeholder for compatibility
-        logger.info(f"💳 Payment retry delegated to ECPay service for payment {payment.id}")
+        logger.info(
+            f"💳 Payment retry delegated to ECPay service for payment {payment.id}"
+        )
         return True  # Return True to indicate the retry was properly delegated
 
     except Exception as e:
@@ -403,11 +392,16 @@ def _simulate_email_sending(notification_data: dict) -> bool:
     # Use actual email service integration
     try:
         from ..infrastructure.factories import create_notification_service
-        notification_service = create_notification_service()
+
+        create_notification_service()
 
         # Note: Actual email sending is handled in the notification tasks
         # This function is now a placeholder for compatibility
-        logger.info(f"📧 Email sending delegated to notification service for {notification_data.get('user_email', 'unknown')}")
+        logger.info(
+            f"📧 Email sending delegated to notification service for {
+                notification_data.get('user_email', 'unknown')
+            }"
+        )
         return True  # Return True to indicate the email was properly delegated
 
     except Exception as e:

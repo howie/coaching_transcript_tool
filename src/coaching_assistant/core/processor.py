@@ -5,15 +5,15 @@ Core processing logic for handling transcript files.
 import logging
 from typing import Optional, Union
 
+from ..exporters.excel import generate_excel
+from ..exporters.markdown import generate_markdown
 from ..parser import (
-    VTTFormat,
     UnrecognizedFormatError,
+    VTTFormat,
     consolidate_speakers,
     parse_vtt,
     replace_names,
 )
-from ..exporters.excel import generate_excel
-from ..exporters.markdown import generate_markdown
 from ..utils.chinese_converter import convert_to_traditional
 from ..utils.s3_uploader import upload_snippet_to_s3
 
@@ -64,9 +64,7 @@ def format_transcript(
             logger.debug(
                 f"Replacing names - Coach: {coach_name}, Client: {client_name}"
             )
-            processed_data = replace_names(
-                consolidated_data, coach_name, client_name
-            )
+            processed_data = replace_names(consolidated_data, coach_name, client_name)
         else:
             processed_data = consolidated_data
 
@@ -88,9 +86,7 @@ def format_transcript(
             raise ValueError(f"Unsupported output format: {output_format}")
 
     except UnrecognizedFormatError as e:
-        logger.warning(
-            f"Unrecognized format for file '{original_filename}': {e}"
-        )
+        logger.warning(f"Unrecognized format for file '{original_filename}': {e}")
         # Upload a snippet of the file for review
         upload_snippet_to_s3(file_content, original_filename)
         # Re-raise the exception to be handled by the API layer

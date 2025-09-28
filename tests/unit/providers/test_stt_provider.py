@@ -1,15 +1,16 @@
 """Test STT provider module."""
 
-import pytest
-from unittest.mock import patch
 from decimal import Decimal
+from unittest.mock import patch
 
-from coaching_assistant.services.stt_provider import (
-    TranscriptSegment,
-    STTProviderError,
-)
-from coaching_assistant.services.stt_factory import STTProviderFactory
+import pytest
+
 from coaching_assistant.services.google_stt import GoogleSTTProvider
+from coaching_assistant.services.stt_factory import STTProviderFactory
+from coaching_assistant.services.stt_provider import (
+    STTProviderError,
+    TranscriptSegment,
+)
 
 
 class TestTranscriptSegment:
@@ -56,9 +57,7 @@ class TestSTTProviderFactory:
 
     def test_create_unsupported_provider(self):
         """Test creating unsupported provider raises error."""
-        with pytest.raises(
-            STTProviderError, match="Failed to create STT provider"
-        ):
+        with pytest.raises(STTProviderError, match="Failed to create STT provider"):
             STTProviderFactory.create("unsupported")
 
     def test_whisper_not_implemented(self):

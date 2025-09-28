@@ -5,14 +5,15 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
 following Clean Architecture principles.
 """
 
-from typing import Optional, List
+from typing import List, Optional
 from uuid import UUID
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import and_
 
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from ....core.models.user import User as DomainUser
+from ....core.models.user import UserPlan, UserRole
 from ....core.repositories.ports import UserRepoPort
-from ....core.models.user import User as DomainUser, UserPlan, UserRole
 from ....models.user import User as UserModel
 
 
@@ -32,7 +33,8 @@ class SQLAlchemyUserRepository(UserRepoPort):
         if not orm_user:
             return None
 
-        # Convert plan to core domain UserPlan enum (handling both string and legacy enum)
+        # Convert plan to core domain UserPlan enum (handling both string and
+        # legacy enum)
         plan_value = orm_user.plan
         if isinstance(plan_value, str):
             # Map lowercase database values to core UserPlan enum
@@ -44,7 +46,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 "coaching_school": UserPlan.COACHING_SCHOOL,
             }
             plan = plan_mapping.get(plan_value.lower(), UserPlan.FREE)
-        elif hasattr(plan_value, 'value'):
+        elif hasattr(plan_value, "value"):
             # Convert legacy enum to core enum by value
             plan_mapping = {
                 "free": UserPlan.FREE,
@@ -58,7 +60,8 @@ class SQLAlchemyUserRepository(UserRepoPort):
             # Fallback to FREE if unknown type
             plan = UserPlan.FREE
 
-        # Convert role to core domain UserRole enum (handling both string and legacy enum)
+        # Convert role to core domain UserRole enum (handling both string and
+        # legacy enum)
         role_value = orm_user.role
         if isinstance(role_value, str):
             # Map role strings to core UserRole enum
@@ -69,7 +72,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 "super_admin": UserRole.SUPER_ADMIN,
             }
             role = role_mapping.get(role_value.lower(), UserRole.USER)
-        elif hasattr(role_value, 'value'):
+        elif hasattr(role_value, "value"):
             # Convert legacy enum to core enum by value
             role_mapping = {
                 "user": UserRole.USER,
@@ -93,17 +96,18 @@ class SQLAlchemyUserRepository(UserRepoPort):
             role=role,
             usage_minutes=orm_user.usage_minutes,
             session_count=orm_user.session_count,
-            current_month_start=getattr(orm_user, 'current_month_start', None),
+            current_month_start=getattr(orm_user, "current_month_start", None),
             created_at=orm_user.created_at,
             updated_at=orm_user.updated_at,
-            last_active_at=getattr(orm_user, 'last_active_at', None),
-            stripe_customer_id=getattr(orm_user, 'stripe_customer_id', None),
-            subscription_status=getattr(orm_user, 'subscription_status', None),
+            last_active_at=getattr(orm_user, "last_active_at", None),
+            stripe_customer_id=getattr(orm_user, "stripe_customer_id", None),
+            subscription_status=getattr(orm_user, "subscription_status", None),
         )
 
     def _create_orm_user(self, user: DomainUser) -> UserModel:
         """Create ORM user from domain user."""
-        # Convert domain enums to string values for SQLAlchemy (Clean Architecture: domain → infrastructure conversion)
+        # Convert domain enums to string values for SQLAlchemy (Clean
+        # Architecture: domain → infrastructure conversion)
         plan_value = user.plan.value if isinstance(user.plan, UserPlan) else user.plan
         role_value = user.role.value if isinstance(user.role, UserRole) else user.role
 
@@ -122,13 +126,13 @@ class SQLAlchemyUserRepository(UserRepoPort):
         )
 
         # Set optional fields if they exist in the legacy model
-        if hasattr(orm_user, 'current_month_start'):
+        if hasattr(orm_user, "current_month_start"):
             orm_user.current_month_start = user.current_month_start
-        if hasattr(orm_user, 'last_active_at'):
+        if hasattr(orm_user, "last_active_at"):
             orm_user.last_active_at = user.last_active_at
-        if hasattr(orm_user, 'stripe_customer_id'):
+        if hasattr(orm_user, "stripe_customer_id"):
             orm_user.stripe_customer_id = user.stripe_customer_id
-        if hasattr(orm_user, 'subscription_status'):
+        if hasattr(orm_user, "subscription_status"):
             orm_user.subscription_status = user.subscription_status
 
         return orm_user
@@ -148,7 +152,9 @@ class SQLAlchemyUserRepository(UserRepoPort):
         except SQLAlchemyError as e:
             # Log error in production - this is for actual database connection/query errors
             # User not found is handled by returning None above
-            raise RuntimeError(f"Database connection error while retrieving user {user_id}") from e
+            raise RuntimeError(
+                f"Database connection error while retrieving user {user_id}"
+            ) from e
 
     def get_by_email(self, email: str) -> Optional[DomainUser]:
         """Get user by email address.
@@ -161,13 +167,13 @@ class SQLAlchemyUserRepository(UserRepoPort):
         """
         try:
             orm_user = (
-                self.session.query(UserModel)
-                .filter(UserModel.email == email)
-                .first()
+                self.session.query(UserModel).filter(UserModel.email == email).first()
             )
             return self._to_domain(orm_user) if orm_user else None
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving user by email {email}") from e
+            raise RuntimeError(
+                f"Database error retrieving user by email {email}"
+            ) from e
 
     def exists_by_email(self, email: str) -> bool:
         """Check if user exists by email.
@@ -185,7 +191,9 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 .first()
             ) is not None
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error checking user existence for {email}") from e
+            raise RuntimeError(
+                f"Database error checking user existence for {email}"
+            ) from e
 
     def save(self, user: DomainUser) -> DomainUser:
         """Save or update user entity.
@@ -202,9 +210,18 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 orm_user = self.session.get(UserModel, user.id)
                 if orm_user:
                     # Update existing user fields manually
-                    # Convert domain enums to string values for SQLAlchemy (Clean Architecture: domain → infrastructure conversion)
-                    plan_value = user.plan.value if isinstance(user.plan, UserPlan) else user.plan
-                    role_value = user.role.value if isinstance(user.role, UserRole) else user.role
+                    # Convert domain enums to string values for SQLAlchemy
+                    # (Clean Architecture: domain → infrastructure conversion)
+                    plan_value = (
+                        user.plan.value
+                        if isinstance(user.plan, UserPlan)
+                        else user.plan
+                    )
+                    role_value = (
+                        user.role.value
+                        if isinstance(user.role, UserRole)
+                        else user.role
+                    )
 
                     orm_user.email = user.email
                     orm_user.name = user.name
@@ -214,13 +231,13 @@ class SQLAlchemyUserRepository(UserRepoPort):
                     orm_user.role = role_value
                     orm_user.usage_minutes = user.usage_minutes
                     orm_user.session_count = user.session_count
-                    if hasattr(orm_user, 'current_month_start'):
+                    if hasattr(orm_user, "current_month_start"):
                         orm_user.current_month_start = user.current_month_start
-                    if hasattr(orm_user, 'last_active_at'):
+                    if hasattr(orm_user, "last_active_at"):
                         orm_user.last_active_at = user.last_active_at
-                    if hasattr(orm_user, 'stripe_customer_id'):
+                    if hasattr(orm_user, "stripe_customer_id"):
                         orm_user.stripe_customer_id = user.stripe_customer_id
-                    if hasattr(orm_user, 'subscription_status'):
+                    if hasattr(orm_user, "subscription_status"):
                         orm_user.subscription_status = user.subscription_status
                     orm_user.updated_at = user.updated_at
                 else:
@@ -260,9 +277,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
             raise RuntimeError(f"Database error deleting user {user_id}") from e
 
     def list_all(
-        self,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None
+        self, limit: Optional[int] = None, offset: Optional[int] = None
     ) -> List[DomainUser]:
         """List all users with optional pagination.
 
@@ -297,7 +312,8 @@ class SQLAlchemyUserRepository(UserRepoPort):
             List of User domain entities with the specified plan
         """
         try:
-            # Convert enum to string value for SQLAlchemy query (Clean Architecture: domain → infrastructure conversion)
+            # Convert enum to string value for SQLAlchemy query (Clean
+            # Architecture: domain → infrastructure conversion)
             plan_value = plan.value if isinstance(plan, UserPlan) else plan
             orm_users = (
                 self.session.query(UserModel)
@@ -320,7 +336,8 @@ class SQLAlchemyUserRepository(UserRepoPort):
             Number of users with the specified plan
         """
         try:
-            # Convert enum to string value for SQLAlchemy query (Clean Architecture: domain → infrastructure conversion)
+            # Convert enum to string value for SQLAlchemy query (Clean
+            # Architecture: domain → infrastructure conversion)
             plan_value = plan.value if isinstance(plan, UserPlan) else plan
             return (
                 self.session.query(UserModel)
@@ -340,7 +357,8 @@ class SQLAlchemyUserRepository(UserRepoPort):
             List of User domain entities with the specified role
         """
         try:
-            # Convert enum to string value for SQLAlchemy query (Clean Architecture: domain → infrastructure conversion)
+            # Convert enum to string value for SQLAlchemy query (Clean
+            # Architecture: domain → infrastructure conversion)
             role_value = role.value if isinstance(role, UserRole) else role
             orm_users = (
                 self.session.query(UserModel)
@@ -353,7 +371,9 @@ class SQLAlchemyUserRepository(UserRepoPort):
         except SQLAlchemyError as e:
             raise RuntimeError(f"Database error getting users by role {role}") from e
 
-    def update_usage_stats(self, user_id: UUID, usage_minutes: int, session_count: int) -> Optional[DomainUser]:
+    def update_usage_stats(
+        self, user_id: UUID, usage_minutes: int, session_count: int
+    ) -> Optional[DomainUser]:
         """Update user usage statistics.
 
         Args:
@@ -370,7 +390,7 @@ class SQLAlchemyUserRepository(UserRepoPort):
                 orm_user.usage_minutes = usage_minutes
                 orm_user.session_count = session_count
                 # Update last active timestamp if the method exists
-                if hasattr(orm_user, 'mark_active'):
+                if hasattr(orm_user, "mark_active"):
                     orm_user.mark_active()
                 self.session.flush()
                 return self._to_domain(orm_user)
@@ -378,7 +398,9 @@ class SQLAlchemyUserRepository(UserRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error updating usage stats for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error updating usage stats for user {user_id}"
+            ) from e
 
     def update_plan(self, user_id: UUID, new_plan: UserPlan) -> Optional[DomainUser]:
         """Update user plan.
@@ -393,8 +415,11 @@ class SQLAlchemyUserRepository(UserRepoPort):
         try:
             orm_user = self.session.get(UserModel, user_id)
             if orm_user:
-                # Convert enum to string value for SQLAlchemy (Clean Architecture: domain → infrastructure conversion)
-                plan_value = new_plan.value if isinstance(new_plan, UserPlan) else new_plan
+                # Convert enum to string value for SQLAlchemy (Clean
+                # Architecture: domain → infrastructure conversion)
+                plan_value = (
+                    new_plan.value if isinstance(new_plan, UserPlan) else new_plan
+                )
                 # Update plan directly (validation can be added later)
                 orm_user.plan = plan_value
                 self.session.flush()
@@ -406,9 +431,13 @@ class SQLAlchemyUserRepository(UserRepoPort):
             raise ValueError(f"Plan upgrade validation failed: {e}") from e
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error updating plan for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error updating plan for user {user_id}"
+            ) from e
 
-    def search_by_email_prefix(self, email_prefix: str, limit: int = 10) -> List[DomainUser]:
+    def search_by_email_prefix(
+        self, email_prefix: str, limit: int = 10
+    ) -> List[DomainUser]:
         """Search users by email prefix.
 
         Args:
@@ -429,7 +458,9 @@ class SQLAlchemyUserRepository(UserRepoPort):
             return [self._to_domain(orm_user) for orm_user in orm_users]
 
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error searching users by email prefix {email_prefix}") from e
+            raise RuntimeError(
+                f"Database error searching users by email prefix {email_prefix}"
+            ) from e
 
     def get_admin_users(self) -> List[DomainUser]:
         """Get all admin users (ADMIN and SUPER_ADMIN roles).
@@ -438,7 +469,8 @@ class SQLAlchemyUserRepository(UserRepoPort):
             List of User domain entities with admin privileges
         """
         try:
-            # Convert enum values to string values for SQLAlchemy query (Clean Architecture: domain → infrastructure conversion)
+            # Convert enum values to string values for SQLAlchemy query (Clean
+            # Architecture: domain → infrastructure conversion)
             admin_roles = [UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value]
             orm_users = (
                 self.session.query(UserModel)
@@ -467,7 +499,9 @@ class SQLAlchemyUserRepository(UserRepoPort):
             return [self._to_domain(orm_user) for orm_user in orm_users]
 
         except SQLAlchemyError as e:
-            raise RuntimeError("Database error getting users with active subscriptions") from e
+            raise RuntimeError(
+                "Database error getting users with active subscriptions"
+            ) from e
 
     def reset_monthly_usage_for_all(self) -> int:
         """Reset monthly usage counters for all users (called during billing cycle).
@@ -476,19 +510,20 @@ class SQLAlchemyUserRepository(UserRepoPort):
             Number of users updated
         """
         try:
-            updated_count = (
-                self.session.query(UserModel)
-                .update({
+            updated_count = self.session.query(UserModel).update(
+                {
                     UserModel.usage_minutes: 0,
                     UserModel.session_count: 0,
-                })
+                }
             )
             self.session.flush()
             return updated_count
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError("Database error resetting monthly usage for all users") from e
+            raise RuntimeError(
+                "Database error resetting monthly usage for all users"
+            ) from e
 
 
 # Factory function for dependency injection

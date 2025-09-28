@@ -2,17 +2,19 @@
 
 import enum
 import json
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Enum,
-    Text,
-    DateTime,
     DECIMAL,
     JSON,
+    Column,
+    DateTime,
+    Enum,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 
@@ -40,9 +42,7 @@ class User(BaseModel):
 
     # Authentication fields
     email = Column(String(255), unique=True, nullable=False, index=True)
-    hashed_password = Column(
-        String(255), nullable=True
-    )  # Nullable for SSO users
+    hashed_password = Column(String(255), nullable=True)  # Nullable for SSO users
 
     # Profile fields
     name = Column(String(255), nullable=False)
@@ -65,7 +65,15 @@ class User(BaseModel):
     allowed_ip_addresses = Column(JSON, nullable=True)  # Optional IP allowlist
 
     # Subscription and usage
-    plan = Column(Enum(UserPlan, values_callable=lambda x: [e.value for e in x], native_enum=False), default=UserPlan.FREE, nullable=False)
+    plan = Column(
+        Enum(
+            UserPlan,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False,
+        ),
+        default=UserPlan.FREE,
+        nullable=False,
+    )
     usage_minutes = Column(Integer, default=0, nullable=False)
 
     # Monthly usage tracking
@@ -208,9 +216,7 @@ class User(BaseModel):
             UserRole.ADMIN: 2,
             UserRole.SUPER_ADMIN: 3,
         }
-        return role_hierarchy.get(self.role, 0) >= role_hierarchy.get(
-            required_role, 0
-        )
+        return role_hierarchy.get(self.role, 0) >= role_hierarchy.get(required_role, 0)
 
     def is_admin(self) -> bool:
         """Check if user has admin privileges."""

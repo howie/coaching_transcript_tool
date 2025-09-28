@@ -1,34 +1,32 @@
 """Subscription ORM models with domain model conversion."""
 
-from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Boolean,
-    DateTime,
-    Date,
-    Text,
-    JSON,
-    ForeignKey,
-    Enum as SQLEnum,
-)
-from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
-import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional
 
-from .base import BaseModel
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import UUID
+
 from ....core.models.subscription import (
+    ECPayAuthStatus,
     ECPayCreditAuthorization,
+    PaymentStatus,
     SaasSubscription,
     SubscriptionPayment,
     SubscriptionPendingChange,
-    WebhookLog,
-    ECPayAuthStatus,
     SubscriptionStatus,
-    PaymentStatus,
+    WebhookLog,
 )
+from .base import BaseModel
 
 
 class ECPayCreditAuthorizationModel(BaseModel):
@@ -42,9 +40,7 @@ class ECPayCreditAuthorizationModel(BaseModel):
     )
 
     # ECPay identification
-    merchant_member_id = Column(
-        String(30), unique=True, nullable=False, index=True
-    )
+    merchant_member_id = Column(String(30), unique=True, nullable=False, index=True)
     gwsr = Column(String(100), nullable=True)
     auth_code = Column(String(20), nullable=True)
 
@@ -100,7 +96,9 @@ class ECPayCreditAuthorizationModel(BaseModel):
         )
 
     @classmethod
-    def from_domain(cls, auth: ECPayCreditAuthorization) -> "ECPayCreditAuthorizationModel":
+    def from_domain(
+        cls, auth: ECPayCreditAuthorization
+    ) -> "ECPayCreditAuthorizationModel":
         """Create ORM model from domain model."""
         return cls(
             id=auth.id,
@@ -414,7 +412,9 @@ class SubscriptionPendingChangeModel(BaseModel):
         )
 
     @classmethod
-    def from_domain(cls, change: SubscriptionPendingChange) -> "SubscriptionPendingChangeModel":
+    def from_domain(
+        cls, change: SubscriptionPendingChange
+    ) -> "SubscriptionPendingChangeModel":
         """Create ORM model from domain model."""
         return cls(
             id=change.id,
@@ -469,7 +469,9 @@ class WebhookLogModel(BaseModel):
     response_body = Column(Text, nullable=True)
 
     # Related entities
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=True, index=True)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("user.id"), nullable=True, index=True
+    )
     subscription_id = Column(
         UUID(as_uuid=True),
         ForeignKey("saas_subscriptions.id"),

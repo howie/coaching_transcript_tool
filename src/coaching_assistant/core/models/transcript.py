@@ -147,6 +147,7 @@ class SessionRole:
         """Initialize default values after dataclass creation."""
         if self.id is None:
             from uuid import uuid4
+
             self.id = uuid4()
         if self.created_at is None:
             self.created_at = datetime.utcnow()
@@ -201,6 +202,7 @@ class SegmentRole:
         """Initialize default values after dataclass creation."""
         if self.id is None:
             from uuid import uuid4
+
             self.id = uuid4()
         if self.created_at is None:
             self.created_at = datetime.utcnow()

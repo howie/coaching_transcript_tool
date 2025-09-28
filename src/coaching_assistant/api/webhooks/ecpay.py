@@ -3,20 +3,20 @@
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import Dict, Any
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from ...core.config import settings
 from ...core.database import get_db
 from ...core.services.ecpay_service import ECPaySubscriptionService
-from ...core.config import settings
 from ...models import (
-    WebhookLog,
-    WebhookStatus,
     ECPayCreditAuthorization,
     SaasSubscription,
     SubscriptionPayment,
+    WebhookLog,
+    WebhookStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -96,9 +96,7 @@ async def handle_authorization_callback(
             callback_data["card6no"] = card6no
 
         # Create webhook log
-        webhook_log = _create_webhook_log(
-            request, "auth_callback", callback_data, db
-        )
+        webhook_log = _create_webhook_log(request, "auth_callback", callback_data, db)
         webhook_log.mark_processing()
         db.commit()
 
@@ -114,9 +112,7 @@ async def handle_authorization_callback(
         webhook_log.check_mac_value_verified = mac_verified
 
         if not mac_verified:
-            error_msg = (
-                f"CheckMacValue verification failed for {MerchantMemberID}"
-            )
+            error_msg = f"CheckMacValue verification failed for {MerchantMemberID}"
             logger.error(f"❌ {error_msg}")
             webhook_log.mark_failed(error_msg)
             db.commit()
@@ -128,9 +124,7 @@ async def handle_authorization_callback(
         # Update user and subscription references in webhook log
         auth_record = (
             db.query(ECPayCreditAuthorization)
-            .filter(
-                ECPayCreditAuthorization.merchant_member_id == MerchantMemberID
-            )
+            .filter(ECPayCreditAuthorization.merchant_member_id == MerchantMemberID)
             .first()
         )
 
@@ -144,14 +138,13 @@ async def handle_authorization_callback(
             webhook_log.mark_success(response_msg)
             processing_time = round((time.time() - start_time) * 1000, 2)
             logger.info(
-                f"✅ Authorization callback processed successfully: {MerchantMemberID} ({processing_time}ms)"
+                f"✅ Authorization callback processed successfully: "
+                f"{MerchantMemberID} ({processing_time}ms)"
             )
             db.commit()
             return response_msg
         else:
-            error_msg = (
-                f"Authorization callback processing failed: {MerchantMemberID}"
-            )
+            error_msg = f"Authorization callback processing failed: {MerchantMemberID}"
             webhook_log.mark_failed(error_msg)
             logger.error(f"❌ {error_msg}")
             db.commit()
@@ -202,9 +195,7 @@ async def handle_billing_callback(
         }
 
         # Create webhook log
-        webhook_log = _create_webhook_log(
-            request, "billing_callback", webhook_data, db
-        )
+        webhook_log = _create_webhook_log(request, "billing_callback", webhook_data, db)
         webhook_log.mark_processing()
         db.commit()
 
@@ -229,9 +220,7 @@ async def handle_billing_callback(
         # Find related subscription for logging
         auth_record = (
             db.query(ECPayCreditAuthorization)
-            .filter(
-                ECPayCreditAuthorization.merchant_member_id == MerchantMemberID
-            )
+            .filter(ECPayCreditAuthorization.merchant_member_id == MerchantMemberID)
             .first()
         )
 
@@ -267,7 +256,9 @@ async def handle_billing_callback(
             # Enhanced logging for billing events
             payment_status = "SUCCESS" if RtnCode == "1" else "FAILED"
             logger.info(
-                f"✅ Billing callback processed successfully: {gwsr} | Status: {payment_status} | Amount: {amount} | Processing: {processing_time}ms"
+                f"✅ Billing callback processed successfully: {gwsr} | "
+                f"Status: {payment_status} | Amount: {amount} | "
+                f"Processing: {processing_time}ms"
             )
 
             db.commit()
@@ -299,10 +290,7 @@ async def webhook_health_check(db: Session = Depends(get_db)):
         # Check recent webhook activity
         recent_webhooks = (
             db.query(WebhookLog)
-            .filter(
-                WebhookLog.received_at
-                >= datetime.utcnow() - timedelta(minutes=30)
-            )
+            .filter(WebhookLog.received_at >= datetime.utcnow() - timedelta(minutes=30))
             .count()
         )
 
@@ -310,8 +298,7 @@ async def webhook_health_check(db: Session = Depends(get_db)):
         failed_webhooks = (
             db.query(WebhookLog)
             .filter(
-                WebhookLog.received_at
-                >= datetime.utcnow() - timedelta(hours=24),
+                WebhookLog.received_at >= datetime.utcnow() - timedelta(hours=24),
                 WebhookLog.status == WebhookStatus.FAILED.value,
             )
             .count()
@@ -320,10 +307,7 @@ async def webhook_health_check(db: Session = Depends(get_db)):
         # Calculate success rate
         total_webhooks = (
             db.query(WebhookLog)
-            .filter(
-                WebhookLog.received_at
-                >= datetime.utcnow() - timedelta(hours=24)
-            )
+            .filter(WebhookLog.received_at >= datetime.utcnow() - timedelta(hours=24))
             .count()
         )
 
@@ -378,9 +362,7 @@ async def handle_manual_payment_retry(
             )
             raise HTTPException(status_code=401, detail="Unauthorized")
 
-        logger.info(
-            f"🔧 Manual payment retry requested for payment {payment_id}"
-        )
+        logger.info(f"🔧 Manual payment retry requested for payment {payment_id}")
 
         # Get payment record
         payment = (
@@ -400,9 +382,7 @@ async def handle_manual_payment_retry(
         )
 
         if not subscription:
-            raise HTTPException(
-                status_code=404, detail="Subscription not found"
-            )
+            raise HTTPException(status_code=404, detail="Subscription not found")
 
         # Create ECPay service
         ecpay_service = ECPaySubscriptionService(db, settings)
@@ -424,9 +404,7 @@ async def handle_manual_payment_retry(
             }
         else:
             logger.error(f"❌ Manual payment retry failed for {payment_id}")
-            raise HTTPException(
-                status_code=500, detail="Retry processing failed"
-            )
+            raise HTTPException(status_code=500, detail="Retry processing failed")
 
     except HTTPException:
         raise
@@ -468,8 +446,7 @@ async def get_subscription_webhook_status(
             db.query(WebhookLog)
             .filter(
                 WebhookLog.user_id == user_id,
-                WebhookLog.received_at
-                >= datetime.utcnow() - timedelta(days=30),
+                WebhookLog.received_at >= datetime.utcnow() - timedelta(days=30),
             )
             .order_by(WebhookLog.received_at.desc())
             .limit(10)
@@ -524,7 +501,7 @@ async def get_subscription_webhook_status(
                 "id": str(subscription.id),
                 "plan_id": subscription.plan_id,
                 "status": subscription.status,
-                "current_period_end": subscription.current_period_end.isoformat(),
+                "current_period_end": (subscription.current_period_end.isoformat()),
                 "grace_period_ends_at": (
                     subscription.grace_period_ends_at.isoformat()
                     if subscription.grace_period_ends_at
@@ -541,11 +518,7 @@ async def get_subscription_webhook_status(
                     [p for p in payment_summary if p["status"] == "failed"]
                 ),
                 "pending_retries": len(
-                    [
-                        p
-                        for p in payment_summary
-                        if p["next_retry_at"] is not None
-                    ]
+                    [p for p in payment_summary if p["next_retry_at"] is not None]
                 ),
             },
         }
@@ -578,9 +551,7 @@ async def trigger_subscription_maintenance(
         ecpay_service = ECPaySubscriptionService(db, settings)
 
         # Run maintenance tasks
-        expired_processed = (
-            ecpay_service.check_and_handle_expired_subscriptions()
-        )
+        expired_processed = ecpay_service.check_and_handle_expired_subscriptions()
         retries_processed = ecpay_service.retry_failed_payments()
 
         # Get current stats
@@ -660,12 +631,8 @@ async def webhook_statistics(hours: int = 24, db: Session = Depends(get_db)):
         for webhook_type in stats_summary:
             total = stats_summary[webhook_type]["total"]
             if total > 0:
-                success_rate = (
-                    stats_summary[webhook_type]["success"] / total
-                ) * 100
-                stats_summary[webhook_type]["success_rate"] = round(
-                    success_rate, 2
-                )
+                success_rate = (stats_summary[webhook_type]["success"] / total) * 100
+                stats_summary[webhook_type]["success_rate"] = round(success_rate, 2)
             else:
                 stats_summary[webhook_type]["success_rate"] = 100.0
 

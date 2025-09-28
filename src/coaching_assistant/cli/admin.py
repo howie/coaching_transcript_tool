@@ -1,12 +1,14 @@
 """Administrative CLI commands for role management."""
 
-import click
 import sys
+
+import click
 from sqlalchemy.orm import Session, sessionmaker
-from ..models.user import User, UserRole
-from ..services.permissions import PermissionService
+
 from ..core.config import settings
 from ..core.database import create_database_engine
+from ..models.user import User, UserRole
+from ..services.permissions import PermissionService
 
 
 def get_db_session() -> Session:
@@ -23,9 +25,7 @@ def admin():
 
 @admin.command()
 @click.argument("email")
-@click.argument(
-    "role", type=click.Choice(["user", "staff", "admin", "super_admin"])
-)
+@click.argument("role", type=click.Choice(["user", "staff", "admin", "super_admin"]))
 @click.option("--reason", "-r", required=True, help="Reason for role change")
 @click.option(
     "--force",
@@ -47,9 +47,7 @@ def grant_role(email: str, role: str, reason: str, force: bool):
             sys.exit(1)
 
         # Get super admin (from environment or first super_admin)
-        super_admin = (
-            db.query(User).filter(User.role == UserRole.SUPER_ADMIN).first()
-        )
+        super_admin = db.query(User).filter(User.role == UserRole.SUPER_ADMIN).first()
 
         if not super_admin:
             # If no super admin exists, check if we're creating the first one
@@ -76,9 +74,7 @@ def grant_role(email: str, role: str, reason: str, force: bool):
                 granted_by=super_admin,
                 reason=reason,
             )
-            click.echo(
-                f"✅ Role updated for {email}: {updated_user.role.value}"
-            )
+            click.echo(f"✅ Role updated for {email}: {updated_user.role.value}")
         except Exception as e:
             click.echo(f"❌ Error granting role: {str(e)}")
             sys.exit(1)
@@ -86,9 +82,7 @@ def grant_role(email: str, role: str, reason: str, force: bool):
 
 @admin.command()
 @click.argument("email")
-@click.option(
-    "--reason", "-r", required=True, help="Reason for role revocation"
-)
+@click.option("--reason", "-r", required=True, help="Reason for role revocation")
 def revoke_role(email: str, reason: str):
     """Revoke admin/staff role from user (set back to USER)."""
 
@@ -106,9 +100,7 @@ def revoke_role(email: str, reason: str):
             return
 
         # Get super admin
-        super_admin = (
-            db.query(User).filter(User.role == UserRole.SUPER_ADMIN).first()
-        )
+        super_admin = db.query(User).filter(User.role == UserRole.SUPER_ADMIN).first()
 
         if not super_admin:
             click.echo("❌ No super administrator found in system")
@@ -139,23 +131,21 @@ def show_role(email: str):
             click.echo(f"❌ User not found: {email}")
             sys.exit(1)
 
-        click.echo(f"\n📋 User Details:")
+        click.echo("\n📋 User Details:")
         click.echo(f"  Email: {email}")
         click.echo(f"  Name: {user.name}")
         click.echo(f"  Role: {user.role.value}")
-        click.echo(f"\n🔐 Permissions:")
+        click.echo("\n🔐 Permissions:")
         click.echo(f"  Is Admin: {'✅' if user.is_admin() else '❌'}")
         click.echo(f"  Is Staff: {'✅' if user.is_staff() else '❌'}")
-        click.echo(
-            f"  Is Super Admin: {'✅' if user.is_super_admin() else '❌'}"
-        )
+        click.echo(f"  Is Super Admin: {'✅' if user.is_super_admin() else '❌'}")
 
         if user.admin_access_expires:
-            click.echo(f"\n⏰ Admin Session:")
+            click.echo("\n⏰ Admin Session:")
             click.echo(f"  Expires: {user.admin_access_expires}")
 
         if user.allowed_ip_addresses:
-            click.echo(f"\n🌐 IP Allowlist:")
+            click.echo("\n🌐 IP Allowlist:")
             for ip in user.allowed_ip_addresses:
                 click.echo(f"  - {ip}")
 
@@ -168,7 +158,7 @@ def list_admins():
         permission_service = PermissionService(db)
         stats = permission_service.get_admin_stats()
 
-        click.echo(f"\n📊 User Statistics:")
+        click.echo("\n📊 User Statistics:")
         click.echo(f"  Total Users: {stats['total_users']}")
         click.echo(f"  Super Admins: {stats['super_admins']}")
         click.echo(f"  Admins: {stats['admins']}")
@@ -176,25 +166,23 @@ def list_admins():
         click.echo(f"  Regular Users: {stats['regular_users']}")
 
         # List super admins
-        super_admins = permission_service.get_users_by_role(
-            UserRole.SUPER_ADMIN
-        )
+        super_admins = permission_service.get_users_by_role(UserRole.SUPER_ADMIN)
         if super_admins:
-            click.echo(f"\n👑 Super Administrators:")
+            click.echo("\n👑 Super Administrators:")
             for user in super_admins:
                 click.echo(f"  - {user.email} ({user.name})")
 
         # List admins
         admins = permission_service.get_users_by_role(UserRole.ADMIN)
         if admins:
-            click.echo(f"\n🔑 Administrators:")
+            click.echo("\n🔑 Administrators:")
             for user in admins:
                 click.echo(f"  - {user.email} ({user.name})")
 
         # List staff
         staff = permission_service.get_users_by_role(UserRole.STAFF)
         if staff:
-            click.echo(f"\n📋 Staff Members:")
+            click.echo("\n📋 Staff Members:")
             for user in staff:
                 click.echo(f"  - {user.email} ({user.name})")
 
@@ -212,9 +200,7 @@ def audit_log(user_email: str, limit: int):
             sys.exit(1)
 
         permission_service = PermissionService(db)
-        logs = permission_service.get_role_audit_log(
-            user_id=str(user.id), limit=limit
-        )
+        logs = permission_service.get_role_audit_log(user_id=str(user.id), limit=limit)
 
         if not logs:
             click.echo(f"No role changes found for {user_email}")
@@ -224,13 +210,9 @@ def audit_log(user_email: str, limit: int):
         click.echo("-" * 60)
 
         for log in logs:
-            changed_by = (
-                db.query(User).filter(User.id == log.changed_by_id).first()
-            )
+            changed_by = db.query(User).filter(User.id == log.changed_by_id).first()
             click.echo(f"\n🕐 {log.created_at.strftime('%Y-%m-%d %H:%M:%S')}")
-            click.echo(
-                f"  Changed by: {changed_by.email if changed_by else 'Unknown'}"
-            )
+            click.echo(f"  Changed by: {changed_by.email if changed_by else 'Unknown'}")
             click.echo(f"  Old Role: {log.old_role or 'None'}")
             click.echo(f"  New Role: {log.new_role}")
             click.echo(f"  Reason: {log.reason or 'No reason provided'}")
@@ -243,9 +225,7 @@ def audit_log(user_email: str, limit: int):
 def create_super_admin(email: str):
     """Create the first super admin (use only for initial setup)."""
 
-    click.echo(
-        "⚠️  WARNING: This command should only be used for initial setup!"
-    )
+    click.echo("⚠️  WARNING: This command should only be used for initial setup!")
     click.confirm(f"Create super admin account for {email}?", abort=True)
 
     with get_db_session() as db:
@@ -255,9 +235,7 @@ def create_super_admin(email: str):
         )
 
         if existing_super:
-            click.echo(
-                f"❌ Super admin already exists: {existing_super.email}"
-            )
+            click.echo(f"❌ Super admin already exists: {existing_super.email}")
             click.echo("Use 'grant-role' command to manage roles.")
             sys.exit(1)
 

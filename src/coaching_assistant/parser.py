@@ -5,10 +5,11 @@ Supports multiple formats:
 1. MS Teams VTT format: <v Speaker Name>Text</v>
 2. MacWhisper VTT format: Speaker Name: Text
 """
+
 import re
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import List, Dict, Any, Optional, Match
+from typing import Any, Dict, List, Match, Optional
 
 
 class UnrecognizedFormatError(ValueError):
@@ -123,16 +124,12 @@ def parse_vtt(
                 "Could not detect VTT format. Please specify the format type."
             )
         format_name = (
-            format_type.name
-            if hasattr(format_type, "name")
-            else str(format_type)
+            format_type.name if hasattr(format_type, "name") else str(format_type)
         )
         print(f"Detected VTT format: {format_name}")
     else:
         format_name = (
-            format_type.name
-            if hasattr(format_type, "name")
-            else str(format_type)
+            format_type.name if hasattr(format_type, "name") else str(format_type)
         )
         print(f"Using specified VTT format: {format_name}")
 
@@ -145,9 +142,7 @@ def parse_vtt(
     try:
         return parser.parse(content)
     except Exception as e:
-        raise ValueError(
-            f"Error parsing VTT file with format {format_name}: {str(e)}"
-        )
+        raise ValueError(f"Error parsing VTT file with format {format_name}: {str(e)}")
 
 
 def consolidate_speakers(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

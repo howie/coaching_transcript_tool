@@ -4,21 +4,22 @@ This module tests the pure business logic of speaker role assignment and retriev
 use cases without any infrastructure dependencies (using mock repositories).
 """
 
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import Mock
-from uuid import uuid4, UUID
-from datetime import datetime, UTC
+from uuid import UUID, uuid4
 
-from coaching_assistant.core.services.speaker_role_management_use_case import (
-    SpeakerRoleAssignmentUseCase,
-    SegmentRoleAssignmentUseCase,
-    SpeakerRoleRetrievalUseCase,
-)
+import pytest
+
 from coaching_assistant.core.models.session import Session, SessionStatus
 from coaching_assistant.core.models.transcript import (
-    SessionRole,
     SegmentRole,
+    SessionRole,
     SpeakerRole,
+)
+from coaching_assistant.core.services.speaker_role_management_use_case import (
+    SegmentRoleAssignmentUseCase,
+    SpeakerRoleAssignmentUseCase,
+    SpeakerRoleRetrievalUseCase,
 )
 
 
@@ -115,7 +116,9 @@ class TestSpeakerRoleAssignmentUseCase:
         self.session_repo.get_by_id.return_value = self.session
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Access denied - session not owned by user"):
+        with pytest.raises(
+            ValueError, match="Access denied - session not owned by user"
+        ):
             self.use_case.execute(self.session_id, wrong_user_id, speaker_roles)
 
     def test_execute_session_not_completed(self):
@@ -134,7 +137,10 @@ class TestSpeakerRoleAssignmentUseCase:
         self.session_repo.get_by_id.return_value = processing_session
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Cannot update speaker roles.*Session status: processing"):
+        with pytest.raises(
+            ValueError,
+            match="Cannot update speaker roles.*Session status: processing",
+        ):
             self.use_case.execute(self.session_id, self.user_id, speaker_roles)
 
     def test_execute_invalid_speaker_id(self):
@@ -145,13 +151,15 @@ class TestSpeakerRoleAssignmentUseCase:
         # Test cases for invalid speaker IDs
         invalid_cases = [
             {"abc": "coach"},  # Non-numeric
-            {"0": "coach"},    # Zero
-            {"-1": "coach"},   # Negative
+            {"0": "coach"},  # Zero
+            {"-1": "coach"},  # Negative
         ]
 
         for invalid_speaker_roles in invalid_cases:
             with pytest.raises(ValueError, match="Invalid speaker ID"):
-                self.use_case.execute(self.session_id, self.user_id, invalid_speaker_roles)
+                self.use_case.execute(
+                    self.session_id, self.user_id, invalid_speaker_roles
+                )
 
     def test_execute_invalid_role(self):
         """Test error handling for invalid roles."""
@@ -160,14 +168,19 @@ class TestSpeakerRoleAssignmentUseCase:
 
         # Test cases for invalid roles
         invalid_cases = [
-            {"1": "teacher"},   # Wrong role
-            {"1": ""},          # Empty role
-            {"1": "invalid"},   # Invalid role
+            {"1": "teacher"},  # Wrong role
+            {"1": ""},  # Empty role
+            {"1": "invalid"},  # Invalid role
         ]
 
         for invalid_speaker_roles in invalid_cases:
-            with pytest.raises(ValueError, match="Invalid role.*Must be 'coach' or 'client'.*case-insensitive"):
-                self.use_case.execute(self.session_id, self.user_id, invalid_speaker_roles)
+            with pytest.raises(
+                ValueError,
+                match="Invalid role.*Must be 'coach' or 'client'.*case-insensitive",
+            ):
+                self.use_case.execute(
+                    self.session_id, self.user_id, invalid_speaker_roles
+                )
 
     def test_execute_case_insensitive_roles(self):
         """Test that role validation is case-insensitive."""
@@ -197,10 +210,10 @@ class TestSpeakerRoleAssignmentUseCase:
 
         # Test cases for case-insensitive valid roles
         valid_cases = [
-            {"1": "coach", "2": "client"},      # lowercase
-            {"1": "COACH", "2": "CLIENT"},      # uppercase
-            {"1": "Coach", "2": "Client"},      # title case
-            {"1": "cOaCh", "2": "cLiEnT"},      # mixed case
+            {"1": "coach", "2": "client"},  # lowercase
+            {"1": "COACH", "2": "CLIENT"},  # uppercase
+            {"1": "Coach", "2": "Client"},  # title case
+            {"1": "cOaCh", "2": "cLiEnT"},  # mixed case
         ]
 
         for speaker_roles in valid_cases:
@@ -312,14 +325,14 @@ class TestSegmentRoleAssignmentUseCase:
 
         # Test cases for case-insensitive valid roles
         valid_cases = [
-            {segment_id: "coach"},      # lowercase
-            {segment_id: "COACH"},      # uppercase
-            {segment_id: "Coach"},      # title case
-            {segment_id: "cOaCh"},      # mixed case
-            {segment_id: "client"},     # lowercase
-            {segment_id: "CLIENT"},     # uppercase
-            {segment_id: "Client"},     # title case
-            {segment_id: "cLiEnT"},     # mixed case
+            {segment_id: "coach"},  # lowercase
+            {segment_id: "COACH"},  # uppercase
+            {segment_id: "Coach"},  # title case
+            {segment_id: "cOaCh"},  # mixed case
+            {segment_id: "client"},  # lowercase
+            {segment_id: "CLIENT"},  # uppercase
+            {segment_id: "Client"},  # title case
+            {segment_id: "cLiEnT"},  # mixed case
         ]
 
         for segment_roles in valid_cases:
@@ -338,14 +351,19 @@ class TestSegmentRoleAssignmentUseCase:
 
         # Test cases for invalid roles
         invalid_cases = [
-            {segment_id: "teacher"},   # Wrong role
-            {segment_id: ""},          # Empty role
-            {segment_id: "invalid"},   # Invalid role
+            {segment_id: "teacher"},  # Wrong role
+            {segment_id: ""},  # Empty role
+            {segment_id: "invalid"},  # Invalid role
         ]
 
         for invalid_segment_roles in invalid_cases:
-            with pytest.raises(ValueError, match="Invalid role.*Must be 'coach' or 'client'.*case-insensitive"):
-                self.use_case.execute(self.session_id, self.user_id, invalid_segment_roles)
+            with pytest.raises(
+                ValueError,
+                match="Invalid role.*Must be 'coach' or 'client'.*case-insensitive",
+            ):
+                self.use_case.execute(
+                    self.session_id, self.user_id, invalid_segment_roles
+                )
 
 
 class TestSpeakerRoleRetrievalUseCase:
@@ -407,7 +425,9 @@ class TestSpeakerRoleRetrievalUseCase:
         expected = {1: "COACH", 2: "CLIENT"}
         assert result == expected
         self.session_repo.get_by_id.assert_called_once_with(self.session_id)
-        self.speaker_role_repo.get_by_session_id.assert_called_once_with(self.session_id)
+        self.speaker_role_repo.get_by_session_id.assert_called_once_with(
+            self.session_id
+        )
 
     def test_get_segment_roles_success(self):
         """Test successful retrieval of segment roles."""
@@ -443,7 +463,9 @@ class TestSpeakerRoleRetrievalUseCase:
         expected = {str(segment_id_1): "COACH", str(segment_id_2): "CLIENT"}
         assert result == expected
         self.session_repo.get_by_id.assert_called_once_with(self.session_id)
-        self.segment_role_repo.get_by_session_id.assert_called_once_with(self.session_id)
+        self.segment_role_repo.get_by_session_id.assert_called_once_with(
+            self.session_id
+        )
 
 
 # Domain model validation tests
@@ -549,4 +571,6 @@ if __name__ == "__main__":
     test_domain.test_session_role_creation_and_validation()
     print("✅ Domain model tests passed")
 
-    print("🔴 TDD Red Phase: Current implementation incomplete - ready for Green phase!")
+    print(
+        "🔴 TDD Red Phase: Current implementation incomplete - ready for Green phase!"
+    )

@@ -1,8 +1,9 @@
 """Role audit log model for tracking role changes."""
 
-from sqlalchemy import Column, String, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, INET
+from sqlalchemy import Column, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import INET, UUID
 from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 

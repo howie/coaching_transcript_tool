@@ -1,7 +1,7 @@
 """User domain model with business rules."""
 
 import enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
@@ -45,35 +45,35 @@ class PlanLimits:
                 max_file_size_mb=60,
                 max_sessions_per_month=10,
                 ai_analysis_enabled=False,
-                export_formats=["txt"]
+                export_formats=["txt"],
             ),
             UserPlan.STUDENT: cls(
                 monthly_minutes=300,
                 max_file_size_mb=100,
                 max_sessions_per_month=20,
                 ai_analysis_enabled=True,
-                export_formats=["txt", "docx"]
+                export_formats=["txt", "docx"],
             ),
             UserPlan.PRO: cls(
                 monthly_minutes=600,
                 max_file_size_mb=200,
                 max_sessions_per_month=50,
                 ai_analysis_enabled=True,
-                export_formats=["txt", "docx", "pdf"]
+                export_formats=["txt", "docx", "pdf"],
             ),
             UserPlan.ENTERPRISE: cls(
                 monthly_minutes=1200,
                 max_file_size_mb=500,
                 max_sessions_per_month=100,
                 ai_analysis_enabled=True,
-                export_formats=["txt", "docx", "pdf", "srt"]
+                export_formats=["txt", "docx", "pdf", "srt"],
             ),
             UserPlan.COACHING_SCHOOL: cls(
                 monthly_minutes=2000,
                 max_file_size_mb=500,
                 max_sessions_per_month=200,
                 ai_analysis_enabled=True,
-                export_formats=["txt", "docx", "pdf", "srt"]
+                export_formats=["txt", "docx", "pdf", "srt"],
             ),
         }
         return limits_map.get(plan, limits_map[UserPlan.FREE])
@@ -125,8 +125,8 @@ class User:
         """Business rule: Check if user can create new session."""
         limits = self.get_plan_limits()
         return (
-            self.usage_minutes < limits.monthly_minutes and
-            self.session_count < limits.max_sessions_per_month
+            self.usage_minutes < limits.monthly_minutes
+            and self.session_count < limits.max_sessions_per_month
         )
 
     def can_upload_file(self, file_size_mb: float) -> bool:
@@ -162,7 +162,9 @@ class User:
         new_value = plan_values.get(new_plan, 0)
 
         if new_value <= current_value:
-            raise ValueError(f"Cannot downgrade from {self.plan.value} to {new_plan.value}")
+            raise ValueError(
+                f"Cannot downgrade from {self.plan.value} to {new_plan.value}"
+            )
 
         self.plan = new_plan
         self.updated_at = datetime.utcnow()
@@ -207,7 +209,11 @@ class User:
 
     def is_premium_user(self) -> bool:
         """Business rule: Check if user has premium features."""
-        return self.plan in [UserPlan.PRO, UserPlan.ENTERPRISE, UserPlan.COACHING_SCHOOL]
+        return self.plan in [
+            UserPlan.PRO,
+            UserPlan.ENTERPRISE,
+            UserPlan.COACHING_SCHOOL,
+        ]
 
     def is_active_subscription(self) -> bool:
         """Business rule: Check if user has active subscription."""

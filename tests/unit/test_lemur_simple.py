@@ -6,8 +6,9 @@ Simple test for improved LeMUR punctuation handling.
 import asyncio
 import os
 import sys
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Add the src directory to Python path
 project_root = Path(__file__).parent
@@ -19,13 +20,17 @@ SIMPLE_TEST_DATA = [
         "start": 1000,
         "end": 15000,
         "speaker": "A",
-        "text": "好Lisha你好我是你今天的教練那我待會錄音並且會做一些筆記你OK嗎OK好那我想要了解今天會談想談些什麼",
+        "text": (
+            "好Lisha你好我是你今天的教練那我待會錄音並且會做一些筆記你OK嗎OK好那我想要了解今天會談想談些什麼"
+        ),
     },
     {
         "start": 15000,
         "end": 45000,
         "speaker": "B",
-        "text": "我今天想要談的一個議題呢就是最近有點困擾我的就是我今年暑假我要帶我女兒出國去念summercamp那我們原本的計劃就是只是要去溫哥華但是呢他有一個同學的媽媽一個很好朋友的媽媽就說你們都到了溫哥華了嘛那你們要不要來洛杉磯找我們因為很近",
+        "text": (
+            "我今天想要談的一個議題呢就是最近有點困擾我的就是我今年暑假我要帶我女兒出國去念summercamp那我們原本的計劃就是只是要去溫哥華但是呢他有一個同學的媽媽一個很好朋友的媽媽就說你們都到了溫哥華了嘛那你們要不要來洛杉磯找我們因為很近"
+        ),
     },
 ]
 
@@ -77,14 +82,14 @@ async def test_simple_lemur():
         )
         has_speaker_mapping = len(result.speaker_mapping) > 0
 
-        # Check for Traditional Chinese (look for traditional characters vs simplified)
+        # Check for Traditional Chinese (look for traditional characters vs
+        # simplified)
         has_traditional = any(
             "學" in seg.text or "們" in seg.text or "會" in seg.text
             for seg in result.segments
         )
         no_simplified = all(
-            "学" not in seg.text and "们" not in seg.text
-            for seg in result.segments
+            "学" not in seg.text and "们" not in seg.text for seg in result.segments
         )
 
         print("Quality checks:")

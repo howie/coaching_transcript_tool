@@ -6,12 +6,17 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion.
 
 from typing import List
 from uuid import UUID
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 
-from ....core.repositories.ports import SpeakerRoleRepoPort, SegmentRoleRepoPort
-from ....core.models.transcript import SessionRole, SegmentRole
-from ....models.transcript import SessionRole as SessionRoleModel, SegmentRole as SegmentRoleModel
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from ....core.models.transcript import SegmentRole, SessionRole
+from ....core.repositories.ports import (
+    SegmentRoleRepoPort,
+    SpeakerRoleRepoPort,
+)
+from ....models.transcript import SegmentRole as SegmentRoleModel
+from ....models.transcript import SessionRole as SessionRoleModel
 
 
 class SQLAlchemySpeakerRoleRepository(SpeakerRoleRepoPort):
@@ -35,6 +40,7 @@ class SQLAlchemySpeakerRoleRepository(SpeakerRoleRepoPort):
             List of SessionRole domain entities (empty list if no roles assigned)
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         try:
@@ -48,12 +54,18 @@ class SQLAlchemySpeakerRoleRepository(SpeakerRoleRepoPort):
             if not domain_roles:
                 logger.info(f"No speaker roles found for session {session_id}")
             else:
-                logger.debug(f"Retrieved {len(domain_roles)} speaker roles for session {session_id}")
+                logger.debug(
+                    f"Retrieved {len(domain_roles)} speaker roles for session {session_id}"
+                )
 
             return domain_roles
         except SQLAlchemyError as e:
-            logger.error(f"Database error retrieving speaker roles for session {session_id}: {e}")
-            raise RuntimeError(f"Database error retrieving speaker roles for session {session_id}") from e
+            logger.error(
+                f"Database error retrieving speaker roles for session {session_id}: {e}"
+            )
+            raise RuntimeError(
+                f"Database error retrieving speaker roles for session {session_id}"
+            ) from e
 
     def save_speaker_roles(
         self, session_id: UUID, speaker_roles: List[SessionRole]
@@ -83,7 +95,9 @@ class SQLAlchemySpeakerRoleRepository(SpeakerRoleRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error saving speaker roles for session {session_id}") from e
+            raise RuntimeError(
+                f"Database error saving speaker roles for session {session_id}"
+            ) from e
 
     def delete_by_session_id(self, session_id: UUID) -> None:
         """Delete all speaker role assignments for a session.
@@ -98,7 +112,9 @@ class SQLAlchemySpeakerRoleRepository(SpeakerRoleRepoPort):
             self.session.flush()
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error deleting speaker roles for session {session_id}") from e
+            raise RuntimeError(
+                f"Database error deleting speaker roles for session {session_id}"
+            ) from e
 
     def _to_domain(self, orm_role: SessionRoleModel) -> SessionRole:
         """Convert ORM model to domain entity."""
@@ -144,6 +160,7 @@ class SQLAlchemySegmentRoleRepository(SegmentRoleRepoPort):
             List of SegmentRole domain entities (empty list if no roles assigned)
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         try:
@@ -157,12 +174,18 @@ class SQLAlchemySegmentRoleRepository(SegmentRoleRepoPort):
             if not domain_roles:
                 logger.debug(f"No segment roles found for session {session_id}")
             else:
-                logger.debug(f"Retrieved {len(domain_roles)} segment roles for session {session_id}")
+                logger.debug(
+                    f"Retrieved {len(domain_roles)} segment roles for session {session_id}"
+                )
 
             return domain_roles
         except SQLAlchemyError as e:
-            logger.error(f"Database error retrieving segment roles for session {session_id}: {e}")
-            raise RuntimeError(f"Database error retrieving segment roles for session {session_id}") from e
+            logger.error(
+                f"Database error retrieving segment roles for session {session_id}: {e}"
+            )
+            raise RuntimeError(
+                f"Database error retrieving segment roles for session {session_id}"
+            ) from e
 
     def save_segment_roles(
         self, session_id: UUID, segment_roles: List[SegmentRole]
@@ -192,7 +215,9 @@ class SQLAlchemySegmentRoleRepository(SegmentRoleRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error saving segment roles for session {session_id}") from e
+            raise RuntimeError(
+                f"Database error saving segment roles for session {session_id}"
+            ) from e
 
     def delete_by_session_id(self, session_id: UUID) -> None:
         """Delete all segment role assignments for a session.
@@ -207,7 +232,9 @@ class SQLAlchemySegmentRoleRepository(SegmentRoleRepoPort):
             self.session.flush()
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error deleting segment roles for session {session_id}") from e
+            raise RuntimeError(
+                f"Database error deleting segment roles for session {session_id}"
+            ) from e
 
     def _to_domain(self, orm_role: SegmentRoleModel) -> SegmentRole:
         """Convert ORM model to domain entity."""

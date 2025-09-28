@@ -19,7 +19,8 @@ import argparse
 import json
 import sys
 import time
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import requests
 from requests.exceptions import RequestException
 
@@ -28,7 +29,7 @@ class APITester:
     """API 測試器類別"""
 
     def __init__(self, base_url: str, timeout: int = 30):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.session = requests.Session()
         self.test_results = []
@@ -38,25 +39,29 @@ class APITester:
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{timestamp}] {level}: {message}")
 
-    def test_endpoint(self, method: str, endpoint: str,
-                     data: Optional[Dict] = None,
-                     expected_status: int = 200,
-                     description: str = "") -> bool:
+    def test_endpoint(
+        self,
+        method: str,
+        endpoint: str,
+        data: Optional[Dict] = None,
+        expected_status: int = 200,
+        description: str = "",
+    ) -> bool:
         """測試單一端點"""
         url = f"{self.base_url}{endpoint}"
 
         try:
             self.log(f"測試 {method} {endpoint} - {description}")
 
-            if method.upper() == 'GET':
+            if method.upper() == "GET":
                 response = self.session.get(url, timeout=self.timeout)
-            elif method.upper() == 'POST':
+            elif method.upper() == "POST":
                 response = self.session.post(url, json=data, timeout=self.timeout)
-            elif method.upper() == 'PATCH':
+            elif method.upper() == "PATCH":
                 response = self.session.patch(url, json=data, timeout=self.timeout)
-            elif method.upper() == 'PUT':
+            elif method.upper() == "PUT":
                 response = self.session.put(url, json=data, timeout=self.timeout)
-            elif method.upper() == 'DELETE':
+            elif method.upper() == "DELETE":
                 response = self.session.delete(url, timeout=self.timeout)
             else:
                 self.log(f"不支援的 HTTP 方法: {method}", "ERROR")
@@ -69,41 +74,52 @@ class APITester:
                 # 嘗試解析 JSON 回應
                 try:
                     response_data = response.json()
-                    self.log(f"回應資料: {json.dumps(response_data, indent=2, ensure_ascii=False)[:200]}...")
+                    self.log(
+                        f"回應資料: {json.dumps(response_data, indent=2, ensure_ascii=False)[:200]}..."
+                    )
                 except json.JSONDecodeError:
                     self.log(f"回應內容: {response.text[:100]}...")
 
-                self.test_results.append({
-                    "endpoint": endpoint,
-                    "method": method,
-                    "status": "PASS",
-                    "status_code": response.status_code,
-                    "description": description
-                })
+                self.test_results.append(
+                    {
+                        "endpoint": endpoint,
+                        "method": method,
+                        "status": "PASS",
+                        "status_code": response.status_code,
+                        "description": description,
+                    }
+                )
                 return True
             else:
-                self.log(f"❌ 失敗 - 預期狀態碼: {expected_status}, 實際: {response.status_code}", "ERROR")
+                self.log(
+                    f"❌ 失敗 - 預期狀態碼: {expected_status}, 實際: {response.status_code}",
+                    "ERROR",
+                )
                 self.log(f"錯誤回應: {response.text[:200]}", "ERROR")
 
-                self.test_results.append({
-                    "endpoint": endpoint,
-                    "method": method,
-                    "status": "FAIL",
-                    "status_code": response.status_code,
-                    "description": description,
-                    "error": response.text[:200]
-                })
+                self.test_results.append(
+                    {
+                        "endpoint": endpoint,
+                        "method": method,
+                        "status": "FAIL",
+                        "status_code": response.status_code,
+                        "description": description,
+                        "error": response.text[:200],
+                    }
+                )
                 return False
 
         except RequestException as e:
             self.log(f"❌ 網路錯誤: {str(e)}", "ERROR")
-            self.test_results.append({
-                "endpoint": endpoint,
-                "method": method,
-                "status": "ERROR",
-                "description": description,
-                "error": str(e)
-            })
+            self.test_results.append(
+                {
+                    "endpoint": endpoint,
+                    "method": method,
+                    "status": "ERROR",
+                    "description": description,
+                    "error": str(e),
+                }
+            )
             return False
 
     def verify_test_mode(self) -> bool:
@@ -112,7 +128,9 @@ class APITester:
 
         try:
             # 嘗試存取需要認證的端點，無需提供 Authorization header
-            response = self.session.get(f"{self.base_url}/api/v1/auth/me", timeout=self.timeout)
+            response = self.session.get(
+                f"{self.base_url}/api/v1/auth/me", timeout=self.timeout
+            )
 
             if response.status_code == 200:
                 user_data = response.json()
@@ -149,15 +167,14 @@ class APITester:
                 "method": "GET",
                 "endpoint": "/api/v1/auth/me",
                 "expected_status": 200,
-                "description": "獲取當前用戶資訊"
+                "description": "獲取當前用戶資訊",
             },
-
             # 會話管理 API
             {
                 "method": "GET",
                 "endpoint": "/api/v1/sessions",
                 "expected_status": 200,
-                "description": "獲取會話列表"
+                "description": "獲取會話列表",
             },
             {
                 "method": "POST",
@@ -166,40 +183,37 @@ class APITester:
                     "audio_language": "zh-TW",
                     "stt_provider": "google",
                     "title": "API 測試會話",
-                    "description": "自動化測試創建的會話"
+                    "description": "自動化測試創建的會話",
                 },
                 "expected_status": 201,
-                "description": "創建新會話"
+                "description": "創建新會話",
             },
-
             # 方案管理 API
             {
                 "method": "GET",
                 "endpoint": "/api/v1/plans/current",
                 "expected_status": 200,
-                "description": "獲取當前用戶方案"
+                "description": "獲取當前用戶方案",
             },
-
             # 使用統計 API
             {
                 "method": "GET",
                 "endpoint": "/api/v1/usage",
                 "expected_status": 200,
-                "description": "獲取使用統計"
+                "description": "獲取使用統計",
             },
             {
                 "method": "GET",
                 "endpoint": "/api/v1/usage/history",
                 "expected_status": 200,
-                "description": "獲取使用歷史"
+                "description": "獲取使用歷史",
             },
-
             # 健康檢查
             {
                 "method": "GET",
                 "endpoint": "/health",
                 "expected_status": 200,
-                "description": "健康檢查端點"
+                "description": "健康檢查端點",
             },
         ]
 
@@ -214,7 +228,7 @@ class APITester:
                 endpoint=test["endpoint"],
                 data=test.get("data"),
                 expected_status=test["expected_status"],
-                description=test["description"]
+                description=test["description"],
             )
 
             if success:
@@ -224,8 +238,7 @@ class APITester:
                 if test["endpoint"] == "/api/v1/sessions" and test["method"] == "POST":
                     try:
                         response = self.session.post(
-                            f"{self.base_url}{test['endpoint']}",
-                            json=test["data"]
+                            f"{self.base_url}{test['endpoint']}", json=test["data"]
                         )
                         session_data = response.json()
                         created_session_id = session_data.get("id")
@@ -243,29 +256,26 @@ class APITester:
                     "method": "GET",
                     "endpoint": f"/api/v1/sessions/{created_session_id}",
                     "expected_status": 200,
-                    "description": "獲取特定會話詳情"
+                    "description": "獲取特定會話詳情",
                 },
                 {
                     "method": "POST",
                     "endpoint": f"/api/v1/sessions/{created_session_id}/upload-url",
                     "data": {
                         "filename": "test-audio.mp3",
-                        "content_type": "audio/mpeg"
+                        "content_type": "audio/mpeg",
                     },
                     "expected_status": 200,
-                    "description": "獲取音檔上傳 URL"
+                    "description": "獲取音檔上傳 URL",
                 },
                 {
                     "method": "PATCH",
                     "endpoint": f"/api/v1/sessions/{created_session_id}/speaker-roles",
                     "data": {
-                        "speaker_roles": {
-                            "speaker_1": "教練",
-                            "speaker_2": "客戶"
-                        }
+                        "speaker_roles": {"speaker_1": "教練", "speaker_2": "客戶"}
                     },
                     "expected_status": 200,
-                    "description": "更新說話者角色"
+                    "description": "更新說話者角色",
                 },
             ]
 
@@ -275,7 +285,7 @@ class APITester:
                     endpoint=test["endpoint"],
                     data=test.get("data"),
                     expected_status=test["expected_status"],
-                    description=test["description"]
+                    description=test["description"],
                 )
 
                 if success:
@@ -294,34 +304,36 @@ class APITester:
             "failed_tests": total_tests - passed_tests,
             "success_rate": success_rate,
             "test_results": self.test_results,
-            "created_session_id": created_session_id
+            "created_session_id": created_session_id,
         }
 
         return report
 
     def print_summary(self, report: Dict[str, Any]):
         """列印測試摘要"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🎯 測試摘要 (Test Summary)")
-        print("="*60)
+        print("=" * 60)
         print(f"總測試數: {report['total_tests']}")
         print(f"通過測試: {report['passed_tests']}")
         print(f"失敗測試: {report['failed_tests']}")
         print(f"成功率: {report['success_rate']:.1f}%")
 
-        if report['created_session_id']:
+        if report["created_session_id"]:
             print(f"創建的會話 ID: {report['created_session_id']}")
 
         print("\n📋 詳細結果:")
-        for result in report['test_results']:
-            status_icon = "✅" if result['status'] == 'PASS' else "❌"
-            print(f"{status_icon} {result['method']} {result['endpoint']} - {result['description']}")
-            if result['status'] != 'PASS':
+        for result in report["test_results"]:
+            status_icon = "✅" if result["status"] == "PASS" else "❌"
+            print(
+                f"{status_icon} {result['method']} {result['endpoint']} - {result['description']}"
+            )
+            if result["status"] != "PASS":
                 print(f"   錯誤: {result.get('error', 'Unknown error')}")
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
 
-        if report['success']:
+        if report["success"]:
             print("🎉 所有測試通過！測試模式運作正常。")
         else:
             print("⚠️  部分測試失敗，請檢查 API 服務和配置。")
@@ -342,26 +354,20 @@ def main():
   - 確保已設定 TEST_MODE=true 環境變數
   - 確保 API 伺服器正在運行
   - 建議在測試環境中執行此腳本
-        """
+        """,
     )
 
     parser.add_argument(
         "--base-url",
         default="http://localhost:8000",
-        help="API 基礎 URL (預設: http://localhost:8000)"
+        help="API 基礎 URL (預設: http://localhost:8000)",
     )
 
     parser.add_argument(
-        "--timeout",
-        type=int,
-        default=30,
-        help="請求超時時間（秒）(預設: 30)"
+        "--timeout", type=int, default=30, help="請求超時時間（秒）(預設: 30)"
     )
 
-    parser.add_argument(
-        "--output-file",
-        help="將測試結果保存到檔案（JSON 格式）"
-    )
+    parser.add_argument("--output-file", help="將測試結果保存到檔案（JSON 格式）")
 
     args = parser.parse_args()
 
@@ -377,12 +383,12 @@ def main():
 
         # 保存結果到檔案（如果指定）
         if args.output_file:
-            with open(args.output_file, 'w', encoding='utf-8') as f:
+            with open(args.output_file, "w", encoding="utf-8") as f:
                 json.dump(report, f, indent=2, ensure_ascii=False)
             print(f"\n💾 測試結果已保存到: {args.output_file}")
 
         # 根據測試結果設定退出碼
-        sys.exit(0 if report['success'] else 1)
+        sys.exit(0 if report["success"] else 1)
 
     except KeyboardInterrupt:
         print("\n⏹️  測試被用戶中斷")

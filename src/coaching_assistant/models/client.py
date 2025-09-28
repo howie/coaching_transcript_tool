@@ -1,8 +1,9 @@
 """Client model for coaching sessions."""
 
-from sqlalchemy import Column, String, Boolean, ForeignKey, Text, DateTime
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 
@@ -28,9 +29,7 @@ class Client(BaseModel):
     client_type = Column(
         String(50), nullable=True
     )  # paid, pro_bono, free_practice, other
-    issue_types = Column(
-        Text, nullable=True
-    )  # Comma-separated list of issue types
+    issue_types = Column(Text, nullable=True)  # Comma-separated list of issue types
     status = Column(
         String(50), nullable=False, default="first_session"
     )  # completed, in_progress, paused, first_session

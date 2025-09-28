@@ -4,16 +4,11 @@ This module tests that API dependencies use domain models instead of legacy
 models and follow proper Clean Architecture patterns.
 """
 
-import pytest
-from fastapi import HTTPException
 from unittest.mock import Mock
 
+import pytest
+
 from coaching_assistant.core.models.user import UserRole
-from coaching_assistant.api.v1.dependencies import (
-    require_super_admin,
-    require_admin,
-    require_staff,
-)
 
 
 class TestPermissionDependenciesCleanArchitecture:
@@ -95,7 +90,11 @@ class TestPermissionDependenciesCleanArchitecture:
 
         def check_staff_permission(user_role: UserRole) -> bool:
             """Check if user has staff permission using domain model."""
-            return user_role in [UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN]
+            return user_role in [
+                UserRole.STAFF,
+                UserRole.ADMIN,
+                UserRole.SUPER_ADMIN,
+            ]
 
         # Test cases
         assert check_super_admin_permission(UserRole.SUPER_ADMIN) is True

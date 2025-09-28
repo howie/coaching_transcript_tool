@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 app = typer.Typer(
     name="transcript-tool",
-    help="""A powerful CLI tool to process and format coaching transcript files (VTT) into structured Markdown or Excel documents.
+    help="""A powerful CLI tool to process and format coaching transcript files (VTT)
+into structured Markdown or Excel documents.
 
     Examples:
 
@@ -43,7 +44,7 @@ def callback(
         "-v",
         help="Show version and exit.",
         is_eager=True,
-    )
+    ),
 ):
     """CLI for processing coaching transcripts."""
     if version:
@@ -126,14 +127,10 @@ def format_command(
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(result)
         else:
-            typer.echo(
-                f"Error: Invalid output format '{output_format}'.", err=True
-            )
+            typer.echo(f"Error: Invalid output format '{output_format}'.", err=True)
             raise typer.Exit(code=1)
 
-        typer.echo(
-            f"Successfully formatted transcript and saved to {output_file}"
-        )
+        typer.echo(f"Successfully formatted transcript and saved to {output_file}")
 
     except Exception as e:
         logger.exception("An error occurred during processing:")

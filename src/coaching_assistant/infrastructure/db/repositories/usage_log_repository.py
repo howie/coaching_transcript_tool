@@ -5,16 +5,17 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
 following Clean Architecture principles.
 """
 
-from typing import Optional, List, Dict, Any
-from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy.orm import Session as DBSession
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import func, and_
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
+from sqlalchemy import and_, func
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session as DBSession
+
+from ....core.models.usage_log import TranscriptionType, UsageLog
 from ....core.repositories.ports import UsageLogRepoPort
-from ....core.models.usage_log import UsageLog, TranscriptionType
 from ..models.usage_log_model import UsageLogModel
 
 
@@ -58,7 +59,7 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error saving usage log") from e
+            raise RuntimeError("Database error saving usage log") from e
 
     def get_by_session_id(self, session_id: UUID) -> List[UsageLog]:
         """Get all usage logs for a session.
@@ -78,7 +79,9 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
             )
             return [orm_usage_log.to_domain() for orm_usage_log in orm_usage_logs]
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving usage logs for session {session_id}") from e
+            raise RuntimeError(
+                f"Database error retrieving usage logs for session {session_id}"
+            ) from e
 
     def get_by_user_id(
         self,
@@ -97,7 +100,9 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
             List of UsageLog domain entities
         """
         try:
-            query = self.session.query(UsageLogModel).filter(UsageLogModel.user_id == user_id)
+            query = self.session.query(UsageLogModel).filter(
+                UsageLogModel.user_id == user_id
+            )
 
             if start_date is not None:
                 query = query.filter(UsageLogModel.created_at >= start_date)
@@ -108,7 +113,9 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
             orm_usage_logs = query.order_by(UsageLogModel.created_at).all()
             return [orm_usage_log.to_domain() for orm_usage_log in orm_usage_logs]
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving usage logs for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error retrieving usage logs for user {user_id}"
+            ) from e
 
     def get_total_cost_for_user(
         self,
@@ -127,13 +134,10 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
             Total cost as Decimal (in primary currency)
         """
         try:
-            query = (
-                self.session.query(func.sum(UsageLogModel.cost_cents))
-                .filter(
-                    and_(
-                        UsageLogModel.user_id == user_id,
-                        UsageLogModel.billable == True  # noqa: E712
-                    )
+            query = self.session.query(func.sum(UsageLogModel.cost_cents)).filter(
+                and_(
+                    UsageLogModel.user_id == user_id,
+                    UsageLogModel.billable == True,  # noqa: E712
                 )
             )
 
@@ -147,7 +151,9 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
             # Convert cents to main currency unit
             return Decimal(str(result_cents / 100))
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error calculating total cost for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error calculating total cost for user {user_id}"
+            ) from e
 
     def get_usage_summary(
         self, user_id: UUID, period_start: datetime, period_end: datetime
@@ -164,14 +170,11 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
         """
         try:
             # Get basic counts and totals
-            base_query = (
-                self.session.query(UsageLogModel)
-                .filter(
-                    and_(
-                        UsageLogModel.user_id == user_id,
-                        UsageLogModel.created_at >= period_start,
-                        UsageLogModel.created_at <= period_end
-                    )
+            base_query = self.session.query(UsageLogModel).filter(
+                and_(
+                    UsageLogModel.user_id == user_id,
+                    UsageLogModel.created_at >= period_start,
+                    UsageLogModel.created_at <= period_end,
                 )
             )
 
@@ -180,15 +183,14 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
 
             # Total duration in minutes
             total_duration = (
-                base_query
-                .with_entities(func.sum(UsageLogModel.duration_minutes))
-                .scalar()
+                base_query.with_entities(
+                    func.sum(UsageLogModel.duration_minutes)
+                ).scalar()
             ) or 0
 
             # Total cost (convert from cents to main currency)
             total_cost_cents = (
-                base_query
-                .filter(UsageLogModel.billable == True)  # noqa: E712
+                base_query.filter(UsageLogModel.billable == True)  # noqa: E712
                 .with_entities(func.sum(UsageLogModel.cost_cents))
                 .scalar()
             ) or 0
@@ -197,38 +199,35 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
             # Breakdown by transcription type
             type_breakdown = {}
             for transcription_type in TranscriptionType:
-                count = (
-                    base_query
-                    .filter(UsageLogModel.transcription_type == transcription_type)
-                    .count()
-                )
+                count = base_query.filter(
+                    UsageLogModel.transcription_type == transcription_type
+                ).count()
                 type_breakdown[transcription_type.value] = count
 
             # Breakdown by STT provider
             provider_breakdown = (
-                base_query
-                .with_entities(
+                base_query.with_entities(
                     UsageLogModel.stt_provider,
-                    func.count(UsageLogModel.id).label('count')
+                    func.count(UsageLogModel.id).label("count"),
                 )
                 .group_by(UsageLogModel.stt_provider)
                 .all()
             )
-            provider_dict = {
-                provider: count for provider, count in provider_breakdown
-            }
+            provider_dict = {provider: count for provider, count in provider_breakdown}
 
             return {
-                'total_sessions': total_sessions,
-                'total_duration_minutes': total_duration,
-                'total_cost_usd': total_cost,  # Legacy field name for compatibility
-                'transcription_type_breakdown': type_breakdown,
-                'stt_provider_breakdown': provider_dict,
-                'period_start': period_start.isoformat(),
-                'period_end': period_end.isoformat(),
+                "total_sessions": total_sessions,
+                "total_duration_minutes": total_duration,
+                "total_cost_usd": (total_cost),  # Legacy field name for compatibility
+                "transcription_type_breakdown": type_breakdown,
+                "stt_provider_breakdown": provider_dict,
+                "period_start": period_start.isoformat(),
+                "period_end": period_end.isoformat(),
             }
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error getting usage summary for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error getting usage summary for user {user_id}"
+            ) from e
 
 
 def create_usage_log_repository(session: DBSession) -> UsageLogRepoPort:

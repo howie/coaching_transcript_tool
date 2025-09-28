@@ -1,9 +1,9 @@
 """Bulk operations use cases for administrative tasks."""
 
-from datetime import datetime
-from typing import List, Dict, Any
-from uuid import UUID
 import logging
+from datetime import datetime
+from typing import Any, Dict, List
+from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,9 @@ class BulkUsageResetUseCase:
                         logger.info(f"📊 Reset progress: {reset_count} users processed")
 
                 except Exception as user_error:
-                    logger.error(f"❌ Failed to reset usage for user {user.id}: {user_error}")
+                    logger.error(
+                        f"❌ Failed to reset usage for user {user.id}: {user_error}"
+                    )
                     failed_resets.append(str(user.id))
 
             logger.info(f"✅ Bulk usage reset completed: {reset_count} users reset")
@@ -47,7 +49,7 @@ class BulkUsageResetUseCase:
                 "total_users": len(active_users),
                 "failed_resets": failed_resets,
                 "operation_time": datetime.utcnow().isoformat(),
-                "operation_type": "monthly_usage_reset"
+                "operation_type": "monthly_usage_reset",
             }
 
         except Exception as e:
@@ -56,7 +58,7 @@ class BulkUsageResetUseCase:
                 "success": False,
                 "error": str(e),
                 "users_reset": 0,
-                "operation_time": datetime.utcnow().isoformat()
+                "operation_time": datetime.utcnow().isoformat(),
             }
 
     def reset_specific_users_usage(self, user_ids: List[UUID]) -> Dict[str, Any]:
@@ -81,7 +83,9 @@ class BulkUsageResetUseCase:
                     reset_count += 1
 
                 except Exception as user_error:
-                    logger.error(f"❌ Failed to reset usage for user {user_id}: {user_error}")
+                    logger.error(
+                        f"❌ Failed to reset usage for user {user_id}: {user_error}"
+                    )
                     failed_resets.append(f"User {user_id}: {str(user_error)}")
 
             logger.info(f"✅ Targeted usage reset completed: {reset_count} users reset")
@@ -92,7 +96,7 @@ class BulkUsageResetUseCase:
                 "requested_users": len(user_ids),
                 "failed_resets": failed_resets,
                 "operation_time": datetime.utcnow().isoformat(),
-                "operation_type": "targeted_usage_reset"
+                "operation_type": "targeted_usage_reset",
             }
 
         except Exception as e:
@@ -101,7 +105,7 @@ class BulkUsageResetUseCase:
                 "success": False,
                 "error": str(e),
                 "users_reset": 0,
-                "operation_time": datetime.utcnow().isoformat()
+                "operation_time": datetime.utcnow().isoformat(),
             }
 
 
@@ -116,7 +120,9 @@ class BulkUserManagementUseCase:
     def bulk_plan_update(self, user_ids: List[UUID], new_plan: str) -> Dict[str, Any]:
         """Update plan for multiple users."""
         try:
-            logger.info(f"🔄 Starting bulk plan update to {new_plan} for {len(user_ids)} users")
+            logger.info(
+                f"🔄 Starting bulk plan update to {new_plan} for {len(user_ids)} users"
+            )
 
             updated_count = 0
             failed_updates = []
@@ -131,7 +137,9 @@ class BulkUserManagementUseCase:
                         failed_updates.append(f"User {user_id}: Plan update failed")
 
                 except Exception as user_error:
-                    logger.error(f"❌ Failed to update plan for user {user_id}: {user_error}")
+                    logger.error(
+                        f"❌ Failed to update plan for user {user_id}: {user_error}"
+                    )
                     failed_updates.append(f"User {user_id}: {str(user_error)}")
 
             logger.info(f"✅ Bulk plan update completed: {updated_count} users updated")
@@ -143,7 +151,7 @@ class BulkUserManagementUseCase:
                 "new_plan": new_plan,
                 "failed_updates": failed_updates,
                 "operation_time": datetime.utcnow().isoformat(),
-                "operation_type": "bulk_plan_update"
+                "operation_type": "bulk_plan_update",
             }
 
         except Exception as e:
@@ -152,7 +160,7 @@ class BulkUserManagementUseCase:
                 "success": False,
                 "error": str(e),
                 "users_updated": 0,
-                "operation_time": datetime.utcnow().isoformat()
+                "operation_time": datetime.utcnow().isoformat(),
             }
 
     def get_bulk_operation_status(self, operation_id: str) -> Dict[str, Any]:
@@ -160,5 +168,5 @@ class BulkUserManagementUseCase:
         return {
             "operation_id": operation_id,
             "status": "completed",  # For now, all operations are synchronous
-            "message": "Bulk operations are currently synchronous"
+            "message": "Bulk operations are currently synchronous",
         }

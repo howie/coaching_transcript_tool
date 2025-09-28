@@ -1,8 +1,9 @@
 """Coaching session domain model for Clean Architecture."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 from uuid import UUID
@@ -10,6 +11,7 @@ from uuid import UUID
 
 class SessionSource(Enum):
     """Source of coaching session."""
+
     CLIENT = "CLIENT"
     FRIEND = "FRIEND"
     CLASSMATE = "CLASSMATE"
@@ -57,11 +59,11 @@ class CoachingSession:
     def validate(self) -> bool:
         """Validate business rules."""
         return (
-            self.duration_min > 0 and
-            self.fee_amount >= 0 and
-            self.user_id is not None and
-            self.client_id is not None and
-            self.session_date is not None
+            self.duration_min > 0
+            and self.fee_amount >= 0
+            and self.user_id is not None
+            and self.client_id is not None
+            and self.session_date is not None
         )
 
     def __repr__(self):

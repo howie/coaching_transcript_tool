@@ -1,10 +1,11 @@
 """Usage analytics domain model for Clean Architecture."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 
@@ -24,8 +25,8 @@ class UsageAnalytics:
     # Aggregated metrics
     sessions_created: int = 0
     transcriptions_completed: int = 0
-    total_minutes_processed: Decimal = field(default_factory=lambda: Decimal('0'))
-    total_cost_usd: Decimal = field(default_factory=lambda: Decimal('0'))
+    total_minutes_processed: Decimal = field(default_factory=lambda: Decimal("0"))
+    total_cost_usd: Decimal = field(default_factory=lambda: Decimal("0"))
 
     # Billing breakdown
     original_transcriptions: int = 0
@@ -33,8 +34,8 @@ class UsageAnalytics:
     paid_retranscriptions: int = 0
 
     # Provider breakdown
-    google_stt_minutes: Decimal = field(default_factory=lambda: Decimal('0'))
-    assemblyai_minutes: Decimal = field(default_factory=lambda: Decimal('0'))
+    google_stt_minutes: Decimal = field(default_factory=lambda: Decimal("0"))
+    assemblyai_minutes: Decimal = field(default_factory=lambda: Decimal("0"))
 
     # Export activity
     exports_by_format: Dict[str, int] = field(default_factory=dict)
@@ -63,7 +64,9 @@ class UsageAnalytics:
     @property
     def avg_cost_per_transcription(self) -> float:
         """Calculate average cost per transcription."""
-        billable_transcriptions = self.original_transcriptions + self.paid_retranscriptions
+        billable_transcriptions = (
+            self.original_transcriptions + self.paid_retranscriptions
+        )
         if billable_transcriptions > 0:
             return float(self.total_cost_usd) / billable_transcriptions
         return 0.0
@@ -95,11 +98,11 @@ class UsageAnalytics:
                 "total": self.total_exports,
             },
             "period": {
-                "start": self.period_start.isoformat() if self.period_start else None,
-                "end": self.period_end.isoformat() if self.period_end else None,
+                "start": (self.period_start.isoformat() if self.period_start else None),
+                "end": (self.period_end.isoformat() if self.period_end else None),
             },
             "avg_session_duration_minutes": self.avg_session_duration_minutes,
             "avg_cost_per_transcription": self.avg_cost_per_transcription,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": (self.created_at.isoformat() if self.created_at else None),
+            "updated_at": (self.updated_at.isoformat() if self.updated_at else None),
         }

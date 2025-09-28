@@ -4,24 +4,25 @@ Unit tests for transcript smoothing service.
 Following TDD methodology with comprehensive test coverage.
 """
 
+from typing import Any, Dict, List
+
 import pytest
-from typing import List, Dict, Any
 
 from coaching_assistant.services.transcript_smoother import (
-    TranscriptSmoothingService,
-    LanguageProcessorFactory,
     ChineseProcessor,
-    EnglishProcessor,
-    SpeakerBoundarySmoother,
-    PunctuationRepairer,
-    WordTimestamp,
-    Utterance,
-    SupportedLanguage,
-    ChineseSmoothingConfig,
     ChineseProcessorConfig,
-    TranscriptProcessingError,
+    ChineseSmoothingConfig,
+    EnglishProcessor,
+    LanguageProcessorFactory,
     MissingWordsError,
+    PunctuationRepairer,
+    SpeakerBoundarySmoother,
+    SupportedLanguage,
+    TranscriptProcessingError,
+    TranscriptSmoothingService,
     UnsupportedLanguageError,
+    Utterance,
+    WordTimestamp,
     smooth_and_punctuate,
 )
 
@@ -96,9 +97,7 @@ class TestLanguageDetection:
         ]
 
         # When
-        detected_language = LanguageProcessorFactory.detect_language(
-            utterances
-        )
+        detected_language = LanguageProcessorFactory.detect_language(utterances)
 
         # Then
         assert detected_language == SupportedLanguage.CHINESE
@@ -320,12 +319,8 @@ class TestSpeakerBoundarySmoother:
         result = smoother.smooth_boundaries(utterances)
 
         # Then
-        assert (
-            len(result) == 2
-        )  # Should NOT merge because of terminal punctuation
-        assert (
-            smoother.stats.filler_words == 0
-        )  # Should not trigger filler word rule
+        assert len(result) == 2  # Should NOT merge because of terminal punctuation
+        assert smoother.stats.filler_words == 0  # Should not trigger filler word rule
 
     def test_filler_word_backfill_without_terminal_punct(self):
         """Test filler word backfill when previous segment has no terminal punctuation."""
@@ -474,9 +469,7 @@ class TestTranscriptSmoothingService:
         }
 
         # When
-        result = service.smooth_and_punctuate(
-            transcript_json, language="chinese"
-        )
+        result = service.smooth_and_punctuate(transcript_json, language="chinese")
 
         # Then
         assert len(result.segments) >= 1
@@ -545,18 +538,14 @@ class TestErrorHandling:
         """Test error when utterances are missing."""
         service = TranscriptSmoothingService()
 
-        with pytest.raises(
-            TranscriptProcessingError, match="Utterances missing"
-        ):
+        with pytest.raises(TranscriptProcessingError, match="Utterances missing"):
             service.smooth_and_punctuate({})
 
     def test_empty_utterances_error(self):
         """Test error when utterances list is empty."""
         service = TranscriptSmoothingService()
 
-        with pytest.raises(
-            TranscriptProcessingError, match="Empty utterances list"
-        ):
+        with pytest.raises(TranscriptProcessingError, match="Empty utterances list"):
             service.smooth_and_punctuate({"utterances": []})
 
     def test_missing_words_error(self):
@@ -591,9 +580,7 @@ class TestErrorHandling:
         processor = ChineseProcessor()
         repairer = PunctuationRepairer(config, processor)
 
-        with pytest.raises(
-            ValueError, match="Empty sentence cannot create segment"
-        ):
+        with pytest.raises(ValueError, match="Empty sentence cannot create segment"):
             repairer._create_segment_with_punctuation([])
 
 

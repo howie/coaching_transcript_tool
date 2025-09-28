@@ -1,11 +1,14 @@
 """Test coaching sessions API with transcription_session_id field."""
 
-import pytest
 from datetime import date
 from uuid import uuid4
-from coaching_assistant.models.coaching_session import CoachingSession, SessionSource
-from coaching_assistant.models.session import Session, SessionStatus
+
 from coaching_assistant.models.client import Client
+from coaching_assistant.models.coaching_session import (
+    CoachingSession,
+    SessionSource,
+)
+from coaching_assistant.models.session import Session, SessionStatus
 from coaching_assistant.models.user import User, UserPlan
 
 

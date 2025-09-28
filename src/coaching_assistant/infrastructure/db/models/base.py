@@ -2,11 +2,10 @@
 
 import uuid
 from datetime import datetime
+
 from sqlalchemy import Column, DateTime
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.declarative import declared_attr
-
+from sqlalchemy.ext.declarative import declarative_base, declared_attr
 
 Base = declarative_base()
 
@@ -51,8 +50,7 @@ class BaseModel(Base, UUIDMixin, TimestampMixin):
     def to_dict(self):
         """Convert model to dictionary."""
         return {
-            column.name: getattr(self, column.name)
-            for column in self.__table__.columns
+            column.name: getattr(self, column.name) for column in self.__table__.columns
         }
 
     def __repr__(self):

@@ -2,16 +2,15 @@
 
 import pytest
 from sqlalchemy.exc import IntegrityError
-from coaching_assistant.models import TranscriptSegment, SessionRole
+
+from coaching_assistant.models import SessionRole, TranscriptSegment
 from coaching_assistant.models.transcript import SpeakerRole
 
 
 class TestTranscriptSegmentModel:
     """Test TranscriptSegment model basic functionality."""
 
-    def test_create_segment_with_required_fields(
-        self, db_session, sample_session
-    ):
+    def test_create_segment_with_required_fields(self, db_session, sample_session):
         """Test creating a transcript segment with required fields."""
         segment = TranscriptSegment(
             session_id=sample_session.id,
@@ -33,9 +32,7 @@ class TestTranscriptSegmentModel:
         assert segment.created_at is not None
         assert segment.updated_at is not None
 
-    def test_create_segment_with_optional_fields(
-        self, db_session, sample_session
-    ):
+    def test_create_segment_with_optional_fields(self, db_session, sample_session):
         """Test creating a transcript segment with optional fields."""
         segment = TranscriptSegment(
             session_id=sample_session.id,
@@ -61,7 +58,7 @@ class TestTranscriptSegmentModel:
             content="Test content",
         )
 
-        expected = f"<TranscriptSegment(speaker_id=1, start=5.0s)>"
+        expected = "<TranscriptSegment(speaker_id=1, start=5.0s)>"
         assert str(segment) == expected
 
     def test_segment_session_foreign_key_constraint(self, db_session):
@@ -184,9 +181,7 @@ class TestTranscriptSegmentRelationships:
 class TestSessionRoleModel:
     """Test SessionRole model basic functionality."""
 
-    def test_create_role_with_required_fields(
-        self, db_session, sample_session
-    ):
+    def test_create_role_with_required_fields(self, db_session, sample_session):
         """Test creating a session role with required fields."""
         role = SessionRole(
             session_id=sample_session.id, speaker_id=1, role=SpeakerRole.COACH
@@ -208,7 +203,7 @@ class TestSessionRoleModel:
             session_id=sample_session.id, speaker_id=2, role=SpeakerRole.CLIENT
         )
 
-        expected = f"<SessionRole(speaker_id=2, role=CLIENT)>"
+        expected = "<SessionRole(speaker_id=2, role=CLIENT)>"
         assert str(role) == expected
 
     def test_role_session_foreign_key_constraint(self, db_session):
@@ -226,9 +221,7 @@ class TestSessionRoleModel:
         with pytest.raises(IntegrityError):
             db_session.commit()
 
-    def test_unique_session_speaker_constraint(
-        self, db_session, sample_session
-    ):
+    def test_unique_session_speaker_constraint(self, db_session, sample_session):
         """Test that speaker_id must be unique within a session."""
         role1 = SessionRole(
             session_id=sample_session.id, speaker_id=1, role=SpeakerRole.COACH
@@ -247,9 +240,7 @@ class TestSessionRoleModel:
         with pytest.raises(IntegrityError):
             db_session.commit()  # Second role should fail
 
-    def test_different_sessions_same_speaker_allowed(
-        self, db_session, sample_user
-    ):
+    def test_different_sessions_same_speaker_allowed(self, db_session, sample_user):
         """Test that same speaker_id is allowed in different sessions."""
         from coaching_assistant.models import Session
         from coaching_assistant.models.session import SessionStatus
@@ -339,9 +330,7 @@ class TestSessionRoleRelationships:
 class TestIntegratedTranscriptFunctionality:
     """Test integrated functionality between transcript models."""
 
-    def test_session_get_speaker_role_integration(
-        self, db_session, sample_session
-    ):
+    def test_session_get_speaker_role_integration(self, db_session, sample_session):
         """Test Session.get_speaker_role with actual SessionRole data."""
         # Create role assignment
         role = SessionRole(
@@ -352,9 +341,7 @@ class TestIntegratedTranscriptFunctionality:
 
         # Test that session can resolve speaker role
         assert sample_session.get_speaker_role(1) == "COACH"
-        assert (
-            sample_session.get_speaker_role(2) == "Speaker 2"
-        )  # No role assigned
+        assert sample_session.get_speaker_role(2) == "Speaker 2"  # No role assigned
 
     def test_complete_session_data_flow(self, db_session, sample_session):
         """Test complete data flow: Session → Segments → Roles."""

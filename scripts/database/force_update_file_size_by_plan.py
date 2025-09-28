@@ -4,50 +4,58 @@ Force update plan file size limits using raw SQL.
 """
 
 import sys
-import os
 from pathlib import Path
 
 # Add the src directory to Python path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from coaching_assistant.core.database import SessionLocal
 from sqlalchemy import text
+
+from coaching_assistant.core.database import SessionLocal
+
 
 def force_update_file_size_by_plan():
     """Force update file size limits using raw SQL."""
-    
+
     db = SessionLocal()
-    
+
     try:
         # Update each plan individually using raw SQL with jsonb operations
-        
+
         # Free plan - 60MB
-        db.execute(text("""
+        db.execute(
+            text("""
             UPDATE plan_configurations 
             SET limits = limits::jsonb || '{"maxFileSize": 60}'::jsonb
             WHERE plan_type = 'FREE'
-        """))
-        
+        """)
+        )
+
         # Pro plan - 200MB
-        db.execute(text("""
+        db.execute(
+            text("""
             UPDATE plan_configurations 
             SET limits = limits::jsonb || '{"maxFileSize": 200}'::jsonb
             WHERE plan_type = 'PRO'
-        """))
-        
+        """)
+        )
+
         # Enterprise plan - 500MB
-        db.execute(text("""
+        db.execute(
+            text("""
             UPDATE plan_configurations 
             SET limits = limits::jsonb || '{"maxFileSize": 500}'::jsonb
             WHERE plan_type = 'ENTERPRISE'
-        """))
-        
+        """)
+        )
+
         db.commit()
         print("✅ Successfully updated all plan file size limits using raw SQL")
-        
+
         # Verify
-        result = db.execute(text("""
+        result = db.execute(
+            text("""
             SELECT plan_type, limits->>'maxFileSize' as max_file_size 
             FROM plan_configurations 
             ORDER BY 
@@ -56,20 +64,22 @@ def force_update_file_size_by_plan():
                     WHEN 'PRO' THEN 2 
                     WHEN 'ENTERPRISE' THEN 3 
                 END
-        """))
-        
+        """)
+        )
+
         print("\n📊 Updated File Size Limits:")
         for row in result:
             print(f"  {row.plan_type}: {row.max_file_size}MB")
-            
+
     except Exception as e:
         db.rollback()
         print(f"❌ Error updating plan limits: {e}")
         return False
     finally:
         db.close()
-    
+
     return True
+
 
 if __name__ == "__main__":
     print("🔄 Force updating plan file size limits by tier with raw SQL...")

@@ -2,10 +2,11 @@
 Health check routes for the Coaching Transcript Tool Backend API.
 """
 
-from fastapi import APIRouter
-from typing import Dict, Any
-import time
 import os
+import time
+from typing import Any, Dict
+
+from fastapi import APIRouter
 
 router = APIRouter()
 

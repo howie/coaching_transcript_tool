@@ -1,25 +1,25 @@
 """SaaS subscription management API endpoints."""
 
 import logging
-from typing import Dict, Any
 from datetime import datetime
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
+from ...core.models.user import User
+from ...core.services.subscription_management_use_case import (
+    SubscriptionCreationUseCase,
+    SubscriptionModificationUseCase,
+    SubscriptionRetrievalUseCase,
+)
+from ...exceptions import DomainException
 from .auth import get_current_user_dependency
 from .dependencies import (
     get_subscription_creation_use_case,
-    get_subscription_retrieval_use_case,
     get_subscription_modification_use_case,
+    get_subscription_retrieval_use_case,
 )
-from ...core.services.subscription_management_use_case import (
-    SubscriptionCreationUseCase,
-    SubscriptionRetrievalUseCase,
-    SubscriptionModificationUseCase,
-)
-from ...core.models.user import User
-from ...exceptions import DomainException
 
 logger = logging.getLogger(__name__)
 
@@ -119,16 +119,22 @@ async def create_authorization(
 @router.get("/current", response_model=CurrentSubscriptionResponse)
 async def get_current_subscription(
     current_user: User = Depends(get_current_user_dependency),
-    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(get_subscription_retrieval_use_case),
+    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(
+        get_subscription_retrieval_use_case
+    ),
 ):
     """Get user's current subscription details."""
 
     try:
         # Get subscription details through use case
-        subscription_data = subscription_retrieval_use_case.get_current_subscription(current_user.id)
+        subscription_data = subscription_retrieval_use_case.get_current_subscription(
+            current_user.id
+        )
 
         if not subscription_data or subscription_data.get("status") == "error":
-            return CurrentSubscriptionResponse(status=subscription_data.get("status", "error"))
+            return CurrentSubscriptionResponse(
+                status=subscription_data.get("status", "error")
+            )
 
         # Format for API response
         payment_method = subscription_data.get("payment_method")
@@ -144,8 +150,7 @@ async def get_current_subscription(
     except DomainException as e:
         logger.warning(f"User not found when retrieving subscription: {e}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
     except Exception as e:
         logger.error(f"Failed to get current subscription: {e}")
@@ -159,7 +164,9 @@ async def get_current_subscription(
 async def cancel_subscription(
     subscription_id: str,
     current_user: User = Depends(get_current_user_dependency),
-    subscription_modification_use_case: SubscriptionModificationUseCase = Depends(get_subscription_modification_use_case),
+    subscription_modification_use_case: SubscriptionModificationUseCase = Depends(
+        get_subscription_modification_use_case
+    ),
 ):
     """Cancel user's subscription."""
 
@@ -171,9 +178,7 @@ async def cancel_subscription(
             reason="User requested cancellation",
         )
 
-        logger.info(
-            f"Subscription {subscription_id} scheduled for cancellation"
-        )
+        logger.info(f"Subscription {subscription_id} scheduled for cancellation")
 
         return {
             "success": result["success"],
@@ -203,14 +208,19 @@ async def cancel_subscription(
 async def reactivate_subscription(
     subscription_id: str,
     current_user: User = Depends(get_current_user_dependency),
-    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(get_subscription_retrieval_use_case),
+    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(
+        get_subscription_retrieval_use_case
+    ),
 ):
     """Reactivate a cancelled subscription."""
 
     try:
         # For now, use retrieval use case to check subscription exists
-        # In a full implementation, we'd add a reactivate method to modification use case
-        subscription_data = subscription_retrieval_use_case.get_current_subscription(current_user.id)
+        # In a full implementation, we'd add a reactivate method to
+        # modification use case
+        subscription_data = subscription_retrieval_use_case.get_current_subscription(
+            current_user.id
+        )
 
         if not subscription_data or not subscription_data.get("subscription"):
             raise HTTPException(
@@ -225,7 +235,9 @@ async def reactivate_subscription(
         return {
             "success": True,
             "message": "Subscription reactivation requested",
-            "next_payment_date": subscription_data.get("subscription", {}).get("next_billing_date"),
+            "next_payment_date": (
+                subscription_data.get("subscription", {}).get("next_billing_date")
+            ),
         }
 
     except HTTPException:
@@ -242,7 +254,9 @@ async def reactivate_subscription(
 async def preview_plan_change(
     request: UpgradeRequest,
     current_user: User = Depends(get_current_user_dependency),
-    subscription_modification_use_case: SubscriptionModificationUseCase = Depends(get_subscription_modification_use_case),
+    subscription_modification_use_case: SubscriptionModificationUseCase = Depends(
+        get_subscription_modification_use_case
+    ),
 ):
     """Preview prorated billing for plan change."""
 
@@ -278,7 +292,9 @@ async def preview_plan_change(
 async def upgrade_subscription(
     request: UpgradeRequest,
     current_user: User = Depends(get_current_user_dependency),
-    subscription_modification_use_case: SubscriptionModificationUseCase = Depends(get_subscription_modification_use_case),
+    subscription_modification_use_case: SubscriptionModificationUseCase = Depends(
+        get_subscription_modification_use_case
+    ),
 ):
     """Upgrade subscription plan with immediate effect and prorated billing."""
 
@@ -324,7 +340,9 @@ async def upgrade_subscription(
 async def downgrade_subscription(
     request: DowngradeRequest,
     current_user: User = Depends(get_current_user_dependency),
-    subscription_modification_use_case: SubscriptionModificationUseCase = Depends(get_subscription_modification_use_case),
+    subscription_modification_use_case: SubscriptionModificationUseCase = Depends(
+        get_subscription_modification_use_case
+    ),
 ):
     """Downgrade subscription plan (effective at period end)."""
 
@@ -337,7 +355,9 @@ async def downgrade_subscription(
         )
 
         logger.info(
-            f"Subscription scheduled for downgrade to {request.plan_id} for user {current_user.id}"
+            f"Subscription scheduled for downgrade to {request.plan_id} for user {
+                current_user.id
+            }"
         )
 
         return {
@@ -370,7 +390,9 @@ async def downgrade_subscription(
 async def cancel_subscription_new(
     request: CancelRequest,
     current_user: User = Depends(get_current_user_dependency),
-    subscription_modification_use_case: SubscriptionModificationUseCase = Depends(get_subscription_modification_use_case),
+    subscription_modification_use_case: SubscriptionModificationUseCase = Depends(
+        get_subscription_modification_use_case
+    ),
 ):
     """Cancel subscription with immediate or period-end options."""
 
@@ -383,7 +405,9 @@ async def cancel_subscription_new(
         )
 
         logger.info(
-            f"Subscription cancelled ({'immediate' if request.immediate else 'period-end'}) for user {current_user.id}"
+            f"Subscription cancelled ({
+                'immediate' if request.immediate else 'period-end'
+            }) for user {current_user.id}"
         )
 
         return {
@@ -415,13 +439,17 @@ async def cancel_subscription_new(
 @router.post("/reactivate")
 async def reactivate_subscription_new(
     current_user: User = Depends(get_current_user_dependency),
-    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(get_subscription_retrieval_use_case),
+    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(
+        get_subscription_retrieval_use_case
+    ),
 ):
     """Reactivate a cancelled subscription."""
 
     try:
         # Check if subscription exists through use case
-        subscription_data = subscription_retrieval_use_case.get_current_subscription(current_user.id)
+        subscription_data = subscription_retrieval_use_case.get_current_subscription(
+            current_user.id
+        )
 
         if not subscription_data or not subscription_data.get("subscription"):
             raise HTTPException(
@@ -458,7 +486,9 @@ async def reactivate_subscription_new(
 @router.get("/billing-history")
 async def get_billing_history(
     current_user: User = Depends(get_current_user_dependency),
-    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(get_subscription_retrieval_use_case),
+    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(
+        get_subscription_retrieval_use_case
+    ),
     limit: int = 20,
     offset: int = 0,
 ):
@@ -466,11 +496,13 @@ async def get_billing_history(
 
     try:
         # Get payment history through use case
-        payments_data = subscription_retrieval_use_case.get_subscription_payments(current_user.id)
+        payments_data = subscription_retrieval_use_case.get_subscription_payments(
+            current_user.id
+        )
 
         # Apply pagination (simple slice for now)
         payments = payments_data.get("payments", [])
-        paginated_payments = payments[offset:offset + limit]
+        paginated_payments = payments[offset : offset + limit]
 
         return {
             "payments": paginated_payments,
@@ -492,13 +524,17 @@ async def get_billing_history(
 async def generate_payment_receipt(
     payment_id: str,
     current_user: User = Depends(get_current_user_dependency),
-    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(get_subscription_retrieval_use_case),
+    subscription_retrieval_use_case: SubscriptionRetrievalUseCase = Depends(
+        get_subscription_retrieval_use_case
+    ),
 ):
     """Generate and download receipt for a specific payment."""
 
     try:
         # Get user's payments to verify ownership and find the payment
-        payments_data = subscription_retrieval_use_case.get_subscription_payments(current_user.id)
+        payments_data = subscription_retrieval_use_case.get_subscription_payments(
+            current_user.id
+        )
         payments = payments_data.get("payments", [])
 
         # Find the specific payment
@@ -522,16 +558,23 @@ async def generate_payment_receipt(
             )
 
         # Get subscription info for receipt
-        subscription_data = subscription_retrieval_use_case.get_current_subscription(current_user.id)
+        subscription_data = subscription_retrieval_use_case.get_current_subscription(
+            current_user.id
+        )
         subscription_info = subscription_data.get("subscription", {})
 
         # Generate receipt data
         receipt_data = {
             "receipt_id": f"RCP-{payment_id[:8].upper()}",
             "payment_id": payment_id,
-            "issue_date": payment.get("payment_date", datetime.now().strftime("%Y-%m-%d")),
+            "issue_date": payment.get(
+                "payment_date", datetime.now().strftime("%Y-%m-%d")
+            ),
             "customer": {
-                "name": getattr(current_user, 'name', None) or current_user.email.split("@")[0],
+                "name": (
+                    getattr(current_user, "name", None)
+                    or current_user.email.split("@")[0]
+                ),
                 "email": current_user.email,
                 "user_id": str(current_user.id),
             },
@@ -540,7 +583,7 @@ async def generate_payment_receipt(
                 "billing_cycle": subscription_info.get("billing_cycle", "monthly"),
             },
             "payment": {
-                "amount": payment.get("amount_cents", 0) / 100,  # Convert from cents
+                "amount": (payment.get("amount_cents", 0) / 100),  # Convert from cents
                 "currency": payment.get("currency", "TWD"),
                 "payment_date": payment.get("payment_date"),
                 "payment_method": "信用卡 (ECPay)",
@@ -558,9 +601,7 @@ async def generate_payment_receipt(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            f"Failed to generate receipt for payment {payment_id}: {e}"
-        )
+        logger.error(f"Failed to generate receipt for payment {payment_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate receipt.",

@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy.orm import Session
 
 from coaching_assistant.models import (
-    CoachProfile,
     CoachingPlan,
+    CoachProfile,
     User,
     UserPlan,
 )
@@ -17,9 +17,7 @@ class TestCoachProfile:
     def test_create_coach_profile(self, db_session: Session):
         """Test creating a coach profile."""
         # Create a user first
-        user = User(
-            email="coach@example.com", name="Test Coach", plan=UserPlan.FREE
-        )
+        user = User(email="coach@example.com", name="Test Coach", plan=UserPlan.FREE)
         db_session.add(user)
         db_session.commit()
         db_session.refresh(user)
@@ -100,9 +98,7 @@ class TestCoachProfile:
 
     def test_coach_profile_json_field_handling(self, db_session: Session):
         """Test JSON field getter/setter methods."""
-        user = User(
-            email="json@example.com", name="JSON Test", plan=UserPlan.FREE
-        )
+        user = User(email="json@example.com", name="JSON Test", plan=UserPlan.FREE)
         db_session.add(user)
         db_session.commit()
 
@@ -170,9 +166,7 @@ class TestCoachingPlan:
     def test_create_coaching_plan(self, db_session: Session):
         """Test creating a coaching plan."""
         # Create user and coach profile
-        user = User(
-            email="plan@example.com", name="Plan Test", plan=UserPlan.PRO
-        )
+        user = User(email="plan@example.com", name="Plan Test", plan=UserPlan.PRO)
         db_session.add(user)
         db_session.commit()
 
@@ -206,9 +200,7 @@ class TestCoachingPlan:
         assert plan.price == 250.0
         assert plan.is_active is True
 
-    def test_coaching_plan_relationship_with_profile(
-        self, db_session: Session
-    ):
+    def test_coaching_plan_relationship_with_profile(self, db_session: Session):
         """Test the relationship between CoachingPlan and CoachProfile."""
         # Create user and coach profile
         user = User(
@@ -219,9 +211,7 @@ class TestCoachingPlan:
         db_session.add(user)
         db_session.commit()
 
-        profile = CoachProfile(
-            user_id=user.id, display_name="Relationship Plan Coach"
-        )
+        profile = CoachProfile(user_id=user.id, display_name="Relationship Plan Coach")
         db_session.add(profile)
         db_session.commit()
 
@@ -290,17 +280,13 @@ class TestCoachingPlan:
             price=300.0,
         )
 
-        assert (
-            no_sessions_plan.price_per_session == 300.0
-        )  # fallback to total price
+        assert no_sessions_plan.price_per_session == 300.0  # fallback to total price
         assert no_sessions_plan.total_duration_minutes == 0
 
     def test_cascade_delete_coach_profile(self, db_session: Session):
         """Test that deleting a coach profile cascades to coaching plans."""
         # Create user and coach profile
-        user = User(
-            email="cascade@example.com", name="Cascade Test", plan=UserPlan.PRO
-        )
+        user = User(email="cascade@example.com", name="Cascade Test", plan=UserPlan.PRO)
         db_session.add(user)
         db_session.commit()
 
@@ -340,9 +326,7 @@ class TestCoachingPlan:
 
     def test_unique_user_coach_profile(self, db_session: Session):
         """Test that a user can only have one coach profile."""
-        user = User(
-            email="unique@example.com", name="Unique Test", plan=UserPlan.PRO
-        )
+        user = User(email="unique@example.com", name="Unique Test", plan=UserPlan.PRO)
         db_session.add(user)
         db_session.commit()
 

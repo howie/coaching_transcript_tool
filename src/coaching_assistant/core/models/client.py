@@ -1,6 +1,7 @@
 """Client domain model for Clean Architecture."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional

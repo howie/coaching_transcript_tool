@@ -1,50 +1,53 @@
 """Coaching sessions API endpoints."""
 
+import json
+import logging
+import re
+from datetime import date
 from typing import List, Optional
 from uuid import UUID, uuid4
-from datetime import date
+
 from fastapi import (
     APIRouter,
     Depends,
+    Form,
     HTTPException,
     Query,
     UploadFile,
-    File as FastAPIFile,
-    Form,
 )
+from fastapi import File as FastAPIFile
 from pydantic import BaseModel, Field
-import logging
-import re
-import json
-
 from sqlalchemy.orm import Session
-from ...core.database import get_db
 
-from ...core.models.user import User
-from ...core.models.coaching_session import SessionSource
-from ...core.models.session import SessionStatus
-from ...core.models.session import Session as TranscriptionSession
-from ...core.models.coaching_session import CoachingSession
-from ...core.models.transcript import SessionRole, TranscriptSegment, SpeakerRole
+from ...core.database import get_db
 from ...core.models.client import Client
+from ...core.models.coaching_session import CoachingSession, SessionSource
+from ...core.models.session import Session as TranscriptionSession
+from ...core.models.session import SessionStatus
+from ...core.models.transcript import (
+    SessionRole,
+    SpeakerRole,
+    TranscriptSegment,
+)
+from ...core.models.user import User
 from ...core.services.coaching_session_management_use_case import (
-    CoachingSessionRetrievalUseCase,
     CoachingSessionCreationUseCase,
-    CoachingSessionUpdateUseCase,
     CoachingSessionDeletionUseCase,
     CoachingSessionOptionsUseCase,
+    CoachingSessionRetrievalUseCase,
+    CoachingSessionUpdateUseCase,
 )
 from ...core.services.transcript_upload_use_case import TranscriptUploadUseCase
+from ...utils.chinese_converter import convert_to_traditional
 from .auth import get_current_user_dependency
 from .dependencies import (
-    get_coaching_session_retrieval_use_case,
     get_coaching_session_creation_use_case,
-    get_coaching_session_update_use_case,
     get_coaching_session_deletion_use_case,
     get_coaching_session_options_use_case,
+    get_coaching_session_retrieval_use_case,
+    get_coaching_session_update_use_case,
     get_transcript_upload_use_case,
 )
-from ...utils.chinese_converter import convert_to_traditional
 
 logger = logging.getLogger(__name__)
 
@@ -150,14 +153,20 @@ class SessionSourceOption(BaseModel):
 
 
 # Helper function to convert domain model to response model
-def _coaching_session_to_response(session, db: Session, client_summary=None, transcription_session_summary=None) -> CoachingSessionResponse:
+def _coaching_session_to_response(
+    session,
+    db: Session,
+    client_summary=None,
+    transcription_session_summary=None,
+) -> CoachingSessionResponse:
     """Convert domain CoachingSession to CoachingSessionResponse.
 
     Args:
         session: CoachingSession domain entity
         db: Database session for client lookup
         client_summary: Optional pre-built ClientSummary
-        transcription_session_summary: Optional pre-built TranscriptionSessionSummary
+        transcription_session_summary: Optional pre-built
+        TranscriptionSessionSummary
 
     Returns:
         CoachingSessionResponse
@@ -184,7 +193,8 @@ def _coaching_session_to_response(session, db: Session, client_summary=None, tra
         session_date=session.session_date.isoformat(),
         client=client_summary,
         client_id=session.client_id,
-        source=session.source.value,  # Use .value to get the string representation
+        source=session.source.value,  # Use .value to get string
+        # representation
         duration_min=session.duration_min,
         fee_currency=session.fee_currency,
         fee_amount=session.fee_amount,
@@ -201,12 +211,14 @@ def _coaching_session_to_response(session, db: Session, client_summary=None, tra
 def _coaching_session_to_response_from_data(
     session, client_summary_dict, transcription_session_summary_dict
 ) -> CoachingSessionResponse:
-    """Convert domain CoachingSession to CoachingSessionResponse using pre-fetched data.
+    """Convert domain CoachingSession to CoachingSessionResponse using
+    pre-fetched data.
 
     Args:
         session: CoachingSession domain entity
         client_summary_dict: Dict with client data or None
-        transcription_session_summary_dict: Dict with transcription session data or None
+        transcription_session_summary_dict: Dict with transcription session
+            data or None
 
     Returns:
         CoachingSessionResponse
@@ -218,14 +230,17 @@ def _coaching_session_to_response_from_data(
 
     transcription_session_summary = None
     if transcription_session_summary_dict:
-        transcription_session_summary = TranscriptionSessionSummary(**transcription_session_summary_dict)
+        transcription_session_summary = TranscriptionSessionSummary(
+            **transcription_session_summary_dict
+        )
 
     return CoachingSessionResponse(
         id=session.id,
         session_date=session.session_date.isoformat(),
         client=client_summary,
         client_id=session.client_id,
-        source=session.source.value,  # Use .value to get the string representation
+        source=session.source.value,  # Use .value to get string
+        # representation
         duration_min=session.duration_min,
         fee_currency=session.fee_currency,
         fee_amount=session.fee_amount,
@@ -249,19 +264,23 @@ async def list_coaching_sessions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
     current_user: User = Depends(get_current_user_dependency),
-    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
+    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(
+        get_coaching_session_retrieval_use_case
+    ),
 ):
     """List coaching sessions for the current user."""
     try:
-        sessions_with_data, total, total_pages = retrieval_use_case.get_sessions_with_response_data(
-            coach_id=current_user.id,
-            from_date=from_date,
-            to_date=to_date,
-            client_id=client_id,
-            currency=currency,
-            sort=sort,
-            page=page,
-            page_size=page_size
+        sessions_with_data, total, total_pages = (
+            retrieval_use_case.get_sessions_with_response_data(
+                coach_id=current_user.id,
+                from_date=from_date,
+                to_date=to_date,
+                client_id=client_id,
+                currency=currency,
+                sort=sort,
+                page=page,
+                page_size=page_size,
+            )
         )
 
         # Convert to response models
@@ -270,7 +289,7 @@ async def list_coaching_sessions(
             session_response = _coaching_session_to_response_from_data(
                 session_data["session"],
                 session_data["client_summary"],
-                session_data["transcription_session_summary"]
+                session_data["transcription_session_summary"],
             )
             session_responses.append(session_response)
 
@@ -291,18 +310,22 @@ async def list_coaching_sessions(
 async def get_coaching_session(
     session_id: UUID,
     current_user: User = Depends(get_current_user_dependency),
-    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
+    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(
+        get_coaching_session_retrieval_use_case
+    ),
 ):
     """Get a specific coaching session."""
     try:
-        session_data = retrieval_use_case.get_session_with_response_data(session_id, current_user.id)
+        session_data = retrieval_use_case.get_session_with_response_data(
+            session_id, current_user.id
+        )
         if not session_data:
             raise HTTPException(status_code=404, detail="Coaching session not found")
 
         return _coaching_session_to_response_from_data(
             session_data["session"],
             session_data["client_summary"],
-            session_data["transcription_session_summary"]
+            session_data["transcription_session_summary"],
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -314,8 +337,12 @@ async def get_coaching_session(
 async def create_coaching_session(
     session_data: CoachingSessionCreate,
     current_user: User = Depends(get_current_user_dependency),
-    creation_use_case: CoachingSessionCreationUseCase = Depends(get_coaching_session_creation_use_case),
-    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
+    creation_use_case: CoachingSessionCreationUseCase = Depends(
+        get_coaching_session_creation_use_case
+    ),
+    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(
+        get_coaching_session_retrieval_use_case
+    ),
 ):
     """Create a new coaching session."""
     try:
@@ -331,14 +358,18 @@ async def create_coaching_session(
         )
 
         # Get complete session data for response
-        session_data_with_details = retrieval_use_case.get_session_with_response_data(session.id, current_user.id)
+        session_data_with_details = retrieval_use_case.get_session_with_response_data(
+            session.id, current_user.id
+        )
         if not session_data_with_details:
-            raise HTTPException(status_code=500, detail="Failed to retrieve created session")
+            raise HTTPException(
+                status_code=500, detail="Failed to retrieve created session"
+            )
 
         return _coaching_session_to_response_from_data(
             session_data_with_details["session"],
             session_data_with_details["client_summary"],
-            session_data_with_details["transcription_session_summary"]
+            session_data_with_details["transcription_session_summary"],
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -351,21 +382,28 @@ async def update_coaching_session(
     session_id: UUID,
     session_data: CoachingSessionUpdate,
     current_user: User = Depends(get_current_user_dependency),
-    update_use_case: CoachingSessionUpdateUseCase = Depends(get_coaching_session_update_use_case),
-    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
+    update_use_case: CoachingSessionUpdateUseCase = Depends(
+        get_coaching_session_update_use_case
+    ),
+    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(
+        get_coaching_session_retrieval_use_case
+    ),
 ):
     """Update a coaching session."""
     try:
         # Handle transcription_session_id conversion if needed
         transcription_session_id = session_data.transcription_session_id
-        if transcription_session_id is not None and isinstance(transcription_session_id, str):
+        if transcription_session_id is not None and isinstance(
+            transcription_session_id, str
+        ):
             try:
                 from uuid import UUID
+
                 transcription_session_id = UUID(transcription_session_id)
             except ValueError as e:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid transcription_session_id format: {str(e)}",
+                    detail=(f"Invalid transcription_session_id format: {str(e)}"),
                 )
 
         session = update_use_case.update_session(
@@ -382,14 +420,18 @@ async def update_coaching_session(
         )
 
         # Get complete session data for response
-        session_data_with_details = retrieval_use_case.get_session_with_response_data(session.id, current_user.id)
+        session_data_with_details = retrieval_use_case.get_session_with_response_data(
+            session.id, current_user.id
+        )
         if not session_data_with_details:
-            raise HTTPException(status_code=500, detail="Failed to retrieve updated session")
+            raise HTTPException(
+                status_code=500, detail="Failed to retrieve updated session"
+            )
 
         return _coaching_session_to_response_from_data(
             session_data_with_details["session"],
             session_data_with_details["client_summary"],
-            session_data_with_details["transcription_session_summary"]
+            session_data_with_details["transcription_session_summary"],
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -401,7 +443,9 @@ async def update_coaching_session(
 async def delete_coaching_session(
     session_id: UUID,
     current_user: User = Depends(get_current_user_dependency),
-    deletion_use_case: CoachingSessionDeletionUseCase = Depends(get_coaching_session_deletion_use_case),
+    deletion_use_case: CoachingSessionDeletionUseCase = Depends(
+        get_coaching_session_deletion_use_case
+    ),
 ):
     """Delete a coaching session (hard delete)."""
     try:
@@ -409,7 +453,9 @@ async def delete_coaching_session(
         if success:
             return {"message": "Coaching session deleted successfully"}
         else:
-            raise HTTPException(status_code=500, detail="Failed to delete coaching session")
+            raise HTTPException(
+                status_code=500, detail="Failed to delete coaching session"
+            )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception:
@@ -420,11 +466,15 @@ async def delete_coaching_session(
 async def get_client_last_session(
     client_id: UUID,
     current_user: User = Depends(get_current_user_dependency),
-    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(get_coaching_session_retrieval_use_case),
+    retrieval_use_case: CoachingSessionRetrievalUseCase = Depends(
+        get_coaching_session_retrieval_use_case
+    ),
 ):
     """Get the last coaching session for a specific client."""
     try:
-        last_session = retrieval_use_case.get_last_session_by_client(current_user.id, client_id)
+        last_session = retrieval_use_case.get_last_session_by_client(
+            current_user.id, client_id
+        )
 
         if not last_session:
             return None
@@ -442,7 +492,9 @@ async def get_client_last_session(
 
 @router.get("/options/currencies")
 async def get_currencies(
-    options_use_case: CoachingSessionOptionsUseCase = Depends(get_coaching_session_options_use_case)
+    options_use_case: CoachingSessionOptionsUseCase = Depends(
+        get_coaching_session_options_use_case
+    ),
 ):
     """Get available currency options."""
     return options_use_case.get_currency_options()
@@ -454,7 +506,9 @@ async def upload_session_transcript(
     file: UploadFile = FastAPIFile(...),
     speaker_roles: Optional[str] = Form(None),
     convert_to_traditional_chinese: Optional[str] = Form(None),
-    transcript_upload_use_case: TranscriptUploadUseCase = Depends(get_transcript_upload_use_case),
+    transcript_upload_use_case: TranscriptUploadUseCase = Depends(
+        get_transcript_upload_use_case
+    ),
     current_user: User = Depends(get_current_user_dependency),
     db: Session = Depends(get_db),
 ):
@@ -464,8 +518,9 @@ async def upload_session_transcript(
     is handled by the TranscriptUploadUseCase.
     """
     logger.info(
-        f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, "
-        f"filename={file.filename}, convert_to_traditional_chinese={convert_to_traditional_chinese}"
+        f"🔍 Transcript upload request: session_id={session_id}, "
+        f"user_id={current_user.id}, filename={file.filename}, "
+        f"convert_to_traditional_chinese={convert_to_traditional_chinese}"
     )
 
     # Parse speaker role mapping if provided
@@ -476,20 +531,14 @@ async def upload_session_transcript(
             logger.info(f"📋 Speaker role mapping: {speaker_role_mapping}")
         except json.JSONDecodeError:
             logger.warning(f"⚠️ Invalid speaker roles JSON: {speaker_roles}")
-            raise HTTPException(
-                status_code=400, detail="Invalid speaker roles format"
-            )
+            raise HTTPException(status_code=400, detail="Invalid speaker roles format")
 
     # Check if session exists at all
     session_exists = (
-        db.query(CoachingSession)
-        .filter(CoachingSession.id == session_id)
-        .first()
+        db.query(CoachingSession).filter(CoachingSession.id == session_id).first()
     )
     if not session_exists:
-        logger.warning(
-            f"❌ Coaching session {session_id} does not exist in database"
-        )
+        logger.warning(f"❌ Coaching session {session_id} does not exist in database")
         raise HTTPException(
             status_code=404,
             detail=f"Session {session_id} not found in database",
@@ -507,10 +556,12 @@ async def upload_session_transcript(
 
     if not session:
         logger.warning(
-            f"❌ Coaching session {session_id} exists but does not belong to user {current_user.id}"
+            f"❌ Coaching session {session_id} exists but does not belong "
+            f"to user {current_user.id}"
         )
         logger.info(
-            f"📊 Session owner: {session_exists.user_id}, requesting user: {current_user.id}"
+            f"📊 Session owner: {session_exists.user_id}, "
+            f"requesting user: {current_user.id}"
         )
         raise HTTPException(
             status_code=404, detail="Session not found or access denied"
@@ -574,16 +625,13 @@ async def upload_session_transcript(
         db.add(transcription_session)
 
         # Save segments to database (linked to transcription session)
-        speaker_roles_created = (
-            set()
-        )  # Track which speaker roles we've created
+        speaker_roles_created = set()  # Track which speaker roles we've created
         for i, segment_data in enumerate(segments):
             segment = TranscriptSegment(
                 id=uuid4(),
-                session_id=transcription_session_id,  # Link to transcription session
-                speaker_id=segment_data.get(
-                    "speaker_id", 1
-                ),  # Default to speaker 1
+                session_id=transcription_session_id,  # Link to
+                # transcription session
+                speaker_id=segment_data.get("speaker_id", 1),  # Default to speaker 1
                 start_seconds=segment_data["start_seconds"],
                 end_seconds=segment_data["end_seconds"],
                 content=segment_data["content"],
@@ -608,7 +656,9 @@ async def upload_session_transcript(
                 db.add(session_role)
                 speaker_roles_created.add(speaker_id)
                 logger.info(
-                    f"Created speaker role assignment: speaker_id={speaker_id} -> {speaker_role_str}"
+                    f"Created speaker role assignment: "
+                    f"speaker_id={speaker_id} "
+                    f"-> {speaker_role_str}"
                 )
 
         # Update coaching session to reference the transcription session
@@ -618,7 +668,8 @@ async def upload_session_transcript(
         db.commit()
 
         logger.info(
-            f"✅ Successfully uploaded transcript: {len(segments)} segments, {total_duration:.2f}s duration"
+            f"✅ Successfully uploaded transcript: {len(segments)} segments, "
+            f"{total_duration:.2f}s duration"
         )
 
         return {
@@ -643,9 +694,7 @@ async def upload_session_transcript(
         )
 
 
-def _parse_vtt_content(
-    content: str, speaker_role_mapping: dict = None
-) -> List[dict]:
+def _parse_vtt_content(content: str, speaker_role_mapping: dict = None) -> List[dict]:
     """Parse VTT file content and return segments."""
     segments = []
     lines = content.strip().split("\n")
@@ -663,10 +712,15 @@ def _parse_vtt_content(
         if "-->" in line:
             # Parse timestamp - support multiple formats
             timestamp_patterns = [
-                r"(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})",  # HH:MM:SS.mmm
-                r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})",  # HH:MM:SS,mmm (SRT format)
-                r"(\d{1,2}:\d{2}:\d{2}\.\d{3}) --> (\d{1,2}:\d{2}:\d{2}\.\d{3})",  # H:MM:SS.mmm
-                r"(\d{1,2}:\d{2}:\d{2}) --> (\d{1,2}:\d{2}:\d{2})",  # H:MM:SS (no milliseconds)
+                # HH:MM:SS.mmm
+                r"(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})",
+                # HH:MM:SS,mmm (SRT format)
+                r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})",
+                # H:MM:SS.mmm
+                r"(\d{1,2}:\d{2}:\d{2}\.\d{3}) --> "
+                r"(\d{1,2}:\d{2}:\d{2}\.\d{3})",
+                # H:MM:SS (no milliseconds)
+                r"(\d{1,2}:\d{2}:\d{2}) --> (\d{1,2}:\d{2}:\d{2})",
             ]
 
             timestamp_match = None
@@ -684,9 +738,7 @@ def _parse_vtt_content(
                         timestamp_match.group(2).replace(",", ".")
                     )
                 except (ValueError, IndexError) as e:
-                    logger.warning(
-                        f"Failed to parse timestamp: {line}, error: {e}"
-                    )
+                    logger.warning(f"Failed to parse timestamp: {line}, error: {e}")
                     i += 1
                     continue
 
@@ -701,15 +753,18 @@ def _parse_vtt_content(
                     speaker_key = None
                     speaker_name = None
 
-                    # Format 1: VTT format like "<v jolly shih>content</v>" or "<v Speaker>content</v>"
+                    # Format 1: VTT format like "<v jolly shih>content</v>" or
+                    # "<v Speaker>content</v>"
                     speaker_match = re.match(
                         r"<v\s+([^>]+)>\s*(.*?)(?:</v>)?$", content_line
                     )
                     if speaker_match:
                         speaker_name = speaker_match.group(1).strip()
                         content_text = speaker_match.group(2)
-                        # Create speaker key matching frontend format: remove non-alphanumeric chars
-                        # Frontend: speakerKey = `speaker_${speakerName.toLowerCase().replace(/\s+/g, '_').replace(/[^\w_]/g, '')}`;
+                        # Create speaker key matching frontend format:
+                        # remove non-alphanumeric chars
+                        # Frontend: speakerKey =
+                        # `speaker_${speakerName.toLowerCase()...}`
                         normalized_name = re.sub(
                             r"[^\w_]",
                             "",
@@ -717,15 +772,15 @@ def _parse_vtt_content(
                         )
                         speaker_key = f"speaker_{normalized_name}"
 
-                    # Format 2: Simple prefix format like "Coach: content" or "Client: content"
+                    # Format 2: Simple prefix format like "Coach: content" or
+                    # "Client: content"
                     elif ":" in content_line:
-                        prefix_match = re.match(
-                            r"^([^:]+):\s*(.+)$", content_line
-                        )
+                        prefix_match = re.match(r"^([^:]+):\s*(.+)$", content_line)
                         if prefix_match:
                             speaker_name = prefix_match.group(1).strip()
                             content_text = prefix_match.group(2).strip()
-                            # Create speaker key matching frontend format: remove non-alphanumeric chars
+                            # Create speaker key matching frontend format:
+                            # remove non-alphanumeric chars
                             normalized_name = re.sub(
                                 r"[^\w_]",
                                 "",
@@ -741,14 +796,15 @@ def _parse_vtt_content(
                         final_speaker_role = speaker_role_mapping.get(
                             speaker_key, "coach"
                         )
-                        final_speaker_id = (
-                            1 if final_speaker_role == "coach" else 2
-                        )
+                        final_speaker_id = 1 if final_speaker_role == "coach" else 2
                         logger.info(
-                            f"Applied role mapping: {speaker_key} -> {final_speaker_role} (speaker_id: {final_speaker_id})"
+                            f"Applied role mapping: {speaker_key} -> "
+                            f"{final_speaker_role} "
+                            f"(speaker_id: {final_speaker_id})"
                         )
                     elif speaker_name:
-                        # Fallback to name-based assignment when no role mapping is provided
+                        # Fallback to name-based assignment when no role
+                        # mapping is provided
                         if any(
                             keyword in speaker_name.lower()
                             for keyword in ["client", "客戶", "學員"]
@@ -766,7 +822,9 @@ def _parse_vtt_content(
                             final_speaker_id = 1  # Default to coach if unclear
                             final_speaker_role = "coach"
                         logger.info(
-                            f"Name-based assignment: {speaker_name} -> {final_speaker_role} (speaker_id: {final_speaker_id})"
+                            f"Name-based assignment: {speaker_name} -> "
+                            f"{final_speaker_role} "
+                            f"(speaker_id: {final_speaker_id})"
                         )
 
                     segments.append(
@@ -779,7 +837,8 @@ def _parse_vtt_content(
                         }
                     )
                     logger.debug(
-                        f"Parsed segment: {start_time:.2f}-{end_time:.2f}s, speaker_id: {final_speaker_id}, content: {content_text[:50]}..."
+                        f"Parsed segment: {start_time:.2f}-{end_time:.2f}s, "
+                        f"speaker_id: {final_speaker_id}, content: {content_text[:50]}..."
                     )
             else:
                 logger.warning(f"Could not parse timestamp line: {line}")
@@ -789,9 +848,7 @@ def _parse_vtt_content(
     return segments
 
 
-def _parse_srt_content(
-    content: str, speaker_role_mapping: dict = None
-) -> List[dict]:
+def _parse_srt_content(content: str, speaker_role_mapping: dict = None) -> List[dict]:
     """Parse SRT file content and return segments."""
     segments = []
 
@@ -809,10 +866,14 @@ def _parse_srt_content(
 
         # Support multiple timestamp formats for SRT
         timestamp_patterns = [
-            r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})",  # HH:MM:SS,mmm (standard SRT)
-            r"(\d{1,2}:\d{2}:\d{2},\d{3}) --> (\d{1,2}:\d{2}:\d{2},\d{3})",  # H:MM:SS,mmm
-            r"(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})",  # HH:MM:SS.mmm (VTT format in SRT)
-            r"(\d{1,2}:\d{2}:\d{2}) --> (\d{1,2}:\d{2}:\d{2})",  # H:MM:SS (no milliseconds)
+            # HH:MM:SS,mmm (standard SRT)
+            r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})",
+            # H:MM:SS,mmm
+            r"(\d{1,2}:\d{2}:\d{2},\d{3}) --> (\d{1,2}:\d{2}:\d{2},\d{3})",
+            # HH:MM:SS.mmm (VTT format in SRT)
+            r"(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})",
+            # H:MM:SS (no milliseconds)
+            r"(\d{1,2}:\d{2}:\d{2}) --> (\d{1,2}:\d{2}:\d{2})",
         ]
 
         timestamp_match = None
@@ -826,9 +887,7 @@ def _parse_srt_content(
                 start_time = _parse_timestamp(
                     timestamp_match.group(1).replace(",", ".")
                 )
-                end_time = _parse_timestamp(
-                    timestamp_match.group(2).replace(",", ".")
-                )
+                end_time = _parse_timestamp(timestamp_match.group(2).replace(",", "."))
             except (ValueError, IndexError) as e:
                 logger.warning(
                     f"Failed to parse SRT timestamp: {timestamp_line}, error: {e}"
@@ -844,12 +903,14 @@ def _parse_srt_content(
             speaker_name = None
             speaker_key = None
 
-            # Look for speaker prefix like "Coach: ", "Client: ", "教練: ", "客戶: "
+            # Look for speaker prefix like "Coach: ", "Client: ", "教練: ", "客戶:
+            # "
             speaker_match = re.match(r"^([^:]+):\s*(.+)$", content_text)
             if speaker_match:
                 speaker_name = speaker_match.group(1).strip()
                 content_text = speaker_match.group(2).strip()
-                # Create speaker key matching frontend format: remove non-alphanumeric chars
+                # Create speaker key matching frontend format: remove
+                # non-alphanumeric chars
                 normalized_name = re.sub(
                     r"[^\w_]", "", speaker_name.lower().replace(" ", "_")
                 )
@@ -860,15 +921,15 @@ def _parse_srt_content(
             final_speaker_role = "coach"  # default
             if speaker_role_mapping and speaker_key:
                 # Use the speaker key to look up the role
-                final_speaker_role = speaker_role_mapping.get(
-                    speaker_key, "coach"
-                )
+                final_speaker_role = speaker_role_mapping.get(speaker_key, "coach")
                 final_speaker_id = 1 if final_speaker_role == "coach" else 2
                 logger.info(
-                    f"Applied SRT role mapping: {speaker_key} -> {final_speaker_role} (speaker_id: {final_speaker_id})"
+                    f"Applied SRT role mapping: {speaker_key} -> "
+                    f"{final_speaker_role} (speaker_id: {final_speaker_id})"
                 )
             elif speaker_name:
-                # Fallback to name-based assignment when no role mapping is provided
+                # Fallback to name-based assignment when no role mapping is
+                # provided
                 if any(
                     keyword in speaker_name.lower()
                     for keyword in ["client", "客戶", "學員"]
@@ -882,13 +943,12 @@ def _parse_srt_content(
                     final_speaker_id = 1
                     final_speaker_role = "coach"
                 else:
-                    # Try to extract speaker ID from name (like "說話者 1", "Speaker 2")
+                    # Try to extract speaker ID from name (like "說話者 1",
+                    # "Speaker 2")
                     speaker_num_match = re.search(r"(\d+)", speaker_name)
                     if speaker_num_match:
                         extracted_id = int(speaker_num_match.group(1))
-                        final_speaker_id = (
-                            extracted_id if extracted_id in [1, 2] else 1
-                        )
+                        final_speaker_id = extracted_id if extracted_id in [1, 2] else 1
                         final_speaker_role = (
                             "coach" if final_speaker_id == 1 else "client"
                         )
@@ -896,7 +956,8 @@ def _parse_srt_content(
                         final_speaker_id = 1  # Default to coach if unclear
                         final_speaker_role = "coach"
                 logger.info(
-                    f"SRT name-based assignment: {speaker_name} -> {final_speaker_role} (speaker_id: {final_speaker_id})"
+                    f"SRT name-based assignment: {speaker_name} -> "
+                    f"{final_speaker_role} (speaker_id: {final_speaker_id})"
                 )
 
             segments.append(
@@ -909,12 +970,11 @@ def _parse_srt_content(
                 }
             )
             logger.debug(
-                f"Parsed SRT segment: {start_time:.2f}-{end_time:.2f}s, speaker_id: {final_speaker_id}, content: {content_text[:50]}..."
+                f"Parsed SRT segment: {start_time:.2f}-{end_time:.2f}s, "
+                f"speaker_id: {final_speaker_id}, content: {content_text[:50]}..."
             )
         else:
-            logger.warning(
-                f"Could not parse SRT timestamp line: {timestamp_line}"
-            )
+            logger.warning(f"Could not parse SRT timestamp line: {timestamp_line}")
 
     return segments
 
@@ -938,9 +998,7 @@ def _parse_timestamp(timestamp_str: str) -> float:
             # Pad or truncate milliseconds to 3 digits
             milliseconds_part = milliseconds_part.ljust(3, "0")[:3]
             milliseconds = int(milliseconds_part)
-            total_seconds = (
-                hours * 3600 + minutes * 60 + seconds + milliseconds / 1000
-            )
+            total_seconds = hours * 3600 + minutes * 60 + seconds + milliseconds / 1000
         else:
             total_seconds = hours * 3600 + minutes * 60 + int(seconds_str)
 

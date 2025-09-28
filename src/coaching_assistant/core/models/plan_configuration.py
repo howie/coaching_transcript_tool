@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from .user import UserPlan
@@ -97,7 +97,9 @@ class PlanConfiguration:
         """Check if plan supports a specific export format."""
         return format_name in self.limits.export_formats
 
-    def is_within_limits(self, sessions: int, minutes: int, transcriptions: int) -> bool:
+    def is_within_limits(
+        self, sessions: int, minutes: int, transcriptions: int
+    ) -> bool:
         """Check if usage is within plan limits."""
         return (
             sessions <= self.limits.max_sessions

@@ -1,25 +1,23 @@
 """UserModel ORM with domain model conversion."""
 
-from sqlalchemy import Column, String, Integer, Enum, Text, DateTime, DECIMAL, JSON
-from sqlalchemy.orm import relationship
 from datetime import datetime
 from uuid import UUID
-from typing import Optional
 
-from .base import BaseModel
+from sqlalchemy import JSON, Column, DateTime, Enum, Integer, String, Text
+from sqlalchemy.orm import relationship
+
 from ....core.models.user import User, UserPlan, UserRole
+from .base import BaseModel
 
 
 class UserModel(BaseModel):
     """ORM model for User entity with SQLAlchemy mappings."""
 
-    __tablename__ = 'user'
+    __tablename__ = "user"
 
     # Authentication fields
     email = Column(String(255), unique=True, nullable=False, index=True)
-    hashed_password = Column(
-        String(255), nullable=True
-    )  # Nullable for SSO users
+    hashed_password = Column(String(255), nullable=True)  # Nullable for SSO users
 
     # Profile fields
     name = Column(String(255), nullable=False)
@@ -67,8 +65,12 @@ class UserModel(BaseModel):
     is_test_user = Column(String(20), default="disabled")
 
     # ORM relationships (using string references to avoid circular imports)
-    sessions = relationship("SessionModel", back_populates="user", cascade="all, delete-orphan")
-    usage_logs = relationship("UsageLogModel", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship(
+        "SessionModel", back_populates="user", cascade="all, delete-orphan"
+    )
+    usage_logs = relationship(
+        "UsageLogModel", back_populates="user", cascade="all, delete-orphan"
+    )
     # Legacy relationships - will be migrated later
     # coaching_sessions = relationship("CoachingSession", back_populates="user", cascade="all, delete-orphan")
     # clients = relationship("Client", back_populates="user", cascade="all, delete-orphan")
@@ -93,7 +95,7 @@ class UserModel(BaseModel):
         )
 
     @classmethod
-    def from_domain(cls, user: User) -> 'UserModel':
+    def from_domain(cls, user: User) -> "UserModel":
         """Convert domain model to ORM model."""
         return cls(
             id=user.id,
@@ -144,14 +146,14 @@ class UserModel(BaseModel):
         if not self.sessions:
             return []
         from ....core.models.session import SessionStatus
+
         active_statuses = [
             SessionStatus.UPLOADING,
             SessionStatus.PENDING,
             SessionStatus.PROCESSING,
         ]
         return [
-            session for session in self.sessions
-            if session.status in active_statuses
+            session for session in self.sessions if session.status in active_statuses
         ]
 
     def get_recent_sessions(self, limit: int = 10):
@@ -161,7 +163,7 @@ class UserModel(BaseModel):
         return sorted(
             self.sessions,
             key=lambda s: s.created_at or datetime.min,
-            reverse=True
+            reverse=True,
         )[:limit]
 
     def has_active_subscription(self) -> bool:
@@ -170,16 +172,38 @@ class UserModel(BaseModel):
 
     def is_premium_plan(self) -> bool:
         """Check if user is on a premium plan."""
-        return self.plan in [UserPlan.PRO, UserPlan.ENTERPRISE, UserPlan.COACHING_SCHOOL]
+        return self.plan in [
+            UserPlan.PRO,
+            UserPlan.ENTERPRISE,
+            UserPlan.COACHING_SCHOOL,
+        ]
 
     def can_access_feature(self, feature: str) -> bool:
         """Check if user can access a specific feature based on plan."""
         feature_access = {
-            "ai_analysis": [UserPlan.STUDENT, UserPlan.PRO, UserPlan.ENTERPRISE, UserPlan.COACHING_SCHOOL],
-            "export_docx": [UserPlan.STUDENT, UserPlan.PRO, UserPlan.ENTERPRISE, UserPlan.COACHING_SCHOOL],
-            "export_pdf": [UserPlan.PRO, UserPlan.ENTERPRISE, UserPlan.COACHING_SCHOOL],
+            "ai_analysis": [
+                UserPlan.STUDENT,
+                UserPlan.PRO,
+                UserPlan.ENTERPRISE,
+                UserPlan.COACHING_SCHOOL,
+            ],
+            "export_docx": [
+                UserPlan.STUDENT,
+                UserPlan.PRO,
+                UserPlan.ENTERPRISE,
+                UserPlan.COACHING_SCHOOL,
+            ],
+            "export_pdf": [
+                UserPlan.PRO,
+                UserPlan.ENTERPRISE,
+                UserPlan.COACHING_SCHOOL,
+            ],
             "export_srt": [UserPlan.ENTERPRISE, UserPlan.COACHING_SCHOOL],
-            "priority_support": [UserPlan.PRO, UserPlan.ENTERPRISE, UserPlan.COACHING_SCHOOL],
+            "priority_support": [
+                UserPlan.PRO,
+                UserPlan.ENTERPRISE,
+                UserPlan.COACHING_SCHOOL,
+            ],
             "api_access": [UserPlan.ENTERPRISE, UserPlan.COACHING_SCHOOL],
         }
         return self.plan in feature_access.get(feature, [])

@@ -1,8 +1,8 @@
 """Test helper utilities for database compatibility."""
 
+import sqlalchemy.dialects.postgresql as pg
 from sqlalchemy import String, TypeDecorator
 from sqlalchemy.ext.compiler import compiles
-import sqlalchemy.dialects.postgresql as pg
 
 
 # Create SQLite-compatible versions of PostgreSQL types

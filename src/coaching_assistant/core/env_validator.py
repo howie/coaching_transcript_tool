@@ -1,11 +1,11 @@
 """Environment variable validation for application startup."""
 
+import base64
+import json
 import os
 import sys
-from typing import List, Dict, Tuple
 from enum import Enum
-import json
-import base64
+from typing import Dict, List, Tuple
 
 
 class EnvVarStatus(Enum):
@@ -25,30 +25,34 @@ class EnvironmentValidator:
         "DATABASE_URL": "PostgreSQL database connection URL",
         "SECRET_KEY": "Secret key for JWT token signing",
         "GOOGLE_PROJECT_ID": "Google Cloud project ID",
-        "AUDIO_STORAGE_BUCKET": "Google Cloud Storage bucket for audio files and batch results",
-        "GOOGLE_APPLICATION_CREDENTIALS_JSON": "Google service account credentials (JSON or base64)",
+        "AUDIO_STORAGE_BUCKET": (
+            "Google Cloud Storage bucket for audio files and batch results"
+        ),
+        "GOOGLE_APPLICATION_CREDENTIALS_JSON": (
+            "Google service account credentials (JSON or base64)"
+        ),
     }
 
     # Optional but recommended variables
     RECOMMENDED_VARS = {
-        "REDIS_URL": "Redis connection URL for Celery (required for transcription)",
-        "GOOGLE_CLIENT_ID": "Google OAuth client ID (required for Google login)",
-        "GOOGLE_CLIENT_SECRET": "Google OAuth client secret (required for Google login)",
-        "RECAPTCHA_SECRET": "reCAPTCHA secret key (recommended for production)",
-        "SENTRY_DSN": "Sentry DSN for error tracking (recommended for production)",
+        "REDIS_URL": ("Redis connection URL for Celery (required for transcription)"),
+        "GOOGLE_CLIENT_ID": ("Google OAuth client ID (required for Google login)"),
+        "GOOGLE_CLIENT_SECRET": (
+            "Google OAuth client secret (required for Google login)"
+        ),
+        "RECAPTCHA_SECRET": ("reCAPTCHA secret key (recommended for production)"),
+        "SENTRY_DSN": ("Sentry DSN for error tracking (recommended for production)"),
     }
 
     # Variables that should not use default values in production
     PRODUCTION_REQUIRED = {
         "SECRET_KEY": "dev-secret-key",  # Should not use this default
-        "RECAPTCHA_SECRET": "6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe",  # Test key
+        "RECAPTCHA_SECRET": ("6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe"),  # Test key
     }
 
     def __init__(self, environment: str = None):
         """Initialize validator with environment."""
-        self.environment = environment or os.getenv(
-            "ENVIRONMENT", "development"
-        )
+        self.environment = environment or os.getenv("ENVIRONMENT", "development")
         self.errors: List[str] = []
         self.warnings: List[str] = []
         self.info: List[str] = []
@@ -130,9 +134,7 @@ class EnvironmentValidator:
 
         return len(self.errors) == 0, report
 
-    def _validate_var_content(
-        self, var_name: str, value: str
-    ) -> Tuple[bool, str]:
+    def _validate_var_content(self, var_name: str, value: str) -> Tuple[bool, str]:
         """
         Validate specific environment variable content.
 
@@ -158,7 +160,7 @@ class EnvironmentValidator:
                     try:
                         decoded = base64.b64decode(value)
                         creds = json.loads(decoded)
-                    except:
+                    except (ValueError, json.JSONDecodeError, TypeError):
                         return (
                             False,
                             "Invalid credentials format (not valid JSON or base64)",
@@ -218,7 +220,7 @@ class EnvironmentValidator:
                     return False, "Cannot use default secret key in production"
                 else:
                     self.warnings.append(
-                        f"⚠️  Using default SECRET_KEY - only for development!"
+                        "⚠️  Using default SECRET_KEY - only for development!"
                     )
             return True, ""
 
@@ -252,9 +254,7 @@ class EnvironmentValidator:
             print("\n📝 Quick Setup Guide:")
             print("1. Copy .env.example to .env")
             print("2. Fill in the required values")
-            print(
-                "3. Run scripts/setup_env/setup-gcs.sh for Google Cloud setup"
-            )
+            print("3. Run scripts/setup_env/setup-gcs.sh for Google Cloud setup")
             print("4. Restart the application")
 
         print("\n" + "=" * 60)
@@ -269,16 +269,12 @@ class EnvironmentValidator:
         self.print_report(is_valid, report)
 
         if not is_valid:
-            print(
-                "\n💥 Application startup aborted due to missing configuration!"
-            )
+            print("\n💥 Application startup aborted due to missing configuration!")
             print("Please fix the errors and try again.")
             sys.exit(1)
 
         if self.warnings:
-            print(
-                "\n⚠️  Starting with warnings - some features may not work properly"
-            )
+            print("\n⚠️  Starting with warnings - some features may not work properly")
         else:
             print("\n✅ All environment variables validated successfully!")
 

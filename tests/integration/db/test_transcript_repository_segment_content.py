@@ -1,12 +1,14 @@
 """Integration tests for transcript repository segment content operations."""
 
-import pytest
 from uuid import uuid4
-from sqlalchemy.exc import IntegrityError
+
+import pytest
 
 from coaching_assistant.core.models.session import Session, SessionStatus
 from coaching_assistant.core.models.transcript import TranscriptSegment
-from coaching_assistant.infrastructure.db.repositories.transcript_repository import SQLAlchemyTranscriptRepository
+from coaching_assistant.infrastructure.db.repositories.transcript_repository import (
+    SQLAlchemyTranscriptRepository,
+)
 
 
 class TestTranscriptRepositorySegmentContent:
@@ -74,7 +76,9 @@ class TestTranscriptRepositorySegmentContent:
         db_session.commit()
         return segments
 
-    def test_get_segments_by_session_id(self, transcript_repo, test_session, test_segments):
+    def test_get_segments_by_session_id(
+        self, transcript_repo, test_session, test_segments
+    ):
         """Test retrieving segments by session ID."""
         segments = transcript_repo.get_segments_by_session_id(test_session.id)
 
@@ -97,7 +101,9 @@ class TestTranscriptRepositorySegmentContent:
         segment = transcript_repo.get_segment_by_id(uuid4())
         assert segment is None
 
-    def test_update_segment_content_single(self, transcript_repo, db_session, test_segments):
+    def test_update_segment_content_single(
+        self, transcript_repo, db_session, test_segments
+    ):
         """Test updating content of a single segment."""
         segment_id = test_segments[0].id
         new_content = "Updated content for segment 1"
@@ -118,7 +124,9 @@ class TestTranscriptRepositorySegmentContent:
         other_segment = transcript_repo.get_segment_by_id(test_segments[1].id)
         assert other_segment.content == "Original content 2"
 
-    def test_update_segment_content_multiple(self, transcript_repo, db_session, test_segments):
+    def test_update_segment_content_multiple(
+        self, transcript_repo, db_session, test_segments
+    ):
         """Test updating content of multiple segments in single transaction."""
         updates = [
             (test_segments[0].id, "Bulk update 1"),
@@ -143,7 +151,9 @@ class TestTranscriptRepositorySegmentContent:
         unchanged_segment = transcript_repo.get_segment_by_id(test_segments[1].id)
         assert unchanged_segment.content == "Original content 2"
 
-    def test_update_segment_content_empty_string(self, transcript_repo, db_session, test_segments):
+    def test_update_segment_content_empty_string(
+        self, transcript_repo, db_session, test_segments
+    ):
         """Test updating segment content to empty string."""
         segment_id = test_segments[0].id
 
@@ -155,7 +165,9 @@ class TestTranscriptRepositorySegmentContent:
         updated_segment = transcript_repo.get_segment_by_id(segment_id)
         assert updated_segment.content == ""
 
-    def test_update_segment_content_very_long(self, transcript_repo, db_session, test_segments):
+    def test_update_segment_content_very_long(
+        self, transcript_repo, db_session, test_segments
+    ):
         """Test updating segment with very long content."""
         segment_id = test_segments[0].id
         long_content = "A" * 50000  # 50KB content
@@ -169,7 +181,9 @@ class TestTranscriptRepositorySegmentContent:
         assert len(updated_segment.content) == 50000
         assert updated_segment.content == long_content
 
-    def test_update_segment_content_unicode(self, transcript_repo, db_session, test_segments):
+    def test_update_segment_content_unicode(
+        self, transcript_repo, db_session, test_segments
+    ):
         """Test updating segment with unicode characters."""
         segment_id = test_segments[0].id
         unicode_content = "Hello 👋 世界! Émojis and spéciàl châràctërs: ñüñéz"
@@ -182,7 +196,9 @@ class TestTranscriptRepositorySegmentContent:
         updated_segment = transcript_repo.get_segment_by_id(segment_id)
         assert updated_segment.content == unicode_content
 
-    def test_update_segment_content_transaction_rollback(self, transcript_repo, db_session, test_segments):
+    def test_update_segment_content_transaction_rollback(
+        self, transcript_repo, db_session, test_segments
+    ):
         """Test that failed updates don't partially commit."""
         original_content_1 = test_segments[0].content
         original_content_2 = test_segments[1].content
@@ -197,7 +213,9 @@ class TestTranscriptRepositorySegmentContent:
 
             # Simulate an error that would cause rollback
             segment_2 = transcript_repo.get_segment_by_id(test_segments[1].id)
-            segment_2.content = None  # This might cause an error depending on constraints
+            segment_2.content = (
+                None  # This might cause an error depending on constraints
+            )
 
             # This should fail if content is NOT NULL
             db_session.commit()
@@ -213,11 +231,14 @@ class TestTranscriptRepositorySegmentContent:
         assert segment_1.content == original_content_1
         assert segment_2.content == original_content_2
 
-    def test_segment_content_concurrency(self, transcript_repo, db_session, test_segments):
+    def test_segment_content_concurrency(
+        self, transcript_repo, db_session, test_segments
+    ):
         """Test handling of concurrent segment content updates."""
         segment_id = test_segments[0].id
 
-        # Simulate concurrent access by getting the same segment in two "sessions"
+        # Simulate concurrent access by getting the same segment in two
+        # "sessions"
         segment_1 = transcript_repo.get_segment_by_id(segment_id)
         segment_2 = transcript_repo.get_segment_by_id(segment_id)
 
@@ -234,7 +255,9 @@ class TestTranscriptRepositorySegmentContent:
         final_segment = transcript_repo.get_segment_by_id(segment_id)
         assert final_segment.content == "Second update"
 
-    def test_segment_content_with_metadata_preservation(self, transcript_repo, db_session, test_segments):
+    def test_segment_content_with_metadata_preservation(
+        self, transcript_repo, db_session, test_segments
+    ):
         """Test that updating content preserves other segment metadata."""
         segment_id = test_segments[0].id
         original_segment = transcript_repo.get_segment_by_id(segment_id)
@@ -257,7 +280,9 @@ class TestTranscriptRepositorySegmentContent:
         assert updated_segment.end_sec == original_end_sec
         assert updated_segment.confidence_score == original_confidence
 
-    def test_segment_ordering_preserved_after_content_update(self, transcript_repo, db_session, test_session, test_segments):
+    def test_segment_ordering_preserved_after_content_update(
+        self, transcript_repo, db_session, test_session, test_segments
+    ):
         """Test that segment ordering is preserved after content updates."""
         # Update all segments in reverse order
         for i, segment in enumerate(reversed(test_segments)):
@@ -275,11 +300,17 @@ class TestTranscriptRepositorySegmentContent:
         assert segments[2].start_sec == 10.5
 
         # But content should reflect the updates
-        assert segments[2].content == "Reordered content 0"  # Last segment updated first
+        assert (
+            segments[2].content == "Reordered content 0"
+        )  # Last segment updated first
         assert segments[1].content == "Reordered content 1"  # Middle segment
-        assert segments[0].content == "Reordered content 2"  # First segment updated last
+        assert (
+            segments[0].content == "Reordered content 2"
+        )  # First segment updated last
 
-    def test_segment_content_search_after_update(self, transcript_repo, db_session, test_session, test_segments):
+    def test_segment_content_search_after_update(
+        self, transcript_repo, db_session, test_session, test_segments
+    ):
         """Test that segment content can be searched after updates."""
         # Update segments with searchable content
         test_segments[0].content = "The coaching session was very productive"

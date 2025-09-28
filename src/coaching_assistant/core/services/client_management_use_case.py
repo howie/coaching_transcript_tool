@@ -4,9 +4,9 @@ This module contains the business logic for client management operations,
 following the Clean Architecture principles with dependency injection.
 """
 
-from typing import List, Optional, Dict, Any, Tuple
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID
 
 from ..models.client import Client
 from ..repositories.ports import ClientRepoPort, UserRepoPort
@@ -42,7 +42,7 @@ class ClientRetrievalUseCase:
         coach_id: UUID,
         query: Optional[str] = None,
         page: int = 1,
-        page_size: int = 20
+        page_size: int = 20,
     ) -> Tuple[List[Client], int, int]:
         """List clients for a coach with pagination and optional search.
 
@@ -114,8 +114,7 @@ class ClientRetrievalUseCase:
                 source_counts[source_name] = source_counts.get(source_name, 0) + 1
 
             source_distribution = [
-                {"name": name, "value": count}
-                for name, count in source_counts.items()
+                {"name": name, "value": count} for name, count in source_counts.items()
             ]
 
             # Type statistics
@@ -126,8 +125,7 @@ class ClientRetrievalUseCase:
                 type_counts[type_name] = type_counts.get(type_name, 0) + 1
 
             type_distribution = [
-                {"name": name, "value": count}
-                for name, count in type_counts.items()
+                {"name": name, "value": count} for name, count in type_counts.items()
             ]
 
             # Issue type statistics
@@ -142,8 +140,7 @@ class ClientRetrievalUseCase:
                     issue_counts["未知"] = issue_counts.get("未知", 0) + 1
 
             issue_distribution = [
-                {"name": name, "value": count}
-                for name, count in issue_counts.items()
+                {"name": name, "value": count} for name, count in issue_counts.items()
             ]
 
         return {
@@ -176,7 +173,7 @@ class ClientCreationUseCase:
         source: Optional[str] = None,
         client_type: Optional[str] = None,
         issue_types: Optional[str] = None,
-        status: str = "first_session"
+        status: str = "first_session",
     ) -> Client:
         """Create a new client for a coach.
 
@@ -249,7 +246,7 @@ class ClientUpdateUseCase:
         source: Optional[str] = None,
         client_type: Optional[str] = None,
         issue_types: Optional[str] = None,
-        status: Optional[str] = None
+        status: Optional[str] = None,
     ) -> Client:
         """Update an existing client.
 
@@ -281,7 +278,9 @@ class ClientUpdateUseCase:
 
         # Check for duplicate email if email is being updated
         if email and email != client.email:
-            if self.client_repo.check_email_exists_for_coach(coach_id, email, client_id):
+            if self.client_repo.check_email_exists_for_coach(
+                coach_id, email, client_id
+            ):
                 raise ValueError("A client with this email already exists")
 
         # Update fields (only if provided)

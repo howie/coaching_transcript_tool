@@ -78,9 +78,9 @@ class Session:
     def can_start_transcription(self) -> bool:
         """Business rule: Check if session can start transcription."""
         return (
-            self.status in [SessionStatus.PENDING, SessionStatus.UPLOADING] and
-            self.gcs_audio_path is not None and
-            self.audio_filename is not None
+            self.status in [SessionStatus.PENDING, SessionStatus.UPLOADING]
+            and self.gcs_audio_path is not None
+            and self.audio_filename is not None
         )
 
     def can_retry_transcription(self) -> bool:
@@ -89,14 +89,18 @@ class Session:
 
     def is_processing_complete(self) -> bool:
         """Business rule: Check if processing is complete."""
-        return self.status in [SessionStatus.COMPLETED, SessionStatus.FAILED, SessionStatus.CANCELLED]
+        return self.status in [
+            SessionStatus.COMPLETED,
+            SessionStatus.FAILED,
+            SessionStatus.CANCELLED,
+        ]
 
     def is_transcript_available(self) -> bool:
         """Business rule: Check if transcript is available."""
         return (
-            self.status == SessionStatus.COMPLETED and
-            self.transcript_text is not None and
-            len(self.transcript_text.strip()) > 0
+            self.status == SessionStatus.COMPLETED
+            and self.transcript_text is not None
+            and len(self.transcript_text.strip()) > 0
         )
 
     def validate_title(self, title: str) -> None:
@@ -110,10 +114,17 @@ class Session:
         """Business rule: Validate language code."""
         valid_languages = [
             "auto",
-            "en-US", "en-GB", "en-AU",
-            "cmn-Hant-TW", "cmn-Hans-CN",
-            "ja-JP", "ko-KR", "th-TH",
-            "vi-VN", "ms-MY", "id-ID",
+            "en-US",
+            "en-GB",
+            "en-AU",
+            "cmn-Hant-TW",
+            "cmn-Hans-CN",
+            "ja-JP",
+            "ko-KR",
+            "th-TH",
+            "vi-VN",
+            "ms-MY",
+            "id-ID",
         ]
         if language not in valid_languages:
             raise ValueError(f"Unsupported language: {language}")
@@ -140,7 +151,9 @@ class Session:
     def start_transcription(self, job_id: Optional[str] = None) -> None:
         """Business rule: Start transcription process."""
         if not self.can_start_transcription():
-            raise ValueError(f"Cannot start transcription in status: {self.status.value}")
+            raise ValueError(
+                f"Cannot start transcription in status: {self.status.value}"
+            )
 
         self.status = SessionStatus.PROCESSING
         self.transcription_job_id = job_id
@@ -158,7 +171,9 @@ class Session:
     ) -> None:
         """Business rule: Complete transcription with results."""
         if self.status != SessionStatus.PROCESSING:
-            raise ValueError(f"Cannot complete transcription in status: {self.status.value}")
+            raise ValueError(
+                f"Cannot complete transcription in status: {self.status.value}"
+            )
 
         if not transcript_text or not transcript_text.strip():
             raise ValueError("Transcript text cannot be empty")
@@ -179,7 +194,9 @@ class Session:
     def fail_transcription(self, error_message: str) -> None:
         """Business rule: Mark transcription as failed."""
         if self.status != SessionStatus.PROCESSING:
-            raise ValueError(f"Cannot fail transcription in status: {self.status.value}")
+            raise ValueError(
+                f"Cannot fail transcription in status: {self.status.value}"
+            )
 
         if not error_message:
             raise ValueError("Error message cannot be empty")
@@ -199,7 +216,9 @@ class Session:
     def retry_transcription(self) -> None:
         """Business rule: Retry failed transcription."""
         if not self.can_retry_transcription():
-            raise ValueError(f"Cannot retry transcription in status: {self.status.value}")
+            raise ValueError(
+                f"Cannot retry transcription in status: {self.status.value}"
+            )
 
         self.status = SessionStatus.PENDING
         self.error_message = None
@@ -261,7 +280,7 @@ class Session:
             return 0.0
 
         # Cost per minute varies by provider and duration
-        minutes = self.get_audio_duration_minutes()
+        self.get_audio_duration_minutes()
 
         if self.stt_provider == "assemblyai":
             # AssemblyAI pricing: roughly $0.00025 per second
@@ -273,7 +292,7 @@ class Session:
     def is_ready_for_export(self) -> bool:
         """Business rule: Check if session is ready for export."""
         return (
-            self.status == SessionStatus.COMPLETED and
-            self.transcript_text is not None and
-            len(self.transcript_text.strip()) > 0
+            self.status == SessionStatus.COMPLETED
+            and self.transcript_text is not None
+            and len(self.transcript_text.strip()) > 0
         )

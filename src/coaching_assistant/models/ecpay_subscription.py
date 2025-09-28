@@ -1,20 +1,22 @@
 """ECPay subscription models for SaaS billing system."""
 
 import enum
-from datetime import datetime, date
+from datetime import date, datetime
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Boolean,
-    DateTime,
-    Date,
-    Text,
     JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
     ForeignKey,
+    Integer,
+    String,
+    Text,
 )
-from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 
@@ -65,9 +67,7 @@ class ECPayCreditAuthorization(BaseModel):
     )
 
     # ECPay identification
-    merchant_member_id = Column(
-        String(30), unique=True, nullable=False, index=True
-    )
+    merchant_member_id = Column(String(30), unique=True, nullable=False, index=True)
     gwsr = Column(String(100), nullable=True)  # ECPay transaction number
     auth_code = Column(String(20), nullable=True)  # Authorization code
 
@@ -75,9 +75,7 @@ class ECPayCreditAuthorization(BaseModel):
     auth_amount = Column(Integer, nullable=False)  # Amount in TWD cents
     period_type = Column(String(10), nullable=False)  # 'Month' or 'Year'
     frequency = Column(Integer, default=1, nullable=False)
-    period_amount = Column(
-        Integer, nullable=False
-    )  # Amount per period in TWD cents
+    period_amount = Column(Integer, nullable=False)  # Amount per period in TWD cents
     exec_times = Column(Integer, default=0, nullable=False)  # Times executed
     exec_times_limit = Column(
         Integer, nullable=True
@@ -139,9 +137,7 @@ class SaasSubscription(BaseModel):
     )
 
     # Plan information
-    plan_id = Column(
-        String(20), nullable=False, index=True
-    )  # FREE, PRO, ENTERPRISE
+    plan_id = Column(String(20), nullable=False, index=True)  # FREE, PRO, ENTERPRISE
     plan_name = Column(String(50), nullable=False)
     billing_cycle = Column(String(10), nullable=False)  # monthly, annual
 
@@ -169,9 +165,7 @@ class SaasSubscription(BaseModel):
     trial_end = Column(Date, nullable=True)
 
     # Grace period and downgrade tracking
-    grace_period_ends_at = Column(
-        DateTime(timezone=True), nullable=True, index=True
-    )
+    grace_period_ends_at = Column(DateTime(timezone=True), nullable=True, index=True)
     downgraded_at = Column(DateTime(timezone=True), nullable=True)
     downgrade_reason = Column(
         String(50), nullable=True
@@ -249,9 +243,7 @@ class SubscriptionPayment(BaseModel):
     currency = Column(String(3), default="TWD", nullable=False)
 
     # Payment status
-    status = Column(
-        String(20), nullable=False, index=True
-    )  # success, failed, pending
+    status = Column(String(20), nullable=False, index=True)  # success, failed, pending
     failure_reason = Column(Text, nullable=True)
     retry_count = Column(Integer, default=0, nullable=False)
 
@@ -278,9 +270,7 @@ class SubscriptionPayment(BaseModel):
 
     # Relationships
     subscription = relationship("SaasSubscription", back_populates="payments")
-    auth_record = relationship(
-        "ECPayCreditAuthorization", back_populates="payments"
-    )
+    auth_record = relationship("ECPayCreditAuthorization", back_populates="payments")
 
     def __repr__(self):
         return f"<SubscriptionPayment(gwsr={self.gwsr}, amount={self.amount}, status={self.status})>"
@@ -306,9 +296,7 @@ class SubscriptionPendingChange(BaseModel):
 
     # Timing
     effective_date = Column(Date, nullable=False, index=True)
-    change_type = Column(
-        String(20), nullable=False
-    )  # upgrade, downgrade, cancel
+    change_type = Column(String(20), nullable=False)  # upgrade, downgrade, cancel
 
     # Status
     status = Column(
@@ -328,9 +316,7 @@ class SubscriptionPendingChange(BaseModel):
     )
 
     # Relationships
-    subscription = relationship(
-        "SaasSubscription", back_populates="pending_changes"
-    )
+    subscription = relationship("SaasSubscription", back_populates="pending_changes")
 
     def __repr__(self):
         return f"<SubscriptionPendingChange(subscription_id={self.subscription_id}, new_plan={self.new_plan_id}, effective_date={self.effective_date})>"
@@ -388,9 +374,7 @@ class GracePeriod(BaseModel):
     # Grace period settings
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False, index=True)
-    reason = Column(
-        String(100), nullable=False
-    )  # payment_failure, card_expired
+    reason = Column(String(100), nullable=False)  # payment_failure, card_expired
 
     # Status
     status = Column(
@@ -429,9 +413,7 @@ class WebhookLog(BaseModel):
     webhook_type = Column(
         String(50), nullable=False, index=True
     )  # auth_callback, billing_callback
-    source = Column(
-        String(50), default="ecpay", nullable=False
-    )  # ecpay, stripe, etc.
+    source = Column(String(50), default="ecpay", nullable=False)  # ecpay, stripe, etc.
 
     # Request information
     method = Column(String(10), default="POST", nullable=False)

@@ -1,10 +1,11 @@
 """Celery application configuration."""
 
-from celery import Celery
-from celery import signals
-from .config import settings
 import logging
 import os
+
+from celery import Celery, signals
+
+from .config import settings
 
 
 # 設置統一的日誌配置
@@ -16,9 +17,7 @@ def setup_celery_worker_logging():
     # 使用絕對路徑確保日誌文件位置正確
     import pathlib
 
-    project_root = pathlib.Path(
-        __file__
-    ).parent.parent.parent.parent.parent.parent
+    project_root = pathlib.Path(__file__).parent.parent.parent.parent.parent.parent
     log_file = (
         project_root
         / "logs"
@@ -61,9 +60,7 @@ celery_app.conf.update(
     worker_log_color=False,
     # Task execution settings
     task_routes={
-        "coaching_assistant.tasks.transcribe_audio": {
-            "queue": "transcription"
-        },
+        "coaching_assistant.tasks.transcribe_audio": {"queue": "transcription"},
     },
     # Worker settings
     worker_concurrency=4,

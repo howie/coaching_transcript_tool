@@ -5,18 +5,25 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
 following Clean Architecture principles.
 """
 
-from typing import Optional, List
-from uuid import UUID
-from sqlalchemy.orm import Session as DBSession
-from sqlalchemy.exc import SQLAlchemyError
-
-from ....core.repositories.ports import CoachProfileRepoPort
-from ....core.models.coach_profile import CoachProfile, CoachingLanguage, CommunicationTool, CoachExperience
-from ....core.models.coaching_plan import CoachingPlan
-# Using legacy models temporarily until ORM migration is complete
-from ....models.coach_profile import CoachProfile as CoachProfileModel
-from ....models.coach_profile import CoachingPlan as CoachingPlanModel
 import json
+from typing import List, Optional
+from uuid import UUID
+
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session as DBSession
+
+from ....core.models.coach_profile import (
+    CoachExperience,
+    CoachingLanguage,
+    CoachProfile,
+    CommunicationTool,
+)
+from ....core.models.coaching_plan import CoachingPlan
+from ....core.repositories.ports import CoachProfileRepoPort
+
+# Using legacy models temporarily until ORM migration is complete
+from ....models.coach_profile import CoachingPlan as CoachingPlanModel
+from ....models.coach_profile import CoachProfile as CoachProfileModel
 
 
 class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
@@ -47,7 +54,9 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
             )
             return self._legacy_to_domain(orm_profile) if orm_profile else None
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving coach profile for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error retrieving coach profile for user {user_id}"
+            ) from e
 
     def save(self, profile: CoachProfile) -> CoachProfile:
         """Save or update coach profile.
@@ -79,7 +88,9 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error saving coach profile for user {profile.user_id}") from e
+            raise RuntimeError(
+                f"Database error saving coach profile for user {profile.user_id}"
+            ) from e
 
     def delete(self, user_id: UUID) -> bool:
         """Delete coach profile by user ID.
@@ -105,7 +116,9 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error deleting coach profile for user {user_id}") from e
+            raise RuntimeError(
+                f"Database error deleting coach profile for user {user_id}"
+            ) from e
 
     def get_all_verified_coaches(self) -> List[CoachProfile]:
         """Get all verified coach profiles.
@@ -116,12 +129,14 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
         try:
             orm_profiles = (
                 self.session.query(CoachProfileModel)
-                .filter(CoachProfileModel.is_public == True)
+                .filter(CoachProfileModel.is_public.is_(True))
                 .all()
             )
             return [self._legacy_to_domain(orm_profile) for orm_profile in orm_profiles]
         except SQLAlchemyError as e:
-            raise RuntimeError("Database error retrieving verified coach profiles") from e
+            raise RuntimeError(
+                "Database error retrieving verified coach profiles"
+            ) from e
 
     def get_coaching_plans_by_profile_id(self, profile_id: UUID) -> List[CoachingPlan]:
         """Get all coaching plans for a profile.
@@ -140,7 +155,9 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
             )
             return [self._plan_legacy_to_domain(orm_plan) for orm_plan in orm_plans]
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving coaching plans for profile {profile_id}") from e
+            raise RuntimeError(
+                f"Database error retrieving coaching plans for profile {profile_id}"
+            ) from e
 
     def get_coaching_plan_by_id(self, plan_id: UUID) -> Optional[CoachingPlan]:
         """Get coaching plan by ID.
@@ -155,7 +172,9 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
             orm_plan = self.session.get(CoachingPlanModel, plan_id)
             return self._plan_legacy_to_domain(orm_plan) if orm_plan else None
         except SQLAlchemyError as e:
-            raise RuntimeError(f"Database error retrieving coaching plan {plan_id}") from e
+            raise RuntimeError(
+                f"Database error retrieving coaching plan {plan_id}"
+            ) from e
 
     def save_coaching_plan(self, plan: CoachingPlan) -> CoachingPlan:
         """Save or update coaching plan.
@@ -187,7 +206,9 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error saving coaching plan {plan.title}") from e
+            raise RuntimeError(
+                f"Database error saving coaching plan {plan.title}"
+            ) from e
 
     def delete_coaching_plan(self, plan_id: UUID) -> bool:
         """Delete coaching plan by ID.
@@ -209,7 +230,9 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
 
         except SQLAlchemyError as e:
             self.session.rollback()
-            raise RuntimeError(f"Database error deleting coaching plan {plan_id}") from e
+            raise RuntimeError(
+                f"Database error deleting coaching plan {plan_id}"
+            ) from e
 
     def _legacy_to_domain(self, orm_profile: CoachProfileModel) -> CoachProfile:
         """Convert legacy ORM model to domain model.
@@ -276,10 +299,14 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
 
         return CoachProfile(
             id=UUID(str(orm_profile.id)) if orm_profile.id else None,
-            user_id=UUID(str(orm_profile.user_id)) if orm_profile.user_id else None,
+            user_id=(UUID(str(orm_profile.user_id)) if orm_profile.user_id else None),
             public_name=orm_profile.display_name or "",
             bio=orm_profile.bio,
-            location=f"{orm_profile.city}, {orm_profile.country}" if orm_profile.city and orm_profile.country else None,
+            location=(
+                f"{orm_profile.city}, {orm_profile.country}"
+                if orm_profile.city and orm_profile.country
+                else None
+            ),
             timezone=orm_profile.timezone or "Asia/Taipei",
             experience_level=experience_level,
             specializations=specializations,
@@ -289,7 +316,11 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
             is_public=orm_profile.is_public or False,
             profile_photo_url=orm_profile.profile_photo_url,
             contact_email=orm_profile.public_email,
-            contact_phone=f"{orm_profile.phone_country_code}{orm_profile.phone_number}" if orm_profile.phone_country_code and orm_profile.phone_number else None,
+            contact_phone=(
+                f"{orm_profile.phone_country_code}{orm_profile.phone_number}"
+                if orm_profile.phone_country_code and orm_profile.phone_number
+                else None
+            ),
             website_url=orm_profile.personal_website,
             created_at=orm_profile.created_at,
             updated_at=orm_profile.updated_at,
@@ -310,7 +341,11 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
             display_name=profile.public_name,
             bio=profile.bio,
             timezone=profile.timezone,
-            coach_experience=profile.experience_level.value if profile.experience_level else CoachExperience.BEGINNER.value,
+            coach_experience=(
+                profile.experience_level.value
+                if profile.experience_level
+                else CoachExperience.BEGINNER.value
+            ),
             is_public=profile.is_public,
             profile_photo_url=profile.profile_photo_url,
             public_email=profile.contact_email,
@@ -346,7 +381,9 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
 
         return orm_profile
 
-    def _update_orm_from_domain(self, orm_profile: CoachProfileModel, profile: CoachProfile):
+    def _update_orm_from_domain(
+        self, orm_profile: CoachProfileModel, profile: CoachProfile
+    ):
         """Update existing ORM model from domain model.
 
         Args:
@@ -356,7 +393,11 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
         orm_profile.display_name = profile.public_name
         orm_profile.bio = profile.bio
         orm_profile.timezone = profile.timezone
-        orm_profile.coach_experience = profile.experience_level.value if profile.experience_level else CoachExperience.BEGINNER.value
+        orm_profile.coach_experience = (
+            profile.experience_level.value
+            if profile.experience_level
+            else CoachExperience.BEGINNER.value
+        )
         orm_profile.is_public = profile.is_public
         orm_profile.profile_photo_url = profile.profile_photo_url
         orm_profile.public_email = profile.contact_email
@@ -399,7 +440,11 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
         """
         return CoachingPlan(
             id=UUID(str(orm_plan.id)) if orm_plan.id else None,
-            coach_profile_id=UUID(str(orm_plan.coach_profile_id)) if orm_plan.coach_profile_id else None,
+            coach_profile_id=(
+                UUID(str(orm_plan.coach_profile_id))
+                if orm_plan.coach_profile_id
+                else None
+            ),
             plan_type=orm_plan.plan_type or "single_session",
             title=orm_plan.title or "",
             description=orm_plan.description,
@@ -407,7 +452,7 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
             number_of_sessions=orm_plan.number_of_sessions or 1,
             price=float(orm_plan.price) if orm_plan.price else 0.0,
             currency=orm_plan.currency or "NTD",
-            is_active=orm_plan.is_active if orm_plan.is_active is not None else True,
+            is_active=(orm_plan.is_active if orm_plan.is_active is not None else True),
             max_participants=orm_plan.max_participants or 1,
             booking_notice_hours=orm_plan.booking_notice_hours or 24,
             cancellation_notice_hours=orm_plan.cancellation_notice_hours or 24,
@@ -440,7 +485,9 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
             cancellation_notice_hours=plan.cancellation_notice_hours,
         )
 
-    def _update_plan_orm_from_domain(self, orm_plan: CoachingPlanModel, plan: CoachingPlan):
+    def _update_plan_orm_from_domain(
+        self, orm_plan: CoachingPlanModel, plan: CoachingPlan
+    ):
         """Update existing CoachingPlan ORM model from domain model.
 
         Args:
@@ -460,7 +507,9 @@ class SQLAlchemyCoachProfileRepository(CoachProfileRepoPort):
         orm_plan.cancellation_notice_hours = plan.cancellation_notice_hours
 
 
-def create_coach_profile_repository(session: DBSession) -> CoachProfileRepoPort:
+def create_coach_profile_repository(
+    session: DBSession,
+) -> CoachProfileRepoPort:
     """Factory function to create a coach profile repository.
 
     Args:

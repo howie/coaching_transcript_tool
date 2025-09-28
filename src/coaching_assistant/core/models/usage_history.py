@@ -1,10 +1,11 @@
 """Usage history domain model for Clean Architecture."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 
@@ -24,10 +25,10 @@ class UsageHistory:
 
     # Core usage metrics
     sessions_created: int = 0
-    audio_minutes_processed: Decimal = field(default_factory=lambda: Decimal('0'))
+    audio_minutes_processed: Decimal = field(default_factory=lambda: Decimal("0"))
     transcriptions_completed: int = 0
     exports_generated: int = 0
-    storage_used_mb: Decimal = field(default_factory=lambda: Decimal('0'))
+    storage_used_mb: Decimal = field(default_factory=lambda: Decimal("0"))
 
     # Additional metrics
     unique_clients: int = 0
@@ -39,19 +40,19 @@ class UsageHistory:
     plan_limits: Dict[str, Any] = field(default_factory=dict)
 
     # Cost tracking
-    total_cost_usd: Decimal = field(default_factory=lambda: Decimal('0'))
+    total_cost_usd: Decimal = field(default_factory=lambda: Decimal("0"))
     billable_transcriptions: int = 0
     free_retries: int = 0
 
     # Provider breakdown
-    google_stt_minutes: Decimal = field(default_factory=lambda: Decimal('0'))
-    assemblyai_minutes: Decimal = field(default_factory=lambda: Decimal('0'))
+    google_stt_minutes: Decimal = field(default_factory=lambda: Decimal("0"))
+    assemblyai_minutes: Decimal = field(default_factory=lambda: Decimal("0"))
 
     # Export format breakdown
     exports_by_format: Dict[str, int] = field(default_factory=dict)
 
     # Performance metrics
-    avg_processing_time_seconds: Decimal = field(default_factory=lambda: Decimal('0'))
+    avg_processing_time_seconds: Decimal = field(default_factory=lambda: Decimal("0"))
     failed_transcriptions: int = 0
 
     # Audit fields
@@ -101,10 +102,12 @@ class UsageHistory:
         return {
             "id": str(self.id) if self.id else None,
             "user_id": str(self.user_id) if self.user_id else None,
-            "recorded_at": self.recorded_at.isoformat() if self.recorded_at else None,
+            "recorded_at": (self.recorded_at.isoformat() if self.recorded_at else None),
             "period_type": self.period_type,
-            "period_start": self.period_start.isoformat() if self.period_start else None,
-            "period_end": self.period_end.isoformat() if self.period_end else None,
+            "period_start": (
+                self.period_start.isoformat() if self.period_start else None
+            ),
+            "period_end": (self.period_end.isoformat() if self.period_end else None),
             "usage_metrics": {
                 "sessions_created": self.sessions_created,
                 "audio_minutes_processed": float(self.audio_minutes_processed),
@@ -139,10 +142,10 @@ class UsageHistory:
                 "avg_processing_time_seconds": float(self.avg_processing_time_seconds),
                 "failed_transcriptions": self.failed_transcriptions,
                 "success_rate": self.success_rate,
-                "avg_session_duration_minutes": self.avg_session_duration_minutes,
+                "avg_session_duration_minutes": (self.avg_session_duration_minutes),
             },
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": (self.created_at.isoformat() if self.created_at else None),
+            "updated_at": (self.updated_at.isoformat() if self.updated_at else None),
         }
 
     @classmethod
@@ -162,7 +165,9 @@ class UsageHistory:
             period_end=period_end,
             recorded_at=datetime.utcnow(),
             sessions_created=usage_data.get("sessions_created", 0),
-            audio_minutes_processed=Decimal(str(usage_data.get("audio_minutes_processed", 0))),
+            audio_minutes_processed=Decimal(
+                str(usage_data.get("audio_minutes_processed", 0))
+            ),
             transcriptions_completed=usage_data.get("transcriptions_completed", 0),
             exports_generated=usage_data.get("exports_generated", 0),
             storage_used_mb=Decimal(str(usage_data.get("storage_used_mb", 0))),
@@ -177,6 +182,8 @@ class UsageHistory:
             google_stt_minutes=Decimal(str(usage_data.get("google_stt_minutes", 0))),
             assemblyai_minutes=Decimal(str(usage_data.get("assemblyai_minutes", 0))),
             exports_by_format=usage_data.get("exports_by_format", {}),
-            avg_processing_time_seconds=Decimal(str(usage_data.get("avg_processing_time_seconds", 0))),
+            avg_processing_time_seconds=Decimal(
+                str(usage_data.get("avg_processing_time_seconds", 0))
+            ),
             failed_transcriptions=usage_data.get("failed_transcriptions", 0),
         )

@@ -1,28 +1,30 @@
 """
 LeMUR-based transcript smoothing service.
 
-Uses AssemblyAI's LeMUR (Large Language Model) to intelligently improve transcript quality
-by correcting speaker identification and adding proper punctuation, rather than using
+Uses AssemblyAI's LeMUR (Large Language Model) to intelligently improve
+transcript quality
+by correcting speaker identification and adding proper punctuation, rather
+than using
 rule-based heuristics.
 """
 
 import asyncio
 import logging
 import time
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
 
 import assemblyai as aai
 from pydantic import BaseModel, Field
 
-from ..core.config import settings
 from ..config.lemur_config import (
-    get_lemur_config,
-    get_speaker_prompt,
-    get_punctuation_prompt,
-    get_combined_prompt,
     LeMURConfig,
+    get_combined_prompt,
+    get_lemur_config,
+    get_punctuation_prompt,
+    get_speaker_prompt,
 )
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +49,7 @@ class LeMURSmoothedTranscript(BaseModel):
     speaker_mapping: Dict[str, str] = Field(
         description="Original to corrected speaker mapping"
     )
-    improvements_made: List[str] = Field(
-        description="List of improvements applied"
-    )
+    improvements_made: List[str] = Field(description="List of improvements applied")
     processing_notes: str = Field(description="Notes about the processing")
 
 
@@ -79,7 +79,8 @@ class LeMURTranscriptSmoother:
     LeMUR-based transcript smoother using AssemblyAI's LLM capabilities.
 
     This service replaces rule-based heuristics with intelligent LLM processing
-    to handle complex tasks like speaker identification and punctuation correction.
+    to handle complex tasks like speaker identification and punctuation
+    correction.
     Uses configurable prompts and Claude 4 Sonnet for enhanced performance.
     """
 
@@ -91,9 +92,7 @@ class LeMURTranscriptSmoother:
         """Initialize the LeMUR transcript smoother with configuration."""
         self.api_key = api_key or settings.ASSEMBLYAI_API_KEY
         if not self.api_key:
-            raise ValueError(
-                "AssemblyAI API key is required for LeMUR processing"
-            )
+            raise ValueError("AssemblyAI API key is required for LeMUR processing")
 
         # Set the global API key for assemblyai library
         aai.settings.api_key = self.api_key
@@ -102,12 +101,8 @@ class LeMURTranscriptSmoother:
         # Load LeMUR configuration
         self.config = config or get_lemur_config()
 
-        logger.info(
-            f"🧠 LeMUR initialized with model: {self.config.default_model}"
-        )
-        logger.info(
-            f"🔧 Combined mode enabled: {self.config.combined_mode_enabled}"
-        )
+        logger.info(f"🧠 LeMUR initialized with model: {self.config.default_model}")
+        logger.info(f"🔧 Combined mode enabled: {self.config.combined_mode_enabled}")
 
     async def smooth_transcript(
         self,
@@ -129,43 +124,37 @@ class LeMURTranscriptSmoother:
         """
         start_time = time.time()
         logger.info("=" * 80)
-        logger.info(f"🧠 STARTING LEMUR-BASED TRANSCRIPT SMOOTHING")
-        logger.info(
-            f"⏰ START TIME: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))}"
-        )
+        logger.info("🧠 STARTING LEMUR-BASED TRANSCRIPT SMOOTHING")
+        start_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_time))
+        logger.info(f"⏰ START TIME: {start_time_str}")
         logger.info("=" * 80)
         logger.info(f"📊 INPUT SEGMENTS COUNT: {len(segments)}")
         logger.info(f"🌐 SESSION LANGUAGE: {context.session_language}")
         logger.info(f"🏫 IS COACHING SESSION: {context.is_coaching_session}")
-        logger.info(
-            f"🎯 CUSTOM PROMPTS PROVIDED: {custom_prompts is not None}"
-        )
+        logger.info(f"🎯 CUSTOM PROMPTS PROVIDED: {custom_prompts is not None}")
         if custom_prompts:
-            logger.info(
-                f"📝 CUSTOM PROMPT KEYS: {list(custom_prompts.keys())}"
-            )
+            logger.info(f"📝 CUSTOM PROMPT KEYS: {list(custom_prompts.keys())}")
         logger.info("=" * 80)
 
         # Debug: Log input segments
         logger.info("📥 INPUT SEGMENTS:")
-        for i, segment in enumerate(
-            segments[:3]
-        ):  # Log first 3 segments as sample
+        for i, segment in enumerate(segments[:3]):  # Log first 3 segments as sample
             logger.info(
                 f"  Segment {i}: Speaker={segment.get('speaker')}, "
                 f"Start={segment.get('start')}ms, End={segment.get('end')}ms, "
-                f"Text='{segment.get('text', '')[:100]}{'...' if len(segment.get('text', '')) > 100 else ''}'"
+                f"Text='{segment.get('text', '')[:100]}{
+                    '...' if len(segment.get('text', '')) > 100 else ''
+                }'"
             )
         if len(segments) > 3:
             logger.info(f"  ... and {len(segments) - 3} more segments")
         logger.info("=" * 80)
 
         try:
-            # Convert segments to format suitable for LeMUR processing (no normalization for legacy function)
+            # Convert segments to format suitable for LeMUR processing (no
+            # normalization for legacy function)
             transcript_text, normalized_to_original_map = (
-                self._prepare_transcript_for_lemur(
-                    segments, normalize_speakers=False
-                )
+                self._prepare_transcript_for_lemur(segments, normalize_speakers=False)
             )
             logger.info("📝 PREPARED TRANSCRIPT TEXT FOR LEMUR:")
             logger.info(f"   Length: {len(transcript_text)} characters")
@@ -180,9 +169,7 @@ class LeMURTranscriptSmoother:
 
             if speaker_identification_only:
                 # Only correct speaker identification
-                logger.info(
-                    "🎭 Correcting speaker identification only with LeMUR"
-                )
+                logger.info("🎭 Correcting speaker identification only with LeMUR")
                 speaker_corrections = await self._correct_speakers_with_lemur(
                     transcript_text, context, custom_prompts
                 )
@@ -190,10 +177,10 @@ class LeMURTranscriptSmoother:
                 improved_segments = self._apply_speaker_corrections_only(
                     segments, speaker_corrections
                 )
-                improvements_made = [
-                    "Speaker identification corrected using LeMUR"
-                ]
-                processing_notes = f"Speaker identification only: Processed {len(segments)} segments"
+                improvements_made = ["Speaker identification corrected using LeMUR"]
+                processing_notes = (
+                    f"Speaker identification only: Processed {len(segments)} segments"
+                )
 
             elif punctuation_optimization_only:
                 # Only optimize punctuation, keep original speakers
@@ -201,38 +188,41 @@ class LeMURTranscriptSmoother:
                     "🔤 Optimizing punctuation only with LeMUR (batch processing)"
                 )
                 # Use empty speaker corrections to keep original speakers
-                improved_segments = (
-                    await self._improve_punctuation_batch_with_lemur(
-                        segments, context, {}, custom_prompts
-                    )
+                improved_segments = await self._improve_punctuation_batch_with_lemur(
+                    segments, context, {}, custom_prompts
                 )
                 improvements_made = [
                     "Internal punctuation added within long segments",
                     "Text structure improved",
                 ]
-                processing_notes = f"Punctuation optimization only: Processed {len(segments)} segments"
+                processing_notes = (
+                    f"Punctuation optimization only: Processed {len(segments)} segments"
+                )
 
             else:
-                # Full processing: both speaker identification and punctuation optimization
+                # Full processing: both speaker identification and punctuation
+                # optimization
                 logger.info("🎭 Correcting speaker identification with LeMUR")
                 speaker_corrections = await self._correct_speakers_with_lemur(
                     transcript_text, context, custom_prompts
                 )
 
                 logger.info(
-                    "🔤 Adding punctuation and improving structure with LeMUR (batch processing)"
+                    "🔤 Adding punctuation and improving structure with LeMUR "
+                    "(batch processing)"
                 )
-                improved_segments = (
-                    await self._improve_punctuation_batch_with_lemur(
-                        segments, context, speaker_corrections, custom_prompts
-                    )
+                improved_segments = await self._improve_punctuation_batch_with_lemur(
+                    segments, context, speaker_corrections, custom_prompts
                 )
                 improvements_made = [
                     "Speaker identification corrected using LeMUR",
                     "Internal punctuation added within long segments",
                     "Text structure and readability improved",
                 ]
-                processing_notes = f"Full processing: Processed {len(segments)} segments using AssemblyAI LeMUR"
+                processing_notes = (
+                    f"Full processing: Processed {len(segments)} segments "
+                    f"using AssemblyAI LeMUR"
+                )
 
             result = LeMURSmoothedTranscript(
                 segments=improved_segments,
@@ -249,39 +239,30 @@ class LeMURTranscriptSmoother:
             logger.info(
                 f"⏰ END TIME: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))}"
             )
-            logger.info(
-                f"⏱️ TOTAL PROCESSING TIME: {processing_time:.2f} seconds"
-            )
+            logger.info(f"⏱️ TOTAL PROCESSING TIME: {processing_time:.2f} seconds")
             logger.info("=" * 80)
-            logger.info(f"📊 FINAL RESULTS SUMMARY:")
+            logger.info("📊 FINAL RESULTS SUMMARY:")
             logger.info(f"   Input segments: {len(segments)}")
             logger.info(f"   Output segments: {len(improved_segments)}")
             logger.info(f"   Speaker mapping: {speaker_corrections}")
-            logger.info(
-                f"   Improvements made: {len(result.improvements_made)}"
-            )
+            logger.info(f"   Improvements made: {len(result.improvements_made)}")
             logger.info(f"   Processing time: {processing_time:.2f}s")
             logger.info("=" * 80)
 
             # Debug: Log sample output segments
             logger.info("📤 SAMPLE OUTPUT SEGMENTS:")
-            for i, segment in enumerate(
-                improved_segments[:3]
-            ):  # Log first 3 segments
+            for i, segment in enumerate(improved_segments[:3]):  # Log first 3 segments
                 logger.info(
                     f"  Segment {i}: Speaker='{segment.speaker}', "
                     f"Start={segment.start}ms, End={segment.end}ms, "
-                    f"Text='{segment.text[:100]}{'...' if len(segment.text) > 100 else ''}'"
+                    f"Text='{segment.text[:100]}"
+                    f"{'...' if len(segment.text) > 100 else ''}'"
                 )
             if len(improved_segments) > 3:
-                logger.info(
-                    f"  ... and {len(improved_segments) - 3} more segments"
-                )
+                logger.info(f"  ... and {len(improved_segments) - 3} more segments")
             logger.info("=" * 80)
 
-            logger.info(
-                "🎉 LeMUR-based transcript smoothing completed successfully!"
-            )
+            logger.info("🎉 LeMUR-based transcript smoothing completed successfully!")
             return result
 
         except Exception as e:
@@ -292,13 +273,11 @@ class LeMURTranscriptSmoother:
             logger.error(
                 f"⏰ FAILURE TIME: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))}"
             )
-            logger.error(
-                f"⏱️ TIME BEFORE FAILURE: {processing_time:.2f} seconds"
-            )
+            logger.error(f"⏱️ TIME BEFORE FAILURE: {processing_time:.2f} seconds")
             logger.error("=" * 80)
             logger.error(f"💥 ERROR TYPE: {type(e).__name__}")
             logger.error(f"💥 ERROR MESSAGE: {str(e)}")
-            logger.error(f"📊 PROCESSING STATE:")
+            logger.error("📊 PROCESSING STATE:")
             logger.error(f"   Input segments: {len(segments)}")
             logger.error(f"   Custom prompts: {custom_prompts is not None}")
             logger.error(f"   Session language: {context.session_language}")
@@ -307,9 +286,13 @@ class LeMURTranscriptSmoother:
             raise
 
     def _prepare_transcript_for_lemur(
-        self, segments: List[Dict], normalize_speakers: bool = True
+        self,
+        segments: List[Dict],
+        normalize_speakers: bool = True,
     ) -> tuple[str, Dict[str, str]]:
-        """Convert transcript segments to text format suitable for LeMUR with optional speaker normalization."""
+        """Convert transcript segments to text format suitable for LeMUR with
+        optional speaker normalization.
+        """
         text_parts = []
         speaker_normalization_map = {}  # original -> normalized (A/B)
         normalized_to_original_map = {}  # normalized (A/B) -> original
@@ -373,21 +356,15 @@ class LeMURTranscriptSmoother:
         else:
             # Determine language and get prompt from configuration
             language = (
-                "chinese"
-                if context.session_language.startswith("zh")
-                else "english"
+                "chinese" if context.session_language.startswith("zh") else "english"
             )
-            prompt_template = get_speaker_prompt(
-                language=language, variant="default"
-            )
+            prompt_template = get_speaker_prompt(language=language, variant="default")
 
             if prompt_template:
                 logger.info(
                     f"🎯 Using configured speaker identification prompt for {language}"
                 )
-                prompt = prompt_template.format(
-                    transcript_text=transcript_text
-                )
+                prompt = prompt_template.format(transcript_text=transcript_text)
             else:
                 logger.warning(
                     f"⚠️ No speaker prompt found for language {language}, using fallback"
@@ -413,24 +390,16 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
             logger.info("=" * 80)
             logger.info(prompt)
             logger.info("=" * 80)
-            logger.info(
-                f"📝 INPUT TEXT LENGTH: {len(transcript_text)} characters"
-            )
+            logger.info(f"📝 INPUT TEXT LENGTH: {len(transcript_text)} characters")
             logger.info(f"🧠 MODEL: {self.config.default_model}")
 
             # For speaker identification, we only need a small JSON response
-            speaker_output_size = (
-                1000  # Should be enough for speaker mapping JSON
-            )
-            logger.info(
-                f"📏 SPEAKER OUTPUT SIZE: {speaker_output_size} characters"
-            )
+            speaker_output_size = 1000  # Should be enough for speaker mapping JSON
+            logger.info(f"📏 SPEAKER OUTPUT SIZE: {speaker_output_size} characters")
             logger.info("=" * 80)
 
             # Get model identifier for AssemblyAI
-            model_identifier = getattr(
-                aai.LemurModel, self.config.default_model, None
-            )
+            model_identifier = getattr(aai.LemurModel, self.config.default_model, None)
             if model_identifier is None:
                 logger.warning(
                     f"⚠️ Model {self.config.default_model} not found, falling back to {self.config.fallback_model}"
@@ -452,7 +421,8 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
             )
             speaker_end_time = time.time()
             logger.info(
-                f"⏱️ SPEAKER IDENTIFICATION TIME: {speaker_end_time - speaker_start_time:.2f} seconds"
+                f"⏱️ SPEAKER IDENTIFICATION TIME: {
+                    speaker_end_time - speaker_start_time:.2f} seconds"
             )
 
             # Debug: Log the complete response from LeMUR
@@ -484,7 +454,7 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
             logger.error(f"🎯 CUSTOM PROMPTS: {custom_prompts is not None}")
             logger.error("=" * 80)
             logger.exception("Full speaker identification error traceback:")
-            logger.warning(f"⚠️ Falling back to empty speaker mapping")
+            logger.warning("⚠️ Falling back to empty speaker mapping")
             # Return empty mapping as fallback
             return {}
 
@@ -495,7 +465,9 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
         speaker_corrections: Dict[str, str],
         custom_prompts: Optional[Dict[str, str]] = None,
     ) -> List[TranscriptSegment]:
-        """Use LeMUR to improve punctuation by processing segments in batches."""
+        """
+        Use LeMUR to improve punctuation by processing segments in batches.
+        """
 
         logger.info("=" * 80)
         logger.info("🔤 STARTING BATCH PUNCTUATION IMPROVEMENT WITH LEMUR")
@@ -522,7 +494,9 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
         min_batch_size = 1  # At least 1 segment per batch
 
         logger.info(
-            f"📏 ADAPTIVE BATCH SIZING: {total_chars} chars → max_batch_chars={max_batch_chars}, max_batch_size={max_batch_size}"
+            f"📏 ADAPTIVE BATCH SIZING: {total_chars} chars → "
+            f"max_batch_chars={max_batch_chars}, "
+            f"max_batch_size={max_batch_size}"
         )
 
         batches = self._create_segment_batches(
@@ -533,9 +507,7 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
         improved_segments = []
 
         # Process batches with limited concurrency to avoid API rate limits
-        max_concurrent_batches = min(
-            3, len(batches)
-        )  # Max 3 concurrent requests
+        max_concurrent_batches = min(3, len(batches))  # Max 3 concurrent requests
 
         if len(batches) > 1 and max_concurrent_batches > 1:
             logger.info(
@@ -562,7 +534,9 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
                             batch_idx + 1,
                         )
                         logger.info(
-                            f"✅ BATCH {batch_idx + 1} COMPLETED: {len(batch_result)} segments processed"
+                            f"✅ BATCH {batch_idx + 1} COMPLETED: {
+                                len(batch_result)
+                            } segments processed"
                         )
                         return batch_idx, batch_result
 
@@ -579,8 +553,7 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
 
             # Process all batches concurrently
             tasks = [
-                process_single_batch(idx, batch)
-                for idx, batch in enumerate(batches)
+                process_single_batch(idx, batch) for idx, batch in enumerate(batches)
             ]
             batch_results = await asyncio.gather(*tasks)
 
@@ -589,7 +562,8 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
             for _, batch_segments in batch_results:
                 improved_segments.extend(batch_segments)
         else:
-            # Sequential processing for single batch or when concurrency disabled
+            # Sequential processing for single batch or when concurrency
+            # disabled
             logger.info(f"📚 PROCESSING {len(batches)} BATCHES SEQUENTIALLY")
 
             for batch_idx, batch in enumerate(batches):
@@ -607,7 +581,9 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
                     )
                     improved_segments.extend(batch_result)
                     logger.info(
-                        f"✅ BATCH {batch_idx + 1} COMPLETED: {len(batch_result)} segments processed"
+                        f"✅ BATCH {batch_idx + 1} COMPLETED: {
+                            len(batch_result)
+                        } segments processed"
                     )
 
                 except Exception as e:
@@ -622,7 +598,7 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
                     )
 
         logger.info("=" * 80)
-        logger.info(f"🎉 BATCH PUNCTUATION IMPROVEMENT COMPLETED")
+        logger.info("🎉 BATCH PUNCTUATION IMPROVEMENT COMPLETED")
         logger.info(f"📊 TOTAL PROCESSED SEGMENTS: {len(improved_segments)}")
         logger.info("=" * 80)
 
@@ -682,17 +658,13 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
         batch_text = self._prepare_batch_for_lemur(batch, speaker_corrections)
         batch_chars = len(batch_text)
 
-        logger.info(
-            f"📝 BATCH {batch_num} TEXT LENGTH: {batch_chars} characters"
-        )
+        logger.info(f"📝 BATCH {batch_num} TEXT LENGTH: {batch_chars} characters")
         logger.debug(f"📝 BATCH {batch_num} CONTENT: {batch_text[:200]}...")
 
         # Build prompt for this batch
         if custom_prompts and custom_prompts.get("punctuationPrompt"):
             custom_punctuation_prompt = custom_prompts["punctuationPrompt"]
-            logger.info(
-                f"🎯 BATCH {batch_num}: Using custom punctuation prompt"
-            )
+            logger.info(f"🎯 BATCH {batch_num}: Using custom punctuation prompt")
             prompt = f"""{custom_punctuation_prompt}
 
 說話者對應：{speaker_corrections}
@@ -702,9 +674,7 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
         else:
             # Get prompt from configuration
             language = (
-                "chinese"
-                if context.session_language.startswith("zh")
-                else "english"
+                "chinese" if context.session_language.startswith("zh") else "english"
             )
             prompt_template = get_punctuation_prompt(
                 language=language, variant="default"
@@ -752,9 +722,7 @@ Reply format: Speaker: content"""
         try:
             # Debug: Log the complete prompt being sent to LeMUR
             logger.info("=" * 80)
-            logger.info(
-                f"🔍 BATCH {batch_num} PUNCTUATION PROMPT SENT TO LeMUR:"
-            )
+            logger.info(f"🔍 BATCH {batch_num} PUNCTUATION PROMPT SENT TO LeMUR:")
             logger.info("=" * 80)
             logger.info(prompt)
             logger.info("=" * 80)
@@ -764,9 +732,7 @@ Reply format: Speaker: content"""
             logger.info("=" * 80)
 
             # Get model identifier for AssemblyAI
-            model_identifier = getattr(
-                aai.LemurModel, self.config.default_model, None
-            )
+            model_identifier = getattr(aai.LemurModel, self.config.default_model, None)
             if model_identifier is None:
                 logger.warning(
                     f"⚠️ Model {self.config.default_model} not found, falling back to {self.config.fallback_model}"
@@ -789,10 +755,13 @@ Reply format: Speaker: content"""
             batch_end_time = time.time()
 
             logger.info(
-                f"⏱️ BATCH {batch_num} PROCESSING TIME: {batch_end_time - batch_start_time:.2f} seconds"
+                f"⏱️ BATCH {batch_num} PROCESSING TIME: {
+                    batch_end_time - batch_start_time:.2f} seconds"
             )
             logger.info(
-                f"📏 BATCH {batch_num} RESPONSE LENGTH: {len(result.response)} characters"
+                f"📏 BATCH {batch_num} RESPONSE LENGTH: {
+                    len(result.response)
+                } characters"
             )
             logger.info(
                 f"📥 BATCH {batch_num} RESPONSE PREVIEW: {result.response[:300]}..."
@@ -854,22 +823,20 @@ Reply format: Speaker: content"""
         """Clean unwanted spaces between Chinese characters."""
         import re
 
-        # Iteratively remove spaces between Chinese characters until no more changes
+        # Iteratively remove spaces between Chinese characters until no more
+        # changes
         # This handles cases like "這 是 測 試" → "這是測試"
         prev_text = ""
         while prev_text != text:
             prev_text = text
             # Remove spaces between Chinese characters (CJK Unified Ideographs)
-            text = re.sub(
-                r"([\u4e00-\u9fff])\s+([\u4e00-\u9fff])", r"\1\2", text
-            )
+            text = re.sub(r"([\u4e00-\u9fff])\s+([\u4e00-\u9fff])", r"\1\2", text)
 
         # Remove spaces around Chinese punctuation
-        text = re.sub(
-            r"\s*([，。？！；：「」『』（）【】〔〕])\s*", r"\1", text
-        )
+        text = re.sub(r"\s*([，。？！；：「」『』（）【】〔〕])\s*", r"\1", text)
 
-        # Clean up multiple spaces but preserve single spaces between non-Chinese words
+        # Clean up multiple spaces but preserve single spaces between
+        # non-Chinese words
         text = re.sub(r"\s+", " ", text).strip()
 
         return text
@@ -898,15 +865,14 @@ Reply format: Speaker: content"""
                     speaker = parts[0].strip()
                     text = parts[1].strip()
 
-                    # Post-processing cleanup: Remove unwanted spaces in Chinese text
+                    # Post-processing cleanup: Remove unwanted spaces in
+                    # Chinese text
                     text = self._clean_chinese_text_spacing(text)
 
                     # Get timing from original segment if available
                     if segment_index < len(original_batch):
                         original_segment = original_batch[segment_index]
-                        start_time = int(
-                            round(original_segment.get("start", 0))
-                        )
+                        start_time = int(round(original_segment.get("start", 0)))
                         end_time = int(round(original_segment.get("end", 0)))
                     else:
                         # Use last segment timing as fallback
@@ -928,9 +894,7 @@ Reply format: Speaker: content"""
         while segment_index < len(original_batch):
             original_segment = original_batch[segment_index]
             speaker_raw = original_segment.get("speaker", "Unknown")
-            speaker_corrected = speaker_corrections.get(
-                speaker_raw, speaker_raw
-            )
+            speaker_corrected = speaker_corrections.get(speaker_raw, speaker_raw)
 
             improved_segments.append(
                 TranscriptSegment(
@@ -952,9 +916,7 @@ Reply format: Speaker: content"""
 
         for segment in batch:
             speaker_raw = segment.get("speaker", "Unknown")
-            speaker_corrected = speaker_corrections.get(
-                speaker_raw, speaker_raw
-            )
+            speaker_corrected = speaker_corrections.get(speaker_raw, speaker_raw)
 
             fallback_segments.append(
                 TranscriptSegment(
@@ -1021,7 +983,8 @@ Reply format: Speaker: content"""
         else:
             # English punctuation improvement prompt
             prompt = f"""
-You are a professional English text editor. Please improve the punctuation and sentence structure of the following coaching conversation transcript.
+You are a professional English text editor. Please improve the punctuation and
+sentence structure of the following coaching conversation transcript.
 
 Format Requirements:
 1. Maintain proper English spacing (spaces between words)
@@ -1029,7 +992,8 @@ Format Requirements:
 3. Follow standard English punctuation rules
 
 Punctuation Improvement Tasks:
-1. Add appropriate punctuation within long paragraphs (periods, commas, question marks, exclamation marks)
+1. Add appropriate punctuation within long paragraphs
+   (periods, commas, question marks, exclamation marks)
 2. Separate complete thoughts and ideas with commas
 3. End complete sentences with periods
 4. Use question marks for questions
@@ -1055,9 +1019,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             logger.info("=" * 80)
             logger.info(prompt)
             logger.info("=" * 80)
-            logger.info(
-                f"📝 INPUT TEXT LENGTH: {len(transcript_text)} characters"
-            )
+            logger.info(f"📝 INPUT TEXT LENGTH: {len(transcript_text)} characters")
             logger.info(f"📝 SPEAKER CORRECTIONS: {speaker_corrections}")
             logger.info(f"🧠 MODEL: {self.config.default_model}")
             logger.info("=" * 80)
@@ -1071,9 +1033,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             )
 
             # Get model identifier for AssemblyAI
-            model_identifier = getattr(
-                aai.LemurModel, self.config.default_model, None
-            )
+            model_identifier = getattr(aai.LemurModel, self.config.default_model, None)
             if model_identifier is None:
                 logger.warning(
                     f"⚠️ Model {self.config.default_model} not found, falling back to {self.config.fallback_model}"
@@ -1095,7 +1055,8 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             )
             punctuation_end_time = time.time()
             logger.info(
-                f"⏱️ PUNCTUATION IMPROVEMENT TIME: {punctuation_end_time - punctuation_start_time:.2f} seconds"
+                f"⏱️ PUNCTUATION IMPROVEMENT TIME: {
+                    punctuation_end_time - punctuation_start_time:.2f} seconds"
             )
 
             # Debug: Log the complete response from LeMUR
@@ -1110,9 +1071,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             improved_text = result.response.strip()
 
             # Debug: Log text after initial processing
-            logger.info(
-                f"📝 STRIPPED RESPONSE LENGTH: {len(improved_text)} characters"
-            )
+            logger.info(f"📝 STRIPPED RESPONSE LENGTH: {len(improved_text)} characters")
 
             # Ensure Traditional Chinese output for Chinese sessions
             if context.session_language.startswith("zh"):
@@ -1139,9 +1098,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             logger.info(improved_text)
             logger.info("=" * 80)
 
-            logger.info(
-                f"🔤 LeMUR punctuation improvement completed successfully"
-            )
+            logger.info("🔤 LeMUR punctuation improvement completed successfully")
             return improved_text
 
         except Exception as e:
@@ -1156,7 +1113,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             logger.error(f"🎯 CUSTOM PROMPTS: {custom_prompts is not None}")
             logger.error("=" * 80)
             logger.exception("Full punctuation improvement error traceback:")
-            logger.warning(f"⚠️ Falling back to original transcript text")
+            logger.warning("⚠️ Falling back to original transcript text")
             # Return original text as fallback
             return transcript_text
 
@@ -1195,9 +1152,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                     # Get timing from original segment if available
                     if segment_index < len(original_segments):
                         original_segment = original_segments[segment_index]
-                        start_time = int(
-                            round(original_segment.get("start", 0))
-                        )
+                        start_time = int(round(original_segment.get("start", 0)))
                         end_time = int(round(original_segment.get("end", 0)))
                     else:
                         # Use last segment timing as fallback
@@ -1219,9 +1174,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         while segment_index < len(original_segments):
             original_segment = original_segments[segment_index]
             speaker_raw = original_segment.get("speaker", "Unknown")
-            speaker_corrected = speaker_corrections.get(
-                speaker_raw, speaker_raw
-            )
+            speaker_corrected = speaker_corrections.get(speaker_raw, speaker_raw)
 
             improved_segments.append(
                 TranscriptSegment(
@@ -1251,9 +1204,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         Returns:
             List of segments with corrected speakers but original text
         """
-        logger.info(
-            f"🎭 Applying speaker corrections only: {speaker_corrections}"
-        )
+        logger.info(f"🎭 Applying speaker corrections only: {speaker_corrections}")
 
         corrected_segments = []
         for segment in segments:
@@ -1267,9 +1218,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                     start=int(round(segment.get("start", 0))),
                     end=int(round(segment.get("end", 0))),
                     speaker=corrected_speaker,
-                    text=segment.get(
-                        "text", ""
-                    ),  # Keep original text unchanged
+                    text=segment.get("text", ""),  # Keep original text unchanged
                 )
             )
 
@@ -1302,32 +1251,27 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             logger.info(
                 "🔄 Combined mode disabled, falling back to sequential processing"
             )
-            return await self.smooth_transcript(
-                segments, context, custom_prompts
-            )
+            return await self.smooth_transcript(segments, context, custom_prompts)
 
         start_time = time.time()
         logger.info("=" * 80)
+        logger.info("🔥 STARTING COMBINED LEMUR PROCESSING (Speaker + Punctuation)")
         logger.info(
-            f"🔥 STARTING COMBINED LEMUR PROCESSING (Speaker + Punctuation)"
-        )
-        logger.info(
-            f"⏰ START TIME: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))}"
+            f"⏰ START TIME: {
+                time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))
+            }"
         )
         logger.info("=" * 80)
         logger.info(f"📊 INPUT SEGMENTS COUNT: {len(segments)}")
         logger.info(f"🌐 SESSION LANGUAGE: {context.session_language}")
-        logger.info(
-            f"🎯 CUSTOM PROMPTS PROVIDED: {custom_prompts is not None}"
-        )
+        logger.info(f"🎯 CUSTOM PROMPTS PROVIDED: {custom_prompts is not None}")
 
         try:
             # Prepare transcript for LeMUR (raw, with spaces - LLM will clean them)
-            # Don't normalize speakers - preserve original A/B format from AssemblyAI
+            # Don't normalize speakers - preserve original A/B format from
+            # AssemblyAI
             transcript_text, normalized_to_original_map = (
-                self._prepare_transcript_for_lemur(
-                    segments, normalize_speakers=False
-                )
+                self._prepare_transcript_for_lemur(segments, normalize_speakers=False)
             )
             logger.info(
                 f"📝 PREPARED TRANSCRIPT LENGTH: {len(transcript_text)} characters"
@@ -1336,7 +1280,8 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                 f"🔄 Normalization mapping (A/B -> original): {normalized_to_original_map}"
             )
 
-            # Show sample of input text to verify spaced Chinese is being sent to LeMUR
+            # Show sample of input text to verify spaced Chinese is being sent
+            # to LeMUR
             sample_text = (
                 transcript_text[:200] + "..."
                 if len(transcript_text) > 200
@@ -1350,9 +1295,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
 
             # Get combined prompt from configuration
             language = (
-                "chinese"
-                if context.session_language.startswith("zh")
-                else "english"
+                "chinese" if context.session_language.startswith("zh") else "english"
             )
 
             if custom_prompts and custom_prompts.get("combinedPrompt"):
@@ -1367,18 +1310,14 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                         f"🎯 USING COMBINED PROMPT: combined_processing.{language}.default"
                     )
                     logger.info(
-                        f"📝 PROMPT INCLUDES: Space removal, Speaker ID, Traditional Chinese, Punctuation"
+                        "📝 PROMPT INCLUDES: Space removal, Speaker ID, Traditional Chinese, Punctuation"
                     )
-                    prompt = prompt_template.format(
-                        transcript_text=transcript_text
-                    )
+                    prompt = prompt_template.format(transcript_text=transcript_text)
                     # Log sample of the actual prompt being sent
                     prompt_preview = (
                         prompt[:500] + "..." if len(prompt) > 500 else prompt
                     )
-                    logger.info(
-                        f"🔍 COMBINED PROMPT PREVIEW: {prompt_preview}"
-                    )
+                    logger.info(f"🔍 COMBINED PROMPT PREVIEW: {prompt_preview}")
                 else:
                     logger.error(
                         f"❌ CRITICAL ERROR: No combined prompt found for language '{language}' - this should not happen!"
@@ -1393,9 +1332,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             )  # 100% buffer for combined output
 
             # Get model identifier
-            model_identifier = getattr(
-                aai.LemurModel, self.config.default_model, None
-            )
+            model_identifier = getattr(aai.LemurModel, self.config.default_model, None)
             if model_identifier is None:
                 logger.warning(
                     f"⚠️ Model {self.config.default_model} not found, falling back to {self.config.fallback_model}"
@@ -1411,9 +1348,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             logger.info("=" * 80)
             logger.info(prompt[:500] + "..." if len(prompt) > 500 else prompt)
             logger.info("=" * 80)
-            logger.info(
-                f"📝 INPUT TEXT LENGTH: {len(transcript_text)} characters"
-            )
+            logger.info(f"📝 INPUT TEXT LENGTH: {len(transcript_text)} characters")
             logger.info(f"🧠 MODEL: {self.config.default_model}")
             logger.info(f"📏 OUTPUT SIZE: {estimated_output_size} characters")
             logger.info("=" * 80)
@@ -1430,11 +1365,10 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             processing_end_time = time.time()
 
             logger.info(
-                f"⏱️ COMBINED PROCESSING TIME: {processing_end_time - processing_start_time:.2f} seconds"
+                f"⏱️ COMBINED PROCESSING TIME: {
+                    processing_end_time - processing_start_time:.2f} seconds"
             )
-            logger.info(
-                f"📏 RESPONSE LENGTH: {len(result.response)} characters"
-            )
+            logger.info(f"📏 RESPONSE LENGTH: {len(result.response)} characters")
 
             # Parse combined response
             combined_response = result.response.strip()
@@ -1492,9 +1426,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             logger.info(
                 f"⏰ END TIME: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))}"
             )
-            logger.info(
-                f"⏱️ TOTAL PROCESSING TIME: {processing_time:.2f} seconds"
-            )
+            logger.info(f"⏱️ TOTAL PROCESSING TIME: {processing_time:.2f} seconds")
             logger.info(
                 f"📊 RESULTS: {len(improved_segments)} segments, speaker mapping: {lemur_result.speaker_mapping}"
             )
@@ -1510,17 +1442,13 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             logger.error(
                 f"⏰ FAILURE TIME: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))}"
             )
-            logger.error(
-                f"⏱️ TIME BEFORE FAILURE: {processing_time:.2f} seconds"
-            )
+            logger.error(f"⏱️ TIME BEFORE FAILURE: {processing_time:.2f} seconds")
             logger.error(f"💥 ERROR: {str(e)}")
             logger.error("=" * 80)
             logger.exception("Full combined processing error traceback:")
             logger.warning("🔄 Falling back to sequential processing")
             # Fallback to sequential processing
-            return await self.smooth_transcript(
-                segments, context, custom_prompts
-            )
+            return await self.smooth_transcript(segments, context, custom_prompts)
 
     def _parse_combined_response(
         self,
@@ -1545,15 +1473,15 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         transcript_content = ""
 
         try:
-            logger.info(
-                "📝 Parsing LeMUR combined response with flexible handling"
-            )
+            logger.info("📝 Parsing LeMUR combined response with flexible handling")
 
             # Strategy 1: Try to extract JSON speaker mapping (if present)
             json_patterns = [
                 r"```json\s*(\{.*?\})\s*```",  # Standard JSON blocks
-                r'\{[^}]*"speaker_mapping"[^}]*\}',  # Inline JSON with speaker_mapping
-                r'\{"[AB]":\s*"[^"]+"\s*,?\s*"[AB]":\s*"[^"]+"\}',  # Simple A/B mapping
+                # Inline JSON with speaker_mapping
+                r'\{[^}]*"speaker_mapping"[^}]*\}',
+                # Simple A/B mapping
+                r'\{"[AB]":\s*"[^"]+"\s*,?\s*"[AB]":\s*"[^"]+"\}',
             ]
 
             for pattern in json_patterns:
@@ -1569,14 +1497,10 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                         speaker_mapping = mapping_data.get(
                             "speaker_mapping", mapping_data
                         )
-                        logger.info(
-                            f"📊 Extracted speaker mapping: {speaker_mapping}"
-                        )
+                        logger.info(f"📊 Extracted speaker mapping: {speaker_mapping}")
                         break
                     except (json.JSONDecodeError, IndexError) as e:
-                        logger.debug(
-                            f"JSON pattern failed: {pattern}, error: {e}"
-                        )
+                        logger.debug(f"JSON pattern failed: {pattern}, error: {e}")
                         continue
 
             # Strategy 2: Extract transcript content from various formats
@@ -1585,9 +1509,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                 r"(?:教練:|客戶:|Coach:|Client:).*",  # Direct speaker lines
             ]
 
-            transcript_match = re.search(
-                transcript_patterns[0], response, re.DOTALL
-            )
+            transcript_match = re.search(transcript_patterns[0], response, re.DOTALL)
             if transcript_match:
                 transcript_content = transcript_match.group(1)
                 logger.info("📝 Extracted transcript from structured block")
@@ -1622,7 +1544,8 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                     f"📝 Extracted {len(transcript_lines)} transcript lines using fallback method"
                 )
 
-            # Strategy 4: Skip automatic role inference (will use statistical method later)
+            # Strategy 4: Skip automatic role inference (will use statistical
+            # method later)
             if "教練:" in transcript_content or "客戶:" in transcript_content:
                 logger.info(
                     "⚠️ LeMUR returned role labels (教練/客戶), but we'll ignore them and use statistical determination later"
@@ -1630,13 +1553,11 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                 # Don't infer mapping here - keep original A/B labels
 
             # Parse transcript content to segments with mandatory cleanup
-            improved_segments = (
-                self._parse_transcript_content_to_segments_with_cleanup(
-                    transcript_content,
-                    original_segments,
-                    speaker_mapping,
-                    normalized_to_original_map,
-                )
+            improved_segments = self._parse_transcript_content_to_segments_with_cleanup(
+                transcript_content,
+                original_segments,
+                speaker_mapping,
+                normalized_to_original_map,
             )
 
             logger.info(
@@ -1649,16 +1570,12 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
 
             # With updated prompts, we should consistently get A/B format
             # Only log if unexpected formats are found
-            unexpected_formats = [
-                s for s in all_speakers if s not in ["A", "B"]
-            ]
+            unexpected_formats = [s for s in all_speakers if s not in ["A", "B"]]
             if unexpected_formats:
                 logger.warning(
                     f"⚠️ Unexpected speaker formats detected: {unexpected_formats}"
                 )
-                logger.info(
-                    "ℹ️ Consider updating LeMUR prompts if this persists"
-                )
+                logger.info("ℹ️ Consider updating LeMUR prompts if this persists")
             else:
                 logger.info("✅ Consistent A/B speaker format maintained")
 
@@ -1702,9 +1619,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                     # Get timing from original segment
                     if segment_index < len(original_segments):
                         original_segment = original_segments[segment_index]
-                        start_time = int(
-                            round(original_segment.get("start", 0))
-                        )
+                        start_time = int(round(original_segment.get("start", 0)))
                         end_time = int(round(original_segment.get("end", 0)))
                     else:
                         start_time = 0
@@ -1763,9 +1678,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                     text = text.strip()
 
                     if speaker in ["教練", "客戶", "Coach", "Client"]:
-                        content_lines.append(
-                            (speaker, text[:50])
-                        )  # First 50 chars
+                        content_lines.append((speaker, text[:50]))  # First 50 chars
 
                     if len(content_lines) >= 4:  # Analyze first 4 lines
                         break
@@ -1785,9 +1698,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                 second_lemur_speaker = (
                     content_lines[1][0]
                     if content_lines[1][0] != first_lemur_speaker
-                    else (
-                        content_lines[2][0] if len(content_lines) > 2 else None
-                    )
+                    else (content_lines[2][0] if len(content_lines) > 2 else None)
                 )
 
                 if first_lemur_speaker and second_lemur_speaker:
@@ -1837,15 +1748,15 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                         logger.warning(
                             f"⚠️ LeMUR returned role labels despite A/B format prompts: {speaker}"
                         )
-                        # Convert back to A/B alternating pattern (will be mapped to original format below)
-                        speaker = (
-                            "A" if len(improved_segments) % 2 == 0 else "B"
-                        )
+                        # Convert back to A/B alternating pattern (will be
+                        # mapped to original format below)
+                        speaker = "A" if len(improved_segments) % 2 == 0 else "B"
                         logger.debug(
                             f"🔄 Converted role label to alternating A/B: {parts[0].strip()} → {speaker}"
                         )
 
-                    # Map normalized A/B back to original speaker format if needed
+                    # Map normalized A/B back to original speaker format if
+                    # needed
                     if speaker in normalized_to_original_map:
                         original_speaker = normalized_to_original_map[speaker]
                         logger.debug(
@@ -1853,17 +1764,14 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                         )
                         speaker = original_speaker
 
-                    # MANDATORY CLEANUP - Always applied regardless of LeMUR output
-                    text = self._apply_mandatory_cleanup(
-                        text, context_language="zh"
-                    )
+                    # MANDATORY CLEANUP - Always applied regardless of LeMUR
+                    # output
+                    text = self._apply_mandatory_cleanup(text, context_language="zh")
 
                     # Get timing from original segment
                     if segment_index < len(original_segments):
                         original_segment = original_segments[segment_index]
-                        start_time = int(
-                            round(original_segment.get("start", 0))
-                        )
+                        start_time = int(round(original_segment.get("start", 0)))
                         end_time = int(round(original_segment.get("end", 0)))
                     else:
                         # 修復：當 LeMUR 返回更多 segments 時，使用合理的時間
@@ -1880,9 +1788,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                         elif original_segments:
                             # 如果沒有已處理的 segment，使用最後原始 segment 的結束時間
                             last_original = original_segments[-1]
-                            start_time = int(
-                                round(last_original.get("end", 0))
-                            )
+                            start_time = int(round(last_original.get("end", 0)))
                             end_time = start_time + 2000  # 估計 2 秒
                             logger.debug(
                                 f"📅 First extra segment timing: {start_time}-{end_time}ms (from last original)"
@@ -1933,9 +1839,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         )
         return improved_segments
 
-    def _apply_mandatory_cleanup(
-        self, text: str, context_language: str = "zh"
-    ) -> str:
+    def _apply_mandatory_cleanup(self, text: str, context_language: str = "zh") -> str:
         """
         Apply mandatory text cleanup that should always happen.
 
@@ -2016,9 +1920,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                 TranscriptSegment(
                     start=int(round(segment.get("start", 0))),
                     end=int(round(segment.get("end", 0))),
-                    speaker=segment.get(
-                        "speaker", "A"
-                    ),  # Keep original speaker
+                    speaker=segment.get("speaker", "A"),  # Keep original speaker
                     text=cleaned_text,
                 )
             )
@@ -2052,15 +1954,11 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
                 }
 
             # 計算中文字符數（更準確的衡量標準）
-            chinese_chars = len(
-                [c for c in segment.text if "\u4e00" <= c <= "\u9fff"]
-            )
+            chinese_chars = len([c for c in segment.text if "\u4e00" <= c <= "\u9fff"])
             total_chars = len(segment.text.strip())
 
             speaker_stats[speaker]["char_count"] += total_chars
-            speaker_stats[speaker]["duration_ms"] += (
-                segment.end - segment.start
-            )
+            speaker_stats[speaker]["duration_ms"] += segment.end - segment.start
             speaker_stats[speaker]["segment_count"] += 1
 
             logger.debug(
@@ -2070,21 +1968,17 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         # 記錄統計結果
         logger.info("📊 Speaker Statistics:")
         for speaker, stats in speaker_stats.items():
-            avg_chars_per_segment = stats["char_count"] / max(
-                stats["segment_count"], 1
-            )
+            avg_chars_per_segment = stats["char_count"] / max(stats["segment_count"], 1)
             logger.info(
                 f"  {speaker}: {stats['char_count']} chars, "
-                f"{stats['duration_ms']/1000:.1f}s, "
+                f"{stats['duration_ms'] / 1000:.1f}s, "
                 f"{stats['segment_count']} segments, "
                 f"avg {avg_chars_per_segment:.1f} chars/segment"
             )
 
         # 判斷角色：字數多的是客戶，少的是教練
         if len(speaker_stats) < 2:
-            logger.warning(
-                "⚠️ Less than 2 speakers found, cannot determine roles"
-            )
+            logger.warning("⚠️ Less than 2 speakers found, cannot determine roles")
             return {}
 
         logger.info("🔍 Analyzing role determination criteria...")
@@ -2114,8 +2008,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
 
         # 檢查一致性
         chars_time_consistent = (
-            coach_by_chars == coach_by_time
-            and client_by_chars == client_by_time
+            coach_by_chars == coach_by_time and client_by_chars == client_by_time
         )
         logger.info(
             f"🎯 Character/time consistency: {'✅ Consistent' if chars_time_consistent else '⚠️ Inconsistent'}"
@@ -2178,9 +2071,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         將角色映射應用到segments，替換speaker標籤。
         """
         if not role_mapping:
-            logger.info(
-                "📋 No role mapping provided, keeping original speaker labels"
-            )
+            logger.info("📋 No role mapping provided, keeping original speaker labels")
             return segments
 
         updated_segments = []
@@ -2195,9 +2086,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             )
             updated_segments.append(updated_segment)
 
-        logger.info(
-            f"📝 Applied role mapping to {len(updated_segments)} segments"
-        )
+        logger.info(f"📝 Applied role mapping to {len(updated_segments)} segments")
         return updated_segments
 
     def _merge_close_segments(
@@ -2224,7 +2113,6 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
 
             # Same speaker and gap is small enough - merge
             if current["speaker"] == next_seg["speaker"] and gap < max_gap_ms:
-
                 # Combine text content
                 current["text"] = current["text"] + next_seg["text"]
                 current["end"] = next_seg["end"]
@@ -2240,9 +2128,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         # Don't forget the last segment
         merged.append(current)
 
-        logger.info(
-            f"🔀 Segment merging: {len(segments)} → {len(merged)} segments"
-        )
+        logger.info(f"🔀 Segment merging: {len(segments)} → {len(merged)} segments")
         return merged
 
 
@@ -2287,8 +2173,7 @@ async def smooth_transcript_with_lemur(
             punctuation_optimization_only=punctuation_optimization_only,
         )
     elif use_combined_processing is True or (
-        use_combined_processing is None
-        and smoother.config.combined_mode_enabled
+        use_combined_processing is None and smoother.config.combined_mode_enabled
     ):
         # Use combined processing
         return await smoother.combined_processing_with_lemur(
@@ -2296,6 +2181,4 @@ async def smooth_transcript_with_lemur(
         )
     else:
         # Use standard sequential processing
-        return await smoother.smooth_transcript(
-            segments, context, custom_prompts
-        )
+        return await smoother.smooth_transcript(segments, context, custom_prompts)

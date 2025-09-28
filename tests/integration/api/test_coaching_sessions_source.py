@@ -1,8 +1,10 @@
 """Test coaching sessions API with SessionSource field."""
 
-import pytest
 from datetime import date
 from uuid import uuid4
+
+import pytest
+
 from coaching_assistant.api.coaching_sessions import (
     CoachingSessionCreate,
     SessionSource,

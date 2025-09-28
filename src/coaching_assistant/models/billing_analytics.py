@@ -1,23 +1,25 @@
 """Billing Analytics model for enhanced admin reporting and revenue analysis."""
 
-from decimal import Decimal
 from datetime import datetime
-from typing import Dict, Any
+from decimal import Decimal
+from typing import Any, Dict
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Boolean,
-    ForeignKey,
     DECIMAL,
+    JSON,
+    Boolean,
+    Column,
     DateTime,
-    UniqueConstraint,
+    ForeignKey,
     Index,
+    Integer,
+    String,
     Text,
+    UniqueConstraint,
 )
-from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import JSON
+from sqlalchemy.orm import relationship
+
 from .base import BaseModel
 
 
@@ -51,9 +53,7 @@ class BillingAnalytics(BaseModel):
 
     # Revenue metrics
     total_revenue_usd = Column(DECIMAL(12, 4), default=0, nullable=False)
-    subscription_revenue_usd = Column(
-        DECIMAL(12, 4), default=0, nullable=False
-    )
+    subscription_revenue_usd = Column(DECIMAL(12, 4), default=0, nullable=False)
     usage_overage_usd = Column(DECIMAL(12, 4), default=0, nullable=False)
     one_time_fees_usd = Column(DECIMAL(12, 4), default=0, nullable=False)
 
@@ -75,23 +75,15 @@ class BillingAnalytics(BaseModel):
     total_provider_cost_usd = Column(DECIMAL(10, 4), default=0, nullable=False)
 
     # Customer health metrics
-    plan_utilization_percentage = Column(
-        DECIMAL(5, 2), default=0, nullable=False
-    )
+    plan_utilization_percentage = Column(DECIMAL(5, 2), default=0, nullable=False)
     days_active_in_period = Column(Integer, default=0, nullable=False)
-    avg_sessions_per_active_day = Column(
-        DECIMAL(8, 2), default=0, nullable=False
-    )
-    churn_risk_score = Column(
-        DECIMAL(3, 2), default=0, nullable=False
-    )  # 0.0-1.0
+    avg_sessions_per_active_day = Column(DECIMAL(8, 2), default=0, nullable=False)
+    churn_risk_score = Column(DECIMAL(3, 2), default=0, nullable=False)  # 0.0-1.0
 
     # Export and feature usage
     exports_by_format = Column(JSON, default={}, nullable=False)
     total_exports = Column(Integer, default=0, nullable=False)
-    features_used = Column(
-        JSON, default=[], nullable=False
-    )  # List of feature names
+    features_used = Column(JSON, default=[], nullable=False)  # List of feature names
     api_calls_made = Column(Integer, default=0, nullable=False)
 
     # Cohort and segmentation
@@ -102,12 +94,8 @@ class BillingAnalytics(BaseModel):
     )  # 'new', 'growing', 'power', 'enterprise'
 
     # Performance and quality metrics
-    avg_processing_time_seconds = Column(
-        DECIMAL(8, 2), default=0, nullable=False
-    )
-    success_rate_percentage = Column(
-        DECIMAL(5, 2), default=100, nullable=False
-    )
+    avg_processing_time_seconds = Column(DECIMAL(8, 2), default=0, nullable=False)
+    success_rate_percentage = Column(DECIMAL(5, 2), default=100, nullable=False)
     support_tickets_count = Column(Integer, default=0, nullable=False)
 
     # Geographic and demographic
@@ -116,12 +104,8 @@ class BillingAnalytics(BaseModel):
     user_language = Column(String(10), nullable=True)
 
     # Predictive metrics
-    predicted_next_month_usage = Column(
-        DECIMAL(10, 2), default=0, nullable=False
-    )
-    upgrade_probability = Column(
-        DECIMAL(3, 2), default=0, nullable=False
-    )  # 0.0-1.0
+    predicted_next_month_usage = Column(DECIMAL(10, 2), default=0, nullable=False)
+    upgrade_probability = Column(DECIMAL(3, 2), default=0, nullable=False)  # 0.0-1.0
     lifetime_value_estimate = Column(DECIMAL(12, 4), default=0, nullable=False)
 
     # Notes and flags
@@ -170,9 +154,7 @@ class BillingAnalytics(BaseModel):
     def gross_margin_percentage(self) -> float:
         """Calculate gross margin percentage."""
         if self.total_revenue_usd and self.total_revenue_usd > 0:
-            return (
-                self.gross_margin_usd / float(self.total_revenue_usd)
-            ) * 100
+            return (self.gross_margin_usd / float(self.total_revenue_usd)) * 100
         return 0.0
 
     @property
@@ -198,8 +180,7 @@ class BillingAnalytics(BaseModel):
         """Calculate average session duration in minutes."""
         if self.transcriptions_completed and self.transcriptions_completed > 0:
             return (
-                float(self.total_minutes_processed or 0)
-                / self.transcriptions_completed
+                float(self.total_minutes_processed or 0) / self.transcriptions_completed
             )
         return 0.0
 
@@ -208,8 +189,7 @@ class BillingAnalytics(BaseModel):
         """Determine if user is a power user based on usage patterns."""
         return (
             float(self.plan_utilization_percentage or 0) > 70
-            and (self.days_active_in_period or 0)
-            > (self._get_period_days() * 0.6)
+            and (self.days_active_in_period or 0) > (self._get_period_days() * 0.6)
             and float(self.avg_sessions_per_active_day or 0) > 3
         )
 
@@ -218,8 +198,7 @@ class BillingAnalytics(BaseModel):
         """Determine if user is at churn risk."""
         return (
             float(self.churn_risk_score or 0) > 0.7
-            or (self.days_active_in_period or 0)
-            < (self._get_period_days() * 0.2)
+            or (self.days_active_in_period or 0) < (self._get_period_days() * 0.2)
             or float(self.plan_utilization_percentage or 0) < 10
         )
 
@@ -230,22 +209,14 @@ class BillingAnalytics(BaseModel):
     def calculate_customer_health_score(self) -> float:
         """Calculate overall customer health score (0-100)."""
         # Weighted scoring based on multiple factors
-        utilization_score = (
-            min(float(self.plan_utilization_percentage or 0), 100) * 0.3
-        )
+        utilization_score = min(float(self.plan_utilization_percentage or 0), 100) * 0.3
         activity_score = (
-            ((self.days_active_in_period or 0) / self._get_period_days())
-            * 100
-            * 0.3
+            ((self.days_active_in_period or 0) / self._get_period_days()) * 100 * 0.3
         )
-        usage_score = (
-            min(float(self.avg_sessions_per_active_day or 0) * 10, 100) * 0.2
-        )
+        usage_score = min(float(self.avg_sessions_per_active_day or 0) * 10, 100) * 0.2
         success_score = float(self.success_rate_percentage or 100) * 0.2
 
-        health_score = (
-            utilization_score + activity_score + usage_score + success_score
-        )
+        health_score = utilization_score + activity_score + usage_score + success_score
         return min(health_score, 100.0)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -253,19 +224,11 @@ class BillingAnalytics(BaseModel):
         return {
             "id": str(self.id),
             "user_id": str(self.user_id),
-            "recorded_at": (
-                self.recorded_at.isoformat() if self.recorded_at else None
-            ),
+            "recorded_at": (self.recorded_at.isoformat() if self.recorded_at else None),
             "period": {
                 "type": self.period_type,
-                "start": (
-                    self.period_start.isoformat()
-                    if self.period_start
-                    else None
-                ),
-                "end": (
-                    self.period_end.isoformat() if self.period_end else None
-                ),
+                "start": (self.period_start.isoformat() if self.period_start else None),
+                "end": (self.period_end.isoformat() if self.period_end else None),
                 "days": self._get_period_days(),
             },
             "plan_info": {
@@ -273,9 +236,7 @@ class BillingAnalytics(BaseModel):
                 "plan_changed": self.plan_changed_during_period,
                 "previous_plan": self.previous_plan,
                 "change_date": (
-                    self.plan_change_date.isoformat()
-                    if self.plan_change_date
-                    else None
+                    self.plan_change_date.isoformat() if self.plan_change_date else None
                 ),
             },
             "revenue": {
@@ -291,9 +252,7 @@ class BillingAnalytics(BaseModel):
                 "total_minutes": float(self.total_minutes_processed or 0),
                 "total_hours": self.total_hours_processed,
                 "active_days": self.days_active_in_period or 0,
-                "avg_sessions_per_day": float(
-                    self.avg_sessions_per_active_day or 0
-                ),
+                "avg_sessions_per_day": float(self.avg_sessions_per_active_day or 0),
                 "avg_session_duration": self.avg_session_duration_minutes,
             },
             "billing": {
@@ -309,19 +268,15 @@ class BillingAnalytics(BaseModel):
                 "per_minute": self.cost_per_minute,
             },
             "metrics": {
-                "plan_utilization": float(
-                    self.plan_utilization_percentage or 0
-                ),
+                "plan_utilization": float(self.plan_utilization_percentage or 0),
                 "churn_risk_score": float(self.churn_risk_score or 0),
                 "success_rate": float(self.success_rate_percentage or 100),
-                "customer_health_score": self.calculate_customer_health_score(),
+                "customer_health_score": (self.calculate_customer_health_score()),
                 "gross_margin": self.gross_margin_usd,
                 "gross_margin_percentage": self.gross_margin_percentage,
             },
             "predictions": {
-                "next_month_usage": float(
-                    self.predicted_next_month_usage or 0
-                ),
+                "next_month_usage": float(self.predicted_next_month_usage or 0),
                 "upgrade_probability": float(self.upgrade_probability or 0),
                 "lifetime_value": float(self.lifetime_value_estimate or 0),
             },
@@ -331,9 +286,7 @@ class BillingAnalytics(BaseModel):
             },
             "user_profile": {
                 "signup_date": (
-                    self.user_signup_date.isoformat()
-                    if self.user_signup_date
-                    else None
+                    self.user_signup_date.isoformat() if self.user_signup_date else None
                 ),
                 "tenure_days": self.user_tenure_days or 0,
                 "segment": self.user_segment,
@@ -342,9 +295,7 @@ class BillingAnalytics(BaseModel):
                 "language": self.user_language,
             },
             "quality": {
-                "avg_processing_time": float(
-                    self.avg_processing_time_seconds or 0
-                ),
+                "avg_processing_time": float(self.avg_processing_time_seconds or 0),
                 "support_tickets": self.support_tickets_count or 0,
                 "features_used": self.features_used or [],
                 "api_calls": self.api_calls_made or 0,
@@ -355,12 +306,8 @@ class BillingAnalytics(BaseModel):
                 "anomaly_flags": self.anomaly_flags or [],
                 "billing_notes": self.billing_notes,
             },
-            "created_at": (
-                self.created_at.isoformat() if self.created_at else None
-            ),
-            "updated_at": (
-                self.updated_at.isoformat() if self.updated_at else None
-            ),
+            "created_at": (self.created_at.isoformat() if self.created_at else None),
+            "updated_at": (self.updated_at.isoformat() if self.updated_at else None),
         }
 
     @classmethod
@@ -392,41 +339,27 @@ class BillingAnalytics(BaseModel):
             previous_plan=usage_data.get("previous_plan"),
             plan_change_date=usage_data.get("plan_change_date"),
             # Revenue
-            total_revenue_usd=Decimal(
-                str(revenue_data.get("total_revenue", 0))
-            ),
+            total_revenue_usd=Decimal(str(revenue_data.get("total_revenue", 0))),
             subscription_revenue_usd=Decimal(
                 str(revenue_data.get("subscription_revenue", 0))
             ),
-            usage_overage_usd=Decimal(
-                str(revenue_data.get("overage_revenue", 0))
-            ),
-            one_time_fees_usd=Decimal(
-                str(revenue_data.get("one_time_fees", 0))
-            ),
+            usage_overage_usd=Decimal(str(revenue_data.get("overage_revenue", 0))),
+            one_time_fees_usd=Decimal(str(revenue_data.get("one_time_fees", 0))),
             # Usage
             sessions_created=usage_data.get("sessions_created", 0),
-            transcriptions_completed=usage_data.get(
-                "transcriptions_completed", 0
-            ),
+            transcriptions_completed=usage_data.get("transcriptions_completed", 0),
             total_minutes_processed=Decimal(
                 str(usage_data.get("total_minutes_processed", 0))
             ),
             unique_active_days=usage_data.get("unique_active_days", 0),
             # Billing breakdown
-            original_transcriptions=usage_data.get(
-                "original_transcriptions", 0
-            ),
+            original_transcriptions=usage_data.get("original_transcriptions", 0),
             free_retries=usage_data.get("free_retries", 0),
             paid_retranscriptions=usage_data.get("paid_retranscriptions", 0),
             overage_minutes=Decimal(str(usage_data.get("overage_minutes", 0))),
             # Provider costs
-            google_stt_cost_usd=Decimal(
-                str(usage_data.get("google_stt_cost", 0))
-            ),
-            assemblyai_cost_usd=Decimal(
-                str(usage_data.get("assemblyai_cost", 0))
-            ),
+            google_stt_cost_usd=Decimal(str(usage_data.get("google_stt_cost", 0))),
+            assemblyai_cost_usd=Decimal(str(usage_data.get("assemblyai_cost", 0))),
             total_provider_cost_usd=Decimal(
                 str(usage_data.get("total_provider_cost", 0))
             ),
@@ -438,9 +371,7 @@ class BillingAnalytics(BaseModel):
             avg_sessions_per_active_day=Decimal(
                 str(usage_data.get("avg_sessions_per_day", 0))
             ),
-            churn_risk_score=Decimal(
-                str(usage_data.get("churn_risk_score", 0))
-            ),
+            churn_risk_score=Decimal(str(usage_data.get("churn_risk_score", 0))),
             # Export and features
             exports_by_format=usage_data.get("exports_by_format", {}),
             total_exports=usage_data.get("total_exports", 0),
@@ -457,20 +388,14 @@ class BillingAnalytics(BaseModel):
             avg_processing_time_seconds=Decimal(
                 str(usage_data.get("avg_processing_time", 0))
             ),
-            success_rate_percentage=Decimal(
-                str(usage_data.get("success_rate", 100))
-            ),
+            success_rate_percentage=Decimal(str(usage_data.get("success_rate", 100))),
             support_tickets_count=usage_data.get("support_tickets", 0),
             # Predictions
             predicted_next_month_usage=Decimal(
                 str(usage_data.get("predicted_usage", 0))
             ),
-            upgrade_probability=Decimal(
-                str(usage_data.get("upgrade_probability", 0))
-            ),
-            lifetime_value_estimate=Decimal(
-                str(usage_data.get("ltv_estimate", 0))
-            ),
+            upgrade_probability=Decimal(str(usage_data.get("upgrade_probability", 0))),
+            lifetime_value_estimate=Decimal(str(usage_data.get("ltv_estimate", 0))),
             # Flags and notes
             anomaly_flags=usage_data.get("anomaly_flags", []),
             billing_notes=usage_data.get("billing_notes"),

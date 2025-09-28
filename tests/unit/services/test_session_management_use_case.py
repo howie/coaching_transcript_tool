@@ -4,34 +4,36 @@ This module contains comprehensive unit tests for all session management use cas
 following Clean Architecture principles with proper mocking of dependencies.
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock
-from uuid import uuid4, UUID
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import List, Optional
 from dataclasses import replace
+from datetime import datetime, timedelta
+from unittest.mock import Mock
+from uuid import uuid4
 
-# Import use cases to test
-from src.coaching_assistant.core.services.session_management_use_case import (
-    SessionCreationUseCase,
-    SessionRetrievalUseCase,
-    SessionStatusUpdateUseCase,
-    SessionTranscriptUpdateUseCase,
-    SessionUploadManagementUseCase,
-    SessionTranscriptionManagementUseCase,
-    SessionExportUseCase,
-    SessionStatusRetrievalUseCase,
-    SessionTranscriptUploadUseCase,
+import pytest
+
+from src.coaching_assistant.core.models.plan_configuration import (
+    PlanConfiguration,
+    PlanFeatures,
+    PlanLimits,
+    PlanPricing,
 )
 
 # Import domain models
 from src.coaching_assistant.core.models.session import Session, SessionStatus
-from src.coaching_assistant.core.models.user import User, UserPlan
-from src.coaching_assistant.core.models.usage_log import UsageLog, TranscriptionType
 from src.coaching_assistant.core.models.transcript import TranscriptSegment
-from src.coaching_assistant.core.models.plan_configuration import (
-    PlanConfiguration, PlanLimits, PlanFeatures, PlanPricing
+from src.coaching_assistant.core.models.user import User, UserPlan
+
+# Import use cases to test
+from src.coaching_assistant.core.services.session_management_use_case import (
+    SessionCreationUseCase,
+    SessionExportUseCase,
+    SessionRetrievalUseCase,
+    SessionStatusRetrievalUseCase,
+    SessionStatusUpdateUseCase,
+    SessionTranscriptionManagementUseCase,
+    SessionTranscriptUpdateUseCase,
+    SessionTranscriptUploadUseCase,
+    SessionUploadManagementUseCase,
 )
 
 # Import exceptions
@@ -76,7 +78,9 @@ def sample_user():
         email="test@example.com",
         name="Test User",
         plan=UserPlan.FREE,
-        current_month_start=datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0),
+        current_month_start=datetime.utcnow().replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        ),
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
@@ -126,11 +130,18 @@ class TestSessionCreationUseCase:
     """Test cases for SessionCreationUseCase."""
 
     def test_execute_creates_session_successfully(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_plan_config
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_user,
+        sample_plan_config,
     ):
         """Test successful session creation."""
         # Arrange
-        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionCreationUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
         mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
         mock_session_repo.count_user_sessions.return_value = 0
@@ -166,7 +177,9 @@ class TestSessionCreationUseCase:
     ):
         """Test session creation fails for invalid user."""
         # Arrange
-        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionCreationUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = None
         user_id = uuid4()
 
@@ -179,11 +192,18 @@ class TestSessionCreationUseCase:
             )
 
     def test_execute_raises_error_for_session_limit_exceeded(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_plan_config
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_user,
+        sample_plan_config,
     ):
         """Test session creation fails when session limit exceeded."""
         # Arrange
-        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionCreationUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
         mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
         mock_session_repo.count_user_sessions.return_value = 10  # Exceeds limit of 5
@@ -202,15 +222,24 @@ class TestSessionCreationUseCase:
         )
 
     def test_execute_raises_error_for_minutes_limit_exceeded(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_plan_config
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_user,
+        sample_plan_config,
     ):
         """Test session creation fails when minutes limit exceeded."""
         # Arrange
-        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionCreationUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
         mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
         mock_session_repo.count_user_sessions.return_value = 2  # Within session limit
-        mock_session_repo.get_total_duration_minutes.return_value = 120  # Exceeds 60 minute limit
+        mock_session_repo.get_total_duration_minutes.return_value = (
+            120  # Exceeds 60 minute limit
+        )
 
         # Act & Assert
         with pytest.raises(DomainException, match="Total minutes limit exceeded"):
@@ -229,11 +258,17 @@ class TestSessionCreationUseCase:
         )
 
     def test_execute_with_none_limits_object(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_user,
     ):
         """Test session creation with None limits object - should allow creation."""
         # Arrange
-        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionCreationUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
 
         # Create plan config with None limits
@@ -248,7 +283,9 @@ class TestSessionCreationUseCase:
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
-        mock_plan_config_repo.get_by_plan_type.return_value = plan_config_with_none_limits
+        mock_plan_config_repo.get_by_plan_type.return_value = (
+            plan_config_with_none_limits
+        )
 
         expected_session = Session(
             id=uuid4(),
@@ -273,11 +310,17 @@ class TestSessionCreationUseCase:
         mock_session_repo.save.assert_called_once()
 
     def test_execute_with_zero_limits_allows_creation(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_user,
     ):
         """Test session creation with zero limits (unlimited) - should allow creation."""
         # Arrange
-        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionCreationUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
 
         # Create plan config with zero limits (meaning unlimited)
@@ -323,11 +366,17 @@ class TestSessionCreationUseCase:
         mock_session_repo.save.assert_called_once()
 
     def test_execute_with_negative_one_limits_allows_creation(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_user,
     ):
         """Test session creation with -1 limits (unlimited) - should allow creation."""
         # Arrange
-        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionCreationUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
 
         # Create plan config with -1 limits (meaning unlimited)
@@ -348,7 +397,9 @@ class TestSessionCreationUseCase:
         )
         mock_plan_config_repo.get_by_plan_type.return_value = unlimited_plan_config
         mock_session_repo.count_user_sessions.return_value = 500  # Very high usage
-        mock_session_repo.get_total_duration_minutes.return_value = 5000  # Very high usage
+        mock_session_repo.get_total_duration_minutes.return_value = (
+            5000  # Very high usage
+        )
 
         expected_session = Session(
             id=uuid4(),
@@ -378,7 +429,8 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
 
     def test_plan_limits_dataclass_attribute_access(self):
         """Test that PlanLimits dataclass attributes are accessed correctly."""
-        # This test specifically guards against the AttributeError: 'PlanLimits' object has no attribute 'get'
+        # This test specifically guards against the AttributeError:
+        # 'PlanLimits' object has no attribute 'get'
         limits = PlanLimits(
             max_sessions=10,
             max_total_minutes=120,
@@ -409,17 +461,26 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
         assert max_minutes == -1
 
     def test_billing_period_filtering_with_historical_usage(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_plan_config
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_user,
+        sample_plan_config,
     ):
         """Test that historical usage outside billing period doesn't count towards limits."""
         # Arrange
-        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionCreationUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
         mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
 
         # Simulate current billing period usage is within limits
         mock_session_repo.count_user_sessions.return_value = 2  # Within 5 session limit
-        mock_session_repo.get_total_duration_minutes.return_value = 30  # Within 60 minute limit
+        mock_session_repo.get_total_duration_minutes.return_value = (
+            30  # Within 60 minute limit
+        )
 
         # Mock successful session creation
         created_session = Session(
@@ -452,7 +513,11 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
         )
 
     def test_billing_period_none_handling(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_plan_config
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_plan_config,
     ):
         """Test that None billing period still allows session creation with proper parameter passing."""
         # Arrange
@@ -466,7 +531,9 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
             updated_at=datetime.utcnow(),
         )
 
-        use_case = SessionCreationUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionCreationUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = user_with_no_billing_period
         mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
 
@@ -505,11 +572,19 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
         )
 
     def test_upload_url_generation_with_plan_limits_dataclass(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_session, sample_plan_config
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_user,
+        sample_session,
+        sample_plan_config,
     ):
         """Test upload URL generation with PlanLimits dataclass (not dictionary)."""
         # Arrange
-        use_case = SessionUploadManagementUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionUploadManagementUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
         mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
         mock_session_repo.get_by_id.return_value = sample_session
@@ -522,7 +597,7 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
             session_id=sample_session.id,
             user_id=sample_user.id,
             filename="test.mp3",
-            file_size_mb=50.0  # Within 60MB limit
+            file_size_mb=50.0,  # Within 60MB limit
         )
 
         # Assert - should succeed
@@ -531,11 +606,19 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
         mock_plan_config_repo.get_by_plan_type.assert_called_with(sample_user.plan)
 
     def test_upload_url_generation_exceeds_file_size_limit(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_session, sample_plan_config
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_user,
+        sample_session,
+        sample_plan_config,
     ):
         """Test upload URL generation fails when file size exceeds plan limits."""
         # Arrange
-        use_case = SessionUploadManagementUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionUploadManagementUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
         mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
         mock_session_repo.get_by_id.return_value = sample_session
@@ -546,15 +629,22 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
                 session_id=sample_session.id,
                 user_id=sample_user.id,
                 filename="large_file.mp4",
-                file_size_mb=100.0  # Exceeds 60MB limit
+                file_size_mb=100.0,  # Exceeds 60MB limit
             )
 
     def test_upload_url_generation_with_none_plan_limits(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_user, sample_session
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_user,
+        sample_session,
     ):
         """Test upload URL generation with None plan limits (no validation)."""
         # Arrange
-        use_case = SessionUploadManagementUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionUploadManagementUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
 
         # Mock plan config with None limits
@@ -578,7 +668,7 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
             session_id=sample_session.id,
             user_id=sample_user.id,
             filename="any_size.mp4",
-            file_size_mb=1000.0  # Large file but no limits to check
+            file_size_mb=1000.0,  # Large file but no limits to check
         )
 
         # Assert - should succeed
@@ -604,7 +694,7 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
 
         # Test that limits is a PlanLimits object, not a dict
         assert isinstance(plan_config.limits, PlanLimits)
-        assert not hasattr(plan_config.limits, 'get')  # Should NOT have dict methods
+        assert not hasattr(plan_config.limits, "get")  # Should NOT have dict methods
 
         # Test correct attribute access
         assert plan_config.limits.max_sessions == 15
@@ -616,11 +706,17 @@ class TestSessionRetrievalUseCase:
     """Test cases for SessionRetrievalUseCase."""
 
     def test_get_session_by_id_returns_session_for_owner(
-        self, mock_session_repo, mock_user_repo, mock_transcript_repo, sample_session
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_transcript_repo,
+        sample_session,
     ):
         """Test getting session by ID for session owner."""
         # Arrange
-        use_case = SessionRetrievalUseCase(mock_session_repo, mock_user_repo, mock_transcript_repo)
+        use_case = SessionRetrievalUseCase(
+            mock_session_repo, mock_user_repo, mock_transcript_repo
+        )
         mock_session_repo.get_by_id.return_value = sample_session
 
         # Act
@@ -631,11 +727,17 @@ class TestSessionRetrievalUseCase:
         mock_session_repo.get_by_id.assert_called_once_with(sample_session.id)
 
     def test_get_session_by_id_returns_none_for_non_owner(
-        self, mock_session_repo, mock_user_repo, mock_transcript_repo, sample_session
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_transcript_repo,
+        sample_session,
     ):
         """Test getting session by ID returns None for non-owner."""
         # Arrange
-        use_case = SessionRetrievalUseCase(mock_session_repo, mock_user_repo, mock_transcript_repo)
+        use_case = SessionRetrievalUseCase(
+            mock_session_repo, mock_user_repo, mock_transcript_repo
+        )
         mock_session_repo.get_by_id.return_value = sample_session
         different_user_id = uuid4()
 
@@ -646,11 +748,17 @@ class TestSessionRetrievalUseCase:
         assert result is None
 
     def test_get_user_sessions_returns_filtered_sessions(
-        self, mock_session_repo, mock_user_repo, mock_transcript_repo, sample_session
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_transcript_repo,
+        sample_session,
     ):
         """Test getting user sessions with filtering."""
         # Arrange
-        use_case = SessionRetrievalUseCase(mock_session_repo, mock_user_repo, mock_transcript_repo)
+        use_case = SessionRetrievalUseCase(
+            mock_session_repo, mock_user_repo, mock_transcript_repo
+        )
         expected_sessions = [sample_session]
         mock_session_repo.get_by_user_id.return_value = expected_sessions
 
@@ -669,11 +777,17 @@ class TestSessionRetrievalUseCase:
         )
 
     def test_get_session_with_transcript_returns_complete_data(
-        self, mock_session_repo, mock_user_repo, mock_transcript_repo, sample_session
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_transcript_repo,
+        sample_session,
     ):
         """Test getting session with transcript segments."""
         # Arrange
-        use_case = SessionRetrievalUseCase(mock_session_repo, mock_user_repo, mock_transcript_repo)
+        use_case = SessionRetrievalUseCase(
+            mock_session_repo, mock_user_repo, mock_transcript_repo
+        )
         mock_session_repo.get_by_id.return_value = sample_session
 
         transcript_segments = [
@@ -690,7 +804,9 @@ class TestSessionRetrievalUseCase:
         mock_transcript_repo.get_by_session_id.return_value = transcript_segments
 
         # Act
-        result = use_case.get_session_with_transcript(sample_session.id, sample_session.user_id)
+        result = use_case.get_session_with_transcript(
+            sample_session.id, sample_session.user_id
+        )
 
         # Assert
         assert result is not None
@@ -703,11 +819,17 @@ class TestSessionStatusUpdateUseCase:
     """Test cases for SessionStatusUpdateUseCase."""
 
     def test_update_session_status_successful_transition(
-        self, mock_session_repo, mock_user_repo, mock_usage_log_repo, sample_session
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_usage_log_repo,
+        sample_session,
     ):
         """Test successful session status update."""
         # Arrange
-        use_case = SessionStatusUpdateUseCase(mock_session_repo, mock_user_repo, mock_usage_log_repo)
+        use_case = SessionStatusUpdateUseCase(
+            mock_session_repo, mock_user_repo, mock_usage_log_repo
+        )
         mock_session_repo.get_by_id.return_value = sample_session
         updated_session = Session(
             **{**sample_session.__dict__, "status": SessionStatus.PENDING}
@@ -721,29 +843,47 @@ class TestSessionStatusUpdateUseCase:
 
         # Assert
         assert result.status == SessionStatus.PENDING
-        mock_session_repo.update_status.assert_called_once_with(sample_session.id, SessionStatus.PENDING)
+        mock_session_repo.update_status.assert_called_once_with(
+            sample_session.id, SessionStatus.PENDING
+        )
 
     def test_update_session_status_invalid_transition(
-        self, mock_session_repo, mock_user_repo, mock_usage_log_repo, sample_session
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_usage_log_repo,
+        sample_session,
     ):
         """Test session status update with invalid transition."""
         # Arrange
-        use_case = SessionStatusUpdateUseCase(mock_session_repo, mock_user_repo, mock_usage_log_repo)
-        sample_session.status = SessionStatus.COMPLETED  # Cannot go to UPLOADING from COMPLETED
+        use_case = SessionStatusUpdateUseCase(
+            mock_session_repo, mock_user_repo, mock_usage_log_repo
+        )
+        sample_session.status = (
+            SessionStatus.COMPLETED
+        )  # Cannot go to UPLOADING from COMPLETED
         mock_session_repo.get_by_id.return_value = sample_session
 
         # Act & Assert
         with pytest.raises(DomainException, match="Invalid status transition"):
             use_case.update_session_status(
-                sample_session.id, SessionStatus.UPLOADING, sample_session.user_id
+                sample_session.id,
+                SessionStatus.UPLOADING,
+                sample_session.user_id,
             )
 
     def test_update_session_status_creates_usage_log_on_completion(
-        self, mock_session_repo, mock_user_repo, mock_usage_log_repo, sample_session
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_usage_log_repo,
+        sample_session,
     ):
         """Test usage log creation when session completes."""
         # Arrange
-        use_case = SessionStatusUpdateUseCase(mock_session_repo, mock_user_repo, mock_usage_log_repo)
+        use_case = SessionStatusUpdateUseCase(
+            mock_session_repo, mock_user_repo, mock_usage_log_repo
+        )
         sample_session.duration_seconds = 300  # 5 minutes
         mock_session_repo.get_by_id.return_value = sample_session
 
@@ -774,7 +914,9 @@ class TestSessionTranscriptUpdateUseCase:
         self, mock_session_repo, mock_transcript_repo, completed_session
     ):
         """Test successful segment content update."""
-        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptUpdateUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         segment_id = uuid4()
         existing_segment = TranscriptSegment(
             id=segment_id,
@@ -811,7 +953,9 @@ class TestSessionTranscriptUpdateUseCase:
         self, mock_session_repo, mock_transcript_repo, completed_session
     ):
         """Ensure session status must be completed before updates."""
-        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptUpdateUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         in_progress_session = replace(
             completed_session, status=SessionStatus.PROCESSING
         )
@@ -828,7 +972,9 @@ class TestSessionTranscriptUpdateUseCase:
         self, mock_session_repo, mock_transcript_repo, completed_session
     ):
         """Invalid segment identifiers should raise errors."""
-        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptUpdateUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         mock_session_repo.get_by_id.return_value = completed_session
 
         with pytest.raises(ValueError, match="Invalid segment ID format"):
@@ -842,7 +988,9 @@ class TestSessionTranscriptUpdateUseCase:
         self, mock_session_repo, mock_transcript_repo, completed_session
     ):
         """Missing segments should raise a not found error."""
-        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptUpdateUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         segment_id = uuid4()
         other_segment = TranscriptSegment(
             id=uuid4(),
@@ -867,7 +1015,9 @@ class TestSessionTranscriptUpdateUseCase:
         self, mock_session_repo, mock_transcript_repo, completed_session
     ):
         """Whitespace-only content should be accepted for compatibility."""
-        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptUpdateUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         segment_id = uuid4()
         existing_segment = TranscriptSegment(
             id=segment_id,
@@ -901,7 +1051,9 @@ class TestSessionTranscriptUpdateUseCase:
         self, mock_session_repo, mock_transcript_repo, completed_session
     ):
         """Ensure users cannot update sessions they do not own."""
-        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptUpdateUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         other_user_session = replace(completed_session, user_id=uuid4())
         mock_session_repo.get_by_id.return_value = other_user_session
 
@@ -916,7 +1068,9 @@ class TestSessionTranscriptUpdateUseCase:
         self, mock_session_repo, mock_transcript_repo, completed_session
     ):
         """Missing session should raise not found."""
-        use_case = SessionTranscriptUpdateUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptUpdateUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         mock_session_repo.get_by_id.return_value = None
 
         with pytest.raises(ValueError, match="Session not found"):
@@ -931,11 +1085,19 @@ class TestSessionUploadManagementUseCase:
     """Test cases for SessionUploadManagementUseCase."""
 
     def test_generate_upload_url_successful(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_session, sample_user, sample_plan_config
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_session,
+        sample_user,
+        sample_plan_config,
     ):
         """Test successful upload URL generation."""
         # Arrange
-        use_case = SessionUploadManagementUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionUploadManagementUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
         mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
         mock_session_repo.get_by_id.return_value = sample_session
@@ -955,11 +1117,19 @@ class TestSessionUploadManagementUseCase:
         assert result["user_plan"] == sample_user.plan
 
     def test_generate_upload_url_file_size_exceeds_limit(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_session, sample_user, sample_plan_config
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_session,
+        sample_user,
+        sample_plan_config,
     ):
         """Test upload URL generation fails when file size exceeds plan limit."""
         # Arrange
-        use_case = SessionUploadManagementUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionUploadManagementUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
         mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
 
@@ -973,11 +1143,19 @@ class TestSessionUploadManagementUseCase:
             )
 
     def test_generate_upload_url_invalid_session_status(
-        self, mock_session_repo, mock_user_repo, mock_plan_config_repo, sample_session, sample_user, sample_plan_config
+        self,
+        mock_session_repo,
+        mock_user_repo,
+        mock_plan_config_repo,
+        sample_session,
+        sample_user,
+        sample_plan_config,
     ):
         """Test upload URL generation fails for invalid session status."""
         # Arrange
-        use_case = SessionUploadManagementUseCase(mock_session_repo, mock_user_repo, mock_plan_config_repo)
+        use_case = SessionUploadManagementUseCase(
+            mock_session_repo, mock_user_repo, mock_plan_config_repo
+        )
         mock_user_repo.get_by_id.return_value = sample_user
         mock_plan_config_repo.get_by_plan_type.return_value = sample_plan_config
 
@@ -1003,7 +1181,9 @@ class TestSessionTranscriptionManagementUseCase:
     ):
         """Test successful transcription start."""
         # Arrange
-        use_case = SessionTranscriptionManagementUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptionManagementUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         sample_session.status = SessionStatus.PENDING
         sample_session.gcs_audio_path = "gs://bucket/audio.mp3"
         mock_session_repo.get_by_id.return_value = sample_session
@@ -1027,8 +1207,12 @@ class TestSessionTranscriptionManagementUseCase:
     ):
         """Test transcription start fails for invalid session status."""
         # Arrange
-        use_case = SessionTranscriptionManagementUseCase(mock_session_repo, mock_transcript_repo)
-        sample_session.status = SessionStatus.COMPLETED  # Invalid for starting transcription
+        use_case = SessionTranscriptionManagementUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
+        sample_session.status = (
+            SessionStatus.COMPLETED
+        )  # Invalid for starting transcription
         mock_session_repo.get_by_id.return_value = sample_session
 
         # Act & Assert
@@ -1040,7 +1224,9 @@ class TestSessionTranscriptionManagementUseCase:
     ):
         """Test transcription start fails when no audio file uploaded."""
         # Arrange
-        use_case = SessionTranscriptionManagementUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptionManagementUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         sample_session.status = SessionStatus.PENDING
         sample_session.gcs_audio_path = None  # No audio file
         mock_session_repo.get_by_id.return_value = sample_session
@@ -1080,7 +1266,9 @@ class TestSessionStatusRetrievalUseCase:
         use_case = SessionStatusRetrievalUseCase(mock_session_repo)
         sample_session.status = SessionStatus.PROCESSING
         sample_session.duration_seconds = 600  # 10 minutes
-        sample_session.transcription_started_at = datetime.utcnow() - timedelta(minutes=1)
+        sample_session.transcription_started_at = datetime.utcnow() - timedelta(
+            minutes=1
+        )
         mock_session_repo.get_by_id.return_value = sample_session
 
         # Act
@@ -1091,7 +1279,9 @@ class TestSessionStatusRetrievalUseCase:
         processing_status = result["processing_status"]
         assert processing_status["progress_percentage"] > 0  # Should have some progress
         assert "processing" in processing_status["message"].lower()
-        assert processing_status["started_at"] == sample_session.transcription_started_at
+        assert (
+            processing_status["started_at"] == sample_session.transcription_started_at
+        )
 
     def test_get_detailed_status_for_completed_session(
         self, mock_session_repo, sample_session
@@ -1111,7 +1301,9 @@ class TestSessionStatusRetrievalUseCase:
         processing_status = result["processing_status"]
         assert processing_status["progress_percentage"] == 100
         assert processing_status["message"] == "Transcription complete!"
-        assert processing_status["duration_processed"] == sample_session.duration_seconds
+        assert (
+            processing_status["duration_processed"] == sample_session.duration_seconds
+        )
 
 
 class TestSessionExportUseCase:
@@ -1189,7 +1381,9 @@ class TestSessionTranscriptUploadUseCase:
     ):
         """Test successful VTT transcript file upload."""
         # Arrange
-        use_case = SessionTranscriptUploadUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptUploadUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         mock_session_repo.get_by_id.return_value = sample_session
 
         vtt_content = """WEBVTT
@@ -1200,7 +1394,10 @@ class TestSessionTranscriptUploadUseCase:
 
         # Act
         result = use_case.upload_transcript_file(
-            sample_session.id, sample_session.user_id, "transcript.vtt", vtt_content
+            sample_session.id,
+            sample_session.user_id,
+            "transcript.vtt",
+            vtt_content,
         )
 
         # Assert
@@ -1214,13 +1411,18 @@ class TestSessionTranscriptUploadUseCase:
     ):
         """Test transcript upload fails for invalid file format."""
         # Arrange
-        use_case = SessionTranscriptUploadUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptUploadUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         mock_session_repo.get_by_id.return_value = sample_session
 
         # Act & Assert
         with pytest.raises(DomainException, match="Invalid file format"):
             use_case.upload_transcript_file(
-                sample_session.id, sample_session.user_id, "transcript.txt", "content"
+                sample_session.id,
+                sample_session.user_id,
+                "transcript.txt",
+                "content",
             )
 
     def test_save_transcript_segments_successful(
@@ -1228,7 +1430,9 @@ class TestSessionTranscriptUploadUseCase:
     ):
         """Test successful transcript segments save."""
         # Arrange
-        use_case = SessionTranscriptUploadUseCase(mock_session_repo, mock_transcript_repo)
+        use_case = SessionTranscriptUploadUseCase(
+            mock_session_repo, mock_transcript_repo
+        )
         mock_session_repo.get_by_id.return_value = sample_session
 
         segments_data = [

@@ -1,17 +1,18 @@
 """Tests for UsageAnalyticsService."""
 
-import pytest
 from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
+
+from coaching_assistant.models.session import Session, SessionStatus
+from coaching_assistant.models.usage_history import UsageHistory
+from coaching_assistant.models.usage_log import TranscriptionType, UsageLog
+from coaching_assistant.models.user import User, UserPlan
 from coaching_assistant.services.usage_analytics_service import (
     UsageAnalyticsService,
 )
-from coaching_assistant.models.user import User, UserPlan
-from coaching_assistant.models.usage_history import UsageHistory
-from coaching_assistant.models.usage_log import UsageLog, TranscriptionType
-from coaching_assistant.models.session import Session, SessionStatus
 
 
 class TestUsageAnalyticsService:
@@ -25,9 +26,7 @@ class TestUsageAnalyticsService:
     @pytest.fixture
     def test_user(self, db_session):
         """Create a test user."""
-        user = User(
-            email="test@example.com", name="Test User", plan=UserPlan.FREE
-        )
+        user = User(email="test@example.com", name="Test User", plan=UserPlan.FREE)
         db_session.add(user)
         db_session.commit()
         return user
@@ -60,17 +59,13 @@ class TestUsageAnalyticsService:
         db_session.commit()
 
         # Record snapshot
-        snapshot = analytics_service.record_usage_snapshot(
-            test_user.id, "daily"
-        )
+        snapshot = analytics_service.record_usage_snapshot(test_user.id, "daily")
 
         # Verify snapshot was created
         assert snapshot is not None
         assert snapshot.user_id == test_user.id
         assert snapshot.period_type == "daily"
-        assert (
-            snapshot.audio_minutes_processed >= 30
-        )  # Should include our usage log
+        assert snapshot.audio_minutes_processed >= 30  # Should include our usage log
         assert snapshot.plan_name == "free"
 
         # Verify it was saved to database
@@ -131,9 +126,7 @@ class TestUsageAnalyticsService:
     ):
         """Test getting usage trends from existing history data."""
         # Create multiple history records over several days
-        base_date = datetime.utcnow().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
         for i in range(7):  # 7 days of data
             history = UsageHistory(
@@ -142,9 +135,7 @@ class TestUsageAnalyticsService:
                 period_start=base_date - timedelta(days=i),
                 period_end=base_date - timedelta(days=i) + timedelta(days=1),
                 sessions_created=i + 1,
-                audio_minutes_processed=Decimal(
-                    (i + 1) * 15
-                ),  # 15, 30, 45, etc.
+                audio_minutes_processed=Decimal((i + 1) * 15),  # 15, 30, 45, etc.
                 transcriptions_completed=i + 2,
                 total_cost_usd=Decimal((i + 1) * 2.5),
                 plan_name="FREE",
@@ -167,7 +158,8 @@ class TestUsageAnalyticsService:
         assert "transcriptions" in first_trend
         assert "cost" in first_trend
 
-        # Verify data is ordered (most recent first in DB query, but trends should be chronological)
+        # Verify data is ordered (most recent first in DB query, but trends
+        # should be chronological)
         assert isinstance(first_trend["sessions"], int)
         assert isinstance(first_trend["minutes"], float)
 
@@ -205,18 +197,14 @@ class TestUsageAnalyticsService:
         trends = analytics_service.get_usage_trends(test_user.id, "7d", "day")
 
         # Should have some data from usage logs
-        assert (
-            len(trends) >= 0
-        )  # May be empty or contain data depending on aggregation
+        assert len(trends) >= 0  # May be empty or contain data depending on aggregation
 
     def test_predict_usage_with_sufficient_data(
         self, analytics_service, test_user, db_session
     ):
         """Test usage prediction with sufficient historical data."""
         # Create 30 days of history data with growing trend
-        base_date = datetime.utcnow().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
         for i in range(30):
             # Growing usage pattern
@@ -227,9 +215,7 @@ class TestUsageAnalyticsService:
                 user_id=test_user.id,
                 period_type="daily",
                 period_start=base_date - timedelta(days=29 - i),
-                period_end=base_date
-                - timedelta(days=29 - i)
-                + timedelta(days=1),
+                period_end=base_date - timedelta(days=29 - i) + timedelta(days=1),
                 sessions_created=sessions,
                 audio_minutes_processed=Decimal(minutes),
                 transcriptions_completed=sessions,
@@ -264,9 +250,7 @@ class TestUsageAnalyticsService:
     ):
         """Test usage prediction with insufficient historical data."""
         # Create only 3 days of data (less than minimum 7)
-        base_date = datetime.utcnow().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
         for i in range(3):
             history = UsageHistory(
@@ -296,9 +280,7 @@ class TestUsageAnalyticsService:
     ):
         """Test generating insights for low plan utilization."""
         # Create usage data showing low utilization (less than 30%)
-        base_date = datetime.utcnow().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
         for i in range(10):
             history = UsageHistory(
@@ -323,9 +305,7 @@ class TestUsageAnalyticsService:
         insights = analytics_service.generate_insights(test_user.id)
 
         # Should contain optimization insight for low utilization
-        optimization_insights = [
-            i for i in insights if i["type"] == "optimization"
-        ]
+        optimization_insights = [i for i in insights if i["type"] == "optimization"]
         assert len(optimization_insights) > 0
 
         first_insight = optimization_insights[0]
@@ -338,9 +318,7 @@ class TestUsageAnalyticsService:
     ):
         """Test generating insights for high plan utilization."""
         # Create usage data showing high utilization (over 85%)
-        base_date = datetime.utcnow().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
         for i in range(10):
             history = UsageHistory(
@@ -349,9 +327,7 @@ class TestUsageAnalyticsService:
                 period_start=base_date - timedelta(days=i),
                 period_end=base_date - timedelta(days=i) + timedelta(days=1),
                 sessions_created=2,
-                audio_minutes_processed=Decimal(
-                    55
-                ),  # High usage (55/60 = 91.7%)
+                audio_minutes_processed=Decimal(55),  # High usage (55/60 = 91.7%)
                 transcriptions_completed=2,
                 plan_name="FREE",
                 plan_limits={"minutes": 60, "sessions": 10},
@@ -376,11 +352,10 @@ class TestUsageAnalyticsService:
         self, analytics_service, test_user, db_session
     ):
         """Test generating insights for rapid usage growth."""
-        base_date = datetime.utcnow().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
-        # Create data showing rapid growth (low usage initially, high usage recently)
+        # Create data showing rapid growth (low usage initially, high usage
+        # recently)
         for i in range(20):
             if i < 10:
                 # Low usage in first half
@@ -395,9 +370,7 @@ class TestUsageAnalyticsService:
                 user_id=test_user.id,
                 period_type="daily",
                 period_start=base_date - timedelta(days=19 - i),
-                period_end=base_date
-                - timedelta(days=19 - i)
-                + timedelta(days=1),
+                period_end=base_date - timedelta(days=19 - i) + timedelta(days=1),
                 sessions_created=sessions,
                 audio_minutes_processed=Decimal(minutes),
                 transcriptions_completed=sessions,
@@ -426,16 +399,12 @@ class TestUsageAnalyticsService:
         test_time = datetime(2024, 8, 15, 14, 30, 45)
 
         # Test hourly boundaries
-        start, end = analytics_service._calculate_period_boundaries(
-            test_time, "hourly"
-        )
+        start, end = analytics_service._calculate_period_boundaries(test_time, "hourly")
         assert start == datetime(2024, 8, 15, 14, 0, 0)
         assert end == datetime(2024, 8, 15, 15, 0, 0)
 
         # Test daily boundaries
-        start, end = analytics_service._calculate_period_boundaries(
-            test_time, "daily"
-        )
+        start, end = analytics_service._calculate_period_boundaries(test_time, "daily")
         assert start == datetime(2024, 8, 15, 0, 0, 0)
         assert end == datetime(2024, 8, 16, 0, 0, 0)
 
@@ -483,9 +452,7 @@ class TestUsageAnalyticsService:
         expected = now - timedelta(days=30)
         assert abs((result - expected).total_seconds()) < 60
 
-    def test_aggregate_usage_data(
-        self, analytics_service, test_user, db_session
-    ):
+    def test_aggregate_usage_data(self, analytics_service, test_user, db_session):
         """Test aggregating usage data for a period."""
         # Create sessions and usage logs
         session1 = Session(

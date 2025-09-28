@@ -8,11 +8,11 @@ from typing import Dict
 from uuid import UUID
 
 from ..models.session import SessionStatus
-from ..models.transcript import SessionRole, SegmentRole, SpeakerRole
+from ..models.transcript import SegmentRole, SessionRole, SpeakerRole
 from ..repositories.ports import (
+    SegmentRoleRepoPort,
     SessionRepoPort,
     SpeakerRoleRepoPort,
-    SegmentRoleRepoPort,
 )
 
 
@@ -76,7 +76,9 @@ class SpeakerRoleAssignmentUseCase:
             try:
                 speaker_id = int(speaker_id_str)
                 if speaker_id < 1:
-                    raise ValueError(f"Invalid speaker ID: {speaker_id}. Must be positive.")
+                    raise ValueError(
+                        f"Invalid speaker ID: {speaker_id}. Must be positive."
+                    )
             except ValueError as e:
                 raise ValueError(f"Invalid speaker ID format: {speaker_id_str}") from e
 
@@ -87,32 +89,38 @@ class SpeakerRoleAssignmentUseCase:
                     f"Invalid role '{role_str}'. Must be 'coach' or 'client' (case-insensitive)."
                 )
 
-            role = SpeakerRole.COACH if role_str_upper == "COACH" else SpeakerRole.CLIENT
+            role = (
+                SpeakerRole.COACH if role_str_upper == "COACH" else SpeakerRole.CLIENT
+            )
 
             # Create domain model for role assignment
             session_role = SessionRole(
-                session_id=session_id,
-                speaker_id=speaker_id,
-                role=role
+                session_id=session_id, speaker_id=speaker_id, role=role
             )
             session_role.validate()  # Domain validation
             session_roles.append(session_role)
 
         # Save the speaker role assignments via repository
-        saved_roles = self.speaker_role_repo.save_speaker_roles(session_id, session_roles)
+        saved_roles = self.speaker_role_repo.save_speaker_roles(
+            session_id, session_roles
+        )
 
         return {
             "message": "Speaker roles updated successfully",
             "session_id": str(session_id),
             "speaker_roles": speaker_roles,
-            "assignments_count": len(saved_roles)
+            "assignments_count": len(saved_roles),
         }
 
 
 class SegmentRoleAssignmentUseCase:
     """Use case for managing individual segment role assignments."""
 
-    def __init__(self, session_repo: SessionRepoPort, segment_role_repo: SegmentRoleRepoPort):
+    def __init__(
+        self,
+        session_repo: SessionRepoPort,
+        segment_role_repo: SegmentRoleRepoPort,
+    ):
         """Initialize with repository dependencies.
 
         Args:
@@ -172,25 +180,27 @@ class SegmentRoleAssignmentUseCase:
                     f"Invalid role '{role_str}'. Must be 'coach' or 'client' (case-insensitive)."
                 )
 
-            role = SpeakerRole.COACH if role_str_upper == "COACH" else SpeakerRole.CLIENT
+            role = (
+                SpeakerRole.COACH if role_str_upper == "COACH" else SpeakerRole.CLIENT
+            )
 
             # Create domain model for segment role assignment
             segment_role = SegmentRole(
-                session_id=session_id,
-                segment_id=segment_id,
-                role=role
+                session_id=session_id, segment_id=segment_id, role=role
             )
             segment_role.validate()  # Domain validation
             segment_role_assignments.append(segment_role)
 
         # Save the segment role assignments via repository
-        saved_roles = self.segment_role_repo.save_segment_roles(session_id, segment_role_assignments)
+        saved_roles = self.segment_role_repo.save_segment_roles(
+            session_id, segment_role_assignments
+        )
 
         return {
             "message": "Segment roles updated successfully",
             "session_id": str(session_id),
             "segment_roles": segment_roles,
-            "assignments_count": len(saved_roles)
+            "assignments_count": len(saved_roles),
         }
 
 

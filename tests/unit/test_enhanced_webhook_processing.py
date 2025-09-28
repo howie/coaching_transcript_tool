@@ -1,24 +1,25 @@
 """Test enhanced webhook processing functionality."""
 
-import pytest
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from unittest.mock import Mock, patch
+
+import pytest
 from sqlalchemy.orm import Session
 
 from src.coaching_assistant.core.services.ecpay_service import (
     ECPaySubscriptionService,
 )
 from src.coaching_assistant.models import (
+    PaymentStatus,
     SaasSubscription,
     SubscriptionPayment,
-    User,
     SubscriptionStatus,
-    PaymentStatus,
+    User,
 )
 from src.coaching_assistant.tasks.subscription_maintenance_tasks import (
-    process_subscription_maintenance,
-    process_failed_payment_retry,
     cleanup_old_webhook_logs,
+    process_failed_payment_retry,
+    process_subscription_maintenance,
 )
 
 
@@ -124,8 +125,7 @@ class TestEnhancedWebhookProcessing:
         # Verify exponential backoff (second retry should be 3 days later)
         expected_delay = datetime.now() + timedelta(days=3)
         assert (
-            abs((mock_payment.next_retry_at - expected_delay).total_seconds())
-            < 60
+            abs((mock_payment.next_retry_at - expected_delay).total_seconds()) < 60
         )  # Within 1 minute
 
     def test_notification_system_integration(self, mock_db_session):
@@ -137,9 +137,7 @@ class TestEnhancedWebhookProcessing:
         mock_subscription.user_id = "user123"
         mock_subscription.plan_id = "PRO"
         mock_subscription.amount_twd = 89900
-        mock_subscription.grace_period_ends_at = datetime.now() + timedelta(
-            days=7
-        )
+        mock_subscription.grace_period_ends_at = datetime.now() + timedelta(days=7)
 
         mock_payment = Mock(spec=SubscriptionPayment)
         mock_payment.id = "pay123"
@@ -191,9 +189,7 @@ class TestEnhancedWebhookProcessing:
         assert result["metrics"]["recent_webhooks_30min"] == 5
         assert result["metrics"]["failed_webhooks_24h"] == 1
 
-    @patch(
-        "src.coaching_assistant.tasks.subscription_maintenance_tasks.get_db"
-    )
+    @patch("src.coaching_assistant.tasks.subscription_maintenance_tasks.get_db")
     def test_subscription_maintenance_task(self, mock_get_db):
         """Test the main subscription maintenance background task."""
 
@@ -206,9 +202,7 @@ class TestEnhancedWebhookProcessing:
             "src.coaching_assistant.tasks.subscription_maintenance_tasks.ECPaySubscriptionService"
         ) as mock_service_class:
             mock_service = Mock()
-            mock_service.check_and_handle_expired_subscriptions.return_value = (
-                True
-            )
+            mock_service.check_and_handle_expired_subscriptions.return_value = True
             mock_service.retry_failed_payments.return_value = True
             mock_service_class.return_value = mock_service
 
@@ -243,9 +237,7 @@ class TestEnhancedWebhookProcessing:
         mock_subscription = Mock(spec=SaasSubscription)
         mock_subscription.id = "sub123"
         mock_subscription.billing_cycle = "monthly"
-        mock_subscription.current_period_end = date.today() + timedelta(
-            days=10
-        )
+        mock_subscription.current_period_end = date.today() + timedelta(days=10)
 
         # Mock database queries
         mock_db_session.query.return_value.filter.return_value.first.side_effect = [
@@ -268,18 +260,14 @@ class TestEnhancedWebhookProcessing:
                 assert result["status"] == "success"
                 assert result["payment_id"] == "pay123"
                 assert mock_payment.status == PaymentStatus.SUCCESS.value
-                assert (
-                    mock_subscription.status == SubscriptionStatus.ACTIVE.value
-                )
+                assert mock_subscription.status == SubscriptionStatus.ACTIVE.value
 
     def test_webhook_log_cleanup_task(self, mock_db_session):
         """Test webhook log cleanup background task."""
 
         # Mock old webhook log deletion
         mock_query = Mock()
-        mock_query.filter.return_value.delete.return_value = (
-            150  # 150 logs deleted
-        )
+        mock_query.filter.return_value.delete.return_value = 150  # 150 logs deleted
         mock_db_session.query.return_value = mock_query
 
         with patch(
@@ -296,10 +284,11 @@ class TestEnhancedWebhookProcessing:
     def test_manual_payment_retry_endpoint(self, mock_db_session):
         """Test manual payment retry webhook endpoint."""
 
+        from fastapi import Request
+
         from src.coaching_assistant.api.webhooks.ecpay import (
             handle_manual_payment_retry,
         )
-        from fastapi import Request
 
         # Create mock request
         mock_request = Mock(spec=Request)
@@ -353,9 +342,7 @@ class TestEnhancedWebhookProcessing:
         mock_subscription.id = "sub123"
         mock_subscription.plan_id = "PRO"
         mock_subscription.status = "active"
-        mock_subscription.current_period_end = date.today() + timedelta(
-            days=15
-        )
+        mock_subscription.current_period_end = date.today() + timedelta(days=15)
         mock_subscription.grace_period_ends_at = None
         mock_subscription.downgrade_reason = None
 
@@ -363,12 +350,9 @@ class TestEnhancedWebhookProcessing:
         mock_webhooks = [Mock(), Mock()]
         mock_payments = [Mock()]
 
-        # Setup mock queries
-        query_results = [
-            mock_subscription,  # Subscription query
-            mock_webhooks,  # Webhook logs query
-            mock_payments,  # Payments query
-        ]
+        # Setup mock queries (structure documented but handled by mock)
+        # query_results defines the expected query structure:
+        # [subscription, webhook_logs, payments]
         mock_db_session.query.return_value.filter.return_value.first.return_value = (
             mock_subscription
         )
@@ -407,7 +391,7 @@ class TestEnhancedWebhookProcessing:
 
             # Verify response structure
             assert result["user_id"] == "user123"
-            assert result["subscription_found"] == True
+            assert result["subscription_found"] is True
             assert result["subscription"]["plan_id"] == "PRO"
             assert len(result["recent_webhooks"]) == 2
             assert len(result["recent_payments"]) == 1
@@ -447,9 +431,7 @@ class TestWebhookIntegrationFlow:
         mock_payment_1.retry_count = 0
 
         # Mock first failure (count = 1)
-        mock_db_session.query.return_value.filter.return_value.count.return_value = (
-            1
-        )
+        mock_db_session.query.return_value.filter.return_value.count.return_value = 1
         mock_db_session.query.return_value.filter.return_value.first.return_value = (
             mock_user
         )
@@ -465,9 +447,7 @@ class TestWebhookIntegrationFlow:
         mock_payment_2.retry_count = 0
 
         # Mock second failure (count = 2)
-        mock_db_session.query.return_value.filter.return_value.count.return_value = (
-            2
-        )
+        mock_db_session.query.return_value.filter.return_value.count.return_value = 2
 
         service._handle_failed_payment(mock_subscription, mock_payment_2)
 
@@ -481,9 +461,7 @@ class TestWebhookIntegrationFlow:
         mock_payment_retry.max_retries = 3
 
         # Mock successful retry
-        with patch.object(
-            service, "_simulate_payment_retry", return_value=True
-        ):
+        with patch.object(service, "_simulate_payment_retry", return_value=True):
             # Simulate retry processing
             mock_payment_retry.status = PaymentStatus.SUCCESS.value
             mock_payment_retry.processed_at = datetime.now()

@@ -1,14 +1,15 @@
-#\!/usr/bin/env python3
+# \!/usr/bin/env python3
 import sys
-sys.path.append('packages/core-logic/src')
+
+sys.path.append("packages/core-logic/src")
+
 
 from coaching_assistant.core.celery_app import celery_app
-from celery import states
 
 # 檢查已註冊的任務
 print("📋 Registered Celery Tasks:")
 for task_name in celery_app.tasks:
-    if not task_name.startswith('celery.'):
+    if not task_name.startswith("celery."):
         print(f"  - {task_name}")
 
 # 檢查活動的任務
