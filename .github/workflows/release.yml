@@ -1,0 +1,436 @@
+name: Release Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      release_notes:
+        description: 'Release notes'
+        required: false
+        type: string
+      draft_release:
+        description: 'Create as draft release'
+        required: false
+        default: false
+        type: boolean
+
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  UV_VERSION: '0.4.18'
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  # ============================================================================
+  # Version Management
+  # ============================================================================
+
+  version-bump:
+    name: Version Bump & Tag
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: ${{ env.UV_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        uv pip install toml
+
+    - name: Get current version
+      id: current_version
+      run: |
+        CURRENT=$(python -c "import toml; print(toml.load('pyproject.toml')['project']['version'])")
+        echo "current_version=$CURRENT" >> $GITHUB_OUTPUT
+        echo "Current version: $CURRENT"
+
+    - name: Calculate new version
+      id: version
+      run: |
+        CURRENT="${{ steps.current_version.outputs.current_version }}"
+        TYPE="${{ github.event.inputs.version_type }}"
+
+        IFS='.' read -ra VERSION_PARTS <<< "$CURRENT"
+        MAJOR=${VERSION_PARTS[0]}
+        MINOR=${VERSION_PARTS[1]}
+        PATCH=${VERSION_PARTS[2]}
+
+        case $TYPE in
+          major)
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            ;;
+          minor)
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            ;;
+          patch)
+            PATCH=$((PATCH + 1))
+            ;;
+        esac
+
+        NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "New version: $NEW_VERSION"
+
+    - name: Update version in pyproject.toml
+      run: |
+        python -c "
+        import toml
+        config = toml.load('pyproject.toml')
+        config['project']['version'] = '${{ steps.version.outputs.new_version }}'
+        with open('pyproject.toml', 'w') as f:
+            toml.dump(config, f)
+        "
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        NEW_VERSION="${{ steps.version.outputs.new_version }}"
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+        echo "## 🚀 Release v$NEW_VERSION" > RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "**Release Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> RELEASE_NOTES.md
+        echo "**Commit**: ${{ github.sha }}" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+
+        if [ ! -z "${{ github.event.inputs.release_notes }}" ]; then
+          echo "### 📝 Release Notes" >> RELEASE_NOTES.md
+          echo "${{ github.event.inputs.release_notes }}" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+        fi
+
+        echo "### 📋 Changes" >> RELEASE_NOTES.md
+        if [ ! -z "$PREVIOUS_TAG" ]; then
+          echo "Changes since $PREVIOUS_TAG:" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD >> RELEASE_NOTES.md
+        else
+          echo "- Initial release" >> RELEASE_NOTES.md
+        fi
+        echo "" >> RELEASE_NOTES.md
+
+        # Read the changelog for output
+        CHANGELOG=$(cat RELEASE_NOTES.md)
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Commit version bump
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add pyproject.toml
+        git commit -m "chore: bump version to v${{ steps.version.outputs.new_version }}"
+        git tag "v${{ steps.version.outputs.new_version }}"
+        git push origin main
+        git push origin "v${{ steps.version.outputs.new_version }}"
+
+  # ============================================================================
+  # Build & Test
+  # ============================================================================
+
+  build-and-test:
+    name: Build & Test Release
+    runs-on: ubuntu-latest
+    needs: [version-bump]
+    if: always() && (needs.version-bump.result == 'success' || github.event_name == 'push')
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_USER: test
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.ref }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: ${{ env.UV_VERSION }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: apps/web/package-lock.json
+
+    - name: Install dependencies
+      run: make dev-setup
+
+    - name: Install frontend dependencies
+      working-directory: apps/web
+      run: npm ci
+
+    - name: Run complete test suite
+      env:
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
+        REDIS_URL: redis://localhost:6379
+      run: |
+        make lint
+        make test-unit
+        make test-db
+        make check-architecture
+
+    - name: Run frontend tests
+      working-directory: apps/web
+      run: |
+        npm run lint
+        npm test
+        npm run build
+
+    - name: Build distribution packages
+      run: |
+        make dist
+        ls -la dist/
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist-packages
+        path: |
+          dist/
+          apps/web/.next/
+        retention-days: 90
+
+  # ============================================================================
+  # Create Release
+  # ============================================================================
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [version-bump, build-and-test]
+    if: always() && needs.build-and-test.result == 'success'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: main
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: dist-packages
+        path: ./artifacts
+
+    - name: Get version from tag or input
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" = "push" ]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+        else
+          VERSION="${{ needs.version-bump.outputs.new_version }}"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+
+    - name: Create release notes
+      id: release_notes
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          # Use generated changelog from version-bump
+          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ needs.version-bump.outputs.changelog }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        else
+          # Generate changelog for tag push
+          VERSION="${{ steps.get_version.outputs.version }}"
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          echo "## 🚀 Release v$VERSION" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "**Release Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> RELEASE_NOTES.md
+          echo "**Commit**: ${{ github.sha }}" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "### 📋 Changes" >> RELEASE_NOTES.md
+
+          if [ ! -z "$PREVIOUS_TAG" ]; then
+            echo "Changes since $PREVIOUS_TAG:" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD >> RELEASE_NOTES.md
+          else
+            echo "- Initial release" >> RELEASE_NOTES.md
+          fi
+          echo "" >> RELEASE_NOTES.md
+
+          CHANGELOG=$(cat RELEASE_NOTES.md)
+          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        release_name: Release v${{ steps.get_version.outputs.version }}
+        body: ${{ steps.release_notes.outputs.release_notes }}
+        draft: ${{ github.event.inputs.draft_release == 'true' }}
+        prerelease: false
+
+  # ============================================================================
+  # Deploy to Production
+  # ============================================================================
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [create-release]
+    if: always() && needs.create-release.result == 'success' && github.event.inputs.draft_release != 'true'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Trigger Terraform deployment
+      uses: actions/github-script@v6
+      with:
+        script: |
+          await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'terraform.yml',
+            ref: 'main',
+            inputs: {
+              environment: 'production',
+              action: 'apply'
+            }
+          });
+
+    - name: Deployment status
+      run: |
+        echo "🚀 Production deployment triggered"
+        echo "📋 Check the Terraform workflow for deployment progress"
+        echo "🔗 https://github.com/${{ github.repository }}/actions/workflows/terraform.yml"
+
+  # ============================================================================
+  # Post-Release Tasks
+  # ============================================================================
+
+  post-release:
+    name: Post-Release Tasks
+    runs-on: ubuntu-latest
+    needs: [create-release]
+    if: always() && needs.create-release.result == 'success'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Update CHANGELOG.md
+      run: |
+        if [ ! -f docs/claude/CHANGELOG.md ]; then
+          echo "# Changelog" > docs/claude/CHANGELOG.md
+          echo "" >> docs/claude/CHANGELOG.md
+          echo "All notable changes to this project will be documented in this file." >> docs/claude/CHANGELOG.md
+          echo "" >> docs/claude/CHANGELOG.md
+        fi
+
+        # Prepend new release to changelog
+        cp docs/claude/CHANGELOG.md docs/claude/CHANGELOG.md.backup
+        echo "# Changelog" > docs/claude/CHANGELOG.md
+        echo "" >> docs/claude/CHANGELOG.md
+        echo "${{ steps.release_notes.outputs.release_notes }}" >> docs/claude/CHANGELOG.md
+        echo "" >> docs/claude/CHANGELOG.md
+        tail -n +3 docs/claude/CHANGELOG.md.backup >> docs/claude/CHANGELOG.md
+        rm docs/claude/CHANGELOG.md.backup
+
+    - name: Create post-release PR
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "docs: update CHANGELOG for v${{ steps.get_version.outputs.version }}"
+        title: "📝 Update CHANGELOG for v${{ steps.get_version.outputs.version }}"
+        body: |
+          ## 📝 Post-Release Documentation Update
+
+          This PR updates the CHANGELOG with the release notes for v${{ steps.get_version.outputs.version }}.
+
+          ### Changes
+          - Updated `docs/claude/CHANGELOG.md` with release v${{ steps.get_version.outputs.version }}
+
+          **Auto-generated by release workflow**
+        branch: docs/changelog-v${{ steps.get_version.outputs.version }}
+        base: main
+
+    - name: Notify team
+      run: |
+        echo "## 🎉 Release Complete!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Version**: v${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Release**: [View on GitHub](https://github.com/${{ github.repository }}/releases/tag/v${{ steps.get_version.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+        echo "**Deployment**: Production deployment triggered" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "- Monitor deployment status in Terraform workflow" >> $GITHUB_STEP_SUMMARY
+        echo "- Review and merge CHANGELOG update PR" >> $GITHUB_STEP_SUMMARY
+        echo "- Announce release to team" >> $GITHUB_STEP_SUMMARY
