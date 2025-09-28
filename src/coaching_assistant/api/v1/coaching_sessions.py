@@ -16,7 +16,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi import File as FastAPIFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
@@ -135,8 +135,7 @@ class CoachingSessionResponse(BaseModel):
     created_at: str
     updated_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CoachingSessionListResponse(BaseModel):
@@ -260,7 +259,7 @@ async def list_coaching_sessions(
     to_date: Optional[date] = Query(None, alias="to"),
     client_id: Optional[UUID] = None,
     currency: Optional[str] = None,
-    sort: str = Query("-session_date", regex="^-?(session_date|fee)$"),
+    sort: str = Query("-session_date", pattern="^-?(session_date|fee)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
     current_user: User = Depends(get_current_user_dependency),

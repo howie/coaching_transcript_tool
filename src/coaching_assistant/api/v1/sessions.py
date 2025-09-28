@@ -18,7 +18,7 @@ from fastapi import (
 )
 from fastapi import File as FastAPIFile
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ...api.v1.dependencies import (
     get_segment_role_assignment_use_case,
@@ -83,8 +83,7 @@ class SessionResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_session(cls, session: Session):
@@ -146,8 +145,7 @@ class SessionStatusResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProviderInfo(BaseModel):

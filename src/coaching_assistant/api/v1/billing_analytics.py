@@ -138,7 +138,7 @@ class UserAnalyticsDetailResponse(BaseModel):
 
 @router.get("/overview", response_model=AdminAnalyticsOverviewResponse)
 async def get_billing_analytics_overview(
-    period_type: str = Query("monthly", regex="^(daily|weekly|monthly|quarterly)$"),
+    period_type: str = Query("monthly", pattern="^(daily|weekly|monthly|quarterly)$"),
     period_count: int = Query(1, ge=1, le=12),
     end_date: Optional[datetime] = None,
     current_user: User = Depends(require_admin),
@@ -180,9 +180,9 @@ async def get_billing_analytics_overview(
 
 @router.get("/revenue-trends")
 async def get_revenue_trends(
-    period_type: str = Query("monthly", regex="^(daily|weekly|monthly)$"),
+    period_type: str = Query("monthly", pattern="^(daily|weekly|monthly)$"),
     months: int = Query(12, ge=1, le=24),
-    plan_filter: Optional[str] = Query(None, regex="^(free|pro|enterprise)$"),
+    plan_filter: Optional[str] = Query(None, pattern="^(free|pro|enterprise)$"),
     current_user: User = Depends(require_admin),
     revenue_use_case: BillingAnalyticsRevenueUseCase = Depends(
         get_billing_analytics_revenue_use_case
@@ -271,9 +271,9 @@ async def get_user_analytics_detail(
 
 @router.get("/cohort-analysis")
 async def get_cohort_analysis(
-    cohort_type: str = Query("monthly", regex="^(weekly|monthly|quarterly)$"),
+    cohort_type: str = Query("monthly", pattern="^(weekly|monthly|quarterly)$"),
     cohort_size: int = Query(12, ge=3, le=24),
-    metric: str = Query("revenue", regex="^(revenue|sessions|retention)$"),
+    metric: str = Query("revenue", pattern="^(revenue|sessions|retention)$"),
     current_user: User = Depends(require_admin),
     cohort_use_case: BillingAnalyticsCohortUseCase = Depends(
         get_billing_analytics_cohort_use_case
@@ -383,7 +383,7 @@ async def get_plan_performance_analysis(
 
 @router.get("/export")
 async def export_billing_analytics(
-    format: str = Query("csv", regex="^(csv|excel|json)$"),
+    format: str = Query("csv", pattern="^(csv|excel|json)$"),
     period_start: Optional[datetime] = None,
     period_end: Optional[datetime] = None,
     include_user_details: bool = Query(False),
@@ -419,7 +419,7 @@ async def export_billing_analytics(
 @router.post("/refresh-analytics")
 async def refresh_billing_analytics(
     user_id: Optional[UUID] = None,
-    period_type: str = Query("monthly", regex="^(daily|monthly)$"),
+    period_type: str = Query("monthly", pattern="^(daily|monthly)$"),
     force_rebuild: bool = Query(False),
     current_user: User = Depends(require_admin),
     refresh_use_case: BillingAnalyticsRefreshUseCase = Depends(

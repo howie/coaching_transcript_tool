@@ -27,7 +27,7 @@ class SummaryResponse(BaseModel):
 @router.get("/summary", response_model=SummaryResponse)
 async def get_dashboard_summary(
     month: Optional[str] = Query(
-        None, regex=r"^\d{4}-\d{2}$", description="Month in YYYY-MM format"
+        None, pattern=r"^\d{4}-\d{2}$", description="Month in YYYY-MM format"
     ),
     current_user: User = Depends(get_current_user_dependency),
     use_case: DashboardSummaryUseCase = Depends(get_dashboard_summary_use_case),

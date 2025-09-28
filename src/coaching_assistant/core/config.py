@@ -9,7 +9,7 @@ import os
 from typing import List, Union
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -186,10 +186,10 @@ class Settings(BaseSettings):
     CLOUDFLARE_ACCOUNT_ID: str = ""
     DOMAIN: str = ""
 
-    class Config:
-        # 只在非 production 環境載入 .env 檔案，避免覆蓋 Render.com 環境變數
-        env_file = ".env" if os.getenv("ENVIRONMENT") != "production" else None
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        env_file=".env" if os.getenv("ENVIRONMENT") != "production" else None,
+        case_sensitive=True,
+    )
 
     @field_validator("STT_PROVIDER", mode="before")
     @classmethod

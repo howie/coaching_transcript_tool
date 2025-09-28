@@ -108,52 +108,58 @@ class TranscriptSmoothingRequest(BaseModel):
     transcript: Dict[str, Any] = Field(
         ...,
         description="AssemblyAI transcript with utterances and words",
-        example={
-            "utterances": [
-                {
-                    "speaker": "A",
-                    "start": 1000,
-                    "end": 3000,
-                    "confidence": 0.9,
-                    "words": [
-                        {
-                            "text": "你好",
-                            "start": 1000,
-                            "end": 1500,
-                            "confidence": 0.95,
-                        },
-                        {
-                            "text": "世界",
-                            "start": 1500,
-                            "end": 2000,
-                            "confidence": 0.92,
-                        },
-                    ],
-                }
-            ]
+        json_schema_extra={
+            "example": {
+                "utterances": [
+                    {
+                        "speaker": "A",
+                        "start": 1000,
+                        "end": 3000,
+                        "confidence": 0.9,
+                        "words": [
+                            {
+                                "text": "你好",
+                                "start": 1000,
+                                "end": 1500,
+                                "confidence": 0.95,
+                            },
+                            {
+                                "text": "世界",
+                                "start": 1500,
+                                "end": 2000,
+                                "confidence": 0.92,
+                            },
+                        ],
+                    }
+                ]
+            }
         },
     )
     language: str = Field(
         "auto",
         description="Language hint for processing ('auto', 'chinese', 'english', etc.)",
-        example="chinese",
+        json_schema_extra={"example": "chinese"},
     )
     config: Optional[Dict[str, Any]] = Field(
         None,
         description="Optional configuration parameters for smoothing",
-        example={
-            "th_short_head_sec": 0.9,
-            "th_filler_max_sec": 0.6,
-            "th_sent_gap_sec": 0.6,
+        json_schema_extra={
+            "example": {
+                "th_short_head_sec": 0.9,
+                "th_filler_max_sec": 0.6,
+                "th_sent_gap_sec": 0.6,
+            }
         },
     )
     custom_prompts: Optional[Dict[str, str]] = Field(
         None,
         description="Custom prompts for speaker identification "
         "and punctuation improvement",
-        example={
-            "speakerPrompt": "Custom speaker identification prompt...",
-            "punctuationPrompt": "Custom punctuation improvement prompt...",
+        json_schema_extra={
+            "example": {
+                "speakerPrompt": "Custom speaker identification prompt...",
+                "punctuationPrompt": "Custom punctuation improvement prompt...",
+            }
         },
     )
 

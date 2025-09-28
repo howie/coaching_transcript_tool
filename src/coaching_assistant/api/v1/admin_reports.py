@@ -28,7 +28,7 @@ class ReportRequest(BaseModel):
     target_date: Optional[str] = Field(
         None,
         description="Target date in YYYY-MM-DD format (defaults to yesterday)",
-        example="2024-01-15",
+        json_schema_extra={"example": "2024-01-15"},
     )
     recipient_emails: Optional[List[str]] = Field(
         None,
@@ -36,7 +36,9 @@ class ReportRequest(BaseModel):
             "List of email addresses to send report to "
             "(defaults to configured admin emails)"
         ),
-        example=["admin@company.com", "manager@company.com"],
+        json_schema_extra={
+            "example": ["admin@company.com", "manager@company.com"],
+        },
     )
     send_email: bool = Field(
         True, description="Whether to send email report or just generate data"

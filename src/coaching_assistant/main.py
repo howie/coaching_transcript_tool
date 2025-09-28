@@ -6,6 +6,7 @@ Main entry point for the Coaching Transcript Tool Backend API v2.0.
 
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,12 +63,27 @@ else:
     setup_api_logging(log_file=str(api_log_file))
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info(
+        f"Starting Coaching Transcript Tool Backend API {DISPLAY_VERSION}"
+    )
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"Debug mode: {settings.DEBUG}")
+    try:
+        yield
+    finally:
+        logger.info("Shutting down Coaching Transcript Tool Backend API")
+
+
 app = FastAPI(
     title="Coaching Transcript Tool API",
     description=f"Backend API for processing coaching transcripts - {DISPLAY_VERSION} Unified",
     version=VERSION,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
 # 中間件
@@ -142,18 +158,6 @@ async def root():
         "message": f"Coaching Transcript Tool API {DISPLAY_VERSION}",
         "status": "running",
     }
-
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info(f"Starting Coaching Transcript Tool Backend API {DISPLAY_VERSION}")
-    logger.info(f"Environment: {settings.ENVIRONMENT}")
-    logger.info(f"Debug mode: {settings.DEBUG}")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Shutting down Coaching Transcript Tool Backend API")
 
 
 if __name__ == "__main__":

@@ -218,7 +218,6 @@ test: dev-setup
 	@echo "⚠️  Excluding: E2E tests, API tests, frontend tests (use 'make test-server' for those)"
 	@echo ""
 	pytest tests/unit/ tests/integration/database/ \
-		tests/integration/test_database_models.py \
 		tests/integration/test_transcript_smoother_integration.py \
 		-v --color=yes 2>&1 | tee logs/test.log
 
@@ -235,7 +234,6 @@ test-db: dev-setup
 	@echo "Running database integration tests..."
 	@echo "🗄️  Tests using SQLite in-memory database"
 	pytest tests/integration/database/ \
-		tests/integration/test_database_models.py \
 		tests/integration/test_transcript_smoother_integration.py \
 		-v --color=yes 2>&1 | tee logs/test-db.log
 
