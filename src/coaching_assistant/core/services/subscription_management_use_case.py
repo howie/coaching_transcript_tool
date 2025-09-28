@@ -9,7 +9,7 @@ import logging
 from typing import Dict, Any, Optional
 from uuid import UUID, uuid4
 from datetime import datetime, date
-from decimal import Decimal
+from numbers import Number
 
 from ..repositories.ports import (
     SubscriptionRepoPort,
@@ -28,6 +28,77 @@ from ..models.subscription import (
 from ...exceptions import DomainException
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_plan_identifier(plan_id: str) -> UserPlan:
+    """Resolve arbitrary plan identifiers to UserPlan enum values.
+
+    Accepts plan identifiers regardless of case or common formatting variations
+    (such as hyphens vs underscores) and raises ValueError for unknown plans.
+    """
+    if not isinstance(plan_id, str):
+        raise ValueError(f"Invalid plan_id: {plan_id}")
+
+    normalized = plan_id.strip()
+    if not normalized:
+        raise ValueError("plan_id cannot be empty")
+
+    # Allow both enum values (lowercase) and names (uppercase) as input
+    variants = [normalized, normalized.lower(), normalized.replace("-", "_")]
+
+    for candidate in variants:
+        try:
+            return UserPlan(candidate)
+        except ValueError:
+            continue
+
+    # Try matching against enum member names (e.g. PRO, COACHING_SCHOOL)
+    try:
+        return UserPlan[normalized.replace("-", "_").upper()]
+    except KeyError as exc:
+        raise ValueError(f"Invalid plan_id: {plan_id}") from exc
+
+
+def _extract_plan_amount_cents(plan_config: Any, billing_cycle: str) -> int:
+    """Return plan price in cents for the requested billing cycle.
+
+    Supports both the newer nested `PlanConfiguration.pricing` dataclass and legacy
+    flat attributes that may still be used in mocks or fixtures.
+    """
+
+    normalized_cycle = billing_cycle.lower()
+    if normalized_cycle not in {"monthly", "annual"}:
+        raise ValueError("Invalid billing cycle. Must be monthly or annual.")
+
+    def _read_price(target: Any, field_name: str) -> Optional[int]:
+        if not hasattr(target, field_name):
+            return None
+        raw_value = getattr(target, field_name)
+        if isinstance(raw_value, Number):
+            return int(raw_value)
+        return None
+
+    twd_field = f"{normalized_cycle}_price_twd_cents"
+    usd_field = f"{normalized_cycle}_price_cents"
+
+    amount = _read_price(plan_config, twd_field)
+    if amount is None:
+        pricing = getattr(plan_config, "pricing", None)
+        if pricing is not None:
+            amount = _read_price(pricing, twd_field)
+    if amount is None:
+        amount = _read_price(plan_config, usd_field)
+    if amount is None:
+        pricing = getattr(plan_config, "pricing", None)
+        if pricing is not None:
+            amount = _read_price(pricing, usd_field)
+
+    if amount is None:
+        raise ValueError(
+            f"Pricing configuration missing for {plan_config.plan_type.value} {normalized_cycle}"
+        )
+
+    return amount
 
 
 class SubscriptionCreationUseCase:
@@ -68,12 +139,24 @@ class SubscriptionCreationUseCase:
         if not user:
             raise DomainException(f"User not found: {user_id}")
 
-        # Validate plan and billing cycle
-        if plan_id not in ["STUDENT", "PRO", "ENTERPRISE"]:
-            raise ValueError("Invalid plan_id. Must be STUDENT, PRO or ENTERPRISE.")
-        
-        if billing_cycle not in ["monthly", "annual"]:
+        # Validate plan and billing cycle using relaxed case handling
+        try:
+            resolved_plan_type = _resolve_plan_identifier(plan_id)
+        except ValueError as exc:
+            raise ValueError("Invalid plan_id. Must be a known subscription plan.") from exc
+
+        if resolved_plan_type not in {
+            UserPlan.STUDENT,
+            UserPlan.PRO,
+            UserPlan.ENTERPRISE,
+            UserPlan.COACHING_SCHOOL,
+        }:
+            raise ValueError("Invalid plan_id. Must be STUDENT, PRO, ENTERPRISE or COACHING_SCHOOL.")
+
+        normalized_billing = billing_cycle.lower()
+        if normalized_billing not in ["monthly", "annual"]:
             raise ValueError("Invalid billing_cycle. Must be monthly or annual.")
+        billing_cycle = normalized_billing
 
         # Check if user already has active authorization
         existing_auth = self.subscription_repo.get_credit_authorization_by_user_id(user_id)
@@ -94,12 +177,13 @@ class SubscriptionCreationUseCase:
             period_amount=0,  # Will be set later based on plan
             auth_status=ECPayAuthStatus.PENDING,
             created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
 
         saved_auth = self.subscription_repo.save_credit_authorization(authorization)
 
         # Generate ECPay form data (this would typically call ECPay service)
-        form_data = self._generate_ecpay_form_data(saved_auth)
+        form_data = self._generate_ecpay_form_data(saved_auth, plan_id=resolved_plan_type.value)
 
         return {
             "success": True,
@@ -146,9 +230,9 @@ class SubscriptionCreationUseCase:
 
         # Get plan configuration for pricing
         try:
-            plan_type = UserPlan(plan_id)
-        except ValueError:
-            raise ValueError(f"Invalid plan_id: {plan_id}")
+            plan_type = _resolve_plan_identifier(plan_id)
+        except ValueError as exc:
+            raise ValueError(f"Invalid plan_id: {plan_id}") from exc
 
         plan_config = self.plan_config_repo.get_by_plan_type(plan_type)
         if not plan_config:
@@ -156,13 +240,9 @@ class SubscriptionCreationUseCase:
 
         # Calculate subscription details
         # Map billing cycle to actual price fields
-        if billing_cycle == "monthly":
-            amount_cents = plan_config.monthly_price_twd_cents
-        elif billing_cycle == "annual":
-            amount_cents = plan_config.annual_price_twd_cents
-        else:
-            amount_cents = 0
-        
+        normalized_billing = billing_cycle.lower()
+        amount_cents = _extract_plan_amount_cents(plan_config, normalized_billing)
+
         if amount_cents <= 0:
             raise ValueError(f"Invalid pricing for {plan_id} {billing_cycle}")
 
@@ -170,16 +250,17 @@ class SubscriptionCreationUseCase:
         subscription = SaasSubscription(
             id=uuid4(),
             user_id=user_id,
-            plan_id=plan_id,
+            plan_id=plan_type.value,
             plan_name=f"{plan_id} Plan",
-            billing_cycle=billing_cycle,
+            billing_cycle=normalized_billing,
             status=SubscriptionStatus.ACTIVE,
             amount_twd=amount_cents,
             currency="TWD",
             auth_id=authorization_id,
             current_period_start=datetime.utcnow().date(),
-            current_period_end=self._calculate_next_billing_date(billing_cycle),
+            current_period_end=self._calculate_next_billing_date(normalized_billing),
             created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
 
         saved_subscription = self.subscription_repo.save_subscription(subscription)
@@ -189,17 +270,22 @@ class SubscriptionCreationUseCase:
 
         return saved_subscription
 
-    def _generate_ecpay_form_data(self, authorization: ECPayCreditAuthorization) -> Dict[str, Any]:
+    def _generate_ecpay_form_data(
+        self,
+        authorization: ECPayCreditAuthorization,
+        plan_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Generate ECPay form data for authorization."""
         # This would typically call the ECPay service to generate proper form data
         # For now, return mock data structure
+        plan_label = plan_id or "subscription"
         return {
             "MerchantID": "Mock_Merchant_ID",
             "MerchantTradeNo": authorization.merchant_member_id,
             "PaymentType": "aio",
             "TotalAmount": "1",  # Minimal amount for authorization
-            "TradeDesc": f"Credit card authorization for {authorization.plan_id}",
-            "ItemName": f"Authorization for {authorization.plan_id} plan",
+            "TradeDesc": f"Credit card authorization for {plan_label}",
+            "ItemName": f"Authorization for {plan_label} plan",
             "ReturnURL": "https://your-domain.com/api/webhooks/ecpay/return",
             "ChoosePayment": "Credit",
             "EncryptType": "1",
@@ -455,13 +541,9 @@ class SubscriptionModificationUseCase:
 
         # Validate new plan (handle case-insensitive plan_id)
         try:
-            # Try exact match first, then try lowercase
-            try:
-                new_plan_type = UserPlan(new_plan_id)
-            except ValueError:
-                new_plan_type = UserPlan(new_plan_id.lower())
-        except ValueError:
-            raise ValueError(f"Invalid plan_id: {new_plan_id}")
+            new_plan_type = _resolve_plan_identifier(new_plan_id)
+        except ValueError as exc:
+            raise ValueError(f"Invalid plan_id: {new_plan_id}") from exc
 
         new_plan_config = self.plan_config_repo.get_by_plan_type(new_plan_type)
         if not new_plan_config:
@@ -469,26 +551,25 @@ class SubscriptionModificationUseCase:
 
         # Calculate new pricing
         # Map billing cycle to actual price fields
-        if new_billing_cycle == "monthly":
-            new_amount_cents = new_plan_config.monthly_price_twd_cents
-        elif new_billing_cycle == "annual":
-            new_amount_cents = new_plan_config.annual_price_twd_cents
-        else:
-            new_amount_cents = 0
+        normalized_cycle = new_billing_cycle.lower()
+        new_amount_cents = _extract_plan_amount_cents(new_plan_config, normalized_cycle)
 
-        # Special handling for FREE plan - allow 0 amount
+        # Validate pricing based on plan type
         if new_amount_cents < 0:
-            raise ValueError(f"Invalid pricing for {new_plan_id} {new_billing_cycle}")
+            raise ValueError(f"Invalid pricing configuration for {new_plan_id} {new_billing_cycle}: negative amount")
 
-        # FREE plan should have 0 amount, which is valid for downgrades
-        if new_plan_type == UserPlan.FREE and new_amount_cents == 0:
-            pass  # This is expected and valid for FREE plan
-        elif new_amount_cents <= 0:
-            raise ValueError(f"Invalid pricing for {new_plan_id} {new_billing_cycle}")
+        # FREE plan should have 0 amount, which is valid
+        if new_plan_type == UserPlan.FREE:
+            if new_amount_cents != 0:
+                logger.warning(f"FREE plan has non-zero amount: {new_amount_cents}, setting to 0")
+                new_amount_cents = 0
+        elif new_amount_cents == 0:
+            raise ValueError(f"Paid plan {new_plan_id} cannot have zero pricing for {new_billing_cycle} billing cycle")
 
         # Update subscription
+        previous_plan_id = subscription.plan_id
         subscription.plan_id = new_plan_type.value  # Use the enum value (lowercase)
-        subscription.billing_cycle = new_billing_cycle
+        subscription.billing_cycle = normalized_cycle
         subscription.amount_twd = new_amount_cents
         subscription.updated_at = datetime.utcnow()
 
@@ -500,8 +581,9 @@ class SubscriptionModificationUseCase:
         return {
             "success": True,
             "subscription_id": str(updated_subscription.id),
-            "old_plan": subscription.plan_id,
-            "new_plan": new_plan_id,
+            "old_plan": previous_plan_id,
+            "new_plan": new_plan_type.value,
+            "requested_plan": new_plan_id,
             "operation": operation,
             "effective_date": "immediate",
             "message": f"Subscription {operation}d successfully",
@@ -529,21 +611,17 @@ class SubscriptionModificationUseCase:
 
         # Get new plan pricing
         try:
-            new_plan_type = UserPlan(new_plan_id)
-        except ValueError:
-            raise ValueError(f"Invalid plan_id: {new_plan_id}")
+            new_plan_type = _resolve_plan_identifier(new_plan_id)
+        except ValueError as exc:
+            raise ValueError(f"Invalid plan_id: {new_plan_id}") from exc
 
         new_plan_config = self.plan_config_repo.get_by_plan_type(new_plan_type)
         if not new_plan_config:
             raise ValueError(f"Plan configuration not found for: {new_plan_id}")
 
         # Map billing cycle to actual price fields
-        if new_billing_cycle == "monthly":
-            new_amount_cents = new_plan_config.monthly_price_twd_cents
-        elif new_billing_cycle == "annual":
-            new_amount_cents = new_plan_config.annual_price_twd_cents
-        else:
-            new_amount_cents = 0
+        normalized_cycle = new_billing_cycle.lower()
+        new_amount_cents = _extract_plan_amount_cents(new_plan_config, normalized_cycle)
 
         # Calculate remaining value of current subscription
         # This is a simplified calculation - in practice, you'd need more complex logic

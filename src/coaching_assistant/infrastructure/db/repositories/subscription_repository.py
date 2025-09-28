@@ -64,6 +64,15 @@ class SubscriptionRepository(SubscriptionRepoPort):
 
     def save_subscription(self, subscription: SaasSubscription) -> SaasSubscription:
         """Save or update subscription."""
+        existing = None
+        if subscription.id:
+            existing = self.db_session.get(SaasSubscriptionModel, subscription.id)
+
+        if existing:
+            existing.update_from_domain(subscription)
+            self.db_session.flush()
+            return existing.to_domain()
+
         orm_subscription = SaasSubscriptionModel.from_domain(subscription)
         self.db_session.add(orm_subscription)
         self.db_session.flush()  # Ensure ID is generated without committing
