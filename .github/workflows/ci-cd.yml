@@ -195,7 +195,7 @@ jobs:
 
     - name: Run frontend linting
       working-directory: apps/web
-      run: npm run lint
+      run: npx next lint --strict
 
     - name: Run frontend tests
       working-directory: apps/web
