@@ -173,7 +173,7 @@ jobs:
           -var="commit_sha=${{ github.sha }}"
           
     - name: Save Plan
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tfplan-${{ matrix.environment }}
         path: terraform/environments/${{ matrix.environment }}/tfplan-${{ matrix.environment }}
@@ -336,7 +336,7 @@ jobs:
         EOF
         
     - name: Upload Deployment Report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deployment-report-${{ matrix.environment }}
         path: terraform/environments/${{ matrix.environment }}/deployment-report.md

@@ -52,7 +52,7 @@ jobs:
         version: ${{ env.UV_VERSION }}
 
     - name: Cache uv dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/uv
         key: uv-${{ runner.os }}-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
@@ -72,7 +72,7 @@ jobs:
 
     - name: Upload lint results
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: python-lint-results
         path: logs/lint.log
@@ -129,7 +129,7 @@ jobs:
         version: ${{ env.UV_VERSION }}
 
     - name: Cache uv dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/uv
         key: uv-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
@@ -160,7 +160,7 @@ jobs:
 
     - name: Upload test results
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: backend-test-results-py${{ matrix.python-version }}
         path: |
@@ -208,7 +208,7 @@ jobs:
 
     - name: Upload frontend artifacts
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: frontend-build
         path: apps/web/.next
@@ -262,7 +262,7 @@ jobs:
       run: make coverage
 
     - name: Upload coverage reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-report
         path: |
@@ -386,7 +386,7 @@ jobs:
 
     - name: Upload integration test results
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: integration-test-results
         path: logs/test-server.log
@@ -439,7 +439,7 @@ jobs:
         EOF
 
     - name: Upload deployment summary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deployment-summary
         path: deployment-summary.md
