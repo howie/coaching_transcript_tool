@@ -20,23 +20,50 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add STUDENT and COACHING_SCHOOL plans to UserPlan enum."""
-    
-    # First, add lowercase versions of existing values
-    op.execute("ALTER TYPE userplan ADD VALUE 'free'")
-    op.execute("ALTER TYPE userplan ADD VALUE 'pro'")
-    op.execute("ALTER TYPE userplan ADD VALUE 'enterprise'")
-    
-    # Then add new values
-    op.execute("ALTER TYPE userplan ADD VALUE 'student'")
-    op.execute("ALTER TYPE userplan ADD VALUE 'coaching_school'")
-    
-    # Migrate existing users to lowercase values
-    op.execute("UPDATE \"user\" SET plan = 'free' WHERE plan = 'FREE'")
-    op.execute("UPDATE \"user\" SET plan = 'pro' WHERE plan = 'PRO'")
-    op.execute("UPDATE \"user\" SET plan = 'enterprise' WHERE plan = 'ENTERPRISE'")
-    
-    # Note: We keep both uppercase and lowercase for transition safety
-    # The application will use lowercase values going forward
+
+    # PRODUCTION SAFE: This migration has been manually applied to production
+    # This code is now idempotent and safe to run multiple times
+
+    connection = op.get_bind()
+
+    # Check which enum values already exist to handle reruns safely
+    existing_values_result = connection.execute(
+        sa.text("""
+            SELECT enumlabel
+            FROM pg_enum
+            WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'userplan')
+        """)
+    )
+    existing_values = {row[0] for row in existing_values_result}
+
+    # Add new enum values only if they don't exist
+    values_to_add = ['free', 'pro', 'enterprise', 'student', 'coaching_school']
+
+    for value in values_to_add:
+        if value not in existing_values:
+            # Only add if it doesn't exist - safe for production reruns
+            op.execute(f"ALTER TYPE userplan ADD VALUE '{value}'")
+
+    # Only migrate data if there are users with uppercase values
+    # This is safe because we check for existing data first
+    migration_checks = [
+        ("FREE", "free"),
+        ("PRO", "pro"),
+        ("ENTERPRISE", "enterprise")
+    ]
+
+    for old_value, new_value in migration_checks:
+        # Check if there are any users with the old value
+        check_result = connection.execute(
+            sa.text(f"SELECT COUNT(*) FROM \"user\" WHERE plan = '{old_value}'")
+        )
+        count = check_result.scalar()
+
+        if count > 0:
+            # Only update if there are users to migrate
+            op.execute(f"UPDATE \"user\" SET plan = '{new_value}' WHERE plan = '{old_value}'")
+
+    # This migration is now safe for production and development environments
 
 
 def downgrade() -> None:

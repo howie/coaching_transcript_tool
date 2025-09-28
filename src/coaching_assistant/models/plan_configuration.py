@@ -29,7 +29,7 @@ class PlanConfiguration(Base, TimestampMixin):
 
     # Plan identification
     plan_type = Column(
-        SQLEnum(UserPlan, values_callable=lambda x: [e.value for e in x]), unique=True, nullable=False, index=True
+        SQLEnum(UserPlan, values_callable=lambda x: [e.value for e in x], native_enum=False), unique=True, nullable=False, index=True
     )
     plan_name = Column(String(50), nullable=False)  # free, pro, business
     display_name = Column(
@@ -154,8 +154,8 @@ class SubscriptionHistory(Base, TimestampMixin):
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
 
     # Plan change details
-    old_plan = Column(SQLEnum(UserPlan, values_callable=lambda x: [e.value for e in x]), nullable=True)
-    new_plan = Column(SQLEnum(UserPlan, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    old_plan = Column(SQLEnum(UserPlan, values_callable=lambda x: [e.value for e in x], native_enum=False), nullable=True)
+    new_plan = Column(SQLEnum(UserPlan, values_callable=lambda x: [e.value for e in x], native_enum=False), nullable=False)
 
     # Change metadata
     change_type = Column(
