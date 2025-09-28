@@ -5,9 +5,17 @@ Emergency script to reset stuck production transcription sessions
 This script specifically connects to the production database and resets
 sessions that have been stuck in 'processing' status.
 
+Environment Variables Required:
+    PRODUCTION_DATABASE_URL - Full PostgreSQL connection string for production
+
 Usage:
+    export PRODUCTION_DATABASE_URL="postgresql://user:pass@host:port/db"
     python scripts/emergency_session_reset_production.py --dry-run
     python scripts/emergency_session_reset_production.py --execute
+
+Security Note:
+    This script requires production database credentials. Never commit
+    these credentials to git. Always use environment variables.
 """
 
 import sys
@@ -25,8 +33,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Production database URL
-PRODUCTION_DB_URL = "postgresql://coachly_user:***REMOVED***@dpg-d27igr7diees73cla8og-a.singapore-postgres.render.com/coachly"
+# Production database URL from environment variable
+PRODUCTION_DB_URL = os.getenv("PRODUCTION_DATABASE_URL")
+
+if not PRODUCTION_DB_URL:
+    logger.error("❌ PRODUCTION_DATABASE_URL environment variable is not set")
+    logger.error("💡 Please set PRODUCTION_DATABASE_URL before running this script")
+    sys.exit(1)
 
 def get_production_db():
     """Create connection to production database"""
@@ -260,18 +273,21 @@ def main():
 🚨 PRODUCTION DATABASE WARNING 🚨
 This script connects directly to the production database!
 
+Environment Setup Required:
+  export PRODUCTION_DATABASE_URL="postgresql://user:pass@host:port/db"
+
 Examples:
   # List all processing sessions
-  python scripts/emergency_session_reset_production.py --list
-  
+  PRODUCTION_DATABASE_URL="..." python scripts/emergency_session_reset_production.py --list
+
   # Check what would be reset (safe)
-  python scripts/emergency_session_reset_production.py --dry-run
-  
+  PRODUCTION_DATABASE_URL="..." python scripts/emergency_session_reset_production.py --dry-run
+
   # Actually reset stuck sessions
-  python scripts/emergency_session_reset_production.py --execute
-  
+  PRODUCTION_DATABASE_URL="..." python scripts/emergency_session_reset_production.py --execute
+
   # Verify after reset
-  python scripts/emergency_session_reset_production.py --verify
+  PRODUCTION_DATABASE_URL="..." python scripts/emergency_session_reset_production.py --verify
         """
     )
     
@@ -311,8 +327,13 @@ Examples:
     print("🚨" + "="*60 + "🚨")
     print("🚨  PRODUCTION DATABASE EMERGENCY SCRIPT  🚨")
     print("🚨" + "="*60 + "🚨")
-    print(f"Database: dpg-d27igr7diees73cla8og-a.singapore-postgres.render.com")
-    print(f"Database: coachly")
+
+    # Show database info (without exposing credentials)
+    from urllib.parse import urlparse
+    parsed_url = urlparse(PRODUCTION_DB_URL)
+    print(f"Database Host: {parsed_url.hostname}")
+    print(f"Database Name: {parsed_url.path.lstrip('/')}")
+    print(f"Database User: {parsed_url.username}")
     print("")
     
     if args.list:
