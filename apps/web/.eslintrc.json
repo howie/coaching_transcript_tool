@@ -1,0 +1,31 @@
+{
+  "extends": [
+    "next/core-web-vitals"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "es6": true
+  },
+  "rules": {
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "http://api.doxa.com.tw",
+        "message": "Do not use insecure API URL (http://api.doxa.com.tw). Use /api/proxy/* or https://"
+      }
+    ],
+    "react-hooks/exhaustive-deps": "warn",
+    "@next/next/no-img-element": "warn",
+    "@next/next/next-script-for-ga": "warn",
+    "@next/next/no-page-custom-font": "warn"
+  }
+}
