@@ -26,6 +26,16 @@ from src.coaching_assistant.tasks.subscription_maintenance_tasks import (
 class TestEnhancedWebhookProcessing:
     """Test enhanced webhook processing functionality."""
 
+    @pytest.fixture
+    def mock_db_session(self):
+        """Mock database session"""
+        session = Mock()
+        session.add = Mock()
+        session.commit = Mock()
+        session.rollback = Mock()
+        session.query = Mock()
+        return session
+
     def test_payment_failure_grace_period_handling(self, mock_db_session):
         """Test grace period handling for payment failures."""
 
@@ -47,8 +57,15 @@ class TestEnhancedWebhookProcessing:
             1  # First failure
         )
 
-        # Create service
-        service = ECPaySubscriptionService(mock_db_session, Mock())
+        # Create service with proper dependencies
+        service = ECPaySubscriptionService(
+            user_repo=Mock(),
+            subscription_repo=Mock(),
+            settings=Mock(),
+            ecpay_client=Mock(),
+            notification_service=Mock()
+        )
+        service.db = mock_db_session  # Add for backward compatibility
 
         # Test first payment failure
         service._handle_failed_payment(mock_subscription, mock_payment)
@@ -88,8 +105,15 @@ class TestEnhancedWebhookProcessing:
             mock_user
         )
 
-        # Create service
-        service = ECPaySubscriptionService(mock_db_session, Mock())
+        # Create service with proper dependencies
+        service = ECPaySubscriptionService(
+            user_repo=Mock(),
+            subscription_repo=Mock(),
+            settings=Mock(),
+            ecpay_client=Mock(),
+            notification_service=Mock()
+        )
+        service.db = mock_db_session  # Add for backward compatibility
 
         # Test payment failure handling
         service._handle_failed_payment(mock_subscription, mock_payment)
@@ -112,8 +136,15 @@ class TestEnhancedWebhookProcessing:
         mock_payment.next_retry_at = None
         mock_payment.max_retries = None
 
-        # Create service
-        service = ECPaySubscriptionService(mock_db_session, Mock())
+        # Create service with proper dependencies
+        service = ECPaySubscriptionService(
+            user_repo=Mock(),
+            subscription_repo=Mock(),
+            settings=Mock(),
+            ecpay_client=Mock(),
+            notification_service=Mock()
+        )
+        service.db = mock_db_session  # Add for backward compatibility
 
         # Test retry scheduling
         service._schedule_payment_retry(mock_subscription, mock_payment)
@@ -151,8 +182,15 @@ class TestEnhancedWebhookProcessing:
             mock_user
         )
 
-        # Create service
-        service = ECPaySubscriptionService(mock_db_session, Mock())
+        # Create service with proper dependencies
+        service = ECPaySubscriptionService(
+            user_repo=Mock(),
+            subscription_repo=Mock(),
+            settings=Mock(),
+            ecpay_client=Mock(),
+            notification_service=Mock()
+        )
+        service.db = mock_db_session  # Add for backward compatibility
 
         # Test notification for first failure
         with patch.object(service, "logger") as mock_logger:

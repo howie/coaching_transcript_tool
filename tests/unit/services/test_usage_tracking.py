@@ -2,6 +2,7 @@
 
 from datetime import datetime, UTC, timedelta
 from decimal import Decimal
+import uuid
 
 import pytest
 from sqlalchemy.orm import Session
@@ -132,7 +133,7 @@ class TestUsageTrackingService:
         assert retry_log.is_billable is False
         assert retry_log.parent_log_id == initial_log.id
 
-    def test_get_user_usage_summary(self, db_session: Session, test_user: User):
+    def test_get_user_usage_summary(self, db_session: Session, test_user: User, test_session):
         """Test getting user usage summary."""
         service = UsageTrackingService(db_session)
 
@@ -140,11 +141,14 @@ class TestUsageTrackingService:
         now = datetime.now(UTC)
         logs = [
             UsageLog(
-                user_id=str(test_user.id),
-                usage_type=TranscriptionType.ORIGINAL,
-                session_id=f"session-{i}",
-                duration_minutes=10.0,
+                user_id=test_user.id,
+                transcription_type=TranscriptionType.ORIGINAL,
+                session_id=test_session.id,  # Use actual session ID
+                duration_minutes=10,
+                duration_seconds=600,  # 10 minutes = 600 seconds
                 cost_usd=Decimal("0.50"),
+                stt_provider="google",
+                user_plan="FREE",
                 created_at=now - timedelta(days=i),
             )
             for i in range(5)
@@ -178,11 +182,14 @@ class TestUsageTrackingService:
             month_date = base_date - timedelta(days=30 * month_offset)
             for i in range(3):
                 log = UsageLog(
-                    user_id=str(test_user.id),
-                    usage_type=TranscriptionType.ORIGINAL,
-                    session_id=f"session-{month_offset}-{i}",
-                    duration_minutes=10.0,
+                    user_id=test_user.id,
+                    transcription_type=TranscriptionType.ORIGINAL,
+                    session_id=uuid.uuid4(),
+                    duration_minutes=10,
+                    duration_seconds=600,
                     cost_usd=Decimal("0.50"),
+                    stt_provider="google",
+                    user_plan="FREE",
                     created_at=month_date + timedelta(days=i),
                 )
                 db_session.add(log)
@@ -202,10 +209,10 @@ class TestUsageTrackingService:
         # Create analytics records
         analytics = [
             UsageAnalytics(
-                user_id=str(test_user.id),
+                user_id=test_user.id,
                 month_year="2025-08",
                 transcriptions_completed=10,
-                transcriptions_retried=2,
+                free_retries=2,
                 total_minutes_processed=120.0,
                 google_stt_minutes=100.0,
                 assemblyai_minutes=20.0,
@@ -214,10 +221,10 @@ class TestUsageTrackingService:
                 primary_plan="pro",
             ),
             UsageAnalytics(
-                user_id=str(test_user.id),
+                user_id=test_user.id,
                 month_year="2025-07",
                 transcriptions_completed=8,
-                transcriptions_retried=1,
+                free_retries=1,
                 total_minutes_processed=96.0,
                 google_stt_minutes=96.0,
                 assemblyai_minutes=0.0,
@@ -336,11 +343,14 @@ class TestUsageTrackingService:
         for user in users:
             for j in range(3):
                 log = UsageLog(
-                    user_id=str(user.id),
-                    usage_type=TranscriptionType.ORIGINAL,
-                    session_id=f"session-{user.id}-{j}",
-                    duration_minutes=10.0,
+                    user_id=user.id,
+                    transcription_type=TranscriptionType.ORIGINAL,
+                    session_id=uuid.uuid4(),
+                    duration_minutes=10,
+                    duration_seconds=600,
                     cost_usd=Decimal("0.50"),
+                    stt_provider="google",
+                    user_plan="FREE",
                     created_at=datetime.now(UTC) - timedelta(days=j),
                 )
                 db_session.add(log)

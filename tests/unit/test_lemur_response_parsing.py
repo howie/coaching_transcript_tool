@@ -24,7 +24,7 @@ class TestLeMURResponseParsing:
 
     def setup_method(self):
         """Setup test fixtures."""
-        self.smoother = LeMURTranscriptSmoother()
+        self.smoother = LeMURTranscriptSmoother(api_key="test_api_key")
         self.context = SmoothingContext(session_language="zh-TW")
 
         # Sample original segments for testing
@@ -53,7 +53,7 @@ class TestLeMURResponseParsing:
         """
 
         speaker_mapping, segments = self.smoother._parse_combined_response(
-            response, self.original_segments, self.context
+            response, self.original_segments, self.context, {}
         )
 
         # Should extract segments correctly
@@ -76,7 +76,7 @@ class TestLeMURResponseParsing:
         """
 
         speaker_mapping, segments = self.smoother._parse_combined_response(
-            response, self.original_segments, self.context
+            response, self.original_segments, self.context, {}
         )
 
         # Should extract speaker mapping
@@ -99,7 +99,7 @@ class TestLeMURResponseParsing:
 
         # Should not crash and should extract what it can
         speaker_mapping, segments = self.smoother._parse_combined_response(
-            response, self.original_segments, self.context
+            response, self.original_segments, self.context, {}
         )
 
         # Should extract the lines with colons
@@ -113,7 +113,7 @@ class TestChineseTextCleaning:
 
     def setup_method(self):
         """Setup test fixtures."""
-        self.smoother = LeMURTranscriptSmoother()
+        self.smoother = LeMURTranscriptSmoother(api_key="test_api_key")
 
     def test_remove_spaces_between_chinese_characters(self):
         """Test removal of spaces between Chinese characters."""
@@ -178,7 +178,7 @@ class TestSegmentMerging:
 
     def setup_method(self):
         """Setup test fixtures."""
-        self.smoother = LeMURTranscriptSmoother()
+        self.smoother = LeMURTranscriptSmoother(api_key="test_api_key")
 
     def test_merge_close_segments_same_speaker(self):
         """Test merging of segments from same speaker with small time gap."""
@@ -257,7 +257,7 @@ class TestRealWorldCases:
 
     def setup_method(self):
         """Setup test fixtures."""
-        self.smoother = LeMURTranscriptSmoother()
+        self.smoother = LeMURTranscriptSmoother(api_key="test_api_key")
         self.context = SmoothingContext(session_language="zh-TW")
 
     def test_actual_log_case(self):
@@ -302,7 +302,7 @@ class TestRealWorldCases:
         ]
 
         speaker_mapping, segments = self.smoother._parse_combined_response(
-            response, original_segments, self.context
+            response, original_segments, self.context, {}
         )
 
         # Should correctly identify 3 segments

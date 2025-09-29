@@ -32,8 +32,8 @@ uv run ruff format .       # Format all Python files
 uv run ruff check . --fix  # Fix linting issues
 
 # Run tests
-make test          # Backend tests (unit + db integration)
-make test-server   # API/E2E tests (requires API server)
+/usr/bin/make test          # Backend tests (unit + db integration)
+/usr/bin/make test-server   # API/E2E tests (requires API server)
 cd apps/web && npm test  # Frontend tests
 ```
 
