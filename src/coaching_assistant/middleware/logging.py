@@ -53,15 +53,26 @@ def setup_logging(
 
     # 文件輸出 (如果指定)
     if enable_file_logging and log_file:
-        # 使用 RotatingFileHandler 防止日誌文件過大
-        file_handler = RotatingFileHandler(
-            log_file,
-            maxBytes=50 * 1024 * 1024,  # 50MB
-            backupCount=5,  # 保留 5 個備份
-            encoding="utf-8",
-        )
-        file_handler.setFormatter(formatter)
-        handlers.append(file_handler)
+        try:
+            # 確保日誌文件的父目錄存在
+            log_path = Path(log_file)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # 使用 RotatingFileHandler 防止日誌文件過大
+            file_handler = RotatingFileHandler(
+                log_file,
+                maxBytes=50 * 1024 * 1024,  # 50MB
+                backupCount=5,  # 保留 5 個備份
+                encoding="utf-8",
+            )
+            file_handler.setFormatter(formatter)
+            handlers.append(file_handler)
+        except (OSError, PermissionError) as e:
+            # 如果無法創建文件日誌，繼續使用控制台輸出
+            print(
+                f"Warning: Could not create log file {log_file}: {e}", file=sys.stderr
+            )
+            print("Continuing with console logging only.", file=sys.stderr)
 
     # 設定日誌配置
     if logger_name:
