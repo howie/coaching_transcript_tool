@@ -445,22 +445,23 @@ class UsageAnalyticsService:
         export_logs = [
             log
             for log in usage_logs
-            if log.operation_type and "export" in log.operation_type.lower()
+            if log.transcription_type and log.transcription_type.value == "export"
         ]
         exports_by_format = {}
         for log in export_logs:
-            # Extract format from operation_type (e.g., "export_csv" -> "csv")
-            if "_" in log.operation_type:
-                format_type = log.operation_type.split("_")[-1].lower()
-                current_count = exports_by_format.get(format_type, 0)
-                exports_by_format[format_type] = current_count + 1
+            # Extract format from metadata if available, otherwise default to "unknown"
+            format_type = "unknown"
+            if log.metadata and "export_format" in log.metadata:
+                format_type = log.metadata["export_format"].lower()
+            current_count = exports_by_format.get(format_type, 0)
+            exports_by_format[format_type] = current_count + 1
 
         # Track failed transcriptions from usage logs
         failed_transcriptions = len(
             [
                 log
                 for log in usage_logs
-                if log.status and log.status.lower() in ["failed", "error"]
+                if log.error_occurred
             ]
         )
 
@@ -477,7 +478,8 @@ class UsageAnalyticsService:
             "exports_generated": len(export_logs),
             "storage_used_mb": storage_used_mb,
             "unique_clients": len(
-                set(log.client_id for log in usage_logs if log.client_id)
+                set(log.metadata.get("client_id") for log in usage_logs
+                    if log.metadata and "client_id" in log.metadata)
             ),
             "api_calls_made": api_calls_made,
             "concurrent_sessions_peak": concurrent_peak,
@@ -581,7 +583,7 @@ class UsageAnalyticsService:
                 }
             daily_data[date_key]["transcriptions"] += 1
             daily_data[date_key]["minutes"] += log.duration_minutes
-            daily_data[date_key]["cost"] += float(log.cost_usd or 0)
+            daily_data[date_key]["cost"] += float(log.cost_cents or 0) / 100  # Convert cents to dollars
 
         # Convert to list format
         trends = []

@@ -4,7 +4,7 @@
 - **Original Test Results**: 52 failed, 531 passed, 3 skipped, 1326 warnings, 24 errors
 - **After Phase 1**: ~45 failed, ~565 passed, 3 skipped, ~1205 warnings, 0 errors
 - **After Phase 2**: 49 failed, 558 passed, 3 skipped, 1092 warnings, 0 errors
-- **After Phase 3 (Partial)**: 42 failed, 565 passed, 3 skipped, 736 warnings, 0 errors
+- **After Phase 3 (Continued)**: 40 failed, 567 passed, 3 skipped, 736 warnings, 0 errors
 - **Command**: `make test` (runs unit tests + database integration tests)
 - **Total Test Files**: ~79 files (46 unit + 33 integration)
 
@@ -51,13 +51,15 @@
 
 **Commit**: `39f40c9` - "fix: resolve test suite failures and improve reliability"
 
+**Latest Commit**: `f68ecad` - "fix: comprehensive test suite improvements with datetime modernization"
+
 ### 🎯 **OVERALL PROGRESS SUMMARY**
-- **Test Failures**: 52 → 42 (19% reduction, 10 tests fixed)
+- **Test Failures**: 52 → 40 (23% reduction, 12 tests fixed)
 - **Test Errors**: 24 → 0 (100% elimination)
 - **Test Warnings**: 1326 → 736 (44% reduction, 590 warnings eliminated)
-- **Passing Tests**: 531 → 565 (34 more tests passing)
+- **Passing Tests**: 531 → 567 (36 more tests passing)
 - **Production Files Fixed**: 27 files with datetime modernization
-- **Test Files Fixed**: 19 files with datetime modernization + 1 mock fix
+- **Test Files Fixed**: 19 files with datetime modernization + 3 additional fixes
 - **Configuration**: Pytest properly configured with markers and coverage
 
 ### Phase 2: Datetime Deprecation Warnings ✅ COMPLETED
@@ -72,28 +74,38 @@
 - **Files Modified**: Core models, services, repositories, API endpoints, and webhooks
 - **Verification**: ✅ Linting passed, ✅ Tests run successfully, ✅ No import errors
 
-### Phase 3: Test Failure Analysis and Datetime Cleanup ✅ PARTIALLY COMPLETED
-- **Scope**: Systematic fixes of remaining test failures and datetime deprecation warnings
+### Phase 3: Test Failure Analysis and Cleanup ✅ SIGNIFICANTLY ADVANCED
+- **Scope**: Systematic fixes of remaining test failures and service integration issues
 - **Strategy**: Categorize failures by type and fix highest-impact issues first
 - **Results**:
-  - **Test Failures**: 49 → 42 failures (7 tests fixed, 14% improvement)
+  - **Test Failures**: 49 → 40 failures (9 tests fixed, 18% improvement)
   - **Test Warnings**: 1092 → 736 warnings (356 warnings eliminated, 33% improvement)
-  - **Passing Tests**: 558 → 565 (7 more tests now passing)
+  - **Passing Tests**: 558 → 567 (9 more tests now passing)
 - **Fixes Applied**:
   - **Test Datetime Fixes**: 19 test files updated with `datetime.utcnow()` → `datetime.now(UTC)`
   - **Simple Mock Fixes**: 1 test fixed (receipt generation mock issue)
-- **Verification**: ✅ Major warning reduction achieved, ✅ Test reliability improved
+  - **Enum Serialization**: 1 test fixed (UserPlan enum values updated)
+  - **Billing Analytics**: 2 tests fixed (complex SQLAlchemy mocking resolved)
+  - **Domain Model Issues**: Multiple attribute mismatches fixed in usage analytics
+- **Technical Approach**: Used targeted mocking for complex analytical services instead of full database mocking
+- **Verification**: ✅ Major warning reduction achieved, ✅ Test reliability improved, ✅ Service layer stability enhanced
 
 ### 🔄 NEXT STEPS (Current Work)
 
-**Phase 3 Continued: Complex Test Failures** (Remaining 42 failures)
-- **Categories Remaining**:
-  - SQLAlchemy/Database Mock Issues (16 failures) - Complex query mocking
+**Phase 3 Continued: Complex Test Failures** (Remaining 40 failures)
+- **Updated Categories** (after recent fixes):
+  - Usage Tracking Service (6 failures) - Domain model attribute issues
+  - SQLAlchemy/Database Mock Issues (~12 failures) - Complex query mocking
   - ECPay/Payment Service Issues (14 failures) - Business logic complexity
-  - Service Logic Issues (3 failures) - Permission service mocking
-  - LeMUR/AI Processing Issues (6 failures) - External service dependencies
-  - Domain/Enum Issues (1 failure) - Enum serialization
-  - Factory/Repository Issues (2 failures) - Dependency injection
+  - Session Management (3 failures) - Service integration issues
+  - LeMUR/AI Processing Issues (5 failures) - External service dependencies
+  - Permission Service Issues (currently passing after recent fixes)
+  - Factory/Repository Issues (currently passing after recent fixes)
+
+- **Recent Successes**:
+  - ✅ Enum serialization fixed (UserPlan values)
+  - ✅ Billing analytics complex queries resolved with targeted mocking
+  - ✅ Domain model mismatches partially addressed in usage analytics
 
 ## Test Scope Analysis
 

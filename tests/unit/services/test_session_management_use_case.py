@@ -885,6 +885,7 @@ class TestSessionStatusUpdateUseCase:
             mock_session_repo, mock_user_repo, mock_usage_log_repo
         )
         sample_session.duration_seconds = 300  # 5 minutes
+        sample_session.status = SessionStatus.PROCESSING  # Valid starting status for COMPLETED transition
         mock_session_repo.get_by_id.return_value = sample_session
 
         completed_session = Session(
@@ -1364,7 +1365,20 @@ class TestSessionExportUseCase:
         use_case = SessionExportUseCase(mock_session_repo, mock_transcript_repo)
         sample_session.status = SessionStatus.COMPLETED
         mock_session_repo.get_by_id.return_value = sample_session
-        mock_transcript_repo.get_by_session_id.return_value = []
+
+        # Provide some segments so validation gets to format checking
+        transcript_segments = [
+            TranscriptSegment(
+                id=uuid4(),
+                session_id=sample_session.id,
+                speaker_id=1,
+                start_seconds=0.0,
+                end_seconds=5.0,
+                content="Test content",
+                confidence=0.95,
+            )
+        ]
+        mock_transcript_repo.get_by_session_id.return_value = transcript_segments
 
         # Act & Assert
         with pytest.raises(DomainException, match="Invalid format"):
