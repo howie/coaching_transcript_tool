@@ -16,20 +16,26 @@ jobs:
   test-dependency-injection:
     runs-on: ubuntu-latest
     name: Test API Dependency Injection
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: '0.4.18'
+
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        uv sync --dev
+        uv pip install -r apps/api-server/requirements.txt
+        uv pip install -r apps/cli/requirements.txt
+        uv pip install -e .
         
     - name: Test dependency injection compatibility
       env:
@@ -37,8 +43,8 @@ jobs:
         SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
         DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
-        mkdir -p /Users/howie/Workspace/logs
-        cd src && python -m pytest ../tests/unit/api/test_plan_limits_dependency_injection.py -v
+        mkdir -p logs
+        uv run pytest tests/unit/api/test_plan_limits_dependency_injection.py -v
         
     - name: Test User model contract
       env:
@@ -46,8 +52,8 @@ jobs:
         SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
         DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
-        mkdir -p /Users/howie/Workspace/logs
-        cd src && python -m pytest ../tests/unit/models/test_user_plan_limits_contract.py -v
+        mkdir -p logs
+        uv run pytest tests/unit/models/test_user_plan_limits_contract.py -v
         
     - name: Test API integration (dependency injection)
       env:
@@ -55,8 +61,8 @@ jobs:
         SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
         DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
-        mkdir -p /Users/howie/Workspace/logs
-        cd src && python -m pytest ../tests/integration/api/test_plan_limits_integration.py::TestPlanLimitsAPIIntegration -v
+        mkdir -p logs
+        uv run pytest tests/integration/api/test_plan_limits_integration.py::TestPlanLimitsAPIIntegration -v
         
     - name: Test for AttributeError prevention
       env:
@@ -64,26 +70,32 @@ jobs:
         SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
         DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
-        mkdir -p /Users/howie/Workspace/logs
-        cd src && python -m pytest ../tests/integration/api/test_plan_limits_integration.py::TestErrorDetection -v
+        mkdir -p logs
+        uv run pytest tests/integration/api/test_plan_limits_integration.py::TestErrorDetection -v
 
   test-production-error-prevention:
     runs-on: ubuntu-latest
     name: Production Error Prevention Tests
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: '0.4.18'
+
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        uv sync --dev
+        uv pip install -r apps/api-server/requirements.txt
+        uv pip install -r apps/cli/requirements.txt
+        uv pip install -e .
         
     - name: Run specific production error tests
       env:
@@ -91,8 +103,8 @@ jobs:
         SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
         DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
-        mkdir -p /Users/howie/Workspace/logs
-        cd src && python -m pytest ../tests/integration/api/test_plan_limits_integration.py::TestPreProductionValidation -v
+        mkdir -p logs
+        uv run pytest tests/integration/api/test_plan_limits_integration.py::TestPreProductionValidation -v
         
     - name: Verify API endpoints load without AttributeError
       env:
@@ -100,15 +112,12 @@ jobs:
         SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
         DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
-        mkdir -p /Users/howie/Workspace/logs
-        python -c "
-        import sys
-        sys.path.append('src')
-        
+        mkdir -p logs
+        uv run python -c "
         # Test that we can import and access the corrected functions
-        from coaching_assistant.api.plan_limits import validate_action, get_current_usage, increment_usage
-        from coaching_assistant.models.user import User
-        from coaching_assistant.api.auth import get_current_user_dependency
+        from src.coaching_assistant.api.v1.plan_limits import validate_action, get_current_usage, increment_usage
+        from src.coaching_assistant.core.models.user import User
+        from src.coaching_assistant.api.v1.auth import get_current_user_dependency
         
         # Test User model has required attributes
         user = User()
@@ -130,11 +139,9 @@ jobs:
         SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
         DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
-        mkdir -p /Users/howie/Workspace/logs
-        python -c "
-        import sys
-        sys.path.append('src')
-        import coaching_assistant.api.plan_limits as plan_limits
+        mkdir -p logs
+        uv run python -c "
+        import src.coaching_assistant.api.v1.plan_limits as plan_limits
         
         # Should have the correct dependency function
         assert hasattr(plan_limits, 'get_current_user_dependency')
@@ -148,7 +155,7 @@ jobs:
   test-api-endpoints-smoke:
     runs-on: ubuntu-latest
     name: API Endpoints Smoke Test
-    
+
     services:
       postgres:
         image: postgres:15
@@ -161,7 +168,9 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          
+        ports:
+          - 5432:5432
+
       redis:
         image: redis:7
         options: >-
@@ -169,20 +178,28 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+        ports:
+          - 6379:6379
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: '0.4.18'
+
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        uv sync --dev
+        uv pip install -r apps/api-server/requirements.txt
+        uv pip install -r apps/cli/requirements.txt
+        uv pip install -e .
         
     - name: Set up test environment
       env:
@@ -191,8 +208,12 @@ jobs:
         SECRET_KEY: test-secret-key
         GOOGLE_APPLICATION_CREDENTIALS_JSON: '{"type":"service_account","project_id":"test"}'
       run: |
-        # Run database migrations
-        cd src && python -m alembic upgrade head
+        # Run database migrations if they exist
+        if [ -d "src/coaching_assistant/infrastructure/db/migrations" ]; then
+          cd src && uv run alembic upgrade head
+        else
+          echo "No migrations directory found, skipping database setup"
+        fi
         
     - name: Test API endpoints don't crash with AttributeError
       env:
@@ -202,10 +223,10 @@ jobs:
         GOOGLE_APPLICATION_CREDENTIALS_JSON: '{"type":"service_account","project_id":"test"}'
         STT_PROVIDER: google
       run: |
-        mkdir -p /Users/howie/Workspace/logs
-        cd src && python -c "
+        mkdir -p logs
+        uv run python -c "
         from fastapi.testclient import TestClient
-        from coaching_assistant.main import app
+        from src.coaching_assistant.api.main import app
         
         client = TestClient(app)
         

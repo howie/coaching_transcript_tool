@@ -34,9 +34,35 @@ class TestMerchantTradeNoGeneration:
         return settings
 
     @pytest.fixture
-    def service(self, mock_db_session, mock_settings):
-        """Create service instance"""
-        return ECPaySubscriptionService(mock_db_session, mock_settings)
+    def mock_user_repo(self):
+        """Mock user repository"""
+        return Mock()
+
+    @pytest.fixture
+    def mock_subscription_repo(self):
+        """Mock subscription repository"""
+        return Mock()
+
+    @pytest.fixture
+    def mock_ecpay_client(self):
+        """Mock ECPay client"""
+        return Mock()
+
+    @pytest.fixture
+    def mock_notification_service(self):
+        """Mock notification service"""
+        return Mock()
+
+    @pytest.fixture
+    def service(self, mock_user_repo, mock_subscription_repo, mock_settings, mock_ecpay_client, mock_notification_service):
+        """Create service instance with all required dependencies"""
+        return ECPaySubscriptionService(
+            user_repo=mock_user_repo,
+            subscription_repo=mock_subscription_repo,
+            settings=mock_settings,
+            ecpay_client=mock_ecpay_client,
+            notification_service=mock_notification_service
+        )
 
     def test_merchant_trade_no_format_compliance(self, service):
         """Test MerchantTradeNo format matches expected pattern"""
