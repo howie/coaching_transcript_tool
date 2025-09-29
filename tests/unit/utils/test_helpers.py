@@ -6,14 +6,14 @@ from sqlalchemy.ext.compiler import compiles
 
 
 # Create SQLite-compatible versions of PostgreSQL types
-class TestINET(TypeDecorator):
+class SqliteINET(TypeDecorator):
     """INET type that works in tests with SQLite."""
 
     impl = String(45)
     cache_ok = True
 
 
-class TestUUID(TypeDecorator):
+class SqliteUUID(TypeDecorator):
     """UUID type that works in tests with SQLite."""
 
     impl = String(36)

@@ -10,12 +10,13 @@ from typing import Any, Dict, Optional
 from ..config import Settings
 from ..models.subscription import (
     ECPayAuthStatus,
-    ECPayCreditAuthorization,
     PaymentStatus,
     SaasSubscription,
     SubscriptionPayment,
     SubscriptionStatus,
 )
+# Import SQLAlchemy models for database operations
+from ...models.ecpay_subscription import ECPayCreditAuthorization, SaasSubscription as SaasSubscriptionORM, SubscriptionPayment as SubscriptionPaymentORM
 from ..models.user import User
 from ..repositories.ports import (
     ECPayClientPort,
@@ -335,10 +336,10 @@ class ECPaySubscriptionService:
                 return False
 
             subscription = (
-                self.db.query(SaasSubscription)
+                self.db.query(SaasSubscriptionORM)
                 .filter(
-                    SaasSubscription.auth_id == auth_record.id,
-                    SaasSubscription.status.in_(
+                    SaasSubscriptionORM.auth_id == auth_record.id,
+                    SaasSubscriptionORM.status.in_(
                         [
                             SubscriptionStatus.ACTIVE.value,
                             SubscriptionStatus.PAST_DUE.value,
@@ -355,7 +356,7 @@ class ECPaySubscriptionService:
                 return False
 
             # Create payment record
-            payment_record = SubscriptionPayment(
+            payment_record = SubscriptionPaymentORM(
                 subscription_id=subscription.id,
                 auth_id=auth_record.id,
                 gwsr=gwsr,
@@ -475,11 +476,11 @@ class ECPaySubscriptionService:
 
         # Get retry count from recent payments
         recent_failures = (
-            self.db.query(SubscriptionPayment)
+            self.db.query(SubscriptionPaymentORM)
             .filter(
-                SubscriptionPayment.subscription_id == subscription.id,
-                SubscriptionPayment.status == PaymentStatus.FAILED.value,
-                SubscriptionPayment.created_at >= datetime.now() - timedelta(days=7),
+                SubscriptionPaymentORM.subscription_id == subscription.id,
+                SubscriptionPaymentORM.status == PaymentStatus.FAILED.value,
+                SubscriptionPaymentORM.created_at >= datetime.now() - timedelta(days=7),
             )
             .count()
         )
@@ -780,10 +781,10 @@ class ECPaySubscriptionService:
 
             # Cancel associated subscriptions
             subscriptions = (
-                self.db.query(SaasSubscription)
+                self.db.query(SaasSubscriptionORM)
                 .filter(
-                    SaasSubscription.auth_id == auth_record.id,
-                    SaasSubscription.status == SubscriptionStatus.ACTIVE.value,
+                    SaasSubscriptionORM.auth_id == auth_record.id,
+                    SaasSubscriptionORM.status == SubscriptionStatus.ACTIVE.value,
                 )
                 .all()
             )
@@ -808,10 +809,10 @@ class ECPaySubscriptionService:
         try:
             # Find subscriptions past grace period
             expired_subscriptions = (
-                self.db.query(SaasSubscription)
+                self.db.query(SaasSubscriptionORM)
                 .filter(
-                    SaasSubscription.status == SubscriptionStatus.PAST_DUE.value,
-                    SaasSubscription.grace_period_ends_at < datetime.now(),
+                    SaasSubscriptionORM.status == SubscriptionStatus.PAST_DUE.value,
+                    SaasSubscriptionORM.grace_period_ends_at < datetime.now(),
                 )
                 .all()
             )
@@ -864,11 +865,11 @@ class ECPaySubscriptionService:
         try:
             # Find payments scheduled for retry
             payments_to_retry = (
-                self.db.query(SubscriptionPayment)
+                self.db.query(SubscriptionPaymentORM)
                 .filter(
-                    SubscriptionPayment.status == PaymentStatus.FAILED.value,
-                    SubscriptionPayment.next_retry_at <= datetime.now(),
-                    SubscriptionPayment.retry_count < SubscriptionPayment.max_retries,
+                    SubscriptionPaymentORM.status == PaymentStatus.FAILED.value,
+                    SubscriptionPaymentORM.next_retry_at <= datetime.now(),
+                    SubscriptionPaymentORM.retry_count < SubscriptionPaymentORM.max_retries,
                 )
                 .all()
             )
@@ -878,8 +879,8 @@ class ECPaySubscriptionService:
 
                 # Get subscription and auth info
                 subscription = (
-                    self.db.query(SaasSubscription)
-                    .filter(SaasSubscription.id == payment.subscription_id)
+                    self.db.query(SaasSubscriptionORM)
+                    .filter(SaasSubscriptionORM.id == payment.subscription_id)
                     .first()
                 )
 

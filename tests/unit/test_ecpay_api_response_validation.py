@@ -5,7 +5,7 @@ silent failures that could lead to billing issues.
 """
 
 from datetime import date
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -14,6 +14,7 @@ from src.coaching_assistant.core.services.ecpay_service import (
 )
 from src.coaching_assistant.models.ecpay_subscription import (
     ECPayAuthStatus,
+    ECPayCreditAuthorization,
     SubscriptionStatus,
 )
 
@@ -44,9 +45,38 @@ class TestECPayAPIResponseValidation:
         return settings
 
     @pytest.fixture
-    def service(self, mock_db_session, mock_settings):
-        """Create service instance"""
-        return ECPaySubscriptionService(mock_db_session, mock_settings)
+    def mock_user_repo(self):
+        """Mock user repository"""
+        return Mock()
+
+    @pytest.fixture
+    def mock_subscription_repo(self):
+        """Mock subscription repository"""
+        return Mock()
+
+    @pytest.fixture
+    def mock_ecpay_client(self):
+        """Mock ECPay client"""
+        return Mock()
+
+    @pytest.fixture
+    def mock_notification_service(self):
+        """Mock notification service"""
+        return Mock()
+
+    @pytest.fixture
+    def service(self, mock_user_repo, mock_subscription_repo, mock_settings, mock_ecpay_client, mock_notification_service, mock_db_session):
+        """Create service instance with all required dependencies"""
+        service = ECPaySubscriptionService(
+            user_repo=mock_user_repo,
+            subscription_repo=mock_subscription_repo,
+            settings=mock_settings,
+            ecpay_client=mock_ecpay_client,
+            notification_service=mock_notification_service
+        )
+        # Add mock db session for backwards compatibility with existing tests
+        service.db = mock_db_session
+        return service
 
     def test_successful_auth_callback_handling(self, service, mock_db_session):
         """Test handling of successful ECPay authorization callback"""
@@ -56,14 +86,18 @@ class TestECPayAPIResponseValidation:
         mock_auth.user_id = "user123"
         mock_auth.period_type = "Month"
         mock_auth.id = "auth123"
-        mock_db_session.query.return_value.filter.return_value.first.return_value = (
-            mock_auth
-        )
 
+        # Mock the auth record query (first query)
+        auth_query_mock = Mock()
+        auth_query_mock.filter.return_value.first.return_value = mock_auth
+
+        # Mock the user query (second query)
         mock_user = Mock()
-        mock_db_session.query.return_value.filter.return_value.first.return_value = (
-            mock_user
-        )
+        user_query_mock = Mock()
+        user_query_mock.filter.return_value.first.return_value = mock_user
+
+        # Set up query sequence to return different results for different model types
+        mock_db_session.query.side_effect = [auth_query_mock, user_query_mock]
 
         # Valid successful callback data
         callback_data = {
@@ -187,11 +221,13 @@ class TestECPayAPIResponseValidation:
         # Mock authorization record
         mock_auth = Mock()
         mock_auth.id = "auth123"
-        mock_auth.period_type = "Month"
+        mock_auth.period_type = "M"  # Should be "M" for Month, not "Month"
+        mock_auth.exec_times = 0  # Initialize exec_times for arithmetic operations
 
         # Mock subscription
         mock_subscription = Mock()
         mock_subscription.id = "sub123"
+        mock_subscription.current_period_start = date.today()
         mock_subscription.current_period_end = date.today()
 
         # Setup database queries
@@ -211,7 +247,8 @@ class TestECPayAPIResponseValidation:
         }
 
         with patch.object(service, "_verify_callback", return_value=True):
-            result = service.handle_payment_webhook(webhook_data)
+            with patch.object(service, "_handle_payment_success_notifications", new=AsyncMock()):
+                result = service.handle_payment_webhook(webhook_data)
 
             assert result is True, "Successful payment webhook should return True"
 

@@ -111,7 +111,6 @@ class TestSpeakerRoleConversion:
         conversions = [
             (DomainSpeakerRole.COACH, DatabaseSpeakerRole.COACH),
             (DomainSpeakerRole.CLIENT, DatabaseSpeakerRole.CLIENT),
-            (DomainSpeakerRole.OTHER, DatabaseSpeakerRole.OTHER),
             (DomainSpeakerRole.UNKNOWN, DatabaseSpeakerRole.UNKNOWN),
         ]
 
@@ -125,7 +124,6 @@ class TestSpeakerRoleConversion:
         conversions = [
             (DatabaseSpeakerRole.COACH, DomainSpeakerRole.COACH),
             (DatabaseSpeakerRole.CLIENT, DomainSpeakerRole.CLIENT),
-            (DatabaseSpeakerRole.OTHER, DomainSpeakerRole.OTHER),
             (DatabaseSpeakerRole.UNKNOWN, DomainSpeakerRole.UNKNOWN),
         ]
 

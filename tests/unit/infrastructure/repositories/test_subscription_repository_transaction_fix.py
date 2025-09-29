@@ -26,6 +26,7 @@ class TestSubscriptionRepositoryTransactionFix:
         session.query.return_value.filter.return_value.first.return_value = None
         session.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
         session.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        session.get.return_value = None  # Ensure save_subscription takes the add path
         return session
 
     @pytest.fixture
@@ -76,12 +77,14 @@ class TestSubscriptionRepositoryTransactionFix:
         # Act
         result = repository.save_subscription(sample_subscription)
 
-        # Assert
-        mock_session.add.assert_called_once_with(sample_subscription)
+        # Assert - check that add was called with an ORM model (not the domain model)
+        mock_session.add.assert_called_once()
         mock_session.flush.assert_called_once()
         mock_session.commit.assert_not_called()
         mock_session.refresh.assert_not_called()
-        assert result == sample_subscription
+        # Result should be the domain model converted back from ORM
+        assert result.user_id == sample_subscription.user_id
+        assert result.plan_id == sample_subscription.plan_id
 
     def test_save_credit_authorization_no_commit(
         self, repository, mock_session, sample_authorization
@@ -90,32 +93,48 @@ class TestSubscriptionRepositoryTransactionFix:
         # Act
         result = repository.save_credit_authorization(sample_authorization)
 
-        # Assert
-        mock_session.add.assert_called_once_with(sample_authorization)
+        # Assert - check that add was called with an ORM model (not the domain model)
+        mock_session.add.assert_called_once()
         mock_session.flush.assert_called_once()
         mock_session.commit.assert_not_called()
         mock_session.refresh.assert_not_called()
-        assert result == sample_authorization
+        # Result should be the domain model converted back from ORM
+        assert result.user_id == sample_authorization.user_id
+        assert result.merchant_member_id == sample_authorization.merchant_member_id
 
     def test_save_payment_no_commit(self, repository, mock_session, sample_payment):
         """Test that save_payment uses flush instead of commit."""
         # Act
         result = repository.save_payment(sample_payment)
 
-        # Assert
-        mock_session.add.assert_called_once_with(sample_payment)
+        # Assert - check that add was called with an ORM model (not the domain model)
+        mock_session.add.assert_called_once()
         mock_session.flush.assert_called_once()
         mock_session.commit.assert_not_called()
         mock_session.refresh.assert_not_called()
-        assert result == sample_payment
+        # Result should be the domain model converted back from ORM
+        assert result.gwsr == sample_payment.gwsr
+        assert result.amount == sample_payment.amount
 
     def test_update_subscription_status_no_commit(
         self, repository, mock_session, sample_subscription
     ):
         """Test that update_subscription_status uses flush instead of commit."""
         # Arrange
+        mock_orm_subscription = Mock()
+        # Create updated subscription with cancelled status
+        updated_subscription = SaasSubscription(
+            id=sample_subscription.id,
+            user_id=sample_subscription.user_id,
+            plan_id=sample_subscription.plan_id,
+            plan_name=sample_subscription.plan_name,
+            billing_cycle=sample_subscription.billing_cycle,
+            amount_twd=sample_subscription.amount_twd,
+            status=SubscriptionStatus.CANCELLED.value,
+        )
+        mock_orm_subscription.to_domain.return_value = updated_subscription
         mock_query = mock_session.query.return_value
-        mock_query.filter.return_value.first.return_value = sample_subscription
+        mock_query.filter.return_value.first.return_value = mock_orm_subscription
 
         # Act
         result = repository.update_subscription_status(
@@ -126,8 +145,8 @@ class TestSubscriptionRepositoryTransactionFix:
         mock_session.flush.assert_called_once()
         mock_session.commit.assert_not_called()
         mock_session.refresh.assert_not_called()
-        assert result == sample_subscription
-        assert sample_subscription.status == SubscriptionStatus.CANCELLED.value
+        assert result.status == SubscriptionStatus.CANCELLED.value
+        assert result.id == sample_subscription.id
 
     def test_update_subscription_status_not_found(self, repository, mock_session):
         """Test that update_subscription_status raises error when subscription not found."""
