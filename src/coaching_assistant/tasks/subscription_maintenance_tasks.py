@@ -398,9 +398,7 @@ def _simulate_email_sending(notification_data: dict) -> bool:
         # Note: Actual email sending is handled in the notification tasks
         # This function is now a placeholder for compatibility
         logger.info(
-            f"📧 Email sending delegated to notification service for {
-                notification_data.get('user_email', 'unknown')
-            }"
+            f"📧 Email sending delegated to notification service for notification_data.get('user_email', 'unknown')}"
         )
         return True  # Return True to indicate the email was properly delegated
 

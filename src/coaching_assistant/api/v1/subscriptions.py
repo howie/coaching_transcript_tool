@@ -355,9 +355,7 @@ async def downgrade_subscription(
         )
 
         logger.info(
-            f"Subscription scheduled for downgrade to {request.plan_id} for user {
-                current_user.id
-            }"
+            f"Subscription scheduled for downgrade to {request.plan_id} for user {current_user.id}"
         )
 
         return {
@@ -405,9 +403,7 @@ async def cancel_subscription_new(
         )
 
         logger.info(
-            f"Subscription cancelled ({
-                'immediate' if request.immediate else 'period-end'
-            }) for user {current_user.id}"
+            f"Subscription cancelled ({'immediate' if request.immediate else 'period-end'}) for user {current_user.id}"
         )
 
         return {

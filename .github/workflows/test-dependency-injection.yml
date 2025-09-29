@@ -33,19 +33,19 @@ jobs:
         
     - name: Test dependency injection compatibility
       run: |
-        python -m pytest tests/unit/api/test_plan_limits_dependency_injection.py -v
+        cd src && python -m pytest ../tests/unit/api/test_plan_limits_dependency_injection.py -v
         
     - name: Test User model contract
       run: |
-        python -m pytest tests/unit/models/test_user_plan_limits_contract.py -v
+        cd src && python -m pytest ../tests/unit/models/test_user_plan_limits_contract.py -v
         
     - name: Test API integration (dependency injection)
       run: |
-        python -m pytest tests/integration/api/test_plan_limits_integration.py::TestPlanLimitsAPIIntegration -v
+        cd src && python -m pytest ../tests/integration/api/test_plan_limits_integration.py::TestPlanLimitsAPIIntegration -v
         
     - name: Test for AttributeError prevention
       run: |
-        python -m pytest tests/integration/api/test_plan_limits_integration.py::TestErrorDetection -v
+        cd src && python -m pytest ../tests/integration/api/test_plan_limits_integration.py::TestErrorDetection -v
 
   test-production-error-prevention:
     runs-on: ubuntu-latest
@@ -67,7 +67,7 @@ jobs:
         
     - name: Run specific production error tests
       run: |
-        python -m pytest tests/integration/api/test_plan_limits_integration.py::TestPreProductionValidation -v
+        cd src && python -m pytest ../tests/integration/api/test_plan_limits_integration.py::TestPreProductionValidation -v
         
     - name: Verify API endpoints load without AttributeError
       run: |

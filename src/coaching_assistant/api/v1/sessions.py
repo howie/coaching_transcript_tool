@@ -429,9 +429,7 @@ async def confirm_upload(
 ):
     """Confirm that audio file was successfully uploaded to GCS."""
     logger.info(
-        f"🔍 UPLOAD CONFIRMATION REQUEST - Session: {session_id}, User: {
-            current_user.id
-        }"
+        f"🔍 UPLOAD CONFIRMATION REQUEST - Session: {session_id}, User: {current_user.id}"
     )
 
     try:
@@ -923,9 +921,7 @@ async def update_segment_content(
 ):
     """Update transcript segment content for a session."""
     logger.info(
-        f"Segment content update requested for session {session_id} by user {
-            current_user.id
-        }, "
+        f"Segment content update requested for session {session_id} by user {current_user.id}, "
         f"updating {len(request.segment_content)} segments"
     )
 
@@ -937,9 +933,7 @@ async def update_segment_content(
         )
 
         logger.info(
-            f"Successfully updated {len(updated_segments)} segments for session {
-                session_id
-            }"
+            f"Successfully updated {len(updated_segments)} segments for session {session_id}"
         )
 
         return {
@@ -1294,9 +1288,7 @@ async def upload_session_transcript(
     from ...exceptions import DomainException
 
     logger.info(
-        f"🔍 Transcript upload request: session_id={session_id}, user_id={
-            current_user.id
-        }, filename={file.filename}"
+        f"🔍 Transcript upload request: session_id={session_id}, user_id={current_user.id}, filename={file.filename}"
     )
 
     try:
