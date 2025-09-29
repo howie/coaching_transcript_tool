@@ -1,17 +1,17 @@
 """E2E tests for subscription payment and upgrade flows."""
 
-import pytest
 import time
+from datetime import date, datetime
 from uuid import uuid4
-from datetime import datetime, date
 
+import pytest
 from tests.e2e.test_base import BaseE2ETest
-from src.coaching_assistant.models.user import UserPlan
+
 from src.coaching_assistant.models.ecpay_subscription import (
-    SaasSubscription,
-    ECPayCreditAuthorization,
-    SubscriptionStatus,
     ECPayAuthStatus,
+    ECPayCreditAuthorization,
+    SaasSubscription,
+    SubscriptionStatus,
 )
 
 
@@ -27,11 +27,8 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Step 1: Create authorization
         auth_response = self.client.post(
             "/subscriptions/authorize",
-            json={
-                "plan_id": "PRO",
-                "billing_cycle": "monthly"
-            },
-            headers={"Authorization": f"Bearer {user['token']}"}
+            json={"plan_id": "PRO", "billing_cycle": "monthly"},
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert auth_response.status_code == 200
@@ -46,12 +43,15 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Step 2: Get current subscription status (should be no subscription yet)
         current_response = self.client.get(
             "/subscriptions/current",
-            headers={"Authorization": f"Bearer {user['token']}"}
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert current_response.status_code == 200
         current_data = current_response.json()
-        assert current_data["status"] in ["no_subscription", "error"]  # Allow error state as use case handles it gracefully
+        assert current_data["status"] in [
+            "no_subscription",
+            "error",
+        ]  # Allow error state as use case handles it gracefully
 
         # Step 3: Simulate authorization completion and subscription creation
         # In a real E2E test, we'd wait for ECPay webhook or simulate it
@@ -59,27 +59,31 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
 
         print(f"✅ Authorization creation flow completed for user {user['user_id']}")
 
-    def test_subscription_upgrade_flow(self, authenticated_user_with_subscription, db_session):
+    def test_subscription_upgrade_flow(
+        self, authenticated_user_with_subscription, db_session
+    ):
         """Test subscription upgrade flow."""
         user = authenticated_user_with_subscription
 
         # Step 1: Get current subscription
         current_response = self.client.get(
             "/subscriptions/current",
-            headers={"Authorization": f"Bearer {user['token']}"}
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert current_response.status_code == 200
         current_data = current_response.json()
+        assert current_data["status"] in {
+            "active",
+            "trialing",
+            "error",
+        }
 
         # Step 2: Preview upgrade cost
         preview_response = self.client.post(
             "/subscriptions/preview-change",
-            json={
-                "plan_id": "ENTERPRISE",
-                "billing_cycle": "monthly"
-            },
-            headers={"Authorization": f"Bearer {user['token']}"}
+            json={"plan_id": "ENTERPRISE", "billing_cycle": "monthly"},
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert preview_response.status_code == 200
@@ -91,11 +95,8 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Step 3: Perform upgrade
         upgrade_response = self.client.post(
             "/subscriptions/upgrade",
-            json={
-                "plan_id": "ENTERPRISE",
-                "billing_cycle": "monthly"
-            },
-            headers={"Authorization": f"Bearer {user['token']}"}
+            json={"plan_id": "ENTERPRISE", "billing_cycle": "monthly"},
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert upgrade_response.status_code == 200
@@ -106,7 +107,7 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Step 4: Verify subscription was updated
         updated_response = self.client.get(
             "/subscriptions/current",
-            headers={"Authorization": f"Bearer {user['token']}"}
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert updated_response.status_code == 200
@@ -118,18 +119,17 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
 
         print(f"✅ Subscription upgrade flow completed for user {user['user_id']}")
 
-    def test_subscription_downgrade_flow(self, authenticated_user_with_subscription, db_session):
+    def test_subscription_downgrade_flow(
+        self, authenticated_user_with_subscription, db_session
+    ):
         """Test subscription downgrade flow."""
         user = authenticated_user_with_subscription
 
         # Step 1: Perform downgrade
         downgrade_response = self.client.post(
             "/subscriptions/downgrade",
-            json={
-                "plan_id": "STUDENT",
-                "billing_cycle": "monthly"
-            },
-            headers={"Authorization": f"Bearer {user['token']}"}
+            json={"plan_id": "STUDENT", "billing_cycle": "monthly"},
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert downgrade_response.status_code == 200
@@ -140,52 +140,58 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Step 2: Verify downgrade was scheduled
         current_response = self.client.get(
             "/subscriptions/current",
-            headers={"Authorization": f"Bearer {user['token']}"}
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert current_response.status_code == 200
 
         print(f"✅ Subscription downgrade flow completed for user {user['user_id']}")
 
-    def test_subscription_cancellation_flow(self, authenticated_user_with_subscription, db_session):
+    def test_subscription_cancellation_flow(
+        self, authenticated_user_with_subscription, db_session
+    ):
         """Test subscription cancellation flow."""
         user = authenticated_user_with_subscription
 
         # Step 1: Cancel subscription at period end
         cancel_response = self.client.post(
             "/subscriptions/cancel",
-            json={
-                "immediate": False,
-                "reason": "No longer needed"
-            },
-            headers={"Authorization": f"Bearer {user['token']}"}
+            json={"immediate": False, "reason": "No longer needed"},
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert cancel_response.status_code == 200
         cancel_data = cancel_response.json()
         assert cancel_data["success"] is True
-        assert "scheduled" in cancel_data["message"] or "canceled" in cancel_data["message"]
+        assert (
+            "scheduled" in cancel_data["message"]
+            or "canceled" in cancel_data["message"]
+        )
 
         # Step 2: Reactivate subscription
         reactivate_response = self.client.post(
             "/subscriptions/reactivate",
-            headers={"Authorization": f"Bearer {user['token']}"}
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert reactivate_response.status_code == 200
         reactivate_data = reactivate_response.json()
         assert reactivate_data["success"] is True
 
-        print(f"✅ Subscription cancellation/reactivation flow completed for user {user['user_id']}")
+        print(
+            f"✅ Subscription cancellation/reactivation flow completed for user {user['user_id']}"
+        )
 
-    def test_billing_history_flow(self, authenticated_user_with_subscription, db_session):
+    def test_billing_history_flow(
+        self, authenticated_user_with_subscription, db_session
+    ):
         """Test billing history and receipt generation flow."""
         user = authenticated_user_with_subscription
 
         # Step 1: Get billing history
         history_response = self.client.get(
             "/subscriptions/billing-history",
-            headers={"Authorization": f"Bearer {user['token']}"}
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert history_response.status_code == 200
@@ -200,7 +206,7 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
 
             receipt_response = self.client.get(
                 f"/subscriptions/payment/{payment_id}/receipt",
-                headers={"Authorization": f"Bearer {user['token']}"}
+                headers={"Authorization": f"Bearer {user['token']}"},
             )
 
             # Should work if payment is successful, otherwise may return 400
@@ -220,11 +226,8 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Test invalid plan ID
         invalid_auth_response = self.client.post(
             "/subscriptions/authorize",
-            json={
-                "plan_id": "INVALID_PLAN",
-                "billing_cycle": "monthly"
-            },
-            headers={"Authorization": f"Bearer {user['token']}"}
+            json={"plan_id": "INVALID_PLAN", "billing_cycle": "monthly"},
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert invalid_auth_response.status_code == 400
@@ -232,11 +235,8 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Test invalid billing cycle
         invalid_cycle_response = self.client.post(
             "/subscriptions/authorize",
-            json={
-                "plan_id": "PRO",
-                "billing_cycle": "invalid_cycle"
-            },
-            headers={"Authorization": f"Bearer {user['token']}"}
+            json={"plan_id": "PRO", "billing_cycle": "invalid_cycle"},
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert invalid_cycle_response.status_code == 400
@@ -244,11 +244,8 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Test operations without subscription
         no_sub_upgrade_response = self.client.post(
             "/subscriptions/upgrade",
-            json={
-                "plan_id": "PRO",
-                "billing_cycle": "monthly"
-            },
-            headers={"Authorization": f"Bearer {user['token']}"}
+            json={"plan_id": "PRO", "billing_cycle": "monthly"},
+            headers={"Authorization": f"Bearer {user['token']}"},
         )
 
         assert no_sub_upgrade_response.status_code in [400, 404]
@@ -266,11 +263,8 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         for i in range(3):
             response = self.client.post(
                 "/subscriptions/authorize",
-                json={
-                    "plan_id": "PRO",
-                    "billing_cycle": "monthly"
-                },
-                headers={"Authorization": f"Bearer {user['token']}"}
+                json={"plan_id": "PRO", "billing_cycle": "monthly"},
+                headers={"Authorization": f"Bearer {user['token']}"},
             )
             responses.append(response)
             time.sleep(0.1)  # Small delay to avoid overwhelming
@@ -282,7 +276,9 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Allow for various error responses due to race conditions
         assert success_count <= 1
 
-        print(f"✅ Race condition handling completed - Success: {success_count}, Conflicts: {conflict_count}")
+        print(
+            f"✅ Race condition handling completed - Success: {success_count}, Conflicts: {conflict_count}"
+        )
 
     @pytest.fixture
     def authenticated_user_with_subscription(self, authenticated_user, db_session):
@@ -292,7 +288,7 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Create subscription directly in database for testing
         subscription = SaasSubscription(
             id=uuid4(),
-            user_id=user['user_id'],
+            user_id=user["user_id"],
             plan_id="PRO",
             plan_name="PRO Plan",
             billing_cycle="monthly",
@@ -307,7 +303,7 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
         # Create authorization for the subscription
         auth = ECPayCreditAuthorization(
             id=uuid4(),
-            user_id=user['user_id'],
+            user_id=user["user_id"],
             merchant_member_id=f"MEMBER_{user['user_id']}",
             auth_amount=100,
             period_type="Month",

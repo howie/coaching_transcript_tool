@@ -8,10 +8,11 @@ such as uploading transcripts or other user-generated content.
 import base64
 import json
 import logging
+from datetime import datetime, timedelta
+from typing import Optional, Tuple
+
 from google.cloud import storage
 from google.oauth2 import service_account
-from typing import Optional, Tuple
-from datetime import datetime, timedelta
 
 from ..core.config import settings
 
@@ -41,9 +42,7 @@ def get_gcs_client() -> Optional[storage.Client]:
         ).decode("utf-8")
         creds_info = json.loads(creds_json_str)
 
-        credentials = service_account.Credentials.from_service_account_info(
-            creds_info
-        )
+        credentials = service_account.Credentials.from_service_account_info(creds_info)
         client = storage.Client(
             credentials=credentials, project=settings.GOOGLE_PROJECT_ID
         )
@@ -91,9 +90,7 @@ def upload_to_gcs(
 
         blob.upload_from_string(file_content, content_type=content_type)
 
-        logger.info(
-            f"File uploaded to gs://{target_bucket}/{destination_blob_name}"
-        )
+        logger.info(f"File uploaded to gs://{target_bucket}/{destination_blob_name}")
         return blob.public_url
     except Exception as e:
         logger.error(
@@ -133,15 +130,11 @@ class GCSUploader:
                 creds_info = json.loads(self.credentials_json)
             except json.JSONDecodeError:
                 # If that fails, try base64 decoding first
-                creds_json_str = base64.b64decode(
-                    self.credentials_json
-                ).decode("utf-8")
+                creds_json_str = base64.b64decode(self.credentials_json).decode("utf-8")
                 creds_info = json.loads(creds_json_str)
 
-            credentials = (
-                service_account.Credentials.from_service_account_info(
-                    creds_info
-                )
+            credentials = service_account.Credentials.from_service_account_info(
+                creds_info
             )
             self.client = storage.Client(
                 credentials=credentials, project=settings.GOOGLE_PROJECT_ID
@@ -170,12 +163,10 @@ class GCSUploader:
             Tuple of (signed_url, expiration_datetime)
         """
         if not self.client:
-            logger.error(
-                "❌ GCS client not initialized - cannot generate signed URL"
-            )
+            logger.error("❌ GCS client not initialized - cannot generate signed URL")
             raise ValueError("GCS client not initialized")
 
-        logger.info(f"🔗 Generating signed URL for upload...")
+        logger.info("🔗 Generating signed URL for upload...")
         logger.info(f"🪣 Bucket: {self.bucket_name}")
         logger.info(f"📄 Blob: {blob_name}")
         logger.info(f"🏷️  Content-Type: {content_type}")
@@ -185,9 +176,7 @@ class GCSUploader:
             bucket = self.client.bucket(self.bucket_name)
             blob = bucket.blob(blob_name)
 
-            expiration = datetime.utcnow() + timedelta(
-                minutes=expiration_minutes
-            )
+            expiration = datetime.utcnow() + timedelta(minutes=expiration_minutes)
 
             url = blob.generate_signed_url(
                 version="v4",
@@ -196,7 +185,7 @@ class GCSUploader:
                 content_type=content_type,
             )
 
-            logger.info(f"✅ Signed URL generated successfully")
+            logger.info("✅ Signed URL generated successfully")
             logger.info(f"🔗 URL (partial): {url[:50]}...{url[-10:]}")
             logger.info(f"⏰ Expires at: {expiration}")
 
@@ -225,7 +214,7 @@ class GCSUploader:
             )
             raise ValueError("GCS client not initialized")
 
-        logger.info(f"🔗 Generating signed READ URL...")
+        logger.info("🔗 Generating signed READ URL...")
         logger.info(f"🪣 Bucket: {self.bucket_name}")
         logger.info(f"📄 Blob: {blob_name}")
         logger.info(f"⏱️  Expiration: {expiration_minutes} minutes")
@@ -234,15 +223,13 @@ class GCSUploader:
             bucket = self.client.bucket(self.bucket_name)
             blob = bucket.blob(blob_name)
 
-            expiration = datetime.utcnow() + timedelta(
-                minutes=expiration_minutes
-            )
+            expiration = datetime.utcnow() + timedelta(minutes=expiration_minutes)
 
             url = blob.generate_signed_url(
                 version="v4", expiration=expiration, method="GET"
             )
 
-            logger.info(f"✅ Signed READ URL generated successfully")
+            logger.info("✅ Signed READ URL generated successfully")
             logger.info(f"🔗 URL (partial): {url[:50]}...{url[-10:]}")
 
             return url

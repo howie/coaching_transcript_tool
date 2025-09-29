@@ -66,9 +66,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info(
-        f"Starting Coaching Transcript Tool Backend API {DISPLAY_VERSION}"
-    )
+    logger.info(f"Starting Coaching Transcript Tool Backend API {DISPLAY_VERSION}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {settings.DEBUG}")
     try:
