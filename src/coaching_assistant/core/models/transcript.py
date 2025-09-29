@@ -2,7 +2,7 @@
 
 import enum
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID
 
@@ -150,9 +150,9 @@ class SessionRole:
 
             self.id = uuid4()
         if self.created_at is None:
-            self.created_at = datetime.utcnow()
+            self.created_at = datetime.now(UTC)
         if self.updated_at is None:
-            self.updated_at = datetime.utcnow()
+            self.updated_at = datetime.now(UTC)
 
     def validate(self) -> None:
         """Validate the session role data."""
@@ -171,7 +171,7 @@ class SessionRole:
             raise ValueError("role must be a SpeakerRole enum value")
 
         self.role = new_role
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def is_coach_role(self) -> bool:
         """Check if this is assigned to coach role."""
@@ -205,9 +205,9 @@ class SegmentRole:
 
             self.id = uuid4()
         if self.created_at is None:
-            self.created_at = datetime.utcnow()
+            self.created_at = datetime.now(UTC)
         if self.updated_at is None:
-            self.updated_at = datetime.utcnow()
+            self.updated_at = datetime.now(UTC)
 
     def validate(self) -> None:
         """Validate the segment role data."""
@@ -226,7 +226,7 @@ class SegmentRole:
             raise ValueError("role must be a SpeakerRole enum value")
 
         self.role = new_role
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def is_coach_speaking(self) -> bool:
         """Check if this segment is coach speaking."""

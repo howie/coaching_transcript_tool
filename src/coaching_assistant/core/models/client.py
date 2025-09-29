@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID
 
@@ -48,7 +48,7 @@ class Client:
         self.phone = None
         self.memo = None
         self.is_anonymized = True
-        self.anonymized_at = datetime.utcnow()
+        self.anonymized_at = datetime.now(UTC)
 
     def __repr__(self):
         return f"<Client(name={self.name}, user_id={self.user_id})>"

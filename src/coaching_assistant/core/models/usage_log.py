@@ -2,7 +2,7 @@
 
 import enum
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -66,9 +66,9 @@ class UsageLog:
         if self.id is None:
             self.id = uuid4()
         if self.created_at is None:
-            self.created_at = datetime.utcnow()
+            self.created_at = datetime.now(UTC)
         if self.updated_at is None:
-            self.updated_at = datetime.utcnow()
+            self.updated_at = datetime.now(UTC)
 
     # Factory Methods
 
@@ -307,13 +307,13 @@ class UsageLog:
 
         self.error_occurred = True
         self.error_message = error_message
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def clear_error(self) -> None:
         """Business rule: Clear error status."""
         self.error_occurred = False
         self.error_message = None
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def update_processing_metrics(
         self,
@@ -330,7 +330,7 @@ class UsageLog:
         self.processing_time_seconds = processing_time_seconds
         if confidence_score is not None:
             self.confidence_score = confidence_score
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def add_metadata(self, key: str, value: any) -> None:
         """Business rule: Add metadata entry."""
@@ -341,7 +341,7 @@ class UsageLog:
             self.metadata = {}
 
         self.metadata[key] = value
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     # Aggregation Helpers
 

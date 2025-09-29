@@ -2,7 +2,7 @@
 
 import enum
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -296,13 +296,13 @@ class WebhookLog:
     def mark_processing(self) -> None:
         """Mark webhook as processing."""
         self.status = "processing"
-        self.processing_started_at = datetime.utcnow()
+        self.processing_started_at = datetime.now(UTC)
 
     def mark_success(self, response_body: Optional[str] = None) -> None:
         """Mark webhook as successfully processed."""
         self.status = "success"
         self.success = True
-        self.processing_completed_at = datetime.utcnow()
+        self.processing_completed_at = datetime.now(UTC)
         if response_body:
             self.response_body = response_body
 
@@ -311,4 +311,4 @@ class WebhookLog:
         self.status = "failed"
         self.success = False
         self.error_message = error_message
-        self.processing_completed_at = datetime.utcnow()
+        self.processing_completed_at = datetime.now(UTC)

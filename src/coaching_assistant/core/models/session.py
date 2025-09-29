@@ -2,7 +2,7 @@
 
 import enum
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -65,9 +65,9 @@ class Session:
         if self.id is None:
             self.id = uuid4()
         if self.created_at is None:
-            self.created_at = datetime.utcnow()
+            self.created_at = datetime.now(UTC)
         if self.updated_at is None:
-            self.updated_at = datetime.utcnow()
+            self.updated_at = datetime.now(UTC)
 
     # Business Rules & Validation
 
@@ -146,7 +146,7 @@ class Session:
         self.audio_filename = filename
         self.status = SessionStatus.PENDING
         self.error_message = None
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def start_transcription(self, job_id: Optional[str] = None) -> None:
         """Business rule: Start transcription process."""
@@ -157,8 +157,8 @@ class Session:
 
         self.status = SessionStatus.PROCESSING
         self.transcription_job_id = job_id
-        self.transcription_started_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.transcription_started_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
         self.progress_percentage = 0
 
     def complete_transcription(
@@ -188,8 +188,8 @@ class Session:
         self.gcs_transcript_path = gcs_transcript_path
         self.status = SessionStatus.COMPLETED
         self.progress_percentage = 100
-        self.transcription_completed_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.transcription_completed_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
 
     def fail_transcription(self, error_message: str) -> None:
         """Business rule: Mark transcription as failed."""
@@ -203,7 +203,7 @@ class Session:
 
         self.status = SessionStatus.FAILED
         self.error_message = error_message
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def cancel_session(self) -> None:
         """Business rule: Cancel session."""
@@ -211,7 +211,7 @@ class Session:
             raise ValueError(f"Cannot cancel session in status: {self.status.value}")
 
         self.status = SessionStatus.CANCELLED
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def retry_transcription(self) -> None:
         """Business rule: Retry failed transcription."""
@@ -225,7 +225,7 @@ class Session:
         self.progress_percentage = 0
         self.transcription_job_id = None
         self.assemblyai_transcript_id = None
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def update_progress(self, percentage: int) -> None:
         """Business rule: Update processing progress."""
@@ -236,7 +236,7 @@ class Session:
             raise ValueError("Progress percentage must be between 0 and 100")
 
         self.progress_percentage = percentage
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     # Calculations & Derived Properties
 
@@ -245,7 +245,7 @@ class Session:
         if not self.transcription_started_at:
             return None
 
-        end_time = self.transcription_completed_at or datetime.utcnow()
+        end_time = self.transcription_completed_at or datetime.now(UTC)
         delta = end_time - self.transcription_started_at
         return int(delta.total_seconds())
 

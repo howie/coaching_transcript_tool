@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Dict, Optional
 from uuid import UUID
@@ -163,7 +163,7 @@ class UsageHistory:
             period_type=period_type,
             period_start=period_start,
             period_end=period_end,
-            recorded_at=datetime.utcnow(),
+            recorded_at=datetime.now(UTC),
             sessions_created=usage_data.get("sessions_created", 0),
             audio_minutes_processed=Decimal(
                 str(usage_data.get("audio_minutes_processed", 0))

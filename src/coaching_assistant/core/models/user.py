@@ -2,7 +2,7 @@
 
 import enum
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -115,9 +115,9 @@ class User:
         if self.id is None:
             self.id = uuid4()
         if self.created_at is None:
-            self.created_at = datetime.utcnow()
+            self.created_at = datetime.now(UTC)
         if self.updated_at is None:
-            self.updated_at = datetime.utcnow()
+            self.updated_at = datetime.now(UTC)
 
     # Business Rules
 
@@ -167,7 +167,7 @@ class User:
             )
 
         self.plan = new_plan
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def add_usage_minutes(self, minutes: int) -> None:
         """Business rule: Add usage minutes with validation."""
@@ -175,23 +175,23 @@ class User:
             raise ValueError("Cannot add negative minutes")
 
         self.usage_minutes += minutes
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def increment_session_count(self) -> None:
         """Business rule: Increment session count."""
         self.session_count += 1
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def reset_monthly_usage(self) -> None:
         """Business rule: Reset monthly counters (called by billing cycle)."""
         self.usage_minutes = 0
         self.session_count = 0
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def update_last_active(self) -> None:
         """Business rule: Update last active timestamp."""
-        self.last_active_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.last_active_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
 
     def has_permission(self, required_role: UserRole) -> bool:
         """Business rule: Check if user has required permission level."""
