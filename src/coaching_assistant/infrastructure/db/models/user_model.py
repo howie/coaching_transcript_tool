@@ -1,6 +1,6 @@
 """UserModel ORM with domain model conversion."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import JSON, Column, DateTime, Enum, Integer, String, Text
@@ -127,7 +127,7 @@ class UserModel(BaseModel):
         self.last_active_at = user.last_active_at
         self.stripe_customer_id = user.stripe_customer_id
         self.subscription_status = user.subscription_status
-        self.updated_at = user.updated_at or datetime.utcnow()
+        self.updated_at = user.updated_at or datetime.now(UTC)
 
     # Database-specific helper methods
 
@@ -217,18 +217,18 @@ class UserModel(BaseModel):
         self.usage_minutes = self.get_total_usage_minutes()
 
         # Update timestamp
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def reset_monthly_usage(self) -> None:
         """Reset monthly usage counters (called by billing cycle)."""
         self.usage_minutes = 0
         self.session_count = 0
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def mark_active(self) -> None:
         """Update last active timestamp."""
-        self.last_active_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.last_active_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
 
     def __repr__(self):
         """String representation of the UserModel."""

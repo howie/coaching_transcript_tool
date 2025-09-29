@@ -6,7 +6,7 @@ operations. All external dependencies are injected through repository ports.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -408,7 +408,7 @@ class PlanValidationUseCase:
     def _get_current_usage(self, user_id: UUID) -> Dict[str, Any]:
         """Get current usage statistics for user."""
         # Get current period usage (can be configured)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         period_start = now.replace(
             day=1, hour=0, minute=0, second=0, microsecond=0
         )  # Start of month

@@ -4,7 +4,7 @@ This module provides use cases for billing analytics operations that delegate
 to the existing BillingAnalyticsService while maintaining Clean Architecture boundaries.
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -28,7 +28,7 @@ class BillingAnalyticsOverviewUseCase:
         service = self.billing_service
 
         if end_date is None:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(UTC)
 
         # Calculate period start based on type and count
         if period_type == "daily":
@@ -93,7 +93,7 @@ class BillingAnalyticsSegmentationUseCase:
         service = self.billing_service
 
         if period_end is None:
-            period_end = datetime.utcnow()
+            period_end = datetime.now(UTC)
         if period_start is None:
             period_start = period_end - timedelta(days=90)  # Default to 3 months
 
@@ -173,7 +173,7 @@ class BillingAnalyticsChurnUseCase:
         """Get churn risk analysis with at-risk users."""
         service = self.billing_service
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(UTC)
         start_date = end_date - timedelta(days=period_months * 30)
 
         churn_analysis = service.get_churn_analysis(
@@ -211,7 +211,7 @@ class BillingAnalyticsPlanPerformanceUseCase:
         """Get detailed performance analysis for each subscription plan."""
         service = self.billing_service
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(UTC)
         start_date = end_date - timedelta(days=period_months * 30)
 
         performance = service.get_plan_performance_analysis(
@@ -249,7 +249,7 @@ class BillingAnalyticsExportUseCase:
         service = self.billing_service
 
         if period_end is None:
-            period_end = datetime.utcnow()
+            period_end = datetime.now(UTC)
         if period_start is None:
             period_start = period_end - timedelta(days=90)
 

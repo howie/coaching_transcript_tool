@@ -1,7 +1,7 @@
 """Transcription tasks for Celery."""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
@@ -102,7 +102,7 @@ def transcribe_audio(
         Dictionary with transcription results
     """
     session_uuid = UUID(session_id)
-    start_time = datetime.utcnow()
+    start_time = datetime.now(UTC)
 
     logger.info(f"Starting transcription for session {session_id}")
 
@@ -264,7 +264,7 @@ def transcribe_audio(
             _save_speaker_role_assignments(db, session_uuid, result.provider_metadata)
 
             # Calculate processing duration
-            processing_duration = (datetime.utcnow() - start_time).total_seconds()
+            processing_duration = (datetime.now(UTC) - start_time).total_seconds()
 
             # Update progress: finalizing
             processing_status.update_progress(95, "Finalizing transcription...")

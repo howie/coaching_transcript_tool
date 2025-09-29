@@ -1,6 +1,6 @@
 """Integration tests for subscription repository."""
 
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from uuid import uuid4
 
 import pytest
@@ -38,7 +38,7 @@ class TestSubscriptionRepositoryIntegration:
             currency="TWD",
             current_period_start=date.today(),
             current_period_end=date(2024, 12, 31),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         # Act
@@ -69,7 +69,7 @@ class TestSubscriptionRepositoryIntegration:
             frequency=1,
             period_amount=99900,
             auth_status=ECPayAuthStatus.ACTIVE.value,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         # Act
@@ -101,7 +101,7 @@ class TestSubscriptionRepositoryIntegration:
             status=SubscriptionStatus.ACTIVE.value,
             amount_twd=99900,
             currency="TWD",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         saved_subscription = repo.save_subscription(subscription)
         db_session.commit()
@@ -113,9 +113,9 @@ class TestSubscriptionRepositoryIntegration:
             amount_twd=99900,
             currency="TWD",
             status=PaymentStatus.SUCCESS.value,
-            payment_date=datetime.utcnow(),
+            payment_date=datetime.now(UTC),
             ecpay_trade_no="TEST_TRADE_123",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         # Act
@@ -142,7 +142,7 @@ class TestSubscriptionRepositoryIntegration:
             user_id=sample_user.id,
             plan_id="PRO",
             status=SubscriptionStatus.ACTIVE.value,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         saved_subscription = repo.save_subscription(subscription)
         db_session.commit()
@@ -175,7 +175,7 @@ class TestSubscriptionRepositoryIntegration:
             user_id=sample_user.id,
             plan_id="PRO",
             status=SubscriptionStatus.CANCELLED.value,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         repo.save_subscription(cancelled_subscription)
 
@@ -185,7 +185,7 @@ class TestSubscriptionRepositoryIntegration:
             user_id=sample_user.id,
             plan_id="PRO",
             status=SubscriptionStatus.ACTIVE.value,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         repo.save_subscription(active_subscription)
         db_session.commit()
@@ -246,7 +246,7 @@ class TestSubscriptionRepositoryIntegration:
             user_id=sample_user.id,
             merchant_member_id=f"MEMBER_NEW_{sample_user.id}",
             auth_status=ECPayAuthStatus.ACTIVE.value,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         repo.save_credit_authorization(newer_auth)
         db_session.commit()
@@ -270,7 +270,7 @@ class TestSubscriptionRepositoryIntegration:
             user_id=sample_user.id,
             plan_id="PRO",
             status=SubscriptionStatus.ACTIVE.value,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         saved_subscription = repo.save_subscription(subscription)
 
@@ -292,7 +292,7 @@ class TestSubscriptionRepositoryIntegration:
             currency="TWD",
             status=PaymentStatus.SUCCESS.value,
             ecpay_trade_no="TRADE_002",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         repo.save_payment(payment1)

@@ -1,6 +1,6 @@
 """Integration tests for billing analytics API endpoints."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from decimal import Decimal
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -52,7 +52,7 @@ class TestBillingAnalyticsAPI:
     @pytest.fixture
     def sample_billing_data(self):
         """Create sample billing analytics data."""
-        period_start = datetime.utcnow().replace(
+        period_start = datetime.now(UTC).replace(
             day=1, hour=0, minute=0, second=0, microsecond=0
         )
 
@@ -120,8 +120,8 @@ class TestBillingAnalyticsAPI:
                         "user_email": "test@example.com",
                         "user_name": "Test User",
                         "period_type": "monthly",
-                        "period_start": datetime.utcnow(),
-                        "period_end": datetime.utcnow() + timedelta(days=30),
+                        "period_start": datetime.now(UTC),
+                        "period_end": datetime.now(UTC) + timedelta(days=30),
                         "plan_name": "PRO",
                         "total_revenue_usd": 99.99,
                         "total_minutes_processed": 500.0,

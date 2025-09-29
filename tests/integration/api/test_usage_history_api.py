@@ -1,6 +1,6 @@
 """Integration tests for Usage History Analytics API endpoints."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from decimal import Decimal
 
 import pytest
@@ -33,7 +33,7 @@ class TestUsageHistoryAPI:
     @pytest.fixture
     def sample_usage_history(self, test_user, db_session):
         """Create sample usage history data."""
-        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        base_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
         history_records = []
 
         for i in range(7):  # 7 days of data

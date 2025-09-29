@@ -1,6 +1,6 @@
 """Billing Analytics model for enhanced admin reporting and revenue analysis."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Dict
 
@@ -332,7 +332,7 @@ class BillingAnalytics(BaseModel):
             period_type=period_type,
             period_start=period_start,
             period_end=period_end,
-            recorded_at=datetime.utcnow(),
+            recorded_at=datetime.now(UTC),
             # Plan info
             plan_name=usage_data.get("plan_name", "FREE"),
             plan_changed_during_period=usage_data.get("plan_changed", False),

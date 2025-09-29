@@ -1,6 +1,6 @@
 """Tests for UsageHistory model."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from decimal import Decimal
 
 import pytest
@@ -20,7 +20,7 @@ class TestUsageHistory:
         db_session.commit()
 
         # Create usage history
-        start_time = datetime.utcnow().replace(
+        start_time = datetime.now(UTC).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         end_time = start_time + timedelta(days=1)
@@ -64,8 +64,8 @@ class TestUsageHistory:
         usage_history = UsageHistory(
             user_id=user.id,
             period_type="daily",
-            period_start=datetime.utcnow(),
-            period_end=datetime.utcnow() + timedelta(days=1),
+            period_start=datetime.now(UTC),
+            period_end=datetime.now(UTC) + timedelta(days=1),
             audio_minutes_processed=Decimal("120"),  # 2 hours
             transcriptions_completed=4,
             failed_transcriptions=1,
@@ -102,8 +102,8 @@ class TestUsageHistory:
         usage_history = UsageHistory(
             user_id=user.id,
             period_type="daily",
-            period_start=datetime.utcnow(),
-            period_end=datetime.utcnow() + timedelta(days=1),
+            period_start=datetime.now(UTC),
+            period_end=datetime.now(UTC) + timedelta(days=1),
             audio_minutes_processed=Decimal("0"),
             transcriptions_completed=0,
             failed_transcriptions=0,
@@ -123,7 +123,7 @@ class TestUsageHistory:
         db_session.add(user)
         db_session.commit()
 
-        start_time = datetime.utcnow().replace(microsecond=0)
+        start_time = datetime.now(UTC).replace(microsecond=0)
         usage_history = UsageHistory(
             user_id=user.id,
             period_type="daily",
@@ -191,7 +191,7 @@ class TestUsageHistory:
         db_session.commit()
 
         # Prepare usage data
-        start_time = datetime.utcnow().replace(
+        start_time = datetime.now(UTC).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         end_time = start_time + timedelta(days=1)
@@ -240,7 +240,7 @@ class TestUsageHistory:
         db_session.add(user)
         db_session.commit()
 
-        start_time = datetime.utcnow().replace(
+        start_time = datetime.now(UTC).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         end_time = start_time + timedelta(days=1)
@@ -284,8 +284,8 @@ class TestUsageHistory:
             usage_history = UsageHistory(
                 user_id=user.id,
                 period_type="daily",
-                period_start=datetime.utcnow() + timedelta(days=i),
-                period_end=datetime.utcnow() + timedelta(days=i + 1),
+                period_start=datetime.now(UTC) + timedelta(days=i),
+                period_end=datetime.now(UTC) + timedelta(days=i + 1),
                 sessions_created=i + 1,
                 plan_name="PRO",
             )
@@ -309,7 +309,7 @@ class TestUsageHistory:
         db_session.add(user)
         db_session.commit()
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
         usage_history = UsageHistory(
             user_id=user.id,
             period_type="hourly",

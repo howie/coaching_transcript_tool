@@ -1,6 +1,6 @@
 """Unit tests for subscription management use cases."""
 
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -96,7 +96,7 @@ class TestSubscriptionCreationUseCase:
             frequency=1,
             period_amount=0,
             auth_status=ECPayAuthStatus.PENDING,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         self.mock_subscription_repo.save_credit_authorization.return_value = mock_auth
 
@@ -164,7 +164,7 @@ class TestSubscriptionCreationUseCase:
             user_id=sample_user.id,
             merchant_member_id=f"MEMBER_{sample_user.id}",
             auth_status=ECPayAuthStatus.ACTIVE,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = (
             existing_auth
@@ -250,7 +250,7 @@ class TestSubscriptionRetrievalUseCase:
             amount_twd=99900,
             currency="TWD",
             current_period_end=date.today(),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         self.mock_subscription_repo.get_subscription_by_user_id.return_value = (
             mock_subscription
@@ -261,7 +261,7 @@ class TestSubscriptionRetrievalUseCase:
             user_id=sample_user.id,
             merchant_member_id=f"MEMBER_{sample_user.id}",
             auth_status=ECPayAuthStatus.ACTIVE,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
         self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = (
             mock_auth
@@ -336,8 +336,8 @@ class TestSubscriptionRetrievalUseCase:
                 amount_twd=99900,
                 currency="TWD",
                 status=PaymentStatus.SUCCESS,
-                payment_date=datetime.utcnow(),
-                created_at=datetime.utcnow(),
+                payment_date=datetime.now(UTC),
+                created_at=datetime.now(UTC),
             )
         ]
         self.mock_subscription_repo.get_payments_for_subscription.return_value = (

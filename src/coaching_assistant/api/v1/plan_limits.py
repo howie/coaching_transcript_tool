@@ -4,7 +4,7 @@ Handles usage validation and limit checking for different plan tiers.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -105,7 +105,7 @@ async def validate_action(
     """
     try:
         # Get reset date (first day of next month)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if now.month == 12:
             reset_date = datetime(now.year + 1, 1, 1)
         else:
@@ -281,7 +281,7 @@ async def get_current_usage(
         plan_info = plan_retrieval_use_case.get_user_current_plan(current_user.id)
 
         # Calculate reset date
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if now.month == 12:
             reset_date = datetime(now.year + 1, 1, 1)
         else:
@@ -438,7 +438,7 @@ async def reset_monthly_usage(
 
         return {
             **reset_result,  # Include all results from use case
-            "reset_time": datetime.utcnow().isoformat() + "Z",
+            "reset_time": datetime.now(UTC).isoformat() + "Z",
         }
 
     except Exception as e:

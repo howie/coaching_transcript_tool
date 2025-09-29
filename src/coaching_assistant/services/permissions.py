@@ -1,6 +1,6 @@
 """Permission service for role-based access control."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import List, Optional
 
 from fastapi import HTTPException, status
@@ -33,7 +33,7 @@ class PermissionService:
             )
 
         # Check if admin session expired (2 hours timeout)
-        if user.admin_access_expires and user.admin_access_expires < datetime.utcnow():
+        if user.admin_access_expires and user.admin_access_expires < datetime.now(UTC):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Admin session expired. Please re-authenticate.",
@@ -87,7 +87,7 @@ class PermissionService:
 
         # If granting admin/staff, set session expiry
         if new_role in [UserRole.ADMIN, UserRole.STAFF]:
-            target_user.admin_access_expires = datetime.utcnow() + timedelta(hours=2)
+            target_user.admin_access_expires = datetime.now(UTC) + timedelta(hours=2)
 
         self.db.commit()
 
@@ -131,8 +131,8 @@ class PermissionService:
     def refresh_admin_session(self, user: User):
         """Refresh admin session expiry time."""
         if user.is_admin() or user.is_staff():
-            user.last_admin_login = datetime.utcnow()
-            user.admin_access_expires = datetime.utcnow() + timedelta(hours=2)
+            user.last_admin_login = datetime.now(UTC)
+            user.admin_access_expires = datetime.now(UTC) + timedelta(hours=2)
             self.db.commit()
 
     def check_ip_allowlist(self, user: User, ip_address: str) -> bool:

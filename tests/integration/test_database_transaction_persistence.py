@@ -5,7 +5,7 @@ to ensure data persistence, specifically for the coaching session transcription_
 update issue that was reported.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from uuid import uuid4
 
 import pytest
@@ -145,8 +145,8 @@ class TestDatabaseTransactionPersistence:
                 title="Audio Upload Session",
                 status=SessionStatus.UPLOADING,
                 language="cmn-Hant-TW",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
             db_session2.add(transcription_session)
             db_session2.flush()

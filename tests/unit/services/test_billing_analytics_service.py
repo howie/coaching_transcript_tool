@@ -1,6 +1,6 @@
 """Tests for BillingAnalyticsService."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from decimal import Decimal
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -40,7 +40,7 @@ class TestBillingAnalyticsService:
     def sample_billing_data(self):
         """Create sample billing analytics data."""
         user_id = uuid4()
-        period_start = datetime.utcnow().replace(
+        period_start = datetime.now(UTC).replace(
             day=1, hour=0, minute=0, second=0, microsecond=0
         )
 
@@ -95,8 +95,8 @@ class TestBillingAnalyticsService:
         mock_query.all.return_value = sample_billing_data
         mock_db.query.return_value = mock_query
 
-        period_start = datetime.utcnow() - timedelta(days=30)
-        period_end = datetime.utcnow()
+        period_start = datetime.now(UTC) - timedelta(days=30)
+        period_end = datetime.now(UTC)
 
         overview = service.get_admin_overview(period_start, period_end, "monthly")
 
@@ -183,8 +183,8 @@ class TestBillingAnalyticsService:
         mock_query.all.return_value = sample_billing_data
         mock_db.query.return_value = mock_query
 
-        period_start = datetime.utcnow() - timedelta(days=30)
-        period_end = datetime.utcnow()
+        period_start = datetime.now(UTC) - timedelta(days=30)
+        period_end = datetime.now(UTC)
 
         segments = service.get_customer_segmentation(period_start, period_end, False)
 
@@ -205,7 +205,7 @@ class TestBillingAnalyticsService:
         mock_user.email = "test@example.com"
         mock_user.name = "Test User"
         mock_user.plan.value = "pro"
-        mock_user.created_at = datetime.utcnow() - timedelta(days=180)
+        mock_user.created_at = datetime.now(UTC) - timedelta(days=180)
 
         mock_user_query = Mock()
         mock_user_query.filter.return_value = mock_user_query
@@ -268,8 +268,8 @@ class TestBillingAnalyticsService:
         mock_query.all.return_value = sample_billing_data
         mock_db.query.return_value = mock_query
 
-        period_start = datetime.utcnow() - timedelta(days=30)
-        period_end = datetime.utcnow()
+        period_start = datetime.now(UTC) - timedelta(days=30)
+        period_end = datetime.now(UTC)
 
         export_result = service.export_analytics_data(
             "csv", period_start, period_end, False
@@ -290,8 +290,8 @@ class TestBillingAnalyticsService:
         mock_query.all.return_value = sample_billing_data
         mock_db.query.return_value = mock_query
 
-        period_start = datetime.utcnow() - timedelta(days=30)
-        period_end = datetime.utcnow()
+        period_start = datetime.now(UTC) - timedelta(days=30)
+        period_end = datetime.now(UTC)
 
         export_result = service.export_analytics_data(
             "json", period_start, period_end, False
@@ -316,7 +316,7 @@ class TestBillingAnalyticsService:
         mock_user = Mock()
         mock_user.email = "test@example.com"
         mock_user.name = "Test User"
-        mock_user.created_at = datetime.utcnow()
+        mock_user.created_at = datetime.now(UTC)
 
         mock_user_query = Mock()
         mock_user_query.filter.return_value = mock_user_query
@@ -326,8 +326,8 @@ class TestBillingAnalyticsService:
             sample_billing_data
         )
 
-        period_start = datetime.utcnow() - timedelta(days=30)
-        period_end = datetime.utcnow()
+        period_start = datetime.now(UTC) - timedelta(days=30)
+        period_end = datetime.now(UTC)
 
         export_result = service.export_analytics_data(
             "json", period_start, period_end, True

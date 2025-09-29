@@ -5,7 +5,7 @@ following Clean Architecture principles with proper mocking of dependencies.
 """
 
 from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -78,11 +78,11 @@ def sample_user():
         email="test@example.com",
         name="Test User",
         plan=UserPlan.FREE,
-        current_month_start=datetime.utcnow().replace(
+        current_month_start=datetime.now(UTC).replace(
             day=1, hour=0, minute=0, second=0, microsecond=0
         ),
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -95,8 +95,8 @@ def sample_session(sample_user):
         title="Test Session",
         language="cmn-Hant-TW",
         status=SessionStatus.UPLOADING,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -121,8 +121,8 @@ def sample_plan_config():
         ),
         features=PlanFeatures(),
         pricing=PlanPricing(),
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -153,8 +153,8 @@ class TestSessionCreationUseCase:
             title="Test Session",
             language="cmn-Hant-TW",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         mock_session_repo.save.return_value = expected_session
 
@@ -280,8 +280,8 @@ class TestSessionCreationUseCase:
             limits=None,  # Test None case
             features=PlanFeatures(),
             pricing=PlanPricing(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         mock_plan_config_repo.get_by_plan_type.return_value = (
             plan_config_with_none_limits
@@ -293,8 +293,8 @@ class TestSessionCreationUseCase:
             title="Test Session",
             language="cmn-Hant-TW",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         mock_session_repo.save.return_value = expected_session
 
@@ -336,8 +336,8 @@ class TestSessionCreationUseCase:
             ),
             features=PlanFeatures(),
             pricing=PlanPricing(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         mock_plan_config_repo.get_by_plan_type.return_value = unlimited_plan_config
         mock_session_repo.count_user_sessions.return_value = 100  # High usage
@@ -349,8 +349,8 @@ class TestSessionCreationUseCase:
             title="Test Session",
             language="cmn-Hant-TW",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         mock_session_repo.save.return_value = expected_session
 
@@ -392,8 +392,8 @@ class TestSessionCreationUseCase:
             ),
             features=PlanFeatures(),
             pricing=PlanPricing(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         mock_plan_config_repo.get_by_plan_type.return_value = unlimited_plan_config
         mock_session_repo.count_user_sessions.return_value = 500  # Very high usage
@@ -407,8 +407,8 @@ class TestSessionCreationUseCase:
             title="Test Session",
             language="cmn-Hant-TW",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         mock_session_repo.save.return_value = expected_session
 
@@ -489,8 +489,8 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
             title="Test Session",
             language="cmn-Hant-TW",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         mock_session_repo.save.return_value = created_session
 
@@ -527,8 +527,8 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
             name="Test User",
             plan=UserPlan.FREE,
             current_month_start=None,  # No billing period set
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         use_case = SessionCreationUseCase(
@@ -548,8 +548,8 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
             title="Test Session",
             language="cmn-Hant-TW",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         mock_session_repo.save.return_value = created_session
 
@@ -656,8 +656,8 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
             limits=None,  # No limits object
             features=PlanFeatures(),
             pricing=PlanPricing(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         mock_plan_config_repo.get_by_plan_type.return_value = plan_config_no_limits
         mock_session_repo.get_by_id.return_value = sample_session
@@ -688,8 +688,8 @@ class TestSessionCreationUseCasePlanLimitsDataclassAccess:
             ),
             features=PlanFeatures(priority_support=True),
             pricing=PlanPricing(monthly_price_cents=999),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         # Test that limits is a PlanLimits object, not a dict
@@ -1266,7 +1266,7 @@ class TestSessionStatusRetrievalUseCase:
         use_case = SessionStatusRetrievalUseCase(mock_session_repo)
         sample_session.status = SessionStatus.PROCESSING
         sample_session.duration_seconds = 600  # 10 minutes
-        sample_session.transcription_started_at = datetime.utcnow() - timedelta(
+        sample_session.transcription_started_at = datetime.now(UTC) - timedelta(
             minutes=1
         )
         mock_session_repo.get_by_id.return_value = sample_session

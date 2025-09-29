@@ -1,6 +1,6 @@
 """Processing status model for detailed session tracking."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Column,
@@ -75,7 +75,7 @@ class ProcessingStatus(BaseModel):
         if not self.estimated_completion:
             return 0.0
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if self.estimated_completion <= now:
             return 0.0
 
@@ -96,14 +96,14 @@ class ProcessingStatus(BaseModel):
             self.duration_processed = duration_processed
         if estimated_completion:
             self.estimated_completion = estimated_completion
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def calculate_processing_speed(self) -> float:
         """Calculate current processing speed based on elapsed time."""
         if not self.started_at or not self.duration_processed:
             return 0.0
 
-        elapsed_seconds = (datetime.utcnow() - self.started_at).total_seconds()
+        elapsed_seconds = (datetime.now(UTC) - self.started_at).total_seconds()
         if elapsed_seconds <= 0:
             return 0.0
 
@@ -113,7 +113,7 @@ class ProcessingStatus(BaseModel):
     def estimate_completion_time(self) -> datetime:
         """Estimate completion time based on current progress."""
         if self.progress >= 100 or not self.duration_total:
-            return datetime.utcnow()
+            return datetime.now(UTC)
 
         # Calculate based on current processing speed
         speed = self.calculate_processing_speed()
@@ -124,6 +124,6 @@ class ProcessingStatus(BaseModel):
         remaining_audio = self.duration_total - (self.duration_processed or 0)
         estimated_seconds_remaining = remaining_audio * speed
 
-        return datetime.utcnow() + datetime.timedelta(
+        return datetime.now(UTC) + datetime.timedelta(
             seconds=estimated_seconds_remaining
         )

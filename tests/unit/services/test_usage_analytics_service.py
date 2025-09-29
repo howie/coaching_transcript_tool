@@ -1,6 +1,6 @@
 """Tests for UsageAnalyticsService."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -85,7 +85,7 @@ class TestUsageAnalyticsService:
     ):
         """Test that recording a snapshot updates existing record for same period."""
         # Create initial snapshot
-        start_time = datetime.utcnow().replace(
+        start_time = datetime.now(UTC).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         existing_snapshot = UsageHistory(
@@ -126,7 +126,7 @@ class TestUsageAnalyticsService:
     ):
         """Test getting usage trends from existing history data."""
         # Create multiple history records over several days
-        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        base_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         for i in range(7):  # 7 days of data
             history = UsageHistory(
@@ -178,7 +178,7 @@ class TestUsageAnalyticsService:
         db_session.commit()
 
         # Create usage logs for past few days
-        base_date = datetime.utcnow()
+        base_date = datetime.now(UTC)
         for i in range(3):
             usage_log = UsageLog(
                 user_id=test_user.id,
@@ -204,7 +204,7 @@ class TestUsageAnalyticsService:
     ):
         """Test usage prediction with sufficient historical data."""
         # Create 30 days of history data with growing trend
-        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        base_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         for i in range(30):
             # Growing usage pattern
@@ -250,7 +250,7 @@ class TestUsageAnalyticsService:
     ):
         """Test usage prediction with insufficient historical data."""
         # Create only 3 days of data (less than minimum 7)
-        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        base_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         for i in range(3):
             history = UsageHistory(
@@ -280,7 +280,7 @@ class TestUsageAnalyticsService:
     ):
         """Test generating insights for low plan utilization."""
         # Create usage data showing low utilization (less than 30%)
-        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        base_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         for i in range(10):
             history = UsageHistory(
@@ -318,7 +318,7 @@ class TestUsageAnalyticsService:
     ):
         """Test generating insights for high plan utilization."""
         # Create usage data showing high utilization (over 85%)
-        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        base_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         for i in range(10):
             history = UsageHistory(
@@ -352,7 +352,7 @@ class TestUsageAnalyticsService:
         self, analytics_service, test_user, db_session
     ):
         """Test generating insights for rapid usage growth."""
-        base_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        base_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Create data showing rapid growth (low usage initially, high usage
         # recently)
@@ -425,7 +425,7 @@ class TestUsageAnalyticsService:
 
     def test_parse_period_to_date(self, analytics_service):
         """Test parsing period strings to dates."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Test 7 days
         result = analytics_service._parse_period_to_date("7d")
@@ -497,7 +497,7 @@ class TestUsageAnalyticsService:
         db_session.commit()
 
         # Aggregate data for today
-        start_date = datetime.utcnow().replace(
+        start_date = datetime.now(UTC).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         end_date = start_date + timedelta(days=1)

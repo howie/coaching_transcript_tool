@@ -1,7 +1,7 @@
 """ECPay subscription models for SaaS billing system."""
 
 import enum
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     JSON,
@@ -495,13 +495,13 @@ class WebhookLog(BaseModel):
     def mark_processing(self):
         """Mark webhook as processing."""
         self.status = WebhookStatus.PROCESSING.value
-        self.processing_started_at = datetime.utcnow()
+        self.processing_started_at = datetime.now(UTC)
 
     def mark_success(self, response_body: str = None):
         """Mark webhook as successfully processed."""
         self.status = WebhookStatus.SUCCESS.value
         self.success = True
-        self.processing_completed_at = datetime.utcnow()
+        self.processing_completed_at = datetime.now(UTC)
         if response_body:
             self.response_body = response_body
 
@@ -510,7 +510,7 @@ class WebhookLog(BaseModel):
         self.status = WebhookStatus.FAILED.value
         self.success = False
         self.error_message = error_message
-        self.processing_completed_at = datetime.utcnow()
+        self.processing_completed_at = datetime.now(UTC)
 
     def mark_retry(self, next_retry_at: datetime):
         """Mark webhook for retry."""

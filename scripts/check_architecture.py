@@ -9,19 +9,20 @@ cross-domain data type errors by checking:
 4. Proper dependency direction in Clean Architecture
 """
 
-import os
-import sys
 import ast
+import os
 import re
-from pathlib import Path
-from typing import List, Dict, Set, Tuple, Optional
+import sys
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+from typing import Dict, List, Tuple
 
 
 @dataclass
 class ArchitectureViolation:
     """Represents an architecture compliance violation."""
+
     file_path: str
     line_number: int
     violation_type: str
@@ -32,6 +33,7 @@ class ArchitectureViolation:
 @dataclass
 class ComplianceReport:
     """Architecture compliance report."""
+
     violations: List[ArchitectureViolation]
     warnings: List[ArchitectureViolation]
     summary: Dict[str, int]
@@ -39,6 +41,7 @@ class ComplianceReport:
 
 class ViolationType(Enum):
     """Types of architecture violations."""
+
     SQLALCHEMY_IN_CORE = "sqlalchemy_in_core"
     DIRECT_DB_DEPENDENCY = "direct_db_dependency"
     LEGACY_MODEL_IMPORT = "legacy_model_import"
@@ -78,13 +81,15 @@ class ArchitectureChecker:
         for py_file in core_services_dir.glob("*.py"):
             violations = self._check_sqlalchemy_imports(py_file)
             for line_num, import_stmt in violations:
-                self.violations.append(ArchitectureViolation(
-                    file_path=str(py_file.relative_to(self.project_root)),
-                    line_number=line_num,
-                    violation_type=ViolationType.SQLALCHEMY_IN_CORE.value,
-                    description=f"SQLAlchemy import in core service: {import_stmt}",
-                    severity="critical"
-                ))
+                self.violations.append(
+                    ArchitectureViolation(
+                        file_path=str(py_file.relative_to(self.project_root)),
+                        line_number=line_num,
+                        violation_type=ViolationType.SQLALCHEMY_IN_CORE.value,
+                        description=f"SQLAlchemy import in core service: {import_stmt}",
+                        severity="critical",
+                    )
+                )
 
     def check_api_direct_db_dependencies(self) -> None:
         """Check for direct database dependencies in API endpoints."""
@@ -108,13 +113,15 @@ class ArchitectureChecker:
                     severity = "warning"
                     violation_list = self.warnings
 
-                violation_list.append(ArchitectureViolation(
-                    file_path=str(py_file.relative_to(self.project_root)),
-                    line_number=line_num,
-                    violation_type=ViolationType.DIRECT_DB_DEPENDENCY.value,
-                    description=f"Direct DB dependency in {function_name}: Depends(get_db)",
-                    severity=severity
-                ))
+                violation_list.append(
+                    ArchitectureViolation(
+                        file_path=str(py_file.relative_to(self.project_root)),
+                        line_number=line_num,
+                        violation_type=ViolationType.DIRECT_DB_DEPENDENCY.value,
+                        description=f"Direct DB dependency in {function_name}: Depends(get_db)",
+                        severity=severity,
+                    )
+                )
 
     def check_legacy_model_imports(self) -> None:
         """Check for legacy model imports in API layer."""
@@ -130,13 +137,15 @@ class ArchitectureChecker:
 
             violations = self._check_legacy_model_imports(py_file)
             for line_num, import_stmt in violations:
-                self.warnings.append(ArchitectureViolation(
-                    file_path=str(py_file.relative_to(self.project_root)),
-                    line_number=line_num,
-                    violation_type=ViolationType.LEGACY_MODEL_IMPORT.value,
-                    description=f"Legacy model import: {import_stmt}",
-                    severity="warning"
-                ))
+                self.warnings.append(
+                    ArchitectureViolation(
+                        file_path=str(py_file.relative_to(self.project_root)),
+                        line_number=line_num,
+                        violation_type=ViolationType.LEGACY_MODEL_IMPORT.value,
+                        description=f"Legacy model import: {import_stmt}",
+                        severity="warning",
+                    )
+                )
 
     def check_enum_converters(self) -> None:
         """Check that all enums have proper converters."""
@@ -145,20 +154,24 @@ class ArchitectureChecker:
         # Find all enums in domain and database layers
         domain_enums = self._find_enums(self.src_dir / "core" / "models")
         database_enums = self._find_enums(self.src_dir / "models")
-        infrastructure_enums = self._find_enums(self.src_dir / "infrastructure" / "db" / "models")
+        infrastructure_enums = self._find_enums(
+            self.src_dir / "infrastructure" / "db" / "models"
+        )
 
         # Check for missing converters
         all_enums = set(domain_enums + database_enums + infrastructure_enums)
 
         for enum_name in all_enums:
             if not self._has_enum_converter(enum_name):
-                self.warnings.append(ArchitectureViolation(
-                    file_path="multiple",
-                    line_number=0,
-                    violation_type=ViolationType.MISSING_ENUM_CONVERTER.value,
-                    description=f"Missing enum converter for {enum_name}",
-                    severity="warning"
-                ))
+                self.warnings.append(
+                    ArchitectureViolation(
+                        file_path="multiple",
+                        line_number=0,
+                        violation_type=ViolationType.MISSING_ENUM_CONVERTER.value,
+                        description=f"Missing enum converter for {enum_name}",
+                        severity="warning",
+                    )
+                )
 
     def check_dependency_direction(self) -> None:
         """Check that dependency direction follows Clean Architecture."""
@@ -175,7 +188,7 @@ class ArchitectureChecker:
         violations = []
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
             tree = ast.parse(content)
@@ -200,7 +213,7 @@ class ArchitectureChecker:
         violations = []
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
 
             for i, line in enumerate(lines, 1):
@@ -208,9 +221,9 @@ class ArchitectureChecker:
                     # Try to extract function name
                     function_name = "unknown"
                     # Look backwards for function definition
-                    for j in range(max(0, i-10), i):
-                        if "def " in lines[j-1]:
-                            func_match = re.search(r'def\s+(\w+)', lines[j-1])
+                    for j in range(max(0, i - 10), i):
+                        if "def " in lines[j - 1]:
+                            func_match = re.search(r"def\s+(\w+)", lines[j - 1])
                             if func_match:
                                 function_name = func_match.group(1)
                             break
@@ -227,7 +240,7 @@ class ArchitectureChecker:
         violations = []
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
             tree = ast.parse(content)
@@ -254,7 +267,7 @@ class ArchitectureChecker:
 
         for py_file in directory.glob("**/*.py"):
             try:
-                with open(py_file, 'r', encoding='utf-8') as f:
+                with open(py_file, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 tree = ast.parse(content)
@@ -265,7 +278,9 @@ class ArchitectureChecker:
                         for base in node.bases:
                             if isinstance(base, ast.Name) and base.id == "Enum":
                                 enums.append(node.name)
-                            elif isinstance(base, ast.Attribute) and base.attr == "Enum":
+                            elif (
+                                isinstance(base, ast.Attribute) and base.attr == "Enum"
+                            ):
                                 enums.append(node.name)
 
             except (SyntaxError, UnicodeDecodeError) as e:
@@ -283,7 +298,7 @@ class ArchitectureChecker:
 
         for py_file in repo_dir.glob("*.py"):
             try:
-                with open(py_file, 'r', encoding='utf-8') as f:
+                with open(py_file, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 # Look for enum conversion patterns
@@ -295,13 +310,15 @@ class ArchitectureChecker:
 
         return False
 
-    def _check_infrastructure_imports_in_core(self, core_dir: Path) -> List[ArchitectureViolation]:
+    def _check_infrastructure_imports_in_core(
+        self, core_dir: Path
+    ) -> List[ArchitectureViolation]:
         """Check for infrastructure imports in core layer."""
         violations = []
 
         for py_file in core_dir.glob("**/*.py"):
             try:
-                with open(py_file, 'r', encoding='utf-8') as f:
+                with open(py_file, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 tree = ast.parse(content)
@@ -309,13 +326,17 @@ class ArchitectureChecker:
                 for node in ast.walk(tree):
                     if isinstance(node, ast.ImportFrom):
                         if node.module and "infrastructure" in node.module:
-                            violations.append(ArchitectureViolation(
-                                file_path=str(py_file.relative_to(self.project_root)),
-                                line_number=node.lineno,
-                                violation_type=ViolationType.WRONG_DEPENDENCY_DIRECTION.value,
-                                description=f"Core importing from infrastructure: {node.module}",
-                                severity="critical"
-                            ))
+                            violations.append(
+                                ArchitectureViolation(
+                                    file_path=str(
+                                        py_file.relative_to(self.project_root)
+                                    ),
+                                    line_number=node.lineno,
+                                    violation_type=ViolationType.WRONG_DEPENDENCY_DIRECTION.value,
+                                    description=f"Core importing from infrastructure: {node.module}",
+                                    severity="critical",
+                                )
+                            )
 
             except (SyntaxError, UnicodeDecodeError) as e:
                 print(f"  ⚠️ Could not parse {py_file}: {e}")
@@ -328,7 +349,7 @@ class ArchitectureChecker:
         migrated_files = {
             "plans.py",
             "subscriptions.py",
-            "coaching_sessions.py"  # Partially migrated
+            "coaching_sessions.py",  # Partially migrated
         }
 
         return filename in migrated_files
@@ -336,26 +357,26 @@ class ArchitectureChecker:
     def generate_report(self) -> ComplianceReport:
         """Generate final compliance report."""
         summary = {
-            "critical_violations": len([v for v in self.violations if v.severity == "critical"]),
+            "critical_violations": len(
+                [v for v in self.violations if v.severity == "critical"]
+            ),
             "warnings": len(self.warnings),
-            "total_issues": len(self.violations) + len(self.warnings)
+            "total_issues": len(self.violations) + len(self.warnings),
         }
 
         return ComplianceReport(
-            violations=self.violations,
-            warnings=self.warnings,
-            summary=summary
+            violations=self.violations, warnings=self.warnings, summary=summary
         )
 
 
 def print_report(report: ComplianceReport) -> None:
     """Print the architecture compliance report."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🏛️  CLEAN ARCHITECTURE COMPLIANCE REPORT")
-    print("="*80)
+    print("=" * 80)
 
     # Summary
-    print(f"\n📊 Summary:")
+    print("\n📊 Summary:")
     print(f"  Critical Violations: {report.summary['critical_violations']}")
     print(f"  Warnings: {report.summary['warnings']}")
     print(f"  Total Issues: {report.summary['total_issues']}")
@@ -380,12 +401,12 @@ def print_report(report: ComplianceReport) -> None:
             print(f"  ... and {len(report.warnings) - 10} more warnings")
 
     # Status
-    if report.summary['critical_violations'] == 0:
+    if report.summary["critical_violations"] == 0:
         print("✅ No critical architecture violations found!")
     else:
         print("🚨 Critical architecture violations need immediate attention!")
 
-    print("="*80)
+    print("=" * 80)
 
 
 def main():
@@ -401,7 +422,7 @@ def main():
     print_report(report)
 
     # Exit with error code if there are critical violations
-    if report.summary['critical_violations'] > 0:
+    if report.summary["critical_violations"] > 0:
         sys.exit(1)
     else:
         sys.exit(0)

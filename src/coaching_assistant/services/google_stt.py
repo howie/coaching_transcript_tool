@@ -229,9 +229,9 @@ class GoogleSTTProvider(STTProvider):
             Operation result
         """
         import time
-        from datetime import datetime, timedelta
+        from datetime import UTC, datetime, timedelta
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
         deadline = start_time + timedelta(minutes=timeout_minutes)
         last_log_time = start_time
         check_interval = 15  # Check every 15 seconds (faster polling)
@@ -241,7 +241,7 @@ class GoogleSTTProvider(STTProvider):
             f"Started operation at {start_time.isoformat()}, timeout: {timeout_minutes} minutes"
         )
 
-        while datetime.utcnow() < deadline:
+        while datetime.now(UTC) < deadline:
             try:
                 # Try to get result with short timeout
                 response = operation.result(timeout=check_interval)
@@ -249,7 +249,7 @@ class GoogleSTTProvider(STTProvider):
 
             except Exception as e:
                 error_str = str(e)
-                current_time = datetime.utcnow()
+                current_time = datetime.now(UTC)
                 elapsed = (current_time - start_time).total_seconds()
 
                 # Check if it's a timeout (expected) vs real error
@@ -312,7 +312,7 @@ class GoogleSTTProvider(STTProvider):
                     raise
 
         # Timeout exceeded
-        elapsed_minutes = (datetime.utcnow() - start_time).total_seconds() / 60
+        elapsed_minutes = (datetime.now(UTC) - start_time).total_seconds() / 60
         logger.error(f"Operation timed out after {elapsed_minutes:.1f} minutes")
         raise TimeoutError(
             f"Batch recognition timed out after {timeout_minutes} minutes"

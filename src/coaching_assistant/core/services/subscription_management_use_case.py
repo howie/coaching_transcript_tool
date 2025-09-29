@@ -7,7 +7,7 @@ operations. All external dependencies are injected through repository ports.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from numbers import Number
 from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
@@ -171,7 +171,7 @@ class SubscriptionCreationUseCase:
             )
 
         # Create new authorization
-        auth_id = f"AUTH_{user_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+        auth_id = f"AUTH_{user_id}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}"
         merchant_member_id = f"MEMBER_{user_id}"
 
         authorization = ECPayCreditAuthorization(
@@ -183,8 +183,8 @@ class SubscriptionCreationUseCase:
             frequency=1,
             period_amount=0,  # Will be set later based on plan
             auth_status=ECPayAuthStatus.PENDING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         saved_auth = self.subscription_repo.save_credit_authorization(authorization)
@@ -273,10 +273,10 @@ class SubscriptionCreationUseCase:
             amount_twd=amount_cents,
             currency="TWD",
             auth_id=authorization_id,
-            current_period_start=datetime.utcnow().date(),
+            current_period_start=datetime.now(UTC).date(),
             current_period_end=self._calculate_next_billing_date(normalized_billing),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         saved_subscription = self.subscription_repo.save_subscription(subscription)
@@ -309,7 +309,7 @@ class SubscriptionCreationUseCase:
 
     def _calculate_next_billing_date(self, billing_cycle: str) -> date:
         """Calculate next billing date based on cycle."""
-        now = datetime.utcnow().date()
+        now = datetime.now(UTC).date()
 
         if billing_cycle == "monthly":
             # Add one month
@@ -644,7 +644,7 @@ class SubscriptionModificationUseCase:
         subscription.plan_id = new_plan_type.value  # Use the enum value (lowercase)
         subscription.billing_cycle = normalized_cycle
         subscription.amount_twd = new_amount_cents
-        subscription.updated_at = datetime.utcnow()
+        subscription.updated_at = datetime.now(UTC)
 
         updated_subscription = self.subscription_repo.save_subscription(subscription)
 
@@ -701,7 +701,7 @@ class SubscriptionModificationUseCase:
         # complex logic
         current_amount = getattr(subscription, "amount_twd", 0)
         remaining_days = (
-            subscription.current_period_end - datetime.utcnow().date()
+            subscription.current_period_end - datetime.now(UTC).date()
         ).days
         billing_period_days = 30 if subscription.billing_cycle == "monthly" else 365
 
@@ -712,5 +712,5 @@ class SubscriptionModificationUseCase:
             "current_plan_remaining_value": remaining_value,
             "new_plan_prorated_cost": new_amount_cents,
             "net_charge": net_charge,
-            "effective_date": datetime.utcnow().date().isoformat(),
+            "effective_date": datetime.now(UTC).date().isoformat(),
         }

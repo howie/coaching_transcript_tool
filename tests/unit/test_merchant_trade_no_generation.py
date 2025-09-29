@@ -54,14 +54,21 @@ class TestMerchantTradeNoGeneration:
         return Mock()
 
     @pytest.fixture
-    def service(self, mock_user_repo, mock_subscription_repo, mock_settings, mock_ecpay_client, mock_notification_service):
+    def service(
+        self,
+        mock_user_repo,
+        mock_subscription_repo,
+        mock_settings,
+        mock_ecpay_client,
+        mock_notification_service,
+    ):
         """Create service instance with all required dependencies"""
         return ECPaySubscriptionService(
             user_repo=mock_user_repo,
             subscription_repo=mock_subscription_repo,
             settings=mock_settings,
             ecpay_client=mock_ecpay_client,
-            notification_service=mock_notification_service
+            notification_service=mock_notification_service,
         )
 
     def test_merchant_trade_no_format_compliance(self, service):

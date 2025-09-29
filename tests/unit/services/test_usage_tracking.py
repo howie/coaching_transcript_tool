@@ -1,6 +1,6 @@
 """Tests for usage tracking service."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from decimal import Decimal
 
 import pytest
@@ -137,7 +137,7 @@ class TestUsageTrackingService:
         service = UsageTrackingService(db_session)
 
         # Create some usage logs
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         logs = [
             UsageLog(
                 user_id=str(test_user.id),
@@ -173,7 +173,7 @@ class TestUsageTrackingService:
         service = UsageTrackingService(db_session)
 
         # Create usage logs for multiple months
-        base_date = datetime.utcnow().replace(day=1)
+        base_date = datetime.now(UTC).replace(day=1)
         for month_offset in range(3):
             month_date = base_date - timedelta(days=30 * month_offset)
             for i in range(3):
@@ -272,7 +272,7 @@ class TestUsageTrackingService:
         UsageTrackingService(db_session)
 
         # Set last month's usage
-        last_month = datetime.utcnow() - timedelta(days=35)
+        last_month = datetime.now(UTC) - timedelta(days=35)
         test_user.usage_minutes = 100
         test_user.session_count = 10
         test_user.transcription_count = 20
@@ -284,11 +284,11 @@ class TestUsageTrackingService:
         # This would be called periodically or on each usage check
 
         # Manual reset for testing
-        if test_user.current_month_start.month != datetime.utcnow().month:
+        if test_user.current_month_start.month != datetime.now(UTC).month:
             test_user.usage_minutes = 0
             test_user.session_count = 0
             test_user.transcription_count = 0
-            test_user.current_month_start = datetime.utcnow().replace(day=1)
+            test_user.current_month_start = datetime.now(UTC).replace(day=1)
             db_session.commit()
 
         # Verify reset
@@ -303,7 +303,7 @@ class TestUsageTrackingService:
         test_user.usage_minutes = 50
         test_user.session_count = 5
         test_user.transcription_count = 10
-        test_user.current_month_start = datetime.utcnow().replace(day=1)
+        test_user.current_month_start = datetime.now(UTC).replace(day=1)
         db_session.commit()
 
         # Get summary
@@ -341,7 +341,7 @@ class TestUsageTrackingService:
                     session_id=f"session-{user.id}-{j}",
                     duration_minutes=10.0,
                     cost_usd=Decimal("0.50"),
-                    created_at=datetime.utcnow() - timedelta(days=j),
+                    created_at=datetime.now(UTC) - timedelta(days=j),
                 )
                 db_session.add(log)
         db_session.commit()
@@ -395,7 +395,7 @@ def test_user(db_session: Session) -> User:
         usage_minutes=0,
         session_count=0,
         transcription_count=0,
-        current_month_start=datetime.utcnow().replace(day=1),
+        current_month_start=datetime.now(UTC).replace(day=1),
     )
     db_session.add(user)
     db_session.commit()

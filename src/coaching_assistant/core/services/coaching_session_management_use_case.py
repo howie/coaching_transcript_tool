@@ -4,7 +4,7 @@ This module contains the business logic for coaching session management operatio
 following the Clean Architecture principles with dependency injection.
 """
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
@@ -336,8 +336,8 @@ class CoachingSessionCreationUseCase:
             fee_currency=fee_currency.upper(),
             fee_amount=fee_amount,
             notes=notes,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         # Validate business rules
@@ -435,7 +435,7 @@ class CoachingSessionUpdateUseCase:
         if notes is not None:
             session.notes = notes
 
-        session.updated_at = datetime.utcnow()
+        session.updated_at = datetime.now(UTC)
 
         # Validate business rules
         if not session.validate():

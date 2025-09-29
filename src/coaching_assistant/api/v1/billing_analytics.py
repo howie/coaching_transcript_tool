@@ -1,6 +1,6 @@
 """Enhanced billing analytics API endpoints for admin reporting and revenue analysis."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -222,7 +222,7 @@ async def get_customer_segmentation(
     """
 
     if period_end is None:
-        period_end = datetime.utcnow()
+        period_end = datetime.now(UTC)
     if period_start is None:
         period_start = period_end - timedelta(days=90)  # Default to 3 months
 
@@ -317,7 +317,7 @@ async def get_churn_analysis(
     - **include_predictions**: Include predictive churn modeling
     """
 
-    end_date = datetime.utcnow()
+    end_date = datetime.now(UTC)
     start_date = end_date - timedelta(days=period_months * 30)
 
     churn_analysis = churn_use_case.execute(
@@ -359,7 +359,7 @@ async def get_plan_performance_analysis(
     - **include_forecasts**: Include revenue forecasts
     """
 
-    end_date = datetime.utcnow()
+    end_date = datetime.now(UTC)
     start_date = end_date - timedelta(days=period_months * 30)
 
     performance = plan_performance_use_case.execute(
@@ -402,7 +402,7 @@ async def export_billing_analytics(
     """
 
     if period_end is None:
-        period_end = datetime.utcnow()
+        period_end = datetime.now(UTC)
     if period_start is None:
         period_start = period_end - timedelta(days=90)
 

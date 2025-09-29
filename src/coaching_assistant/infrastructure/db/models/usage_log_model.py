@@ -1,6 +1,6 @@
 """UsageLogModel ORM with domain model conversion."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID as PyUUID
 
@@ -157,7 +157,7 @@ class UsageLogModel(BaseModel):
         self.error_message = usage_log.error_message
         self.retry_count = usage_log.retry_count
         self.usage_metadata = usage_log.metadata
-        self.updated_at = usage_log.updated_at or datetime.utcnow()
+        self.updated_at = usage_log.updated_at or datetime.now(UTC)
 
     # Database-specific helper methods
 
@@ -306,19 +306,19 @@ class UsageLogModel(BaseModel):
             self.word_count = word_count
         if character_count is not None:
             self.character_count = character_count
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def mark_error(self, error_message: str) -> None:
         """Mark usage log with error."""
         self.error_occurred = True
         self.error_message = error_message
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def clear_error(self) -> None:
         """Clear error status."""
         self.error_occurred = False
         self.error_message = None
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def add_metadata(self, key: str, value: any) -> None:
         """Add metadata entry."""
@@ -326,7 +326,7 @@ class UsageLogModel(BaseModel):
             self.usage_metadata = {}
 
         self.usage_metadata[key] = value
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def sync_legacy_fields(self) -> None:
         """Sync data to legacy fields for backward compatibility."""

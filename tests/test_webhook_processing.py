@@ -1,6 +1,6 @@
 """Tests for ECPay webhook processing functionality."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -257,12 +257,12 @@ class TestWebhookProcessing:
         webhook_log1 = WebhookLog(
             webhook_type="auth_callback",
             status=WebhookStatus.SUCCESS.value,
-            received_at=datetime.utcnow() - timedelta(minutes=10),
+            received_at=datetime.now(UTC) - timedelta(minutes=10),
         )
         webhook_log2 = WebhookLog(
             webhook_type="billing_callback",
             status=WebhookStatus.FAILED.value,
-            received_at=datetime.utcnow() - timedelta(hours=2),
+            received_at=datetime.now(UTC) - timedelta(hours=2),
         )
 
         db_session.add_all([webhook_log1, webhook_log2])
@@ -287,22 +287,22 @@ class TestWebhookProcessing:
             WebhookLog(
                 webhook_type="auth_callback",
                 status=WebhookStatus.SUCCESS.value,
-                received_at=datetime.utcnow() - timedelta(hours=1),
+                received_at=datetime.now(UTC) - timedelta(hours=1),
             ),
             WebhookLog(
                 webhook_type="auth_callback",
                 status=WebhookStatus.FAILED.value,
-                received_at=datetime.utcnow() - timedelta(hours=2),
+                received_at=datetime.now(UTC) - timedelta(hours=2),
             ),
             WebhookLog(
                 webhook_type="billing_callback",
                 status=WebhookStatus.SUCCESS.value,
-                received_at=datetime.utcnow() - timedelta(hours=3),
+                received_at=datetime.now(UTC) - timedelta(hours=3),
             ),
             WebhookLog(
                 webhook_type="billing_callback",
                 status=WebhookStatus.SUCCESS.value,
-                received_at=datetime.utcnow() - timedelta(hours=4),
+                received_at=datetime.now(UTC) - timedelta(hours=4),
             ),
         ]
 

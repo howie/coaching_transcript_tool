@@ -1,7 +1,7 @@
 """E2E tests for subscription payment and upgrade flows."""
 
 import time
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from uuid import uuid4
 
 import pytest
@@ -297,7 +297,7 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
             currency="TWD",
             current_period_start=date.today(),
             current_period_end=date(2024, 12, 31),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         # Create authorization for the subscription
@@ -310,7 +310,7 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
             frequency=1,
             period_amount=99900,
             auth_status=ECPayAuthStatus.ACTIVE.value,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         db_session.add(subscription)
@@ -330,7 +330,7 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
             "MerchantTradeNo": f"MEMBER_{user['user_id']}",
             "RtnCode": "1",  # Success
             "RtnMsg": "Success",
-            "PaymentDate": datetime.utcnow().strftime("%Y/%m/%d %H:%M:%S"),
+            "PaymentDate": datetime.now(UTC).strftime("%Y/%m/%d %H:%M:%S"),
             "PaymentType": "Credit_CreditCard",
             "TradeNo": f"ECPAY_{uuid4().hex[:8]}",
             "TradeAmt": "999",
@@ -339,7 +339,7 @@ class TestSubscriptionFlowsE2E(BaseE2ETest):
             "ExecTimes": "0",
             "Amount": "999",
             "Gwsr": "12345678",
-            "ProcessDate": datetime.utcnow().strftime("%Y/%m/%d %H:%M:%S"),
+            "ProcessDate": datetime.now(UTC).strftime("%Y/%m/%d %H:%M:%S"),
             "AuthCode": "777777",
             "FirstAuthAmount": "1",
             "TotalSuccessTimes": "1",

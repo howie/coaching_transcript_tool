@@ -1,6 +1,6 @@
 """Test progress update functionality."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import uuid4
 
 from coaching_assistant.models.processing_status import ProcessingStatus
@@ -46,7 +46,7 @@ def test_progress_not_overridden():
         status="processing",
         progress=28,  # Already has progress
         message="Processing audio...",
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(UTC),
     )
 
     # The _update_processing_progress function should not override

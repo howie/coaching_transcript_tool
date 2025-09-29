@@ -8,7 +8,7 @@ such as uploading transcripts or other user-generated content.
 import base64
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Optional, Tuple
 
 from google.cloud import storage
@@ -176,7 +176,7 @@ class GCSUploader:
             bucket = self.client.bucket(self.bucket_name)
             blob = bucket.blob(blob_name)
 
-            expiration = datetime.utcnow() + timedelta(minutes=expiration_minutes)
+            expiration = datetime.now(UTC) + timedelta(minutes=expiration_minutes)
 
             url = blob.generate_signed_url(
                 version="v4",
@@ -223,7 +223,7 @@ class GCSUploader:
             bucket = self.client.bucket(self.bucket_name)
             blob = bucket.blob(blob_name)
 
-            expiration = datetime.utcnow() + timedelta(minutes=expiration_minutes)
+            expiration = datetime.now(UTC) + timedelta(minutes=expiration_minutes)
 
             url = blob.generate_signed_url(
                 version="v4", expiration=expiration, method="GET"
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     dummy_content = b"This is a test file for GCS uploader."
 
     # Define destination
-    dest_blob = f"test-uploads/test-file-{__import__('datetime').datetime.utcnow().isoformat()}.txt"
+    dest_blob = f"test-uploads/test-file-{__import__('datetime').datetime.now(UTC).isoformat()}.txt"
 
     # Upload
     public_url = upload_to_gcs(

@@ -209,7 +209,7 @@ class TestReceiptGeneration:
         payment_no_date = Mock(spec=SubscriptionPayment)
         payment_no_date.processed_at = None
 
-        with patch("coaching_assistant.api.v1.subscriptions.date") as mock_date:
+        with patch("datetime.date") as mock_date:
             mock_date.today.return_value = date(2025, 8, 31)
             issue_date = mock_date.today().strftime("%Y-%m-%d")
             assert issue_date == "2025-08-31"

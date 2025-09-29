@@ -22,11 +22,12 @@ from datetime import datetime
 from uuid import UUID
 
 # Add the src directory to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+from sqlalchemy import text
 
 from coaching_assistant.core.database import get_db
-from coaching_assistant.core.config import settings
-from sqlalchemy import text
+
 
 def reset_user_usage_for_testing(user_id: str, target_month: str = None):
     """Reset user usage for testing purposes.
@@ -37,9 +38,9 @@ def reset_user_usage_for_testing(user_id: str, target_month: str = None):
     """
     if target_month is None:
         now = datetime.utcnow()
-        target_month = now.strftime('%Y-%m')
+        target_month = now.strftime("%Y-%m")
 
-    year, month = target_month.split('-')
+    year, month = target_month.split("-")
     month_start = f"{year}-{month:0>2}-01"
 
     print(f"🔄 Resetting usage for user {user_id} for month {target_month}")
@@ -59,16 +60,17 @@ def reset_user_usage_for_testing(user_id: str, target_month: str = None):
                 AND duration_seconds IS NOT NULL
                 AND duration_seconds > 0
         """)
-        result = db_session.execute(sessions_query, {
-            "user_id": user_id,
-            "month_start": month_start
-        }).fetchone()
+        result = db_session.execute(
+            sessions_query, {"user_id": user_id, "month_start": month_start}
+        ).fetchone()
 
         session_count = result[0] if result else 0
         total_seconds = result[1] if result else 0
         total_minutes = total_seconds / 60
 
-        print(f"   📊 Found {session_count} sessions with {total_minutes:.1f} minutes of usage")
+        print(
+            f"   📊 Found {session_count} sessions with {total_minutes:.1f} minutes of usage"
+        )
 
         if session_count == 0:
             print("   ✅ No sessions with duration found - already reset")
@@ -83,10 +85,9 @@ def reset_user_usage_for_testing(user_id: str, target_month: str = None):
                     AND duration_seconds IS NOT NULL
                     AND duration_seconds > 0
             """)
-            reset_result = db_session.execute(reset_query, {
-                "user_id": user_id,
-                "month_start": month_start
-            })
+            reset_result = db_session.execute(
+                reset_query, {"user_id": user_id, "month_start": month_start}
+            )
             print(f"   ✅ Reset {reset_result.rowcount} session durations")
 
         # 3. Reset user tracking fields
@@ -99,11 +100,10 @@ def reset_user_usage_for_testing(user_id: str, target_month: str = None):
                 current_month_start = :month_start
             WHERE id = :user_id
         """)
-        user_result = db_session.execute(user_reset_query, {
-            "user_id": user_id,
-            "month_start": month_start
-        })
-        print(f"   ✅ Reset user tracking fields")
+        user_result = db_session.execute(
+            user_reset_query, {"user_id": user_id, "month_start": month_start}
+        )
+        print("   ✅ Reset user tracking fields")
 
         # 4. Commit changes
         db_session.commit()
@@ -117,10 +117,9 @@ def reset_user_usage_for_testing(user_id: str, target_month: str = None):
                 AND created_at >= :month_start
                 AND duration_seconds IS NOT NULL
         """)
-        verify_result = db_session.execute(verify_query, {
-            "user_id": user_id,
-            "month_start": month_start
-        }).fetchone()
+        verify_result = db_session.execute(
+            verify_query, {"user_id": user_id, "month_start": month_start}
+        ).fetchone()
 
         remaining_seconds = verify_result[0] if verify_result else 0
         remaining_minutes = remaining_seconds / 60
@@ -143,19 +142,17 @@ def reset_user_usage_for_testing(user_id: str, target_month: str = None):
     finally:
         db_session.close()
 
+
 def main():
     """Main function to handle command line arguments."""
     parser = argparse.ArgumentParser(
         description="Reset user usage for testing purposes"
     )
     parser.add_argument(
-        "--user-id",
-        required=True,
-        help="UUID of the user to reset usage for"
+        "--user-id", required=True, help="UUID of the user to reset usage for"
     )
     parser.add_argument(
-        "--month",
-        help="Target month in YYYY-MM format (defaults to current month)"
+        "--month", help="Target month in YYYY-MM format (defaults to current month)"
     )
 
     args = parser.parse_args()
@@ -170,12 +167,13 @@ def main():
     # Validate month format if provided
     if args.month:
         try:
-            datetime.strptime(args.month, '%Y-%m')
+            datetime.strptime(args.month, "%Y-%m")
         except ValueError:
             print(f"❌ Invalid month format: {args.month}. Use YYYY-MM format.")
             sys.exit(1)
 
     reset_user_usage_for_testing(args.user_id, args.month)
+
 
 if __name__ == "__main__":
     main()

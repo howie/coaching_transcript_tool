@@ -7,6 +7,16 @@ import urllib.parse
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, Optional
 
+# Import SQLAlchemy models for database operations
+from ...models.ecpay_subscription import (
+    ECPayCreditAuthorization,
+)
+from ...models.ecpay_subscription import (
+    SaasSubscription as SaasSubscriptionORM,
+)
+from ...models.ecpay_subscription import (
+    SubscriptionPayment as SubscriptionPaymentORM,
+)
 from ..config import Settings
 from ..models.subscription import (
     ECPayAuthStatus,
@@ -15,8 +25,6 @@ from ..models.subscription import (
     SubscriptionPayment,
     SubscriptionStatus,
 )
-# Import SQLAlchemy models for database operations
-from ...models.ecpay_subscription import ECPayCreditAuthorization, SaasSubscription as SaasSubscriptionORM, SubscriptionPayment as SubscriptionPaymentORM
 from ..models.user import User
 from ..repositories.ports import (
     ECPayClientPort,
@@ -869,7 +877,8 @@ class ECPaySubscriptionService:
                 .filter(
                     SubscriptionPaymentORM.status == PaymentStatus.FAILED.value,
                     SubscriptionPaymentORM.next_retry_at <= datetime.now(),
-                    SubscriptionPaymentORM.retry_count < SubscriptionPaymentORM.max_retries,
+                    SubscriptionPaymentORM.retry_count
+                    < SubscriptionPaymentORM.max_retries,
                 )
                 .all()
             )

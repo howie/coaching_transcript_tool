@@ -1,6 +1,6 @@
 """SessionModel ORM with domain model conversion."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID as PyUUID
 
@@ -160,7 +160,7 @@ class SessionModel(BaseModel):
         self.confidence_score = session.confidence_score
         self.transcription_started_at = session.transcription_started_at
         self.transcription_completed_at = session.transcription_completed_at
-        self.updated_at = session.updated_at or datetime.utcnow()
+        self.updated_at = session.updated_at or datetime.now(UTC)
 
     # Database-specific helper methods
 
@@ -173,7 +173,7 @@ class SessionModel(BaseModel):
         if not self.transcription_started_at:
             return None
 
-        end_time = self.transcription_completed_at or datetime.utcnow()
+        end_time = self.transcription_completed_at or datetime.now(UTC)
         delta = end_time - self.transcription_started_at
         return int(delta.total_seconds())
 
@@ -255,14 +255,14 @@ class SessionModel(BaseModel):
             raise ValueError("Progress percentage must be between 0 and 100")
 
         self.progress_percentage = percentage
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def mark_processing_started(self, job_id: Optional[str] = None) -> None:
         """Mark transcription as started."""
         self.status = SessionStatus.PROCESSING
         self.transcription_job_id = job_id
-        self.transcription_started_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.transcription_started_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
         self.progress_percentage = 0
 
     def mark_processing_completed(
@@ -279,14 +279,14 @@ class SessionModel(BaseModel):
         self.speaker_count = speaker_count
         self.confidence_score = confidence_score
         self.progress_percentage = 100
-        self.transcription_completed_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.transcription_completed_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
 
     def mark_processing_failed(self, error_message: str) -> None:
         """Mark transcription as failed."""
         self.status = SessionStatus.FAILED
         self.error_message = error_message
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def add_processing_metadata(self, key: str, value: any) -> None:
         """Add metadata entry for processing details."""
@@ -294,7 +294,7 @@ class SessionModel(BaseModel):
             self.processing_metadata = {}
 
         self.processing_metadata[key] = value
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def get_legacy_status(self) -> str:
         """Get status in legacy format for backward compatibility."""

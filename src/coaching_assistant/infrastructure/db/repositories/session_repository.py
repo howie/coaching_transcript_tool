@@ -5,7 +5,7 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
 following Clean Architecture principles.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import List, Optional
 from uuid import UUID
 
@@ -140,7 +140,7 @@ class SQLAlchemySessionRepository(SessionRepoPort):
             # Use domain model for business rule validation if needed
             domain_session = self._legacy_to_domain(orm_session)
             domain_session.status = status
-            domain_session.updated_at = datetime.utcnow()
+            domain_session.updated_at = datetime.now(UTC)
 
             # Update ORM model with validated domain data
             orm_session.update_from_domain(domain_session)

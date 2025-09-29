@@ -4,7 +4,7 @@ This module contains the business logic for client management operations,
 following the Clean Architecture principles with dependency injection.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
@@ -215,8 +215,8 @@ class ClientCreationUseCase:
             client_type=client_type,
             issue_types=issue_types,
             status=status,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         return self.client_repo.save(client)
@@ -301,7 +301,7 @@ class ClientUpdateUseCase:
         if status is not None:
             client.status = status
 
-        client.updated_at = datetime.utcnow()
+        client.updated_at = datetime.now(UTC)
 
         return self.client_repo.save(client)
 
@@ -372,7 +372,7 @@ class ClientDeletionUseCase:
 
         # Anonymize the client using domain logic
         client.anonymize(next_number)
-        client.updated_at = datetime.utcnow()
+        client.updated_at = datetime.now(UTC)
 
         # Save the anonymized client
         updated_client = self.client_repo.save(client)

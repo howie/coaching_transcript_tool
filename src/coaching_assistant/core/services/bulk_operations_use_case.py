@@ -1,7 +1,7 @@
 """Bulk operations use cases for administrative tasks."""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List
 from uuid import UUID
 
@@ -48,7 +48,7 @@ class BulkUsageResetUseCase:
                 "users_reset": reset_count,
                 "total_users": len(active_users),
                 "failed_resets": failed_resets,
-                "operation_time": datetime.utcnow().isoformat(),
+                "operation_time": datetime.now(UTC).isoformat(),
                 "operation_type": "monthly_usage_reset",
             }
 
@@ -58,7 +58,7 @@ class BulkUsageResetUseCase:
                 "success": False,
                 "error": str(e),
                 "users_reset": 0,
-                "operation_time": datetime.utcnow().isoformat(),
+                "operation_time": datetime.now(UTC).isoformat(),
             }
 
     def reset_specific_users_usage(self, user_ids: List[UUID]) -> Dict[str, Any]:
@@ -95,7 +95,7 @@ class BulkUsageResetUseCase:
                 "users_reset": reset_count,
                 "requested_users": len(user_ids),
                 "failed_resets": failed_resets,
-                "operation_time": datetime.utcnow().isoformat(),
+                "operation_time": datetime.now(UTC).isoformat(),
                 "operation_type": "targeted_usage_reset",
             }
 
@@ -105,7 +105,7 @@ class BulkUsageResetUseCase:
                 "success": False,
                 "error": str(e),
                 "users_reset": 0,
-                "operation_time": datetime.utcnow().isoformat(),
+                "operation_time": datetime.now(UTC).isoformat(),
             }
 
 
@@ -150,7 +150,7 @@ class BulkUserManagementUseCase:
                 "requested_users": len(user_ids),
                 "new_plan": new_plan,
                 "failed_updates": failed_updates,
-                "operation_time": datetime.utcnow().isoformat(),
+                "operation_time": datetime.now(UTC).isoformat(),
                 "operation_type": "bulk_plan_update",
             }
 
@@ -160,7 +160,7 @@ class BulkUserManagementUseCase:
                 "success": False,
                 "error": str(e),
                 "users_updated": 0,
-                "operation_time": datetime.utcnow().isoformat(),
+                "operation_time": datetime.now(UTC).isoformat(),
             }
 
     def get_bulk_operation_status(self, operation_id: str) -> Dict[str, Any]:

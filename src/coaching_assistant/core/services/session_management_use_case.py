@@ -10,7 +10,7 @@ import logging
 import re
 from copy import deepcopy
 from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
@@ -119,8 +119,8 @@ class SessionCreationUseCase:
             language=language,
             stt_provider=provider_to_use,
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         return self.session_repo.save(session)
@@ -330,7 +330,7 @@ class SessionStatusUpdateUseCase:
             currency="TWD",
             stt_provider=session.stt_provider or default_provider,
             billable=True,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         self.usage_log_repo.save(usage_log)
@@ -377,7 +377,7 @@ class SessionTranscriptUpdateUseCase:
         )
 
         # Update session metadata if needed
-        updated_session = _replace_session(session, updated_at=datetime.utcnow())
+        updated_session = _replace_session(session, updated_at=datetime.now(UTC))
         self.session_repo.save(updated_session)
 
         return updated_segments
@@ -417,7 +417,7 @@ class SessionTranscriptUpdateUseCase:
         if "error_message" in metadata:
             updated_fields["error_message"] = metadata["error_message"]
 
-        updated_fields["updated_at"] = datetime.utcnow()
+        updated_fields["updated_at"] = datetime.now(UTC)
 
         # Create new session instance with updated fields
         updated_session = _replace_session(session, **updated_fields)
@@ -481,7 +481,7 @@ class SessionTranscriptUpdateUseCase:
             _replace_transcript_segment(
                 segments_by_id[segment_id],
                 content=new_content,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
             for segment_id, new_content in normalized_updates.items()
         ]
@@ -490,7 +490,7 @@ class SessionTranscriptUpdateUseCase:
             session_id, updated_segments
         )
 
-        updated_session = _replace_session(session, updated_at=datetime.utcnow())
+        updated_session = _replace_session(session, updated_at=datetime.now(UTC))
         self.session_repo.save(updated_session)
 
         return persisted_segments
@@ -633,7 +633,7 @@ class SessionUploadManagementUseCase:
             session,
             audio_filename=audio_filename,
             gcs_audio_path=gcs_audio_path,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
 
         return self.session_repo.save(updated_session)
@@ -663,7 +663,7 @@ class SessionUploadManagementUseCase:
             session = _replace_session(
                 session,
                 status=SessionStatus.PENDING,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
             session = self.session_repo.save(session)
 
@@ -720,7 +720,7 @@ class SessionTranscriptionManagementUseCase:
         session = replace(
             session,
             status=SessionStatus.PROCESSING,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
         session = self.session_repo.save(session)
 
@@ -771,7 +771,7 @@ class SessionTranscriptionManagementUseCase:
             status=SessionStatus.PROCESSING,
             error_message=None,
             transcription_job_id=None,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
 
         # Clear existing transcript segments and processing status
@@ -812,7 +812,7 @@ class SessionTranscriptionManagementUseCase:
             raise ValueError("Session not found or access denied")
 
         session = replace(
-            session, transcription_job_id=job_id, updated_at=datetime.utcnow()
+            session, transcription_job_id=job_id, updated_at=datetime.now(UTC)
         )
 
         return self.session_repo.save(session)
@@ -1011,7 +1011,7 @@ class SessionStatusRetrievalUseCase:
         # Time-based progress estimate
         if session.transcription_started_at and session.duration_seconds:
             elapsed = (
-                datetime.utcnow() - session.transcription_started_at
+                datetime.now(UTC) - session.transcription_started_at
             ).total_seconds()
             # Assume 4x real-time processing speed
             expected_total = session.duration_seconds * 4
@@ -1043,17 +1043,17 @@ class SessionStatusRetrievalUseCase:
 
         if session.transcription_started_at:
             elapsed = (
-                datetime.utcnow() - session.transcription_started_at
+                datetime.now(UTC) - session.transcription_started_at
             ).total_seconds()
             # Assume 4x real-time processing
             estimated_total = session.duration_seconds * 4
             remaining = max(
                 60, estimated_total - elapsed
             )  # At least 1 minute remaining
-            return datetime.utcnow() + timedelta(seconds=remaining)
+            return datetime.now(UTC) + timedelta(seconds=remaining)
         else:
             # No start time, estimate 2 hours max
-            return datetime.utcnow() + timedelta(hours=2)
+            return datetime.now(UTC) + timedelta(hours=2)
 
     def _calculate_processing_speed(self, session: Session) -> Optional[float]:
         """Calculate processing speed if available."""
@@ -1064,7 +1064,7 @@ class SessionStatusRetrievalUseCase:
         ):
             return None
 
-        elapsed = (datetime.utcnow() - session.transcription_started_at).total_seconds()
+        elapsed = (datetime.now(UTC) - session.transcription_started_at).total_seconds()
         if elapsed > 0:
             # Rough estimate: assume we've processed proportionally to elapsed
             # time
@@ -1199,7 +1199,7 @@ class SessionTranscriptUploadUseCase:
             session,
             duration_seconds=total_duration,
             status=SessionStatus.COMPLETED,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
         session = self.session_repo.save(session)
 

@@ -7,7 +7,7 @@ for unit testing business logic without database dependencies.
 
 import copy
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Dict, List, Optional
 from uuid import UUID, uuid4
@@ -55,8 +55,8 @@ class InMemoryUserRepository(UserRepoPort):
 
         # Update timestamps
         if user.id not in self._users:
-            user.created_at = datetime.utcnow()
-        user.updated_at = datetime.utcnow()
+            user.created_at = datetime.now(UTC)
+        user.updated_at = datetime.now(UTC)
 
         # Store user and update email index
         stored_user = copy.deepcopy(user)
@@ -92,7 +92,7 @@ class InMemoryUserRepository(UserRepoPort):
             raise ValueError(f"User {user_id} not found")
 
         user.plan = plan
-        user.updated_at = datetime.utcnow()
+        user.updated_at = datetime.now(UTC)
 
         return copy.deepcopy(user)
 
@@ -119,8 +119,8 @@ class InMemoryUsageLogRepository(UsageLogRepoPort):
 
         # Update timestamps
         if usage_log.id not in self._logs:
-            usage_log.created_at = datetime.utcnow()
-        usage_log.updated_at = datetime.utcnow()
+            usage_log.created_at = datetime.now(UTC)
+        usage_log.updated_at = datetime.now(UTC)
 
         # Store log
         stored_log = copy.deepcopy(usage_log)
@@ -275,8 +275,8 @@ class InMemorySessionRepository(SessionRepoPort):
 
         # Update timestamps
         if session_model.id not in self._sessions:
-            session_model.created_at = datetime.utcnow()
-        session_model.updated_at = datetime.utcnow()
+            session_model.created_at = datetime.now(UTC)
+        session_model.updated_at = datetime.now(UTC)
 
         # Store session
         stored_session = copy.deepcopy(session_model)
@@ -296,7 +296,7 @@ class InMemorySessionRepository(SessionRepoPort):
             raise ValueError(f"Session {session_id} not found")
 
         session.status = status
-        session.updated_at = datetime.utcnow()
+        session.updated_at = datetime.now(UTC)
 
         return copy.deepcopy(session)
 

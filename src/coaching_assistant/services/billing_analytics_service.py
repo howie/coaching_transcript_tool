@@ -2,7 +2,7 @@
 
 import csv
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -78,7 +78,7 @@ class BillingAnalyticsService:
             f"📈 Getting revenue trends for {months} months, period: {period_type}"
         )
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(UTC)
         start_date = end_date - timedelta(days=months * 30)
 
         query = self.db.query(BillingAnalytics).filter(
@@ -159,7 +159,7 @@ class BillingAnalyticsService:
             raise ValueError(f"User {user_id} not found")
 
         # Get historical billing data
-        end_date = datetime.utcnow()
+        end_date = datetime.now(UTC)
         start_date = end_date - timedelta(days=historical_months * 30)
 
         historical_data = (
@@ -179,7 +179,7 @@ class BillingAnalyticsService:
             float(record.total_revenue_usd) for record in historical_data
         )
         tenure_days = (
-            (datetime.utcnow() - user.created_at).days if user.created_at else 0
+            (datetime.now(UTC) - user.created_at).days if user.created_at else 0
         )
 
         detail = {
@@ -431,7 +431,7 @@ class BillingAnalyticsService:
         logger.info(f"🔄 Refreshing analytics for user {user_id}")
 
         # Get current month's data
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if period_type == "monthly":
             period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             if period_start.month == 12:
@@ -463,7 +463,7 @@ class BillingAnalyticsService:
             for key, value in updated_data.items():
                 if hasattr(existing, key):
                     setattr(existing, key, value)
-            existing.recorded_at = datetime.utcnow()
+            existing.recorded_at = datetime.now(UTC)
             self.db.commit()
             return {"records_updated": 1}
         else:
@@ -516,7 +516,7 @@ class BillingAnalyticsService:
         recent_data = (
             self.db.query(BillingAnalytics)
             .filter(
-                BillingAnalytics.period_start >= datetime.utcnow() - timedelta(days=60)
+                BillingAnalytics.period_start >= datetime.now(UTC) - timedelta(days=60)
             )
             .all()
         )
@@ -800,7 +800,7 @@ class BillingAnalyticsService:
         user_profile = {
             "signup_date": user.created_at,
             "tenure_days": (
-                (datetime.utcnow() - user.created_at).days if user.created_at else 0
+                (datetime.now(UTC) - user.created_at).days if user.created_at else 0
             ),
             "segment": self._determine_user_segment(user_id),
             "timezone": self._get_user_timezone(user),
@@ -926,7 +926,7 @@ class BillingAnalyticsService:
             .filter(
                 and_(
                     UsageHistory.user_id == user_id,
-                    UsageHistory.period_start >= datetime.utcnow() - timedelta(days=90),
+                    UsageHistory.period_start >= datetime.now(UTC) - timedelta(days=90),
                 )
             )
             .all()

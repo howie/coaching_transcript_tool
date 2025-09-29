@@ -60,8 +60,8 @@ def sample_domain_coaching_session():
         fee_amount=Decimal("2000.00"),
         transcription_session_id=uuid4(),
         notes="Test session notes",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -79,8 +79,8 @@ def sample_database_coaching_session():
         fee_amount=Decimal("2000.00"),
         transcription_session_id=uuid4(),
         notes="Test session notes",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -92,8 +92,8 @@ def sample_domain_user():
         email="test@example.com",
         name="Test User",
         plan=DomainUserPlan.STUDENT,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -105,8 +105,8 @@ def sample_database_user():
         email="test@example.com",
         name="Test User",
         plan=DatabaseUserPlan.STUDENT,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -172,8 +172,8 @@ class TestCoachingSessionRepositoryConversions:
                 duration_min=60,
                 fee_currency="TWD",
                 fee_amount=Decimal("1000.00"),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
 
             domain_model = coaching_session_repository._to_domain(db_model)
@@ -230,8 +230,8 @@ class TestCoachingSessionRepositoryConversions:
                 duration_min=60,
                 fee_currency="TWD",
                 fee_amount=Decimal("1000.00"),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
 
             db_model = coaching_session_repository._create_orm_session(domain_model)
@@ -293,8 +293,8 @@ class TestCoachingSessionRepositoryConversions:
             fee_amount=Decimal("1000.00"),
             transcription_session_id=None,  # Optional field
             notes=None,  # Optional field
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         domain_model = coaching_session_repository._to_domain(db_model)
@@ -336,8 +336,8 @@ class TestUserRepositoryConversions:
                 email="test@example.com",
                 name="Test User",
                 plan=db_enum,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
 
             domain_model = user_repository._to_domain(db_model)
@@ -382,7 +382,7 @@ class TestConversionEdgeCases:
     def test_datetime_timezone_handling(self, coaching_session_repository):
         """Test that datetime fields are handled correctly across timezones."""
         # This is important for UTC storage vs local time display
-        utc_time = datetime.utcnow()
+        utc_time = datetime.now(UTC)
 
         domain_model = DomainCoachingSession(
             id=uuid4(),
@@ -417,8 +417,8 @@ class TestConversionEdgeCases:
             duration_min=60,
             fee_currency="TWD",
             fee_amount=precise_amount,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         # Convert and verify decimal precision is preserved

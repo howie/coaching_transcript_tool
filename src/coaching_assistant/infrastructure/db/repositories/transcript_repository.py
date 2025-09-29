@@ -1,6 +1,6 @@
 """Transcript repository implementation using SQLAlchemy with Clean Architecture."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Dict, List
 from uuid import UUID
 
@@ -99,7 +99,7 @@ class TranscriptRepository(TranscriptRepoPort):
         for updated_segment in segments:
             orm_segment = orm_segment_map[updated_segment.id]
             orm_segment.content = updated_segment.content
-            orm_segment.updated_at = updated_segment.updated_at or datetime.utcnow()
+            orm_segment.updated_at = updated_segment.updated_at or datetime.now(UTC)
 
         self.db_session.flush()
 

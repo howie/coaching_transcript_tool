@@ -2,7 +2,7 @@
 
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -48,7 +48,7 @@ def _create_webhook_log(
         gwsr=form_data.get("gwsr"),
         rtn_code=form_data.get("RtnCode"),
         ip_address=_get_client_ip(request),
-        received_at=datetime.utcnow(),
+        received_at=datetime.now(UTC),
     )
 
     db.add(webhook_log)
@@ -290,7 +290,7 @@ async def webhook_health_check(db: Session = Depends(get_db)):
         # Check recent webhook activity
         recent_webhooks = (
             db.query(WebhookLog)
-            .filter(WebhookLog.received_at >= datetime.utcnow() - timedelta(minutes=30))
+            .filter(WebhookLog.received_at >= datetime.now(UTC) - timedelta(minutes=30))
             .count()
         )
 
@@ -298,7 +298,7 @@ async def webhook_health_check(db: Session = Depends(get_db)):
         failed_webhooks = (
             db.query(WebhookLog)
             .filter(
-                WebhookLog.received_at >= datetime.utcnow() - timedelta(hours=24),
+                WebhookLog.received_at >= datetime.now(UTC) - timedelta(hours=24),
                 WebhookLog.status == WebhookStatus.FAILED.value,
             )
             .count()
@@ -307,7 +307,7 @@ async def webhook_health_check(db: Session = Depends(get_db)):
         # Calculate success rate
         total_webhooks = (
             db.query(WebhookLog)
-            .filter(WebhookLog.received_at >= datetime.utcnow() - timedelta(hours=24))
+            .filter(WebhookLog.received_at >= datetime.now(UTC) - timedelta(hours=24))
             .count()
         )
 
@@ -320,7 +320,7 @@ async def webhook_health_check(db: Session = Depends(get_db)):
 
         return {
             "status": health_status,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "service": "ecpay-webhooks",
             "metrics": {
                 "recent_webhooks_30min": recent_webhooks,
@@ -334,7 +334,7 @@ async def webhook_health_check(db: Session = Depends(get_db)):
         logger.error(f"Health check failed: {e}")
         return {
             "status": "unhealthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "service": "ecpay-webhooks",
             "error": str(e),
         }
@@ -446,7 +446,7 @@ async def get_subscription_webhook_status(
             db.query(WebhookLog)
             .filter(
                 WebhookLog.user_id == user_id,
-                WebhookLog.received_at >= datetime.utcnow() - timedelta(days=30),
+                WebhookLog.received_at >= datetime.now(UTC) - timedelta(days=30),
             )
             .order_by(WebhookLog.received_at.desc())
             .limit(10)
@@ -569,7 +569,7 @@ async def trigger_subscription_maintenance(
 
         result = {
             "status": "completed",
-            "maintenance_run_at": datetime.utcnow().isoformat(),
+            "maintenance_run_at": datetime.now(UTC).isoformat(),
             "results": {
                 "expired_subscriptions_processed": expired_processed or 0,
                 "payment_retries_processed": retries_processed or 0,
@@ -594,7 +594,7 @@ async def webhook_statistics(hours: int = 24, db: Session = Depends(get_db)):
     """Get webhook statistics for monitoring."""
 
     try:
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
 
         # Total webhooks by type
         webhook_stats = (
@@ -638,7 +638,7 @@ async def webhook_statistics(hours: int = 24, db: Session = Depends(get_db)):
 
         return {
             "period_hours": hours,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "webhook_types": stats_summary,
         }
 

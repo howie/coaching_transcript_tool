@@ -1,6 +1,6 @@
 """Unit tests for SubscriptionManagementUseCase."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import uuid4
@@ -49,10 +49,10 @@ class TestSubscriptionModificationUseCase:
             billing_cycle="monthly",
             status=SubscriptionStatus.ACTIVE,
             amount_twd=0,
-            current_period_start=datetime.utcnow().date(),
-            current_period_end=datetime.utcnow().date(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            current_period_start=datetime.now(UTC).date(),
+            current_period_end=datetime.now(UTC).date(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             currency="TWD",
             auth_id=uuid4(),
         )
@@ -395,10 +395,10 @@ class TestSubscriptionRetrievalUseCase:
             billing_cycle="monthly",
             status=SubscriptionStatus.ACTIVE,
             amount_twd=89900,
-            current_period_start=datetime.utcnow().date(),
-            current_period_end=datetime.utcnow().date(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            current_period_start=datetime.now(UTC).date(),
+            current_period_end=datetime.now(UTC).date(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             currency="TWD",
             auth_id=uuid4(),
         )
@@ -459,8 +459,8 @@ class TestSubscriptionCreationUseCase:
             frequency=1,
             period_amount=0,
             auth_status=ECPayAuthStatus.PENDING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         self.mock_subscription_repo.save_credit_authorization.return_value = mock_auth
 
@@ -525,8 +525,8 @@ class TestSubscriptionCreationUseCase:
             period_type="Month",
             period_amount=0,
             auth_status=ECPayAuthStatus.ACTIVE,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         self.mock_user_repo.get_by_id.return_value = self.sample_user

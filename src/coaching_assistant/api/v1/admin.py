@@ -1,6 +1,6 @@
 """Admin API endpoints for role management and system administration."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import List, Optional
 from uuid import UUID
 
@@ -110,7 +110,7 @@ async def update_user_role(
             email=updated_user.email,
             name=updated_user.name,
             role=updated_user.role,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
     except HTTPException:
         raise
@@ -158,7 +158,7 @@ async def revoke_user_role(
             email=updated_user.email,
             name=updated_user.name,
             role=updated_user.role,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
     except HTTPException:
         raise

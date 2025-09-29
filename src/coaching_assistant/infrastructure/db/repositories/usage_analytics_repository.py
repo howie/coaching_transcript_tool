@@ -5,7 +5,7 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
 following Clean Architecture principles.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Dict, List
 from uuid import UUID
@@ -69,8 +69,8 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
                 month_year=month_year,
                 primary_plan="FREE",  # Default, should be updated
                 period_start=datetime(year, month, 1),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
 
             self.session.add(orm_analytics)
@@ -119,7 +119,7 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
             orm_analytics.total_exports = analytics.total_exports
             orm_analytics.period_start = analytics.period_start
             orm_analytics.period_end = analytics.period_end
-            orm_analytics.updated_at = datetime.utcnow()
+            orm_analytics.updated_at = datetime.now(UTC)
 
             self.session.flush()
             return self._orm_to_domain(orm_analytics)
@@ -279,7 +279,7 @@ class SQLAlchemyUsageAnalyticsRepository(UsageAnalyticsRepoPort):
                 "total_cost_usd": float(total_cost),
                 "plan_breakdown": plan_breakdown,
                 "provider_breakdown": provider_breakdown,
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             }
 
         except SQLAlchemyError as e:

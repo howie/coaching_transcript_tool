@@ -4,7 +4,7 @@ Google OAuth authentication routes.
 處理 Google OAuth 2.0 登入流程和 JWT token 管理。
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
@@ -80,14 +80,14 @@ def get_password_hash(password):
 
 def create_access_token(user_id: str) -> str:
     """建立 Access Token"""
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode = {"sub": user_id, "exp": expire, "type": "access"}
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
 def create_refresh_token(user_id: str) -> str:
     """建立 Refresh Token"""
-    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode = {"sub": user_id, "exp": expire, "type": "refresh"}
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
@@ -327,7 +327,7 @@ async def google_callback(
         # 更新現有用戶資訊
         existing_user.google_id = google_user.get("id")
         existing_user.avatar_url = google_user.get("picture")
-        existing_user.updated_at = datetime.utcnow()
+        existing_user.updated_at = datetime.now(UTC)
         db.commit()
         user = existing_user
     else:

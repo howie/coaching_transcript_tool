@@ -1,6 +1,6 @@
 """Tests for BillingAnalytics model."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -13,7 +13,7 @@ class TestBillingAnalytics:
     def test_billing_analytics_creation(self):
         """Test creating a BillingAnalytics record."""
         user_id = uuid4()
-        period_start = datetime.utcnow().replace(
+        period_start = datetime.now(UTC).replace(
             day=1, hour=0, minute=0, second=0, microsecond=0
         )
         period_end = period_start + timedelta(days=30)
@@ -111,7 +111,7 @@ class TestBillingAnalytics:
 
     def test_is_power_user_true(self):
         """Test is_power_user property when conditions are met."""
-        period_start = datetime.utcnow()
+        period_start = datetime.now(UTC)
         period_end = period_start + timedelta(days=30)
 
         billing_analytics = BillingAnalytics(
@@ -126,7 +126,7 @@ class TestBillingAnalytics:
 
     def test_is_power_user_false(self):
         """Test is_power_user property when conditions are not met."""
-        period_start = datetime.utcnow()
+        period_start = datetime.now(UTC)
         period_end = period_start + timedelta(days=30)
 
         billing_analytics = BillingAnalytics(
@@ -141,7 +141,7 @@ class TestBillingAnalytics:
 
     def test_is_at_risk_high_churn_score(self):
         """Test is_at_risk property with high churn score."""
-        period_start = datetime.utcnow()
+        period_start = datetime.now(UTC)
         period_end = period_start + timedelta(days=30)
 
         billing_analytics = BillingAnalytics(
@@ -156,7 +156,7 @@ class TestBillingAnalytics:
 
     def test_is_at_risk_low_activity(self):
         """Test is_at_risk property with low activity."""
-        period_start = datetime.utcnow()
+        period_start = datetime.now(UTC)
         period_end = period_start + timedelta(days=30)
 
         billing_analytics = BillingAnalytics(
@@ -171,7 +171,7 @@ class TestBillingAnalytics:
 
     def test_is_at_risk_low_utilization(self):
         """Test is_at_risk property with low utilization."""
-        period_start = datetime.utcnow()
+        period_start = datetime.now(UTC)
         period_end = period_start + timedelta(days=30)
 
         billing_analytics = BillingAnalytics(
@@ -186,7 +186,7 @@ class TestBillingAnalytics:
 
     def test_is_at_risk_false(self):
         """Test is_at_risk property when user is not at risk."""
-        period_start = datetime.utcnow()
+        period_start = datetime.now(UTC)
         period_end = period_start + timedelta(days=30)
 
         billing_analytics = BillingAnalytics(
@@ -201,7 +201,7 @@ class TestBillingAnalytics:
 
     def test_calculate_customer_health_score(self):
         """Test customer health score calculation."""
-        period_start = datetime.utcnow()
+        period_start = datetime.now(UTC)
         period_end = period_start + timedelta(days=30)
 
         billing_analytics = BillingAnalytics(
@@ -222,7 +222,7 @@ class TestBillingAnalytics:
     def test_to_dict(self):
         """Test conversion to dictionary."""
         user_id = uuid4()
-        period_start = datetime.utcnow().replace(microsecond=0)
+        period_start = datetime.now(UTC).replace(microsecond=0)
         period_end = period_start + timedelta(days=30)
 
         billing_analytics = BillingAnalytics(
@@ -254,7 +254,7 @@ class TestBillingAnalytics:
     def test_create_from_usage_data(self):
         """Test creating BillingAnalytics from usage data."""
         user_id = uuid4()
-        period_start = datetime.utcnow()
+        period_start = datetime.now(UTC)
         period_end = period_start + timedelta(days=30)
 
         usage_data = {
@@ -272,7 +272,7 @@ class TestBillingAnalytics:
         }
 
         user_profile = {
-            "signup_date": datetime.utcnow() - timedelta(days=180),
+            "signup_date": datetime.now(UTC) - timedelta(days=180),
             "tenure_days": 180,
             "segment": "power",
         }

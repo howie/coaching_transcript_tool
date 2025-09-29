@@ -6,7 +6,7 @@ transcription processing, and export workflows.
 
 import io
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import uuid4
 
 import pytest
@@ -462,8 +462,8 @@ class TestSessionWorkflowsE2E(BaseE2ETest):
             title="Test Session",
             language="cmn-Hant-TW",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         db_session.add(session)
@@ -485,8 +485,8 @@ class TestSessionWorkflowsE2E(BaseE2ETest):
             language="cmn-Hant-TW",
             status=SessionStatus.COMPLETED,
             duration_seconds=30,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         db_session.add(session)

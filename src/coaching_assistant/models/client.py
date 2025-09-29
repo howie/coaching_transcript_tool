@@ -72,6 +72,6 @@ class Client(BaseModel):
         self.phone = None
         self.memo = None
         self.is_anonymized = True
-        from datetime import datetime
+        from datetime import UTC, datetime
 
-        self.anonymized_at = datetime.utcnow()
+        self.anonymized_at = datetime.now(UTC)

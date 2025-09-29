@@ -1,7 +1,7 @@
 """Usage Analytics Service for processing and generating usage insights."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Tuple
 from uuid import UUID
 
@@ -35,7 +35,7 @@ class UsageAnalyticsService:
             raise ValueError(f"User {user_id} not found")
 
         # Calculate period boundaries
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         period_start, period_end = self._calculate_period_boundaries(now, period_type)
 
         # Aggregate current usage data
@@ -88,7 +88,7 @@ class UsageAnalyticsService:
         )
 
         start_date = self._parse_period_to_date(period)
-        end_date = datetime.utcnow()
+        end_date = datetime.now(UTC)
 
         # Query usage history based on group_by preference
         if group_by == "day":
@@ -196,7 +196,7 @@ class UsageAnalyticsService:
             days_to_limit = plan_config.max_minutes / avg_daily_minutes
             if days_to_limit <= 30:  # Within next month
                 limit_date = (
-                    datetime.utcnow() + timedelta(days=days_to_limit)
+                    datetime.now(UTC) + timedelta(days=days_to_limit)
                 ).isoformat()
 
         # Generate recommendation
@@ -531,7 +531,7 @@ class UsageAnalyticsService:
 
     def _parse_period_to_date(self, period: str) -> datetime:
         """Parse period string to start date."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         if period == "7d":
             return now - timedelta(days=7)

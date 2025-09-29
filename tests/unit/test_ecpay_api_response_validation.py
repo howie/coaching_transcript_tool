@@ -14,7 +14,6 @@ from src.coaching_assistant.core.services.ecpay_service import (
 )
 from src.coaching_assistant.models.ecpay_subscription import (
     ECPayAuthStatus,
-    ECPayCreditAuthorization,
     SubscriptionStatus,
 )
 
@@ -65,14 +64,22 @@ class TestECPayAPIResponseValidation:
         return Mock()
 
     @pytest.fixture
-    def service(self, mock_user_repo, mock_subscription_repo, mock_settings, mock_ecpay_client, mock_notification_service, mock_db_session):
+    def service(
+        self,
+        mock_user_repo,
+        mock_subscription_repo,
+        mock_settings,
+        mock_ecpay_client,
+        mock_notification_service,
+        mock_db_session,
+    ):
         """Create service instance with all required dependencies"""
         service = ECPaySubscriptionService(
             user_repo=mock_user_repo,
             subscription_repo=mock_subscription_repo,
             settings=mock_settings,
             ecpay_client=mock_ecpay_client,
-            notification_service=mock_notification_service
+            notification_service=mock_notification_service,
         )
         # Add mock db session for backwards compatibility with existing tests
         service.db = mock_db_session
@@ -247,7 +254,9 @@ class TestECPayAPIResponseValidation:
         }
 
         with patch.object(service, "_verify_callback", return_value=True):
-            with patch.object(service, "_handle_payment_success_notifications", new=AsyncMock()):
+            with patch.object(
+                service, "_handle_payment_success_notifications", new=AsyncMock()
+            ):
                 result = service.handle_payment_webhook(webhook_data)
 
             assert result is True, "Successful payment webhook should return True"

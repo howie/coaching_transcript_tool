@@ -1,6 +1,6 @@
 """Usage history model for tracking historical usage patterns over time."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict
 
 from sqlalchemy import (
@@ -199,7 +199,7 @@ class UsageHistory(BaseModel):
             period_type=period_type,
             period_start=period_start,
             period_end=period_end,
-            recorded_at=datetime.utcnow(),
+            recorded_at=datetime.now(UTC),
             sessions_created=usage_data.get("sessions_created", 0),
             audio_minutes_processed=usage_data.get("audio_minutes_processed", 0),
             transcriptions_completed=usage_data.get("transcriptions_completed", 0),

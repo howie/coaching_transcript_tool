@@ -1,6 +1,6 @@
 """Comprehensive tests for the permission system."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -115,7 +115,7 @@ class TestPermissionService:
         """Test admin session validation with valid session."""
         admin_user = User(
             role=UserRole.ADMIN,
-            admin_access_expires=datetime.utcnow() + timedelta(hours=1),
+            admin_access_expires=datetime.now(UTC) + timedelta(hours=1),
         )
 
         # Should not raise exception
@@ -125,7 +125,7 @@ class TestPermissionService:
         """Test admin session validation with expired session."""
         admin_user = User(
             role=UserRole.ADMIN,
-            admin_access_expires=datetime.utcnow() - timedelta(hours=1),
+            admin_access_expires=datetime.now(UTC) - timedelta(hours=1),
         )
 
         with pytest.raises(HTTPException) as exc_info:
@@ -221,7 +221,7 @@ class TestPermissionService:
         """Test admin session refresh."""
         admin_user = User(
             role=UserRole.ADMIN,
-            admin_access_expires=datetime.utcnow() - timedelta(hours=1),
+            admin_access_expires=datetime.now(UTC) - timedelta(hours=1),
         )
 
         # Refresh session
@@ -229,7 +229,7 @@ class TestPermissionService:
 
         # Verify session was refreshed
         assert admin_user.last_admin_login is not None
-        assert admin_user.admin_access_expires > datetime.utcnow()
+        assert admin_user.admin_access_expires > datetime.now(UTC)
         self.mock_db.commit.assert_called_once()
 
     def test_check_ip_allowlist_no_restriction(self):
@@ -291,7 +291,7 @@ class TestPermissionService:
                 old_role="user",
                 new_role="admin",
                 reason="Test",
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
             )
         ]
 

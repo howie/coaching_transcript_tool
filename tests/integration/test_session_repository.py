@@ -4,7 +4,7 @@ This module tests the SQLAlchemySessionRepository with real database operations,
 ensuring proper domain ↔ ORM conversion and transaction integrity.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from uuid import uuid4
 
 import pytest
@@ -31,8 +31,8 @@ class TestSessionRepositoryIntegration:
             title="Integration Test Session",
             language="cmn-Hant-TW",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         # Act
@@ -61,8 +61,8 @@ class TestSessionRepositoryIntegration:
             user_id=sample_user.id,
             title="Session 1",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         session2 = Session(
@@ -70,8 +70,8 @@ class TestSessionRepositoryIntegration:
             user_id=sample_user.id,
             title="Session 2",
             status=SessionStatus.COMPLETED,
-            created_at=datetime.utcnow() - timedelta(hours=1),
-            updated_at=datetime.utcnow() - timedelta(hours=1),
+            created_at=datetime.now(UTC) - timedelta(hours=1),
+            updated_at=datetime.now(UTC) - timedelta(hours=1),
         )
 
         session3 = Session(
@@ -79,8 +79,8 @@ class TestSessionRepositoryIntegration:
             user_id=sample_user.id,
             title="Session 3",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow() - timedelta(hours=2),
-            updated_at=datetime.utcnow() - timedelta(hours=2),
+            created_at=datetime.now(UTC) - timedelta(hours=2),
+            updated_at=datetime.now(UTC) - timedelta(hours=2),
         )
 
         repo.save(session1)
@@ -122,8 +122,8 @@ class TestSessionRepositoryIntegration:
             user_id=sample_user.id,
             title="Status Update Test",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         saved_session = repo.save(session)
         db_session.commit()
@@ -152,8 +152,8 @@ class TestSessionRepositoryIntegration:
                 user_id=sample_user.id,
                 title=f"Count Test Session {i + 1}",
                 status=SessionStatus.UPLOADING,
-                created_at=datetime.utcnow() - timedelta(hours=i),
-                updated_at=datetime.utcnow() - timedelta(hours=i),
+                created_at=datetime.now(UTC) - timedelta(hours=i),
+                updated_at=datetime.now(UTC) - timedelta(hours=i),
             )
             repo.save(session)
 
@@ -162,7 +162,7 @@ class TestSessionRepositoryIntegration:
         # Act
         total_count = repo.count_user_sessions(sample_user.id)
         recent_count = repo.count_user_sessions(
-            sample_user.id, since=datetime.utcnow() - timedelta(minutes=30)
+            sample_user.id, since=datetime.now(UTC) - timedelta(minutes=30)
         )
 
         # Assert
@@ -181,8 +181,8 @@ class TestSessionRepositoryIntegration:
             title="Duration Test 1",
             duration_seconds=300,  # 5 minutes
             status=SessionStatus.COMPLETED,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         session2 = Session(
@@ -191,8 +191,8 @@ class TestSessionRepositoryIntegration:
             title="Duration Test 2",
             duration_seconds=600,  # 10 minutes
             status=SessionStatus.COMPLETED,
-            created_at=datetime.utcnow() - timedelta(hours=1),
-            updated_at=datetime.utcnow() - timedelta(hours=1),
+            created_at=datetime.now(UTC) - timedelta(hours=1),
+            updated_at=datetime.now(UTC) - timedelta(hours=1),
         )
 
         session3 = Session(
@@ -201,8 +201,8 @@ class TestSessionRepositoryIntegration:
             title="Duration Test 3",
             duration_seconds=None,  # No duration
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow() - timedelta(hours=2),
-            updated_at=datetime.utcnow() - timedelta(hours=2),
+            created_at=datetime.now(UTC) - timedelta(hours=2),
+            updated_at=datetime.now(UTC) - timedelta(hours=2),
         )
 
         repo.save(session1)
@@ -213,7 +213,7 @@ class TestSessionRepositoryIntegration:
         # Act
         total_minutes = repo.get_total_duration_minutes(sample_user.id)
         recent_minutes = repo.get_total_duration_minutes(
-            sample_user.id, since=datetime.utcnow() - timedelta(minutes=30)
+            sample_user.id, since=datetime.now(UTC) - timedelta(minutes=30)
         )
 
         # Assert
@@ -224,7 +224,7 @@ class TestSessionRepositoryIntegration:
         """Test getting sessions within date range."""
         # Arrange
         repo = SQLAlchemySessionRepository(db_session)
-        base_time = datetime.utcnow()
+        base_time = datetime.now(UTC)
 
         # Create sessions at different times
         session1 = Session(
@@ -281,8 +281,8 @@ class TestSessionRepositoryIntegration:
             user_id=sample_user.id,
             title="Original Title",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         saved_session = repo.save(session)
         db_session.commit()
@@ -294,7 +294,7 @@ class TestSessionRepositoryIntegration:
             title="Updated Title",
             status=SessionStatus.PENDING,
             created_at=saved_session.created_at,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
         final_session = repo.save(updated_session)
         db_session.commit()
@@ -351,8 +351,8 @@ class TestSessionRepositoryIntegration:
             gcs_audio_path="gs://bucket/audio.mp3",
             stt_provider="google",
             transcription_job_id="job-123",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         # Act
@@ -397,8 +397,8 @@ class TestSessionRepositoryIntegration:
             user_id=sample_user.id,
             title="Concurrency Test",
             status=SessionStatus.UPLOADING,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         saved_session = repo1.save(session)
         db_session.commit()
@@ -428,8 +428,8 @@ class TestSessionRepositoryIntegration:
                 status=(
                     SessionStatus.UPLOADING if i % 2 == 0 else SessionStatus.COMPLETED
                 ),
-                created_at=datetime.utcnow() - timedelta(hours=i),
-                updated_at=datetime.utcnow() - timedelta(hours=i),
+                created_at=datetime.now(UTC) - timedelta(hours=i),
+                updated_at=datetime.now(UTC) - timedelta(hours=i),
             )
             sessions.append(repo.save(session))
 

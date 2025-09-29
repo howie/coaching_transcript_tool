@@ -5,7 +5,7 @@ Handles incrementing counters, checking limits, and resetting monthly usage.
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, Optional
 
 import redis
@@ -172,7 +172,7 @@ class UsageTracker:
 
         # Update last reset timestamp if we track it
         if hasattr(user, "last_usage_reset"):
-            user.last_usage_reset = datetime.utcnow()
+            user.last_usage_reset = datetime.now(UTC)
 
         self.db.commit()
 
@@ -314,7 +314,7 @@ class UsageTracker:
 
     def _get_reset_date(self) -> str:
         """Get the next monthly reset date."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if now.month == 12:
             reset_date = datetime(now.year + 1, 1, 1)
         else:
@@ -323,7 +323,7 @@ class UsageTracker:
 
     def _days_until_reset(self) -> int:
         """Calculate days until next monthly reset."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if now.month == 12:
             reset_date = datetime(now.year + 1, 1, 1)
         else:
@@ -353,7 +353,7 @@ class UsageTracker:
             try:
                 # Store in a sorted set with timestamp as score
                 key = f"usage_history:{user_id}:{action}"
-                timestamp = datetime.utcnow().timestamp()
+                timestamp = datetime.now(UTC).timestamp()
                 value = json.dumps({"timestamp": timestamp, "metadata": metadata or {}})
 
                 # Keep only last 30 days of history
