@@ -32,19 +32,39 @@ jobs:
         pip install -r requirements-dev.txt
         
     - name: Test dependency injection compatibility
+      env:
+        STT_PROVIDER: google
+        SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
+        mkdir -p /Users/howie/Workspace/logs
         cd src && python -m pytest ../tests/unit/api/test_plan_limits_dependency_injection.py -v
         
     - name: Test User model contract
+      env:
+        STT_PROVIDER: google
+        SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
+        mkdir -p /Users/howie/Workspace/logs
         cd src && python -m pytest ../tests/unit/models/test_user_plan_limits_contract.py -v
         
     - name: Test API integration (dependency injection)
+      env:
+        STT_PROVIDER: google
+        SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
+        mkdir -p /Users/howie/Workspace/logs
         cd src && python -m pytest ../tests/integration/api/test_plan_limits_integration.py::TestPlanLimitsAPIIntegration -v
         
     - name: Test for AttributeError prevention
+      env:
+        STT_PROVIDER: google
+        SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
+        mkdir -p /Users/howie/Workspace/logs
         cd src && python -m pytest ../tests/integration/api/test_plan_limits_integration.py::TestErrorDetection -v
 
   test-production-error-prevention:
@@ -66,11 +86,21 @@ jobs:
         pip install -r requirements-dev.txt
         
     - name: Run specific production error tests
+      env:
+        STT_PROVIDER: google
+        SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
+        mkdir -p /Users/howie/Workspace/logs
         cd src && python -m pytest ../tests/integration/api/test_plan_limits_integration.py::TestPreProductionValidation -v
         
     - name: Verify API endpoints load without AttributeError
+      env:
+        STT_PROVIDER: google
+        SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
+        mkdir -p /Users/howie/Workspace/logs
         python -c "
         import sys
         sys.path.append('src')
@@ -95,7 +125,12 @@ jobs:
         "
         
     - name: Test import correctness
+      env:
+        STT_PROVIDER: google
+        SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
       run: |
+        mkdir -p /Users/howie/Workspace/logs
         python -c "
         import sys
         sys.path.append('src')
@@ -163,9 +198,11 @@ jobs:
       env:
         DATABASE_URL: postgresql://test:test@localhost:5432/test
         REDIS_URL: redis://localhost:6379
-        SECRET_KEY: test-secret-key
+        SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
         GOOGLE_APPLICATION_CREDENTIALS_JSON: '{"type":"service_account","project_id":"test"}'
+        STT_PROVIDER: google
       run: |
+        mkdir -p /Users/howie/Workspace/logs
         cd src && python -c "
         from fastapi.testclient import TestClient
         from coaching_assistant.main import app

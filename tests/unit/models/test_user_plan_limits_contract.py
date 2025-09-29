@@ -243,13 +243,13 @@ class TestContractViolationDetection:
 
     def test_user_response_contract_violation(self):
         """Test that UserResponse does NOT satisfy the contract (by design)."""
-        from coaching_assistant.api.auth import UserResponse
+        from coaching_assistant.api.v1.auth import UserResponse
 
         user_response = UserResponse(
             id="123e4567-e89b-12d3-a456-426614174000",
             email="test@example.com",
             name="Test User",
-            plan=UserPlan.FREE,
+            plan="free",  # Use string value instead of enum
         )
 
         # UserResponse should NOT have usage attributes
@@ -264,12 +264,12 @@ class TestContractViolationDetection:
         """Test that plan limits functions have correct type annotations."""
         import inspect
 
-        from coaching_assistant.api.plan_limits import (
+        from coaching_assistant.api.v1.plan_limits import (
             get_current_usage,
             increment_usage,
             validate_action,
         )
-        from coaching_assistant.models.user import User
+        from coaching_assistant.core.models.user import User
 
         functions = [validate_action, get_current_usage, increment_usage]
 
@@ -289,7 +289,7 @@ class TestContractViolationDetection:
 
     def test_model_import_correctness(self):
         """Test that plan_limits.py imports User model, not UserResponse."""
-        import coaching_assistant.api.plan_limits as plan_limits_module
+        import coaching_assistant.api.v1.plan_limits as plan_limits_module
 
         # Should import User model
         assert hasattr(plan_limits_module, "User"), (

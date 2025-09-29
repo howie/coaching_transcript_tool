@@ -142,7 +142,7 @@ class LeMURTranscriptSmoother:
             logger.info(
                 f"  Segment {i}: Speaker={segment.get('speaker')}, "
                 f"Start={segment.get('start')}ms, End={segment.get('end')}ms, "
-                f"Text='{segment.get('text', '')[:100]}'...' if len(segment.get('text', '')) > 100 else ''}'"
+                f"Text='{segment.get('text', '')[:100]}{'...' if len(segment.get('text', '')) > 100 else ''}'"
             )
         if len(segments) > 3:
             logger.info(f"  ... and {len(segments) - 3} more segments")
@@ -419,7 +419,7 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
             )
             speaker_end_time = time.time()
             logger.info(
-                f"⏱️ SPEAKER IDENTIFICATION TIME: speaker_end_time - speaker_start_time:.2f}} seconds"
+                "⏱️ SPEAKER IDENTIFICATION TIME: speaker_end_time - speaker_start_time:.2f} seconds"
             )
 
             # Debug: Log the complete response from LeMUR
@@ -531,7 +531,7 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
                             batch_idx + 1,
                         )
                         logger.info(
-                            f"✅ BATCH {batch_idx + 1} COMPLETED: len(batch_result)} segments processed"
+                            f"✅ BATCH {batch_idx + 1} COMPLETED: {len(batch_result)} segments processed"
                         )
                         return batch_idx, batch_result
 
@@ -576,7 +576,7 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
                     )
                     improved_segments.extend(batch_result)
                     logger.info(
-                        f"✅ BATCH {batch_idx + 1} COMPLETED: len(batch_result)} segments processed"
+                        f"✅ BATCH {batch_idx + 1} COMPLETED: {len(batch_result)} segments processed"
                     )
 
                 except Exception as e:
@@ -748,10 +748,10 @@ Reply format: Speaker: content"""
             batch_end_time = time.time()
 
             logger.info(
-                f"⏱️ BATCH {batch_num} PROCESSING TIME: batch_end_time - batch_start_time:.2f}} seconds"
+                f"⏱️ BATCH {batch_num} PROCESSING TIME: {batch_end_time - batch_start_time:.2f} seconds"
             )
             logger.info(
-                f"📏 BATCH {batch_num} RESPONSE LENGTH: len(result.response)} characters"
+                f"📏 BATCH {batch_num} RESPONSE LENGTH: {len(result.response)} characters"
             )
             logger.info(
                 f"📥 BATCH {batch_num} RESPONSE PREVIEW: {result.response[:300]}..."
@@ -1045,7 +1045,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             )
             punctuation_end_time = time.time()
             logger.info(
-                f"⏱️ PUNCTUATION IMPROVEMENT TIME: punctuation_end_time - punctuation_start_time:.2f}} seconds"
+                "⏱️ PUNCTUATION IMPROVEMENT TIME: punctuation_end_time - punctuation_start_time:.2f} seconds"
             )
 
             # Debug: Log the complete response from LeMUR
@@ -1246,7 +1246,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
         logger.info("=" * 80)
         logger.info("🔥 STARTING COMBINED LEMUR PROCESSING (Speaker + Punctuation)")
         logger.info(
-            f"⏰ START TIME: time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))}"
+            f"⏰ START TIME: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))}"
         )
         logger.info("=" * 80)
         logger.info(f"📊 INPUT SEGMENTS COUNT: {len(segments)}")
@@ -1352,7 +1352,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             processing_end_time = time.time()
 
             logger.info(
-                f"⏱️ COMBINED PROCESSING TIME: processing_end_time - processing_start_time:.2f}} seconds"
+                f"⏱️ COMBINED PROCESSING TIME: {processing_end_time - processing_start_time:.2f} seconds"
             )
             logger.info(f"📏 RESPONSE LENGTH: {len(result.response)} characters")
 

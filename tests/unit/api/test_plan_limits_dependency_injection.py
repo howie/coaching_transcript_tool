@@ -8,17 +8,17 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy.orm import Session
 
-from src.coaching_assistant.api.dependencies import (
+from coaching_assistant.api.dependencies import (
     get_current_user_dependency,
 )
-from src.coaching_assistant.api.v1.auth import UserResponse
-from src.coaching_assistant.api.v1.plan_limits import (
+from coaching_assistant.api.v1.auth import UserResponse
+from coaching_assistant.api.v1.plan_limits import (
     ValidateActionRequest,
     get_current_usage,
     increment_usage,
     validate_action,
 )
-from src.coaching_assistant.models.user import User, UserPlan
+from coaching_assistant.models.user import User, UserPlan
 
 
 class TestDependencyInjectionCompatibility:
@@ -103,26 +103,20 @@ class TestDependencyInjectionCompatibility:
         _ = ValidateActionRequest(action="create_session")
 
         # This should NOT raise AttributeError
-        # We'll patch the function to test just the attribute access
-        with (
-            patch("coaching_assistant.api.v1.plan_limits.UsageTracker"),
-            patch("coaching_assistant.api.v1.plan_limits.PlanLimits.get_plan_limit"),
-        ):
-            try:
-                # Test attribute access that would fail with UserResponse
-                session_count = mock_user.session_count
-                transcription_count = mock_user.transcription_count
-                usage_minutes = mock_user.usage_minutes
+        # Test attribute access that would fail with UserResponse
+        try:
+            # Test attribute access that would fail with UserResponse
+            session_count = mock_user.session_count
+            transcription_count = mock_user.transcription_count
+            usage_minutes = mock_user.usage_minutes
 
-                # If we get here, no AttributeError was raised
-                assert session_count == 5
-                assert transcription_count == 10
-                assert usage_minutes == 120
+            # If we get here, no AttributeError was raised
+            assert session_count == 5
+            assert transcription_count == 10
+            assert usage_minutes == 120
 
-            except AttributeError as e:
-                pytest.fail(
-                    f"AttributeError raised when accessing user attributes: {e}"
-                )
+        except AttributeError as e:
+            pytest.fail(f"AttributeError raised when accessing user attributes: {e}")
 
     def test_user_response_would_cause_attribute_error(self):
         """Test that UserResponse would cause AttributeError (demonstrating the bug)."""
@@ -131,7 +125,7 @@ class TestDependencyInjectionCompatibility:
             id="123e4567-e89b-12d3-a456-426614174000",
             email="test@example.com",
             name="Test User",
-            plan=UserPlan.FREE,
+            plan="free",  # Use string value instead of enum
         )
 
         # These should raise AttributeError (proving the bug)
@@ -198,7 +192,7 @@ class TestProductionErrorPrevention:
 
     def test_import_compatibility(self):
         """Test that we're importing the correct dependency function."""
-        from coaching_assistant.api.auth import (
+        from coaching_assistant.api.v1.auth import (
             get_current_user_dependency as auth_dependency,
         )
         from coaching_assistant.api.v1.plan_limits import (
@@ -239,25 +233,15 @@ class TestProductionErrorPrevention:
         _ = ValidateActionRequest(action="create_session")
 
         # This should work without issues
-        with (
-            patch("coaching_assistant.api.v1.plan_limits.UsageTracker"),
-            patch(
-                "coaching_assistant.api.v1.plan_limits.PlanLimits.get_plan_limit"
-            ) as mock_plan_limits,
-        ):
-            # Mock the plan limits response
-            mock_plan_limits.return_value = Mock(max_sessions=10)
+        # Test that the function can be called with a proper User model
+        # This should NOT raise AttributeError
+        try:
+            # Note: We can't easily call the actual function due to FastAPI dependencies,
+            # but we can test the attribute access pattern
+            current_usage = mock_user.session_count or 0
+            assert current_usage == 0
 
-            # Import here to avoid circular imports in the actual function call
-
-            # This should NOT raise AttributeError
-            try:
-                # Note: We can't easily call the actual function due to FastAPI dependencies,
-                # but we can test the attribute access pattern
-                current_usage = mock_user.session_count or 0
-                assert current_usage == 0
-
-            except AttributeError:
-                pytest.fail(
-                    "AttributeError raised - this indicates the production bug is still present"
-                )
+        except AttributeError:
+            pytest.fail(
+                "AttributeError raised - this indicates the production bug is still present"
+            )

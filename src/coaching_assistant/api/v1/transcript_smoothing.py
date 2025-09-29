@@ -376,7 +376,7 @@ async def smooth_transcript(
 
     except Exception as e:
         logger.error(
-            f"Unexpected error during transcript smoothing for user current_user.email}: {e}",
+            f"Unexpected error during transcript smoothing for user {current_user.email}: {e}",
             exc_info=True,
         )
         raise HTTPException(
@@ -561,7 +561,7 @@ async def lemur_combined_processing(
             session_language = "en-US"
 
         logger.debug(
-            f"Processing len(lemur_segments)} segments for combined processing with language: {session_language}"
+            f"Processing {len(lemur_segments)} segments for combined processing with language: {session_language}"
         )
 
         # Apply LeMUR-based combined processing
@@ -640,7 +640,7 @@ async def lemur_speaker_identification(
     """
     try:
         logger.info(
-            f"User current_user.email} requested LeMUR-based speaker identification for "
+            f"User {current_user.email} requested LeMUR-based speaker identification for "
             f"language: {request.language}"
         )
 
@@ -682,7 +682,7 @@ async def lemur_speaker_identification(
             session_language = "en-US"
 
         logger.debug(
-            f"Processing len(lemur_segments)} segments for speaker identification with language: {session_language}"
+            f"Processing {len(lemur_segments)} segments for speaker identification with language: {session_language}"
         )
 
         # Apply LeMUR-based speaker identification only
@@ -761,7 +761,7 @@ async def lemur_punctuation_optimization(
     """
     try:
         logger.info(
-            f"User current_user.email} requested LeMUR-based punctuation optimization for "
+            f"User {current_user.email} requested LeMUR-based punctuation optimization for "
             f"language: {request.language}"
         )
 
@@ -803,7 +803,7 @@ async def lemur_punctuation_optimization(
             session_language = "en-US"
 
         logger.debug(
-            f"Processing len(lemur_segments)} segments for punctuation optimization with language: {session_language}"
+            f"Processing {len(lemur_segments)} segments for punctuation optimization with language: {session_language}"
         )
 
         # Apply LeMUR-based punctuation optimization only
@@ -938,7 +938,7 @@ async def lemur_smooth_transcript(
             logger.info(f"🌍 LANGUAGE: {session_language} (using as-is)")
 
         logger.info(
-            f"🚀 STARTING LEMUR PROCESSING: {len(lemur_segments)} segments | Language: session_language} | Coaching Mode: True"
+            f"🚀 STARTING LEMUR PROCESSING: {len(lemur_segments)} segments | Language: {session_language} | Coaching Mode: True"
         )
 
         # Log sample of input text for verification
@@ -1218,7 +1218,7 @@ async def lemur_speaker_identification_from_db(
     """
     try:
         logger.info(
-            f"User current_user.email} requested DB-based speaker identification for session {session_id}"
+            f"User {current_user.email} requested DB-based speaker identification for session {session_id}"
         )
 
         # Extract custom prompts from request
@@ -1287,7 +1287,7 @@ async def lemur_speaker_identification_from_db(
             )
 
         logger.info(
-            f"Loaded len(lemur_segments)} segments from database for speaker identification"
+            f"Loaded {len(lemur_segments)} segments from database for speaker identification"
         )
 
         # Determine session language
@@ -1330,7 +1330,7 @@ async def lemur_speaker_identification_from_db(
                     logger.info(f"🎭 SPEAKER COMPARISON {i + 1}:")
                     logger.info(f"   Original: speaker_id={db_segment.speaker_id}")
                     logger.info(
-                        f"   Corrected: speaker='corrected_segment.speaker}' → speaker_id={new_speaker_id}"
+                        f"   Corrected: speaker='{corrected_segment.speaker}' → speaker_id={new_speaker_id}"
                     )
                     logger.info(
                         f"   Changed: {db_segment.speaker_id != new_speaker_id}"
@@ -1365,7 +1365,7 @@ async def lemur_speaker_identification_from_db(
             )
 
         logger.info(
-            f"DB-based speaker identification completed: len(response_segments)} segments, {segment_updates} updates"
+            f"DB-based speaker identification completed: {len(response_segments)} segments, {segment_updates} updates"
         )
 
         return LeMURSmoothingResponse(
@@ -1435,7 +1435,7 @@ async def lemur_punctuation_optimization_from_db(
     """
     try:
         logger.info(
-            f"User current_user.email} requested DB-based punctuation optimization for session {session_id}"
+            f"User {current_user.email} requested DB-based punctuation optimization for session {session_id}"
         )
 
         # Extract custom prompts from request
@@ -1504,7 +1504,7 @@ async def lemur_punctuation_optimization_from_db(
             )
 
         logger.info(
-            f"Loaded len(lemur_segments)} segments from database for punctuation optimization"
+            f"Loaded {len(lemur_segments)} segments from database for punctuation optimization"
         )
 
         # Determine session language
@@ -1537,10 +1537,10 @@ async def lemur_punctuation_optimization_from_db(
                 if content_comparisons_logged < 3:
                     logger.info(f"📝 CONTENT COMPARISON {i + 1}:")
                     logger.info(
-                        f"   Original: '{db_segment.content[:100]}'...' if len(db_segment.content) > 100 else ''}'"
+                        f"   Original: '{db_segment.content[:100]}{'...' if len(db_segment.content) > 100 else ''}'"
                     )
                     logger.info(
-                        f"   Improved: '{improved_segment.text[:100]}'...' if len(improved_segment.text) > 100 else ''}'"
+                        f"   Improved: '{improved_segment.text[:100]}{'...' if len(improved_segment.text) > 100 else ''}'"
                     )
                     logger.info(
                         f"   Changed: {db_segment.content != improved_segment.text}"
@@ -1573,7 +1573,7 @@ async def lemur_punctuation_optimization_from_db(
             )
 
         logger.info(
-            f"DB-based punctuation optimization completed: len(response_segments)} segments, {segment_updates} updates"
+            f"DB-based punctuation optimization completed: {len(response_segments)} segments, {segment_updates} updates"
         )
 
         return LeMURSmoothingResponse(
@@ -1665,7 +1665,7 @@ async def get_raw_assemblyai_data(
         raw_data = session.provider_metadata["raw_assemblyai_response"]
 
         logger.info(
-            f"Retrieved raw AssemblyAI data for session {session_id} by user current_user.email}. "
+            f"Retrieved raw AssemblyAI data for session {session_id} by user {current_user.email}. "
             f"Utterances: {len(raw_data.get('utterances', []))}, "
             f"Words: {len(raw_data.get('words', []))}"
         )

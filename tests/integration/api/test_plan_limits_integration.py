@@ -47,16 +47,15 @@ class TestPlanLimitsAPIIntegration:
         # Mock the dependencies to return our test user
         with (
             patch(
-                "coaching_assistant.api.plan_limits.get_current_user_dependency",
+                "coaching_assistant.api.v1.plan_limits.get_current_user_dependency",
                 return_value=mock_user,
             ),
             patch(
-                "coaching_assistant.api.plan_limits.get_db",
+                "coaching_assistant.api.v1.plan_limits.get_db",
                 return_value=mock_db_session,
             ),
-            patch("coaching_assistant.api.plan_limits.UsageTracker"),
             patch(
-                "coaching_assistant.api.plan_limits.PlanLimits.get_plan_limit"
+                "coaching_assistant.api.v1.plan_limits.PlanLimits.get_plan_limit"
             ) as mock_plan_limits,
         ):
             # Mock plan limits
@@ -85,15 +84,15 @@ class TestPlanLimitsAPIIntegration:
 
         with (
             patch(
-                "coaching_assistant.api.plan_limits.get_current_user_dependency",
+                "coaching_assistant.api.v1.plan_limits.get_current_user_dependency",
                 return_value=mock_user,
             ),
             patch(
-                "coaching_assistant.api.plan_limits.get_db",
+                "coaching_assistant.api.v1.plan_limits.get_db",
                 return_value=mock_db_session,
             ),
             patch(
-                "coaching_assistant.api.plan_limits.PlanLimits.get_plan_limit"
+                "coaching_assistant.api.v1.plan_limits.PlanLimits.get_plan_limit"
             ) as mock_plan_limits,
         ):
             # Mock plan limits
@@ -127,20 +126,14 @@ class TestPlanLimitsAPIIntegration:
 
         with (
             patch(
-                "coaching_assistant.api.plan_limits.get_current_user_dependency",
+                "coaching_assistant.api.v1.plan_limits.get_current_user_dependency",
                 return_value=mock_user,
             ),
             patch(
-                "coaching_assistant.api.plan_limits.get_db",
+                "coaching_assistant.api.v1.plan_limits.get_db",
                 return_value=mock_db_session,
             ),
-            patch("coaching_assistant.api.plan_limits.UsageTracker") as mock_tracker,
         ):
-            # Mock the tracker
-            mock_tracker.return_value.increment_usage.return_value = (
-                6  # New value after increment
-            )
-
             response = client.post(
                 "/api/v1/plan/increment-usage?metric=session_count&amount=1",
                 headers={"Authorization": "Bearer fake-token"},
@@ -156,7 +149,7 @@ class TestPlanLimitsAPIIntegration:
 
     def test_would_fail_with_user_response_object(self, client, mock_db_session):
         """Test that demonstrates the error would occur with UserResponse object."""
-        from coaching_assistant.api.auth import UserResponse
+        from coaching_assistant.api.v1.auth import UserResponse
 
         # Create UserResponse object (this is what was causing the error)
         user_response = UserResponse(
@@ -169,16 +162,15 @@ class TestPlanLimitsAPIIntegration:
         # Mock the dependencies to return UserResponse (simulating the bug)
         with (
             patch(
-                "coaching_assistant.api.plan_limits.get_current_user_dependency",
+                "coaching_assistant.api.v1.plan_limits.get_current_user_dependency",
                 return_value=user_response,
             ),
             patch(
-                "coaching_assistant.api.plan_limits.get_db",
+                "coaching_assistant.api.v1.plan_limits.get_db",
                 return_value=mock_db_session,
             ),
-            patch("coaching_assistant.api.plan_limits.UsageTracker"),
             patch(
-                "coaching_assistant.api.plan_limits.PlanLimits.get_plan_limit"
+                "coaching_assistant.api.v1.plan_limits.PlanLimits.get_plan_limit"
             ) as mock_plan_limits,
         ):
             mock_plan_limits.return_value = Mock(max_sessions=10)
@@ -206,7 +198,7 @@ class TestErrorDetection:
 
     def test_attribute_access_pattern_used_in_production(self):
         """Test the exact attribute access pattern that failed in production."""
-        from coaching_assistant.api.auth import UserResponse
+        from coaching_assistant.api.v1.auth import UserResponse
         from coaching_assistant.models.user import User
 
         # Create User object (correct)
@@ -246,8 +238,8 @@ class TestErrorDetection:
         """Test that FastAPI dependencies are correctly configured."""
         import inspect
 
-        from coaching_assistant.api.auth import get_current_user_dependency
-        from coaching_assistant.api.plan_limits import (
+        from coaching_assistant.api.v1.auth import get_current_user_dependency
+        from coaching_assistant.api.v1.plan_limits import (
             get_current_usage,
             increment_usage,
             validate_action,
