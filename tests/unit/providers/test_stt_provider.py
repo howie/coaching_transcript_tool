@@ -105,17 +105,6 @@ class TestGoogleSTTProvider:
         cost = provider.estimate_cost(300)
         assert cost == Decimal("0.240")
 
-    # Skipping complex mocking tests that are fragile and don't add much value
-    def test_initialization_with_credentials(self):
-        """Test initialization with JSON credentials."""
-        pytest.skip("Complex mocking required - skipping for now")
-
-    def test_transcribe_success(self):
-        """Test successful transcription with v2 API."""
-        pytest.skip("Complex mocking required - skipping for now")
-
-    def test_create_segment_from_words(self):
-        """Test creating segment from words."""
-        pytest.skip(
-            "Method _create_segment_from_words is private and requires complex setup"
-        )
+    # NOTE: Integration tests for Google STT provider are in tests/integration/
+    # These tests would require complex Google Cloud SDK mocking and are better
+    # tested with real API calls or recorded responses in integration tests.

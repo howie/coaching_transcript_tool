@@ -251,38 +251,54 @@ All remaining test failures have been successfully resolved. The test suite is n
 - **Actionable**: ❌ None - All warnings are either library-internal or test-related artifacts
 - **Risk**: ✅ None - No impact on production functionality or reliability
 
-### 📋 Skipped Tests Analysis (3 tests)
+### 📋 Test Reorganization (2025-09-30)
 
-**File**: `tests/unit/providers/test_stt_provider.py`
+**Actions Taken**:
+1. **Moved integration tests from unit/** → **integration/**
+   - `test_lemur_simple.py` - Calls real AssemblyAI LeMUR API
+   - Requires ASSEMBLYAI_API_KEY environment variable
+   - Better suited for integration test suite
 
-**Skipped Tests**:
-1. `test_initialization_with_credentials` (Line 111)
-   - Reason: "Complex mocking required - skipping for now"
-   - Purpose: Test Google STT provider initialization with JSON credentials
-   - Impact: Low - Covered by integration tests
+2. **Moved E2E tests from unit/services/** → **e2e/**
+   - `test_status_tracking.py` - Tests full API server + database flow
+   - Requires running API server and real database connection
+   - Complete end-to-end test of status tracking functionality
 
-2. `test_transcribe_success` (Line 115)
-   - Reason: "Complex mocking required - skipping for now"
-   - Purpose: Test successful transcription with Google v2 API
-   - Impact: Low - Covered by integration tests
+3. **Removed skipped tests from test_stt_provider.py**
+   - Deleted 3 permanently skipped tests that added no value
+   - Added clear comment explaining integration tests belong in tests/integration/
+   - Reduced test count but improved test suite clarity
 
-3. `test_create_segment_from_words` (Line 119)
-   - Reason: "Method _create_segment_from_words is private and requires complex setup"
-   - Purpose: Test internal word-to-segment conversion
-   - Impact: Low - Private method, indirectly tested through public methods
+**Results**:
+- Unit test count: 607 → 603 (4 tests reclassified)
+- Skipped tests: 3 → 0 (all skipped tests removed)
+- **Test execution time: 13-14s → 8.88s (40% faster!)**
+- All tests passing: ✅ 603/603
 
-**Why These Are Intentionally Skipped**:
-- Google STT provider requires complex mocking of Google Cloud clients
-- These tests would be fragile and require extensive setup
-- Better coverage through integration tests with real API calls or test recordings
-- Private method testing is not essential when public interface is well tested
+**Test Organization Standards**:
 
-**Test Coverage Strategy**:
-- ✅ Unit tests: Focus on business logic, simple integrations
-- ✅ Integration tests: Cover Google STT with real or recorded API responses
-- ✅ E2E tests: Test full transcription pipeline end-to-end
+✅ **Unit Tests** (`tests/unit/`):
+- Test single functions/classes/methods
+- Mock all external dependencies
+- No network, no database, no API calls
+- Fast execution (< 1 second per test)
+- Only test business logic
 
-**Recommendation**: Keep these skipped - they add maintenance burden without significant value
+✅ **Integration Tests** (`tests/integration/`):
+- Test component integration
+- May use real APIs with proper API keys
+- May use test databases
+- Slower execution (1-10 seconds)
+- Test how components work together
+
+✅ **E2E Tests** (`tests/e2e/`):
+- Test complete user flows
+- Require full system running
+- Test frontend to backend
+- Slowest execution (> 10 seconds)
+- Test real-world scenarios
+
+**Recommendation**: Maintain this clear separation to keep unit tests fast and reliable
 
 ## Test Scope Analysis
 
