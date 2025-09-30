@@ -92,3 +92,43 @@ dev = [
     "autoflake>=2.3.1",
     "ruff>=0.13.2",
 ]
+
+[tool.coverage.run]
+omit = [
+    # Exclude __init__.py files (usually just imports)
+    "*/__init__.py",
+    # Exclude test files
+    "tests/*",
+    # Exclude virtual environment
+    "*/venv/*",
+    "*/virtualenv/*",
+    # Exclude setup files
+    "setup.py",
+    "conftest.py",
+    # Exclude app entry points (covered by E2E tests)
+    "apps/*/main.py",
+    "apps/*/wsgi.py",
+    "apps/*/asgi.py",
+    # Exclude CLI entry points
+    "src/coaching_assistant/cli/__main__.py",
+    # Exclude version file (auto-generated)
+    "src/coaching_assistant/version.py",
+]
+
+[tool.coverage.report]
+# Exclude specific patterns from coverage
+exclude_lines = [
+    # Standard pragma
+    "pragma: no cover",
+    # Don't complain about missing debug-only code
+    "def __repr__",
+    # Don't complain if tests don't hit defensive assertion code
+    "raise AssertionError",
+    "raise NotImplementedError",
+    # Don't complain if non-runnable code isn't run
+    "if __name__ == .__main__.:",
+    # Don't complain about abstract methods
+    "@(abc\\.)?abstractmethod",
+    # Don't complain about TYPE_CHECKING blocks
+    "if TYPE_CHECKING:",
+]
