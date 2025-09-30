@@ -1,8 +1,8 @@
 """Tests for usage tracking service."""
 
-from datetime import datetime, UTC, timedelta
-from decimal import Decimal
 import uuid
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 from sqlalchemy.orm import Session
@@ -136,7 +136,9 @@ class TestUsageTrackingService:
         assert retry_log.is_billable is False
         assert retry_log.parent_log_id == initial_log.id
 
-    def test_get_user_usage_summary(self, db_session: Session, test_user: User, test_session):
+    def test_get_user_usage_summary(
+        self, db_session: Session, test_user: User, test_session
+    ):
         """Test getting user usage summary."""
         service = UsageTrackingService(db_session)
 
@@ -178,7 +180,9 @@ class TestUsageTrackingService:
         assert summary["lifetime_totals"]["transcriptions_generated"] == 5
         assert float(summary["lifetime_totals"]["cost_usd"]) == 2.50
 
-    def test_get_user_usage_history(self, db_session: Session, test_user: User, test_session):
+    def test_get_user_usage_history(
+        self, db_session: Session, test_user: User, test_session
+    ):
         """Test getting user usage history."""
         service = UsageTrackingService(db_session)
 

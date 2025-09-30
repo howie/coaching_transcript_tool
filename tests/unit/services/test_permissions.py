@@ -1,6 +1,6 @@
 """Comprehensive tests for the permission system."""
 
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 from uuid import uuid4
 

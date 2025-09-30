@@ -4,7 +4,7 @@ These tests verify that repository _to_domain() and _from_domain() methods
 correctly handle enum conversions and prevent data type mismatches.
 """
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
 

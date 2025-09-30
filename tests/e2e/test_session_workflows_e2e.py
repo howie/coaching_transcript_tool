@@ -6,7 +6,7 @@ transcription processing, and export workflows.
 
 import io
 import time
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest

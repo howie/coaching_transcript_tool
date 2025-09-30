@@ -534,6 +534,7 @@ class ECPaySubscriptionService:
         # Send payment failure notifications asynchronously
         # Only create task if there's a running event loop (production environment)
         import asyncio
+
         try:
             asyncio.create_task(
                 self._send_payment_failure_notification(

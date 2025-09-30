@@ -1,6 +1,6 @@
 """Tests for UsageHistory model."""
 
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest

@@ -5,7 +5,7 @@ following Clean Architecture principles with proper mocking of dependencies.
 """
 
 from dataclasses import replace
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -885,7 +885,9 @@ class TestSessionStatusUpdateUseCase:
             mock_session_repo, mock_user_repo, mock_usage_log_repo
         )
         sample_session.duration_seconds = 300  # 5 minutes
-        sample_session.status = SessionStatus.PROCESSING  # Valid starting status for COMPLETED transition
+        sample_session.status = (
+            SessionStatus.PROCESSING
+        )  # Valid starting status for COMPLETED transition
         mock_session_repo.get_by_id.return_value = sample_session
 
         completed_session = Session(

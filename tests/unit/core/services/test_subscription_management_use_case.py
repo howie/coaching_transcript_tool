@@ -1,6 +1,6 @@
 """Unit tests for SubscriptionManagementUseCase."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import uuid4

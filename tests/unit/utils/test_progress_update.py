@@ -1,6 +1,6 @@
 """Test progress update functionality."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from coaching_assistant.models.processing_status import ProcessingStatus

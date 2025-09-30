@@ -4,7 +4,7 @@ This module tests the SQLAlchemySessionRepository with real database operations,
 ensuring proper domain ↔ ORM conversion and transaction integrity.
 """
 
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest

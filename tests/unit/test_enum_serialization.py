@@ -45,7 +45,13 @@ class TestEnumSerialization:
             data = json.loads(serialized)
 
             assert isinstance(data["plan"], str)
-            assert data["plan"] in ["free", "student", "pro", "enterprise", "coaching_school"]
+            assert data["plan"] in [
+                "free",
+                "student",
+                "pro",
+                "enterprise",
+                "coaching_school",
+            ]
 
     def test_http_exception_with_enum_value_is_serializable(self):
         """Test that HTTPException with enum values can be serialized."""

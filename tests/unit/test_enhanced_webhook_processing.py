@@ -63,7 +63,7 @@ class TestEnhancedWebhookProcessing:
             subscription_repo=Mock(),
             settings=Mock(),
             ecpay_client=Mock(),
-            notification_service=Mock()
+            notification_service=Mock(),
         )
         service.db = mock_db_session  # Add for backward compatibility
 
@@ -111,7 +111,7 @@ class TestEnhancedWebhookProcessing:
             subscription_repo=Mock(),
             settings=Mock(),
             ecpay_client=Mock(),
-            notification_service=Mock()
+            notification_service=Mock(),
         )
         service.db = mock_db_session  # Add for backward compatibility
 
@@ -142,7 +142,7 @@ class TestEnhancedWebhookProcessing:
             subscription_repo=Mock(),
             settings=Mock(),
             ecpay_client=Mock(),
-            notification_service=Mock()
+            notification_service=Mock(),
         )
         service.db = mock_db_session  # Add for backward compatibility
 
@@ -188,13 +188,15 @@ class TestEnhancedWebhookProcessing:
             subscription_repo=Mock(),
             settings=Mock(),
             ecpay_client=Mock(),
-            notification_service=Mock()
+            notification_service=Mock(),
         )
         service.db = mock_db_session  # Add for backward compatibility
 
         # Test notification for first failure
         # Patch the module-level logger instead of service.logger
-        with patch("src.coaching_assistant.core.services.ecpay_service.logger") as mock_logger:
+        with patch(
+            "src.coaching_assistant.core.services.ecpay_service.logger"
+        ) as mock_logger:
             await service._send_payment_failure_notification(
                 mock_subscription, mock_payment, 1
             )
@@ -259,15 +261,17 @@ class TestEnhancedWebhookProcessing:
                 # Mock and execute maintenance task
                 with patch.object(
                     process_subscription_maintenance,
-                    'apply',
-                    return_value=Mock(result={
-                        "status": "success",
-                        "maintenance_stats": {
-                            "active_subscriptions": 100,
-                            "past_due_subscriptions": 5,
+                    "apply",
+                    return_value=Mock(
+                        result={
+                            "status": "success",
+                            "maintenance_stats": {
+                                "active_subscriptions": 100,
+                                "past_due_subscriptions": 5,
+                            },
                         }
-                    })
-                ) as mock_task:
+                    ),
+                ):
                     result = process_subscription_maintenance.apply().result
 
                 # Verify task execution
@@ -311,12 +315,11 @@ class TestEnhancedWebhookProcessing:
                 # Mock and execute failed payment retry task
                 with patch.object(
                     process_failed_payment_retry,
-                    'apply',
-                    return_value=Mock(result={
-                        "status": "success",
-                        "payment_id": "pay123"
-                    })
-                ) as mock_task:
+                    "apply",
+                    return_value=Mock(
+                        result={"status": "success", "payment_id": "pay123"}
+                    ),
+                ):
                     result = process_failed_payment_retry.apply(["pay123"]).result
 
                 # Verify successful retry
@@ -339,11 +342,8 @@ class TestEnhancedWebhookProcessing:
         ):
             with patch.object(
                 cleanup_old_webhook_logs,
-                'apply_async',
-                return_value=Mock(result={
-                    "status": "success",
-                    "deleted_count": 150
-                })
+                "apply_async",
+                return_value=Mock(result={"status": "success", "deleted_count": 150}),
             ):
                 result = cleanup_old_webhook_logs.apply_async().result
 
@@ -502,7 +502,7 @@ class TestWebhookIntegrationFlow:
             subscription_repo=Mock(),
             settings=Mock(),
             ecpay_client=Mock(),
-            notification_service=Mock()
+            notification_service=Mock(),
         )
         service.db = mock_db_session  # Add for backward compatibility
 

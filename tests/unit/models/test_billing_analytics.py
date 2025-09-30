@@ -1,6 +1,6 @@
 """Tests for BillingAnalytics model."""
 
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 

@@ -1,6 +1,6 @@
 """Tests for BillingAnalyticsService."""
 
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -99,12 +99,12 @@ class TestBillingAnalyticsService:
         period_end = datetime.now(UTC)
 
         # Mock the complex trend data calculation to avoid SQLAlchemy complexity
-        with patch.object(service, '_get_trend_data') as mock_trend:
+        with patch.object(service, "_get_trend_data") as mock_trend:
             mock_trend.return_value = {
                 "new_users": 10,
                 "churned_users": 2,
                 "total_active_users": 45,
-                "user_growth_rate": 0.18
+                "user_growth_rate": 0.18,
             }
 
             overview = service.get_admin_overview(period_start, period_end, "monthly")

@@ -1,6 +1,6 @@
 """Integration tests for Usage History Analytics API endpoints."""
 
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest

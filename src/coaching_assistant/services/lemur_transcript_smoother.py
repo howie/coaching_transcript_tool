@@ -419,7 +419,7 @@ Reply in JSON format: {{"A": "Coach", "B": "Client"}}"""
             )
             speaker_end_time = time.time()
             logger.info(
-                "⏱️ SPEAKER IDENTIFICATION TIME: speaker_end_time - speaker_start_time:.2f} seconds"
+                f"⏱️ SPEAKER IDENTIFICATION TIME: {speaker_end_time - speaker_start_time:.2f} seconds"
             )
 
             # Debug: Log the complete response from LeMUR
@@ -1045,7 +1045,7 @@ Reply with the improved transcript, maintaining the same format (Speaker: conten
             )
             punctuation_end_time = time.time()
             logger.info(
-                "⏱️ PUNCTUATION IMPROVEMENT TIME: punctuation_end_time - punctuation_start_time:.2f} seconds"
+                f"⏱️ PUNCTUATION IMPROVEMENT TIME: {punctuation_end_time - punctuation_start_time:.2f} seconds"
             )
 
             # Debug: Log the complete response from LeMUR

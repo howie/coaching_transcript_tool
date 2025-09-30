@@ -258,7 +258,7 @@ class TestECPayAPIResponseValidation:
                 service, "_handle_payment_success_notifications", new=AsyncMock()
             ):
                 # Mock asyncio.create_task to avoid event loop requirement
-                with patch("asyncio.create_task") as mock_create_task:
+                with patch("asyncio.create_task"):
                     result = service.handle_payment_webhook(webhook_data)
 
             assert result is True, "Successful payment webhook should return True"
@@ -296,7 +296,7 @@ class TestECPayAPIResponseValidation:
         with patch.object(service, "_verify_callback", return_value=True):
             with patch.object(service, "_handle_failed_payment") as mock_handle_failed:
                 # Mock asyncio.create_task to avoid event loop requirement
-                with patch("asyncio.create_task") as mock_create_task:
+                with patch("asyncio.create_task"):
                     result = service.handle_payment_webhook(webhook_data)
 
                 assert result is True, (

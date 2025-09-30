@@ -1,6 +1,6 @@
 """Tests for UsageAnalyticsService."""
 
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -528,7 +528,9 @@ class TestUsageAnalyticsService:
             current_plan="free",
             growth_rate=25,
         )
-        assert "upgrade" in recommendation.lower() or "upgrading" in recommendation.lower()
+        assert (
+            "upgrade" in recommendation.lower() or "upgrading" in recommendation.lower()
+        )
         assert "PRO" in recommendation
 
         # Test recommendation to stay on current plan

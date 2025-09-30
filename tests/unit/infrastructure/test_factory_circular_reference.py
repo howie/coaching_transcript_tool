@@ -78,12 +78,13 @@ class TestFactoryCircularReference:
 
     def test_repository_has_correct_transaction_management(self, mock_session):
         """Test that the repository uses flush() not commit()."""
+        from datetime import date, datetime
+        from uuid import uuid4
+
         from src.coaching_assistant.core.models.subscription import (
             SaasSubscription,
             SubscriptionStatus,
         )
-        from uuid import uuid4
-        from datetime import datetime, date
 
         repo = create_subscription_repository(mock_session)
 

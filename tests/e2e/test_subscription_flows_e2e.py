@@ -1,7 +1,7 @@
 """E2E tests for subscription payment and upgrade flows."""
 
 import time
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from uuid import uuid4
 
 import pytest

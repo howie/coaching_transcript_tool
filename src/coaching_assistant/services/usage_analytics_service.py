@@ -478,8 +478,11 @@ class UsageAnalyticsService:
             "exports_generated": len(export_logs),
             "storage_used_mb": storage_used_mb,
             "unique_clients": len(
-                set(log.metadata.get("client_id") for log in usage_logs
-                    if log.metadata and "client_id" in log.metadata)
+                set(
+                    log.metadata.get("client_id")
+                    for log in usage_logs
+                    if log.metadata and "client_id" in log.metadata
+                )
             ),
             "api_calls_made": api_calls_made,
             "concurrent_sessions_peak": concurrent_peak,
@@ -583,7 +586,9 @@ class UsageAnalyticsService:
                 }
             daily_data[date_key]["transcriptions"] += 1
             daily_data[date_key]["minutes"] += log.duration_minutes
-            daily_data[date_key]["cost"] += float(log.cost_cents or 0) / 100  # Convert cents to dollars
+            daily_data[date_key]["cost"] += (
+                float(log.cost_cents or 0) / 100
+            )  # Convert cents to dollars
 
         # Convert to list format
         trends = []

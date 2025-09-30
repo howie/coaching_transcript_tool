@@ -1,6 +1,6 @@
 """Unit tests for subscription management use cases."""
 
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -341,7 +341,9 @@ class TestSubscriptionRetrievalUseCase:
             "Database error"
         )
         # Authorization query should also be set up to avoid side effects
-        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = None
+        self.mock_subscription_repo.get_credit_authorization_by_user_id.return_value = (
+            None
+        )
 
         # Act
         result = self.use_case.get_current_subscription(sample_user.id)
