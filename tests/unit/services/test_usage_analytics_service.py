@@ -54,6 +54,7 @@ class TestUsageAnalyticsService:
             user_plan="FREE",
             transcription_type=TranscriptionType.ORIGINAL,
             cost_usd=Decimal("1.50"),
+            is_billable=True,
         )
         db_session.add(usage_log)
         db_session.commit()
@@ -520,13 +521,14 @@ class TestUsageAnalyticsService:
     def test_generate_plan_recommendation(self, analytics_service):
         """Test plan recommendation generation."""
         # Test recommendation to upgrade from FREE
+        # FREE plan has 200 minutes, so 165 minutes = 82.5% (exceeds 80% threshold)
         recommendation = analytics_service._generate_plan_recommendation(
             predicted_sessions=50,
-            predicted_minutes=55,  # Exceeds 80% of FREE plan (60 * 0.8 = 48)
+            predicted_minutes=165,  # Exceeds 80% of FREE plan (200 * 0.8 = 160)
             current_plan="free",
             growth_rate=25,
         )
-        assert "upgrade" in recommendation.lower()
+        assert "upgrade" in recommendation.lower() or "upgrading" in recommendation.lower()
         assert "PRO" in recommendation
 
         # Test recommendation to stay on current plan

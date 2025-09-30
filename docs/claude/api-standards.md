@@ -101,6 +101,237 @@ When claiming an API fix works, provide:
 
 This ensures all API fix claims are backed by real evidence, not assumptions.
 
+## Third-Party API Integration Guidelines
+
+### Parameter Format Consistency
+
+**Critical Rule**: Signature-based APIs (e.g., payment gateways) depend on exact string representation.
+
+```python
+# ✅ Force string types to ensure consistency
+auth_data = {
+    "TotalAmount": str(amount),        # Explicit string conversion
+    "ExecTimes": str(exec_times),      # Prevents type conversion issues
+    "PeriodAmount": str(period_amt),   # Frontend/backend consistency
+    "MerchantID": str(merchant_id),    # Avoid integer/string mismatches
+}
+```
+
+**Why This Matters**:
+- JavaScript `String(123)` vs Python `123` produces different signatures
+- Payment APIs reject requests with incorrect CheckMacValue/signatures
+- Frontend form submission may convert types during transmission
+
+### Next.js API Route Design for Third-Party Callbacks
+
+**Problem**: Next.js page components cannot handle POST requests from third-party services.
+
+**Solution**: Use API routes for callbacks, then redirect to pages for UI.
+
+```typescript
+// ✅ API Route handles POST callback
+// /app/api/payment/callback/route.ts
+export async function POST(request: NextRequest) {
+  const formData = await request.formData()
+
+  // Process callback data
+  const status = formData.get('RtnCode')
+  const tradeNo = formData.get('TradeNo')
+
+  // Store results in database/session
+  await processPaymentResult(status, tradeNo)
+
+  // Redirect to page for UI display
+  const params = new URLSearchParams({
+    status: status as string,
+    tradeNo: tradeNo as string
+  })
+
+  return NextResponse.redirect(
+    new URL(`/payment/result?${params}`, request.url)
+  )
+}
+
+// ❌ Page Component - Cannot handle POST
+// /app/payment/result/page.tsx
+// This only works for GET requests, will fail for POST
+```
+
+**Architecture Principles**:
+- **API Routes**: Handle third-party POST callbacks
+- **Page Components**: Display UI based on query parameters (GET)
+- **Clear Separation**: Avoid mixing request handling types
+
+### API Integration Testing Strategy
+
+**Layered Testing Approach**:
+
+1. **Backend Logic Testing**
+   ```python
+   def test_parameter_generation():
+       """Test that backend generates correct parameters."""
+       service = PaymentService()
+       params = service.generate_payment_params(amount=1000)
+
+       assert params['TotalAmount'] == '1000'  # String type
+       assert 'CheckMacValue' in params
+       assert len(params['MerchantTradeNo']) <= 20  # Length limit
+   ```
+
+2. **Frontend Integration Testing**
+   ```typescript
+   test('form submission preserves parameter types', () => {
+       const params = { TotalAmount: '1000', ExecTimes: '12' }
+       const form = createPaymentForm(params)
+
+       // Verify no type conversion occurs
+       expect(form.get('TotalAmount')).toBe('1000')
+       expect(typeof form.get('TotalAmount')).toBe('string')
+   })
+   ```
+
+3. **Real API Testing (Sandbox)**
+   ```python
+   @pytest.mark.integration
+   def test_payment_api_real_call():
+       """Test with real API in sandbox environment."""
+       service = PaymentService(environment='sandbox')
+       result = service.create_payment(amount=1000)
+
+       # Should succeed with sandbox credentials
+       assert result.status_code == 200
+       assert 'TradeNo' in result.response
+   ```
+
+4. **End-to-End Testing**
+   ```python
+   @pytest.mark.e2e
+   async def test_complete_payment_flow(test_client, browser):
+       # 1. Backend generates form
+       response = await test_client.post('/api/payment/init')
+       form_url = response.json()['form_url']
+
+       # 2. Simulate browser form submission
+       result = await browser.submit_form(form_url)
+
+       # 3. Verify callback received
+       assert await test_client.get('/api/payment/status') == 'completed'
+   ```
+
+### Development Phase Checklist
+
+**Before Integration**:
+- [ ] Read API documentation thoroughly (check version differences)
+- [ ] Identify signature/checksum requirements
+- [ ] Note parameter format requirements (string vs number)
+- [ ] Check character length limits
+- [ ] Understand callback/webhook mechanisms
+
+**During Development**:
+- [ ] Standardize all parameters as strings for signature-based APIs
+- [ ] Log complete request/response data
+- [ ] Create API route for POST callbacks (Next.js)
+- [ ] Implement proper error handling with user-friendly messages
+- [ ] Add comprehensive parameter validation
+
+**Testing Phase**:
+- [ ] Unit test parameter generation and format
+- [ ] Integration test with sandbox environment
+- [ ] Test callback/webhook handling
+- [ ] Verify signature/checksum calculation
+- [ ] Test error scenarios (timeout, invalid params, etc.)
+
+**Deployment Phase**:
+- [ ] Set up monitoring for API responses
+- [ ] Prepare fallback workflows for API failures
+- [ ] Document integration details and gotchas
+- [ ] Create runbook for troubleshooting common issues
+
+### Common Pitfalls and Solutions
+
+**Pitfall 1: Parameter Type Conversion**
+```python
+# ❌ Type may change during transmission
+params = {'amount': 1000}  # Integer
+
+# ✅ Force string to prevent conversion
+params = {'amount': str(1000)}  # String
+```
+
+**Pitfall 2: Character Encoding Issues**
+```python
+# ❌ Special characters may break signatures
+description = "訂閱方案-學生版 $299/月"
+
+# ✅ URL encode or sanitize special characters
+description = urllib.parse.quote("訂閱方案-學生版")
+```
+
+**Pitfall 3: Timezone Mismatches**
+```python
+# ❌ Assuming local timezone
+timestamp = datetime.now().isoformat()
+
+# ✅ Use explicit timezone
+from datetime import timezone
+timestamp = datetime.now(timezone.utc).isoformat()
+```
+
+**Pitfall 4: Inadequate Error Handling**
+```python
+# ❌ Generic error, user confused
+try:
+    result = payment_api.call()
+except Exception:
+    raise HTTPException(500, "Payment failed")
+
+# ✅ Specific error with context
+try:
+    result = payment_api.call()
+except PaymentAPIException as e:
+    logger.error(f"Payment API error: {e.code} - {e.message}")
+    raise HTTPException(400, detail={
+        "error": "payment_failed",
+        "message": "無法處理付款，請稍後再試",
+        "support_code": e.code  # For customer support
+    })
+```
+
+### Debugging Tips
+
+**Enable Request Logging**:
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Log complete request before sending
+logger.debug(f"API Request: {json.dumps(params, indent=2)}")
+logger.debug(f"Signature: {signature}")
+
+# Log complete response
+logger.debug(f"API Response: {response.text}")
+```
+
+**Compare with Working Examples**:
+```python
+# Create a known-working example for comparison
+known_good_params = {...}
+known_good_signature = calculate_signature(known_good_params)
+
+# Compare your parameters
+your_params = generate_params()
+your_signature = calculate_signature(your_params)
+
+# Identify differences
+diff = compare_params(known_good_params, your_params)
+logger.info(f"Parameter differences: {diff}")
+```
+
+**Use API Sandbox Testing Tools**:
+- Many payment APIs provide official testing/validation tools
+- Test parameter format and signature calculation
+- Verify before attempting real integration
+
 ## Key API Endpoints
 
 ```

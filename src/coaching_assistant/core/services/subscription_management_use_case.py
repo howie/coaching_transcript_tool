@@ -445,13 +445,13 @@ class SubscriptionRetrievalUseCase:
         payment_data = [
             {
                 "id": str(payment.id),
-                "amount_cents": getattr(payment, "amount_twd", 0),
+                "amount_cents": payment.amount,
                 "currency": payment.currency,
                 "status": payment.status.value,
                 "payment_date": (
-                    payment.payment_date.isoformat() if payment.payment_date else None
+                    payment.processed_at.isoformat() if payment.processed_at else None
                 ),
-                "ecpay_trade_no": payment.ecpay_trade_no,
+                "ecpay_trade_no": payment.gwsr,
                 "created_at": payment.created_at.isoformat(),
             }
             for payment in payments

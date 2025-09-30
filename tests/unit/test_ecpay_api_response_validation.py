@@ -257,7 +257,9 @@ class TestECPayAPIResponseValidation:
             with patch.object(
                 service, "_handle_payment_success_notifications", new=AsyncMock()
             ):
-                result = service.handle_payment_webhook(webhook_data)
+                # Mock asyncio.create_task to avoid event loop requirement
+                with patch("asyncio.create_task") as mock_create_task:
+                    result = service.handle_payment_webhook(webhook_data)
 
             assert result is True, "Successful payment webhook should return True"
 
@@ -293,7 +295,9 @@ class TestECPayAPIResponseValidation:
 
         with patch.object(service, "_verify_callback", return_value=True):
             with patch.object(service, "_handle_failed_payment") as mock_handle_failed:
-                result = service.handle_payment_webhook(webhook_data)
+                # Mock asyncio.create_task to avoid event loop requirement
+                with patch("asyncio.create_task") as mock_create_task:
+                    result = service.handle_payment_webhook(webhook_data)
 
                 assert result is True, (
                     "Webhook processing should succeed even if payment failed"
@@ -481,10 +485,7 @@ class TestECPayAPIResponseValidation:
     def test_invalid_callback_data_rejection(self, service, invalid_data):
         """Test that invalid callback data is properly rejected"""
 
-        if invalid_data is None:
-            # Handle None case separately
-            with pytest.raises((TypeError, AttributeError)):
-                service.handle_auth_callback(invalid_data)
-        else:
-            result = service.handle_auth_callback(invalid_data)
-            assert result is False, f"Invalid data should be rejected: {invalid_data}"
+        # The service catches all exceptions and returns False
+        # This is the intended behavior for robust error handling
+        result = service.handle_auth_callback(invalid_data)
+        assert result is False, f"Invalid data should be rejected: {invalid_data}"

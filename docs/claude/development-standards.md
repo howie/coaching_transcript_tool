@@ -191,6 +191,56 @@ pre-commit install         # Set up automated checks
 - **No flake8 warnings** in production code
 - **All imports sorted** with isort
 
+## Dependency Injection Guidelines
+
+### FastAPI Authentication Dependencies
+
+**Critical Rule**: Use the correct dependency function for your use case.
+
+| Function | Returns | Has DB Attributes | Use Case |
+|----------|---------|-------------------|----------|
+| `get_current_user` | `UserResponse` | ❌ No | API responses to frontend |
+| `get_current_user_dependency` | `User` | ✅ Yes | Internal API logic needing DB attributes |
+
+#### ✅ DO: Use get_current_user_dependency for Internal Logic
+
+```python
+from coaching_assistant.api.auth import get_current_user_dependency
+
+@router.post("/validate-action")
+async def validate_action(
+    current_user: User = Depends(get_current_user_dependency),  # Correct
+    db: Session = Depends(get_db)
+):
+    # Access database attributes safely
+    session_count = current_user.session_count or 0
+    transcription_count = current_user.transcription_count or 0
+    # ... business logic
+```
+
+#### ❌ DON'T: Use get_current_user for Internal Logic
+
+```python
+from coaching_assistant.api.auth import get_current_user
+
+@router.post("/validate-action")
+async def validate_action(
+    current_user: User = Depends(get_current_user),  # Wrong - returns UserResponse
+    db: Session = Depends(get_db)
+):
+    # This will fail with AttributeError
+    session_count = current_user.session_count  # AttributeError: 'UserResponse' object has no attribute 'session_count'
+```
+
+#### Prevention: Static Analysis
+
+Run this check to verify correct dependency usage:
+```bash
+python scripts/check_dependency_injection.py src/coaching_assistant/api/
+```
+
+**See**: `@docs/lessons-learned/preventing-dependency-injection-errors.md` for detailed examples and prevention strategies.
+
 ## Testing Philosophy
 
 - Follow TDD methodology strictly (Red → Green → Refactor)
@@ -229,6 +279,8 @@ pre-commit install         # Set up automated checks
 **Test Mode Documentation**: See `@docs/features/test-improvement/` for complete guides on configuration, usage, and security considerations.
 
 ### Test Organization
+
+#### Directory Structure
 ```
 tests/
 ├── README.md              # Testing overview and structure
@@ -242,6 +294,49 @@ tests/
 ├── fixtures/              # Test data and mocks
 └── performance/           # Performance benchmarks
 ```
+
+#### Test Command Organization
+
+**Standalone Tests (No External Dependencies)**:
+```bash
+make test-unit   # Unit tests only (fastest: 10-30s)
+make test        # Unit + DB integration (default: 1-2m, CI-friendly)
+make coverage    # Standalone tests with coverage report
+```
+
+**Server-Dependent Tests (Requires API Server)**:
+```bash
+make test-server   # API/E2E tests (requires running server: 2-5m)
+make test-payment  # Payment system tests (requires server + auth)
+make test-all      # All tests (requires server: 5-15m)
+make coverage-all  # All tests with coverage (requires server)
+```
+
+#### Development Workflow
+
+**Daily Development**:
+```bash
+make test-unit  # Quick feedback during coding
+make test       # Pre-commit validation
+```
+
+**Feature Testing**:
+```bash
+make test       # Standalone validation first
+make test-server # Integration testing when needed
+```
+
+**CI/CD Pipeline**:
+```bash
+make test       # Reliable, fast, no external dependencies
+make coverage   # With coverage report
+```
+
+**Key Benefits**:
+- ⚡ **Fast Feedback**: Default tests run quickly without external services
+- 🔒 **CI-Friendly**: `make test` reliable in CI/CD environments
+- 🎯 **Clear Separation**: Know which tests require infrastructure
+- 🔧 **Flexible**: Targeted commands for different testing scenarios
 
 ### Test Requirements
 - **All test files must be comprehensive** and test edge cases

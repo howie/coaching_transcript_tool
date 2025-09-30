@@ -456,12 +456,12 @@ class UsageAnalyticsService:
             current_count = exports_by_format.get(format_type, 0)
             exports_by_format[format_type] = current_count + 1
 
-        # Track failed transcriptions from usage logs
+        # Track failed transcriptions from usage logs (retry_failed indicates an error)
         failed_transcriptions = len(
             [
                 log
                 for log in usage_logs
-                if log.error_occurred
+                if log.transcription_type == TranscriptionType.RETRY_FAILED
             ]
         )
 

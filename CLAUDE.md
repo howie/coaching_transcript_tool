@@ -274,14 +274,16 @@ TEST_MODE=true uv run python apps/api-server/main.py
 
 ### Essential Documentation
 - **Architecture Details**: `@docs/claude/architecture.md` - Clean Architecture implementation
-- **Development Standards**: `@docs/claude/development-standards.md` - TDD, code style, testing
-- **API Standards**: `@docs/claude/api-standards.md` - Testing requirements, verification
+- **Clean Architecture Patterns**: `@docs/claude/clean-architecture-patterns.md` - Migration patterns, lessons learned
+- **Development Standards**: `@docs/claude/development-standards.md` - TDD, code style, testing, dependency injection
+- **API Standards**: `@docs/claude/api-standards.md` - Testing requirements, third-party integration
 - **Quick Reference**: `@docs/claude/quick-reference.md` - Commands, config, deployment
 
 ### Technical Implementation
 - **i18n Guidelines**: `@docs/claude/i18n.md` - Internationalization patterns
 - **Testing Strategy**: `@docs/claude/testing.md` - Frontend/backend testing approaches
 - **Session ID Mapping**: `@docs/claude/session-id-mapping.md` - Critical ID distinction guide
+- **Enum Migration**: `@docs/claude/enum-migration-best-practices.md` - PostgreSQL enum handling, synchronization
 - **Configuration**: Environment variables, STT providers, deployment settings
 
 ### Project Documentation

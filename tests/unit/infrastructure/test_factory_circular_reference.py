@@ -78,20 +78,45 @@ class TestFactoryCircularReference:
 
     def test_repository_has_correct_transaction_management(self, mock_session):
         """Test that the repository uses flush() not commit()."""
+        from src.coaching_assistant.core.models.subscription import (
+            SaasSubscription,
+            SubscriptionStatus,
+        )
+        from uuid import uuid4
+        from datetime import datetime, date
+
         repo = create_subscription_repository(mock_session)
 
-        # Create a mock subscription object
-        mock_subscription = Mock()
+        # Create a real domain subscription object (not a mock)
+        # because the repository needs to convert it to an ORM model
+        subscription = SaasSubscription(
+            id=uuid4(),
+            user_id=uuid4(),
+            plan_id="test_plan",
+            plan_name="Test Plan",
+            billing_cycle="monthly",
+            amount_twd=29900,  # $299 TWD in cents
+            status=SubscriptionStatus.ACTIVE,
+            current_period_start=date.today(),
+            current_period_end=date.today(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+
+        # Mock the session.get to return None (indicating new subscription)
+        mock_session.get.return_value = None
 
         # Call save_subscription and verify it uses flush
-        result = repo.save_subscription(mock_subscription)
+        result = repo.save_subscription(subscription)
 
         # Verify the session methods were called correctly
-        mock_session.add.assert_called_once_with(mock_subscription)
+        # Note: The repository converts domain model to ORM model before calling add()
+        assert mock_session.add.call_count == 1
         mock_session.flush.assert_called_once()
         mock_session.commit.assert_not_called()
 
-        assert result == mock_subscription
+        # Result should be a domain model
+        assert isinstance(result, SaasSubscription)
 
 
 class TestRepositoryFactory:

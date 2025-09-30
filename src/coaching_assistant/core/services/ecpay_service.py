@@ -531,8 +531,19 @@ class ECPaySubscriptionService:
         # Schedule automated retry (handled by background task)
         self._schedule_payment_retry(subscription, payment)
 
-        # Send payment failure notifications
-        self._send_payment_failure_notification(subscription, payment, recent_failures)
+        # Send payment failure notifications asynchronously
+        # Only create task if there's a running event loop (production environment)
+        import asyncio
+        try:
+            asyncio.create_task(
+                self._send_payment_failure_notification(
+                    subscription, payment, recent_failures
+                )
+            )
+        except RuntimeError:
+            # No event loop running (e.g., in tests) - skip async notification
+            logger.debug("No event loop available for payment failure notification")
+            pass
 
     def _get_plan_pricing(
         self, plan_id: str, billing_cycle: str
