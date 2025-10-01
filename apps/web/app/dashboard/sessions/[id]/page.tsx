@@ -150,6 +150,7 @@ const SessionDetailPage = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'transcript' | 'ai-optimization' | 'analysis'>('overview');
   const [transcript, setTranscript] = useState<TranscriptData | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
+  const [transcriptDeleted, setTranscriptDeleted] = useState(false);
   const [exportFormat, setExportFormat] = useState<'txt' | 'xlsx'>('xlsx');
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
@@ -751,6 +752,7 @@ ${t('sessions.aiChatFollowUp')}`;
       // Refresh session data
       await fetchSession();
       setTranscript(null);
+      setTranscriptDeleted(true);  // Mark that transcript was deleted
       setShowDeleteConfirm(false);
 
       // Show success message
@@ -2196,17 +2198,40 @@ ${t('sessions.aiChatFollowUp')}`;
             {!hasTranscript && !isTranscribing && (
               <div className="bg-surface border border-border rounded-lg p-12 text-center">
                 <div className="space-y-4">
-                  <MicrophoneIcon className="h-16 w-16 text-content-secondary mx-auto" />
-                  <p className="text-content-secondary mb-4">
-                    {t('sessions.noTranscriptUploaded')}
-                  </p>
-                  <Button
-                    onClick={() => setActiveTab('overview')}
-                    className="mx-auto flex items-center gap-2"
-                  >
-                    <DocumentTextIcon className="h-4 w-4" />
-                    {t('sessions.goToOverviewToUpload').replace('{type}', isTranscriptOnly ? t('sessions.transcriptFile') : t('sessions.audioFile'))}
-                  </Button>
+                  {transcriptDeleted ? (
+                    <>
+                      <TrashIcon className="h-16 w-16 text-content-secondary mx-auto" />
+                      <div>
+                        <p className="text-content-secondary mb-2 text-lg font-medium">
+                          逐字稿已刪除
+                        </p>
+                        <p className="text-content-secondary text-sm">
+                          教練 session 記錄和統計資料已保留
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => setActiveTab('overview')}
+                        className="mx-auto flex items-center gap-2"
+                      >
+                        <CloudArrowUpIcon className="h-4 w-4" />
+                        重新上傳音檔或逐字稿
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <MicrophoneIcon className="h-16 w-16 text-content-secondary mx-auto" />
+                      <p className="text-content-secondary mb-4">
+                        {t('sessions.noTranscriptUploaded')}
+                      </p>
+                      <Button
+                        onClick={() => setActiveTab('overview')}
+                        className="mx-auto flex items-center gap-2"
+                      >
+                        <DocumentTextIcon className="h-4 w-4" />
+                        {t('sessions.goToOverviewToUpload').replace('{type}', isTranscriptOnly ? t('sessions.transcriptFile') : t('sessions.audioFile'))}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
