@@ -6,14 +6,17 @@ import { useI18n } from '@/contexts/i18n-context'
 import { useAuth } from '@/contexts/auth-context'
 import { DashboardStats } from '@/components/sections/dashboard-stats'
 import { GettingStarted } from '@/components/sections/getting-started'
+import { PrivacyNotice } from '@/components/sections/privacy-notice'
 import { AuthDiagnostics } from '@/components/debug/auth-diagnostics'
 import { AuthResetButton } from '@/components/debug/auth-reset-button'
+import { trackDashboard } from '@/lib/analytics'
 
 function DashboardContent() {
   const { t } = useI18n()
   const { login, user, isLoading } = useAuth()
   const searchParams = useSearchParams()
   const hasProcessedOAuth = useRef(false)
+  const hasTrackedFirstView = useRef(false)
 
   useEffect(() => {
     // Handle Google OAuth callback tokens from URL parameters
@@ -90,6 +93,15 @@ function DashboardContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, login]) // Remove user and isLoading from dependencies to prevent re-renders
 
+  // Track first dashboard view
+  useEffect(() => {
+    if (user && !hasTrackedFirstView.current) {
+      hasTrackedFirstView.current = true
+      trackDashboard.firstView(user.id || user.email || 'unknown')
+      trackDashboard.quickStartView()
+    }
+  }, [user])
+
   // Show loading state while processing OAuth or loading user
   if (isLoading || (searchParams.get('access_token') && !user)) {
     return (
@@ -119,6 +131,9 @@ function DashboardContent() {
 
       {/* Getting Started Guide */}
       <GettingStarted />
+
+      {/* Privacy Notice */}
+      <PrivacyNotice />
 
       {/* Debug tools - only in development */}
       {process.env.NODE_ENV === 'development' && (

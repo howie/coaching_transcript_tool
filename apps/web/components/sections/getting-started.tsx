@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useI18n } from '@/contexts/i18n-context'
+import { trackDashboard } from '@/lib/analytics'
 
 interface StepProps {
   number: string
@@ -11,6 +12,12 @@ interface StepProps {
 }
 
 function Step({ number, title, description, href }: StepProps) {
+  const handleClick = () => {
+    if (href) {
+      trackDashboard.quickStartStepClick(parseInt(number))
+    }
+  }
+
   const content = (
     <div className="flex items-start space-x-4">
       <div className="flex-shrink-0">
@@ -35,7 +42,7 @@ function Step({ number, title, description, href }: StepProps) {
 
   if (href) {
     return (
-      <Link href={href as any} className={className}>
+      <Link href={href as any} className={className} onClick={handleClick}>
         {content}
       </Link>
     )
@@ -69,6 +76,12 @@ export function GettingStarted() {
       title: t('dashboard.step3.title'),
       description: t('dashboard.step3.desc'),
       href: '/dashboard/transcript-converter'
+    },
+    {
+      number: '4',
+      title: t('dashboard.step4.title'),
+      description: t('dashboard.step4.desc'),
+      href: '/dashboard/sessions'
     }
   ]
 
@@ -77,7 +90,7 @@ export function GettingStarted() {
       <h2 className="text-xl font-bold text-foreground mb-6">
         {t('dashboard.getting_started')}
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {steps.map((step, index) => (
           <Step
             key={index}

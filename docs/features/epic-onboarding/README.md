@@ -1,60 +1,285 @@
-# Coachly Onboarding Improvement Plan
+# Coachly Onboarding 改善計畫
 
-## Objectives
-- Accelerate new coaches from signup to their first actionable insight.
-- Highlight the three core actions: create a session, upload a recording for transcript generation, and meet the AI Mentor.
-- Reduce drop-off by building trust through transparent privacy and data handling messaging.
+## 核心目標
+改善登入 Dashboard 後的新手引導體驗，讓使用者快速了解核心功能，並透過 GA 事件追蹤優化流程。
 
-## Audience & Entry Points
-- **New coach accounts** on first login to the dashboard.
-- **Returning coaches** who have not yet completed the Quick Start checklist.
-- **Invited team members** with limited access who still need guidance on creating their first session.
+---
 
-## Experience Blueprint
+## 一、Dashboard 快速開始指南改善
 
-### 1. Dashboard Quick Start Guide
-- **Surface**: Persistent onboarding panel at the top of the dashboard for incomplete checklists; collapsible once complete.
-- **Structure**: Three-step horizontal checklist with progress indicator and contextual helper text.
-  1. **Create your first coaching session** – primary CTA opens the session creation modal.
-  2. **Upload a session recording** – secondary CTA opens the upload drawer once a session exists.
-  3. **Explore the AI Mentor** – tertiary CTA launches the mentor with a guided prompt library.
-- **Support Elements**:
-  - Brief welcome message linking to a longer "How Coachly Works" article.
-  - Inline privacy tooltip icon that links to the Privacy & Data Safeguards section below.
-  - "Remind me later" option that snoozes the panel for 24 hours but keeps checklist state.
+### 現況分析
 
-### 2. Session Creation & Recording Upload Flow
-- **Session creation modal** collects session title, coachee name, and tags; upon save, automatically advances to the upload step.
-- **Upload step** lives inside the session detail drawer with drag-and-drop plus file selector (audio/video formats supported).
-- **Transcript progress feedback**: real-time status bar with estimated completion time; success state drops the user into the transcript view.
-- **Post-upload action card** introduces key transcript features (highlights, timeline, comments) and reaffirms that the raw file is deleted once transcription completes.
+**組件位置**：
+- [apps/web/components/sections/getting-started.tsx](apps/web/components/sections/getting-started.tsx)
+- [apps/web/lib/i18n/translations/dashboard.ts](apps/web/lib/i18n/translations/dashboard.ts)
 
-### 3. AI Mentor Introduction
-- **Trigger**: Available after the first transcript is ready; Quick Start step 3 becomes active.
-- **Guided entry**: Pre-populated starter prompts such as "Summarize key coaching opportunities" and "Suggest follow-up questions" to demonstrate value quickly.
-- **In-product education**: Contextual tooltip explaining that Mentor responses are based solely on the retained transcript, not the deleted raw recording.
-- **Next-step CTA**: Encourage saving mentor insights into session notes or sharing with coachee.
+**現有步驟 (3 步)**：
+1. **新增客戶** → `/dashboard/clients/new`
+   - 創建並管理您的客戶資料，為教練會談做好準備
+2. **新增教練 session** → `/dashboard/sessions`
+   - 記錄您的教練會談，包含時間、收費和詳細備註
+3. **上傳逐字稿** → `/dashboard/transcript-converter`
+   - ❌ 問題：描述不準確，應該是「上傳錄音檔轉成逐字稿」而非「上傳逐字稿檔案」
 
-## Privacy & Data Safeguards Messaging
-- **Upload modal microcopy**: "We process your recording securely and delete the original file immediately after transcription."
-- **Transcript view alert**: Dismissible banner reminding users they can delete the transcript at any time while keeping the session history and logged hours.
-- **Help article link**: Inline link to the broader data policy (`docs/features/data_policy/`) from both the Quick Start card and the transcript banner.
-- **Audit log reminder**: Note in session settings that deletions are recorded in the audit log for compliance, reinforcing trust without overloading the main flow.
+**現況問題**：
+- ❌ 步驟 3 的描述不正確（說上傳逐字稿，實際是上傳錄音檔）
+- ❌ 缺少步驟 4：與 AI Mentor 互動
+- ❌ 沒有隱私和資料保密說明
 
-## Content & UX Deliverables
-- Updated dashboard hero copy and checklist UI specs.
-- Step-by-step screenshots or short Loom demo embedded in the help center.
-- Tooltip and banner microcopy localized for supported languages.
-- Notification template for "Transcript ready" with privacy reassurance snippet.
+### 改善方案
 
-## Implementation Considerations
-- Gate the Quick Start panel behind a feature flag to allow gradual rollout and A/B testing.
-- Track analytics events for each checklist step completion and tooltip interaction.
-- Ensure upload infrastructure surfaces failures gracefully and offers re-upload without losing input data.
-- Sync AI Mentor availability with transcript readiness to prevent empty states.
+#### 1.1 更新快速開始步驟
 
-## Success Metrics
-- % of new coaches completing all three Quick Start steps within 48 hours.
-- Drop-off rate between session creation and recording upload.
-- AI Mentor first-session engagement rate (sent at least one prompt).
-- User-reported confidence in data privacy (post-onboarding NPS question).
+**步驟 1: 新增客戶** (維持不變)
+- 路徑：`/dashboard/clients/new`
+- 中文：創建並管理您的客戶資料，為教練會談做好準備
+- 英文：Create and manage your client profiles to prepare for coaching sessions
+
+**步驟 2: 新增教練 session** (維持不變)
+- 路徑：`/dashboard/sessions`
+- 中文：記錄您的教練會談，包含時間、收費和詳細備註
+- 英文：Record your coaching sessions including time, fees, and detailed notes
+
+**步驟 3: 上傳錄音檔** (更新描述)
+- 路徑：`/dashboard/transcript-converter`
+- 中文：上傳教練會談的錄音檔，系統會自動轉成逐字稿
+- 英文：Upload session audio recordings to automatically convert them into transcripts
+
+**步驟 4: 與 AI Mentor 互動** (新增)
+- 路徑：`/dashboard/sessions/[id]` (session 詳情頁面)
+- 中文：使用 AI 分析逐字稿，獲得教練技巧洞察和改進建議
+- 英文：Use AI to analyze transcripts and get coaching insights and improvement suggestions
+
+#### 1.2 隱私提示區塊
+
+在快速開始指南下方新增「隱私與資料保密」提示卡片：
+
+**設計規格**：
+- 淺色背景卡片（bg-blue-50 dark:bg-blue-900/20）
+- 包含 icon + 標題 + 3 個要點
+- 可摺疊設計（預設展開，可關閉後儲存狀態到 localStorage）
+
+**內容結構**：
+
+```
+🔐 您的隱私與資料安全
+
+• 錄音檔處理：上傳的錄音檔在轉檔完成後會立即刪除
+• 逐字稿管理：您可以隨時刪除教練 session 內的逐字稿內容
+• 保留記錄：刪除逐字稿後仍會保留教練 session 和時數記錄
+
+[了解更多隱私政策]
+```
+
+**中英文版本**：
+- 中文：`您的隱私與資料安全`
+- 英文：`Your Privacy & Data Security`
+
+**實作位置**：
+- 新增組件：`apps/web/components/sections/privacy-notice.tsx` ✅ 已完成
+- 引用位置：`apps/web/app/dashboard/page.tsx` (在 GettingStarted 組件下方) ✅ 已完成
+
+**注意**：
+- ~~原規劃的「了解更多隱私政策」連結已移除~~（避免 404 錯誤）
+- 隱私提示只顯示 3 個要點，簡潔明瞭
+
+---
+
+## 二、Google Analytics 事件追蹤規劃
+
+### 目標
+追蹤使用者在 onboarding 流程中的行為，找出卡點並優化體驗。
+
+### 2.1 GTM (Google Tag Manager) 設定
+
+**需要追蹤的頁面**：
+- 註冊頁面 ([/signup](apps/web/app/signup/page.tsx))
+- 登入頁面 ([/login](apps/web/app/login/page.tsx))
+- Dashboard 主頁 ([/dashboard](apps/web/app/dashboard/page.tsx))
+- 新增 Session 頁面 ([/dashboard/sessions/new](apps/web/app/dashboard/sessions/new/page.tsx))
+- Session 詳情頁 ([/dashboard/sessions/[id]](apps/web/app/dashboard/sessions/[id]/page.tsx))
+- 上傳轉檔頁面 ([/dashboard/transcript-converter](apps/web/app/dashboard/transcript-converter/page.tsx))
+
+### 2.2 GA 事件追蹤清單
+
+#### A. 使用者註冊與登入
+| 事件名稱 | 觸發時機 | 參數 |
+|---------|---------|------|
+| `user_signup_start` | 進入註冊頁面 | - |
+| `user_signup_complete` | 註冊成功 | `method`: 'email'/'google' |
+| `user_login_start` | 進入登入頁面 | - |
+| `user_login_complete` | 登入成功 | `method`: 'email'/'google' |
+
+#### B. Dashboard 首次體驗
+| 事件名稱 | 觸發時機 | 參數 |
+|---------|---------|------|
+| `dashboard_first_view` | 首次登入 Dashboard | `user_id` |
+| `quick_start_guide_view` | 查看快速開始指南 | - |
+| `quick_start_step_click` | 點擊快速開始步驟 | `step`: 1/2/3/4 |
+| `privacy_notice_view` | 查看隱私提示 | - |
+| `privacy_notice_click` | 點擊隱私提示連結 | - |
+
+#### C. 建立 Coaching Session
+| 事件名稱 | 觸發時機 | 參數 |
+|---------|---------|------|
+| `session_create_start` | 進入新增 session 頁面 | - |
+| `session_create_complete` | 成功建立 session | `session_id` |
+| `session_create_cancel` | 取消建立 session | - |
+| `session_view` | 查看 session 詳情 | `session_id` |
+
+#### D. 上傳錄音與轉檔
+| 事件名稱 | 觸發時機 | 參數 |
+|---------|---------|------|
+| `audio_upload_start` | 開始上傳錄音檔 | `session_id` |
+| `audio_upload_complete` | 上傳成功 | `session_id`, `file_size`, `duration` |
+| `audio_upload_failed` | 上傳失敗 | `session_id`, `error_type` |
+| `transcript_processing_start` | 開始轉檔 | `session_id` |
+| `transcript_processing_complete` | 轉檔完成 | `session_id`, `duration` |
+| `transcript_processing_failed` | 轉檔失敗 | `session_id`, `error_type` |
+| `transcript_view` | 查看逐字稿 | `session_id` |
+| `transcript_delete` | 刪除逐字稿 | `session_id` |
+
+#### E. AI Mentor 互動
+| 事件名稱 | 觸發時機 | 參數 |
+|---------|---------|------|
+| `ai_mentor_first_interaction` | 首次與 AI Mentor 互動 | `session_id` |
+| `ai_mentor_query_sent` | 發送 AI 查詢 | `session_id`, `query_type` |
+| `ai_mentor_response_received` | 收到 AI 回應 | `session_id`, `response_time` |
+
+#### F. Onboarding 完成度
+| 事件名稱 | 觸發時機 | 參數 |
+|---------|---------|------|
+| `onboarding_step_complete` | 完成任一 onboarding 步驟 | `step`: 1/2/3/4 |
+| `onboarding_all_complete` | 完成所有 onboarding 步驟 | `completion_time` |
+| `onboarding_abandoned` | 超過 7 天未完成 onboarding | `last_completed_step` |
+
+### 2.3 漏斗分析 (Funnel Analysis)
+
+追蹤使用者從註冊到完成 onboarding 的流程：
+
+```
+註冊完成
+  ↓ (預期流失率 < 10%)
+首次登入 Dashboard
+  ↓ (預期流失率 < 20%)
+建立第一個 Session
+  ↓ (預期流失率 < 30%)
+上傳第一個錄音檔
+  ↓ (預期流失率 < 20%)
+查看第一個逐字稿
+  ↓ (預期流失率 < 30%)
+首次使用 AI Mentor
+```
+
+---
+
+## 三、實作優先順序與技術細節
+
+### Phase 1: Dashboard 改善 ✅ 已完成 (2025-10-01)
+
+#### 1.1 更新翻譯檔案 ✅
+**檔案**: `apps/web/lib/i18n/translations/dashboard.ts`
+
+已修改/新增的 translation keys：
+```typescript
+// ✅ 已修改
+'dashboard.step3.title': '上傳錄音檔',  // 原: '上傳逐字稿'
+'dashboard.step3.desc': '上傳教練會談的錄音檔，系統會自動轉成逐字稿。',
+
+// ✅ 已新增步驟 4
+'dashboard.step4.title': '與 AI Mentor 互動',
+'dashboard.step4.desc': '使用 AI 分析逐字稿，獲得教練技巧洞察和改進建議。',
+
+// ✅ 已新增隱私提示
+'dashboard.privacy.title': '您的隱私與資料安全',
+'dashboard.privacy.audio_processing': '錄音檔處理：上傳的錄音檔在轉檔完成後會立即刪除',
+'dashboard.privacy.transcript_management': '逐字稿管理：您可以隨時刪除教練 session 內的逐字稿內容',
+'dashboard.privacy.record_retention': '保留記錄：刪除逐字稿後仍會保留教練 session 和時數記錄',
+```
+
+#### 1.2 更新 GettingStarted 組件 ✅
+**檔案**: `apps/web/components/sections/getting-started.tsx`
+
+- ✅ 新增第 4 步
+- ✅ 調整 grid layout 為 `md:grid-cols-2 lg:grid-cols-4`
+- ✅ 加入步驟點擊事件追蹤
+
+#### 1.3 新增 PrivacyNotice 組件 ✅
+**檔案**: `apps/web/components/sections/privacy-notice.tsx` (新建)
+
+已實作功能：
+- ✅ 淡藍色背景卡片設計（bg-blue-50 dark:bg-blue-900/20）
+- ✅ 可關閉功能（localStorage: `privacy_notice_dismissed`）
+- ✅ ShieldCheck icon
+- ✅ 3 個隱私要點
+- ✅ 響應式設計 + 深色模式
+- ✅ GA 事件追蹤（view + click）
+
+#### 1.4 整合到 Dashboard ✅
+**檔案**: `apps/web/app/dashboard/page.tsx`
+
+- ✅ 引入 PrivacyNotice 組件
+- ✅ 放置在 GettingStarted 下方
+- ✅ 加入 Dashboard 首次瀏覽追蹤
+
+### Phase 2: GA 事件埋點 🔄 核心完成 (2025-10-01)
+
+#### 2.1 設定 GTM 容器 ✅
+**檔案**: `apps/web/app/layout.tsx`
+
+- ✅ GTM 已存在（GTM-PX4SL4ZQ）
+- ✅ GA4 已存在（G-859X61KC45）
+- ✅ dataLayer 已初始化
+
+#### 2.2 建立 Analytics Utility ✅
+**檔案**: `apps/web/lib/analytics.ts` (新建)
+
+已實作功能：
+- ✅ `trackEvent` 基礎函數
+- ✅ `trackPageView` 函數
+- ✅ Development mode logging
+- ✅ 8 個事件群組：
+  - `trackSignup` - 註冊事件
+  - `trackLogin` - 登入事件
+  - `trackDashboard` - Dashboard 事件
+  - `trackSession` - Session 事件
+  - `trackAudio` - 錄音上傳事件
+  - `trackAIMentor` - AI Mentor 事件
+  - `trackOnboarding` - Onboarding 完成度事件
+
+#### 2.3 實作核心事件追蹤 🔄
+**已完成的事件追蹤**：
+- ✅ `apps/web/app/dashboard/page.tsx`
+  - dashboard_first_view
+  - quick_start_guide_view
+- ✅ `apps/web/components/sections/getting-started.tsx`
+  - quick_start_step_click (1-4)
+- ✅ `apps/web/components/sections/privacy-notice.tsx`
+  - privacy_notice_view
+  - privacy_notice_click
+
+**待實作的事件追蹤**：
+- ⏳ `apps/web/app/signup/page.tsx` → user_signup 事件
+- ⏳ `apps/web/app/login/page.tsx` → user_login 事件
+- ⏳ `apps/web/app/dashboard/sessions/new/page.tsx` → session_create 事件
+- ⏳ `apps/web/app/dashboard/transcript-converter/page.tsx` → audio_upload 事件
+
+### Phase 3: 進階追蹤與優化 (1 週)
+1. 實作 AI Mentor 互動追蹤（E 類別）
+2. 實作 Onboarding 完成度追蹤（F 類別）
+3. 設定 GA4 漏斗分析報表
+4. 設定自動化週報
+
+---
+
+## 四、成功指標
+
+### 短期指標 (1-3 個月)
+- 新使用者完成所有 onboarding 步驟：≥ 50%
+- 首次上傳錄音檔成功率：≥ 80%
+- 首次使用 AI Mentor：≥ 40%
+
+### 中期指標 (3-6 個月)
+- 註冊後 7 天留存率：≥ 60%
+- 註冊後 30 天留存率：≥ 40%
+- 平均完成 onboarding 時間：≤ 20 分鐘
