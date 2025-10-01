@@ -1080,8 +1080,11 @@ async def delete_session_transcript(
         db.delete(transcription_session)
         logger.info(f"🗑️ Deleted transcription session {transcription_session_id}")
 
-    # Remove the link from coaching session (optional - keeps the ID for reference)
-    # coaching_session.transcription_session_id = None
+    # Remove the link from coaching session to prevent status lookup errors
+    coaching_session.transcription_session_id = None
+    logger.info(
+        f"🔗 Removed transcription_session_id link from coaching session {session_id}"
+    )
 
     db.commit()
 
