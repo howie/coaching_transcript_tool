@@ -1004,3 +1004,92 @@ def _parse_timestamp(timestamp_str: str) -> float:
         return total_seconds
     except (ValueError, IndexError) as e:
         raise ValueError(f"Failed to parse timestamp '{timestamp_str}': {e}")
+
+
+@router.delete("/{session_id}/transcript")
+async def delete_session_transcript(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db),
+):
+    """Delete transcript from a coaching session while preserving the session itself.
+
+    This endpoint deletes:
+    - All transcript segments
+    - The transcription session record
+    - The link between coaching session and transcription
+
+    But preserves:
+    - The coaching session record
+    - Session statistics (duration, fee, etc.)
+    - Client relationship
+    """
+    logger.info(
+        f"🗑️ Transcript deletion request: session_id={session_id}, user_id={current_user.id}"
+    )
+
+    # Check if coaching session exists and belongs to user
+    coaching_session = (
+        db.query(CoachingSession)
+        .filter(
+            CoachingSession.id == session_id,
+            CoachingSession.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not coaching_session:
+        logger.warning(
+            f"❌ Coaching session {session_id} not found or does not belong to user {current_user.id}"
+        )
+        raise HTTPException(
+            status_code=404,
+            detail="Session not found or you don't have permission to delete its transcript",
+        )
+
+    # Check if there's a transcription session
+    if not coaching_session.transcription_session_id:
+        logger.info(f"ℹ️ No transcript found for session {session_id}")
+        raise HTTPException(
+            status_code=404,
+            detail="No transcript found for this session",
+        )
+
+    transcription_session_id = coaching_session.transcription_session_id
+
+    # Delete all transcript segments
+    deleted_segments = (
+        db.query(TranscriptSegment)
+        .filter(TranscriptSegment.session_id == transcription_session_id)
+        .delete()
+    )
+
+    logger.info(f"🗑️ Deleted {deleted_segments} transcript segments")
+
+    # Delete the transcription session
+    transcription_session = (
+        db.query(TranscriptionSession)
+        .filter(TranscriptionSession.id == transcription_session_id)
+        .first()
+    )
+
+    if transcription_session:
+        db.delete(transcription_session)
+        logger.info(f"🗑️ Deleted transcription session {transcription_session_id}")
+
+    # Remove the link from coaching session (optional - keeps the ID for reference)
+    # coaching_session.transcription_session_id = None
+
+    db.commit()
+
+    logger.info(
+        f"✅ Successfully deleted transcript for session {session_id}, "
+        f"coaching session and statistics preserved"
+    )
+
+    return {
+        "message": "Transcript deleted successfully",
+        "session_id": str(session_id),
+        "deleted_segments": deleted_segments,
+        "coaching_session_preserved": True,
+    }

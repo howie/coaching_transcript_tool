@@ -16,6 +16,7 @@ import { usePlanLimits } from '@/hooks/usePlanLimits';
 import TranscriptSmoothingPanel from '@/components/transcript-smoothing/TranscriptSmoothingPanel';
 import TranscriptComparison from '@/components/transcript-smoothing/TranscriptComparison';
 import { type SmoothingResponse, type LeMURSmoothingResponse } from '@/lib/api';
+import { DeleteTranscriptConfirmDialog } from '@/components/transcript/DeleteTranscriptConfirmDialog';
 
 interface Session {
   id: string;
@@ -162,6 +163,8 @@ const SessionDetailPage = () => {
   const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
   const [isUploadingTranscript, setIsUploadingTranscript] = useState(false);
   const [speakerRoleMapping, setSpeakerRoleMapping] = useState<{[speakerId: string]: 'coach' | 'client'}>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeletingTranscript, setIsDeletingTranscript] = useState(false);
   const [previewSegments, setPreviewSegments] = useState<Array<{speaker_id: string, speaker_name: string, content: string, count: number}>>([]);
   const [convertToTraditional, setConvertToTraditional] = useState(false);
   const [canUseAudioAnalysis, setCanUseAudioAnalysis] = useState(true);
@@ -736,6 +739,28 @@ ${t('sessions.aiChatFollowUp')}`;
     setTempSegmentContent({});
     
     setEditingTranscript(false);
+  };
+
+  const handleDeleteTranscript = async () => {
+    if (!id || !user) return;
+
+    setIsDeletingTranscript(true);
+    try {
+      await apiClient.deleteSessionTranscript(id as string);
+
+      // Refresh session data
+      await fetchSession();
+      setTranscript(null);
+      setShowDeleteConfirm(false);
+
+      // Show success message
+      alert('逐字稿已刪除，教練 session 和統計資料已保留');
+    } catch (error) {
+      console.error('Delete transcript error:', error);
+      alert(error instanceof Error ? error.message : '刪除逐字稿失敗');
+    } finally {
+      setIsDeletingTranscript(false);
+    }
   };
 
   const handleTranscriptFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2029,14 +2054,24 @@ ${t('sessions.aiChatFollowUp')}`;
                         ).replace('{count}', transcript.segments.length.toString())}
                       </div>
                       {!editingTranscript ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => setEditingTranscript(true)}
-                          className="flex items-center gap-2 text-sm px-3 py-1"
-                        >
-                          <PencilIcon className="h-3 w-3" />
-                          編輯逐字稿
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => setEditingTranscript(true)}
+                            className="flex items-center gap-2 text-sm px-3 py-1"
+                          >
+                            <PencilIcon className="h-3 w-3" />
+                            編輯逐字稿
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="flex items-center gap-2 text-sm px-3 py-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                          >
+                            <TrashIcon className="h-3 w-3" />
+                            刪除逐字稿
+                          </Button>
+                        </div>
                       ) : (
                         <div className="flex gap-2">
                           <Button
@@ -2416,6 +2451,14 @@ ${t('sessions.aiChatFollowUp')}`;
         isVisible={showComparisonModal}
         onClose={() => setShowComparisonModal(false)}
         onAccept={handleAcceptSmoothedVersion}
+      />
+
+      {/* Delete Transcript Confirmation Dialog */}
+      <DeleteTranscriptConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteTranscript}
+        isDeleting={isDeletingTranscript}
       />
     </div>
   );

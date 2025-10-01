@@ -1581,40 +1581,59 @@ class ApiClient {
         speakerRoleMapping,
         convertToTraditional
       });
-      
+
       const formData = new FormData()
       formData.append('file', file)
-      
+
       // Add speaker role mapping if provided
       if (speakerRoleMapping) {
         const rolesJson = JSON.stringify(speakerRoleMapping);
         console.log('[API] Sending speaker_roles:', rolesJson);
         formData.append('speaker_roles', rolesJson)
       }
-      
+
       // Add convert to traditional Chinese option
       if (convertToTraditional) {
         formData.append('convert_to_traditional', 'true')
       }
-      
+
       // Get base headers without Content-Type for FormData
       const headers = await this.getHeaders()
       delete headers['Content-Type'] // Remove Content-Type to let browser set it for FormData
-      
+
       const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}/transcript`, {
         method: 'POST',
         headers: headers,
         body: formData,
       })
-      
+
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.detail || 'Upload transcript failed')
       }
-      
+
       return await response.json()
     } catch (error) {
       console.error('Upload session transcript error:', error)
+      throw error
+    }
+  }
+
+  async deleteSessionTranscript(sessionId: string) {
+    try {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}/transcript`, {
+        method: 'DELETE',
+        headers: await this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Delete transcript failed')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Delete session transcript error:', error)
       throw error
     }
   }
