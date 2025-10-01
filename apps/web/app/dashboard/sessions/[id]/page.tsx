@@ -742,11 +742,11 @@ ${t('sessions.aiChatFollowUp')}`;
   };
 
   const handleDeleteTranscript = async () => {
-    if (!id || !user) return;
+    if (!sessionId || !user) return;
 
     setIsDeletingTranscript(true);
     try {
-      await apiClient.deleteSessionTranscript(id as string);
+      await apiClient.deleteSessionTranscript(sessionId);
 
       // Refresh session data
       await fetchSession();

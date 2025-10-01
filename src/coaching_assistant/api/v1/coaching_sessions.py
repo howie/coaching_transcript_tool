@@ -20,16 +20,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
-from ...core.models.client import Client
-from ...core.models.coaching_session import CoachingSession, SessionSource
-from ...core.models.session import Session as TranscriptionSession
-from ...core.models.session import SessionStatus
-from ...core.models.transcript import (
-    SessionRole,
-    SpeakerRole,
-    TranscriptSegment,
-)
-from ...core.models.user import User
 from ...core.services.coaching_session_management_use_case import (
     CoachingSessionCreationUseCase,
     CoachingSessionDeletionUseCase,
@@ -38,6 +28,19 @@ from ...core.services.coaching_session_management_use_case import (
     CoachingSessionUpdateUseCase,
 )
 from ...core.services.transcript_upload_use_case import TranscriptUploadUseCase
+from ...models import (
+    Client,
+    CoachingSession,
+    SessionRole,
+    SessionSource,
+    SessionStatus,
+    SpeakerRole,
+    TranscriptSegment,
+    User,
+)
+from ...models import (
+    Session as TranscriptionSession,
+)
 from ...utils.chinese_converter import convert_to_traditional
 from .auth import get_current_user_dependency
 from .dependencies import (
