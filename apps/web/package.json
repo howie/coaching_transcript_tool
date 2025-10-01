@@ -1,6 +1,6 @@
 {
   "name": "@coaching-transcript-tool/frontend",
-  "version": "2.16.0",
+  "version": "2.22.0",
   "private": true,
   "description": "Next.js frontend for Coaching Transcript Tool",
   "scripts": {
