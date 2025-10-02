@@ -21,20 +21,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Add transcript_deleted_at column to coaching_sessions
+    # Add transcript_deleted_at column to coaching_session
     op.add_column(
-        "coaching_sessions",
+        "coaching_session",
         sa.Column("transcript_deleted_at", sa.TIMESTAMP(timezone=True), nullable=True),
     )
 
-    # Add saved_speaking_stats column to coaching_sessions
+    # Add saved_speaking_stats column to coaching_session
     op.add_column(
-        "coaching_sessions", sa.Column("saved_speaking_stats", sa.JSON(), nullable=True)
+        "coaching_session", sa.Column("saved_speaking_stats", sa.JSON(), nullable=True)
     )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # Remove columns in reverse order
-    op.drop_column("coaching_sessions", "saved_speaking_stats")
-    op.drop_column("coaching_sessions", "transcript_deleted_at")
+    op.drop_column("coaching_session", "saved_speaking_stats")
+    op.drop_column("coaching_session", "transcript_deleted_at")
