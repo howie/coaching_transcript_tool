@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from fastapi import (
     APIRouter,
+    Body,
     Depends,
     Form,
     HTTPException,
@@ -208,6 +209,12 @@ def _coaching_session_to_response(
         duration_display=session.duration_display,
         transcription_session_id=session.transcription_session_id,
         transcription_session=transcription_session_summary,
+        transcript_deleted_at=(
+            session.transcript_deleted_at.isoformat()
+            if session.transcript_deleted_at
+            else None
+        ),
+        saved_speaking_stats=session.saved_speaking_stats,
         notes=session.notes,
         created_at=session.created_at.isoformat(),
         updated_at=session.updated_at.isoformat(),
@@ -254,6 +261,12 @@ def _coaching_session_to_response_from_data(
         duration_display=session.duration_display,
         transcription_session_id=session.transcription_session_id,
         transcription_session=transcription_session_summary,
+        transcript_deleted_at=(
+            session.transcript_deleted_at.isoformat()
+            if session.transcript_deleted_at
+            else None
+        ),
+        saved_speaking_stats=session.saved_speaking_stats,
         notes=session.notes,
         created_at=session.created_at.isoformat(),
         updated_at=session.updated_at.isoformat(),
@@ -1022,7 +1035,7 @@ class DeleteTranscriptRequest(BaseModel):
 @router.delete("/{session_id}/transcript")
 async def delete_session_transcript(
     session_id: UUID,
-    request: Optional[DeleteTranscriptRequest] = None,
+    request: Optional[DeleteTranscriptRequest] = Body(None),
     current_user: User = Depends(get_current_user_dependency),
     db: Session = Depends(get_db),
 ):
@@ -1092,14 +1105,19 @@ async def delete_session_transcript(
         db.delete(transcription_session)
         logger.info(f"🗑️ Deleted transcription session {transcription_session_id}")
 
-    # Save speaking statistics if provided
-    if request and request.speaking_stats:
-        from datetime import datetime, timezone
+    # Always set deletion timestamp and save speaking statistics if provided
+    from datetime import datetime, timezone
 
+    coaching_session.transcript_deleted_at = datetime.now(timezone.utc)
+
+    if request and request.speaking_stats:
         coaching_session.saved_speaking_stats = request.speaking_stats
-        coaching_session.transcript_deleted_at = datetime.now(timezone.utc)
         logger.info(
             f"💾 Saved speaking statistics and deletion timestamp for session {session_id}"
+        )
+    else:
+        logger.info(
+            f"💾 Set deletion timestamp for session {session_id} (no speaking stats provided)"
         )
 
     # Remove the link from coaching session to prevent status lookup errors
