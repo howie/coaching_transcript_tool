@@ -34,6 +34,8 @@ interface CoachingSession {
     title: string;
     segments_count: number;
   };
+  transcript_deleted_at?: string;
+  saved_speaking_stats?: any;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -90,6 +92,16 @@ const SessionsPage = () => {
   const pageSize = 20;
 
   const getTranscriptionStatusBadge = (session: CoachingSession) => {
+    // Check if transcript was deleted first
+    if (session.transcript_deleted_at) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+          {t('sessions.transcriptDeleted')}
+        </span>
+      );
+    }
+
+    // Check if no transcript exists
     if (!session.transcription_session_id && !session.transcription_session) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
@@ -99,7 +111,7 @@ const SessionsPage = () => {
     }
 
     const status = session.transcription_session?.status || 'unknown';
-    
+
     switch (status) {
       case 'uploading':
         return (

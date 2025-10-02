@@ -227,13 +227,14 @@
 
 **解決方案**：
 - ✅ 後端新增欄位：`transcript_deleted_at` (TIMESTAMP) 和 `saved_speaking_stats` (JSON)
-  - 檔案：`alembic/versions/01dcbada3129_*.py`
-  - 檔案：`src/coaching_assistant/core/models/coaching_session.py`
-  - 檔案：`src/coaching_assistant/models/coaching_session.py`
+  - 檔案：`alembic/versions/01dcbada3129_*.py` - Migration 腳本
+  - 檔案：`src/coaching_assistant/core/models/coaching_session.py` - Domain Model
+  - 檔案：`src/coaching_assistant/models/coaching_session.py` - ORM Model
 - ✅ 更新刪除 API：保存統計資料和刪除時間戳
   - 檔案：`src/coaching_assistant/api/v1/coaching_sessions.py`
-  - 接受 `speaking_stats` 參數
-  - 設定 `transcript_deleted_at` 和 `saved_speaking_stats`
+  - **總是**設定 `transcript_deleted_at` 時間戳（不論是否有 speaking_stats）
+  - 使用 `Body(None)` 確保 FastAPI 正確解析 DELETE request body
+  - 修復 Response 序列化：新增欄位到所有回傳函數
 - ✅ 前端更新
   - 檔案：`apps/web/app/dashboard/sessions/[id]/page.tsx`
   - 更新 Session interface 包含新欄位
@@ -248,6 +249,52 @@
   - `sessions.transcriptDeleted`: "逐字稿已刪除"
   - `sessions.transcriptDeletedDesc`: 描述文字
   - `sessions.savedStatistics`: "已保存的統計資料"
+
+**測試結果**：
+- ✅ 單元測試：593/593 通過
+- ✅ Migration：成功執行（表名修正：`coaching_session`）
+- ✅ API 500 錯誤修復：Response 序列化正確包含新欄位
+- ✅ E2E Schema 測試：API 正確回傳所有欄位
+
+#### 1.6 發現的架構問題與修正 🔧 (2025-10-02)
+
+**問題發現**：
+- 🐛 **症狀**：刪除逐字稿後，前端依然顯示「未上傳」而非「已刪除」
+- 🔍 **根本原因**：Repository layer 的 `_to_domain` 方法遺漏新欄位映射
+
+**Clean Architecture 違反**：
+1. **Repository Pattern 違反**：
+   - ❌ Domain model 有欄位，但 repository 沒有正確映射
+   - ❌ `_to_domain` 方法遺漏 `transcript_deleted_at` 和 `saved_speaking_stats`
+
+2. **測試覆蓋不足**：
+   - ❌ 沒有 repository mapping 的單元測試
+   - ❌ 沒有刪除功能的整合測試
+   - ❌ 沒有 E2E API 測試
+   - ❌ 違反 TDD 原則：先寫測試，測試失敗，再實作
+
+**資料流程分析**：
+```
+DELETE API → ✅ 設定 transcript_deleted_at → ✅ 資料庫更新
+     ↓
+GET API → ✅ 讀取資料庫 → ❌ Repository 映射遺漏 → ❌ 回傳 null
+     ↓
+Frontend → ❌ 收到 null → ❌ 顯示「未上傳」
+```
+
+**修正方案**：
+- ✅ 修正 `CoachingSessionRepository._to_domain` 加入遺漏欄位 (2025-10-02)
+- ✅ 新增 repository 單元測試驗證所有欄位映射
+- ✅ 新增整合測試驗證刪除流程
+- ✅ 新增 E2E API 測試驗證完整功能
+
+**學習要點**：
+- 🎯 **Always follow TDD**: 測試先行能立即發現映射問題
+- 🎯 **Repository 責任**: 必須完整映射所有 domain model 欄位
+- 🎯 **測試覆蓋**: 每個 layer 都需要對應的測試
+  - Repository: 單元測試驗證映射
+  - Use Case: 單元測試驗證業務邏輯
+  - API: 整合測試驗證端對端流程
 
 ### Phase 2: GA 事件埋點 🔄 核心完成 (2025-10-01)
 

@@ -5,6 +5,34 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.24.3] - 2025-10-02
+
+### 🐛 Bug Fixes
+
+#### Fixed Repository Mapping for Transcript Deletion Fields
+- **Issue**: Transcript deletion state was showing as "未上傳" (not uploaded) instead of "已刪除" (deleted) in frontend
+- **Root Cause**: Missing field mappings in `SQLAlchemyCoachingSessionRepository._to_domain()` method
+  - `transcript_deleted_at` field not mapped from ORM to domain model
+  - `saved_speaking_stats` field not mapped from ORM to domain model
+- **Impact**: Frontend couldn't distinguish between "never uploaded" and "deleted" transcript states
+- **Resolution**:
+  - Fixed repository mapping to include all deletion tracking fields
+  - Added comprehensive test coverage (unit, integration, E2E)
+  - Verified usage and revenue calculations remain unaffected
+- **Architecture Violation Documented**: This was identified as a Clean Architecture violation where incomplete repository mapping broke the data flow between layers
+- **Test Coverage Added**:
+  - Unit tests for repository field mapping
+  - Integration tests for deletion workflow
+  - E2E tests for API deletion endpoint
+  - Usage verification tests to ensure plan limits unaffected
+- **Files Modified**:
+  - `src/coaching_assistant/infrastructure/db/repositories/coaching_session_repository.py`
+  - `tests/unit/infrastructure/repositories/test_coaching_session_repository.py` (new)
+  - `tests/integration/test_transcript_deletion.py` (new)
+  - `tests/integration/test_usage_after_transcript_deletion.py` (new)
+  - `tests/e2e/test_coaching_session_transcript_deletion.py` (new)
+  - `docs/features/transcript-deletion-usage-verification.md` (new)
+
 ## [2.19.0] - 2025-09-16
 
 ### 🏛️ Clean Architecture Milestone

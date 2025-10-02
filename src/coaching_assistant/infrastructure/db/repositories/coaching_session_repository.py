@@ -65,6 +65,8 @@ class SQLAlchemyCoachingSessionRepository(CoachingSessionRepoPort):
             fee_currency=orm_session.fee_currency,
             fee_amount=orm_session.fee_amount,
             transcription_session_id=orm_session.transcription_session_id,
+            transcript_deleted_at=orm_session.transcript_deleted_at,
+            saved_speaking_stats=orm_session.saved_speaking_stats,
             notes=orm_session.notes,
             created_at=orm_session.created_at,
             updated_at=orm_session.updated_at,
@@ -97,6 +99,8 @@ class SQLAlchemyCoachingSessionRepository(CoachingSessionRepoPort):
             fee_currency=session.fee_currency,
             fee_amount=session.fee_amount,
             transcription_session_id=session.transcription_session_id,
+            transcript_deleted_at=session.transcript_deleted_at,
+            saved_speaking_stats=session.saved_speaking_stats,
             notes=session.notes,
             created_at=session.created_at,
             updated_at=session.updated_at,
@@ -218,6 +222,8 @@ class SQLAlchemyCoachingSessionRepository(CoachingSessionRepoPort):
                     orm_session.transcription_session_id = (
                         session.transcription_session_id
                     )
+                    orm_session.transcript_deleted_at = session.transcript_deleted_at
+                    orm_session.saved_speaking_stats = session.saved_speaking_stats
                     orm_session.notes = session.notes
                     orm_session.updated_at = session.updated_at
                 else:
