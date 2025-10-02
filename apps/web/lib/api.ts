@@ -1619,11 +1619,12 @@ class ApiClient {
     }
   }
 
-  async deleteSessionTranscript(sessionId: string) {
+  async deleteSessionTranscript(sessionId: string, speakingStats?: any) {
     try {
       const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}/transcript`, {
         method: 'DELETE',
         headers: await this.getHeaders(),
+        body: speakingStats ? JSON.stringify({ speaking_stats: speakingStats }) : undefined,
       })
 
       if (!response.ok) {

@@ -39,6 +39,10 @@ class CoachingSession:
     # File associations
     transcription_session_id: Optional[UUID] = None
 
+    # Transcript deletion tracking
+    transcript_deleted_at: Optional[datetime] = None
+    saved_speaking_stats: Optional[dict] = None
+
     # Notes
     notes: Optional[str] = None
 

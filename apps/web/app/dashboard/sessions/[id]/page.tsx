@@ -30,6 +30,8 @@ interface Session {
   fee_display: string;
   duration_display: string;
   transcription_session_id?: string;
+  transcript_deleted_at?: string | null;
+  saved_speaking_stats?: SpeakingStats | null;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -395,10 +397,12 @@ const SessionDetailPage = () => {
       console.log('✅ fetchSession - API response:', {
         sessionId: data.id,
         transcription_session_id: data.transcription_session_id,
+        transcript_deleted_at: data.transcript_deleted_at,
+        has_saved_stats: Boolean(data.saved_speaking_stats),
         client_id: data.client_id,
         hasTranscriptionId: Boolean(data.transcription_session_id)
       });
-      
+
       setSession(data);
       setFormData({
         session_date: data.session_date,
@@ -408,11 +412,23 @@ const SessionDetailPage = () => {
         fee_amount: data.fee_amount,
         notes: data.notes || ''
       });
-      
+
+      // Initialize deleted state from API response
+      if (data.transcript_deleted_at) {
+        setTranscriptDeleted(true);
+        if (data.saved_speaking_stats) {
+          setSavedSpeakingStats(data.saved_speaking_stats);
+        }
+        console.log('📊 Transcript was deleted, restored saved stats:', data.saved_speaking_stats);
+      } else {
+        setTranscriptDeleted(false);
+        setSavedSpeakingStats(null);
+      }
+
       // Check for transcription session
       if (data.transcription_session_id) {
         console.log('🔍 Found existing transcription session:', data.transcription_session_id);
-        
+
         // Don't automatically fetch transcript here - let the useEffect in line 145 handle it
         // when transcription status shows completed. This avoids unnecessary API calls for
         // sessions that are still processing.
@@ -748,17 +764,12 @@ ${t('sessions.aiChatFollowUp')}`;
 
     setIsDeletingTranscript(true);
     try {
-      // Save speaking stats before deletion
-      if (speakingStats) {
-        setSavedSpeakingStats(speakingStats);
-      }
+      // Pass speaking stats to backend for persistence
+      await apiClient.deleteSessionTranscript(sessionId, speakingStats);
 
-      await apiClient.deleteSessionTranscript(sessionId);
-
-      // Refresh session data
+      // Refresh session data to get updated transcript_deleted_at and saved_speaking_stats
       await fetchSession();
       setTranscript(null);
-      setTranscriptDeleted(true);  // Mark that transcript was deleted
       setShowDeleteConfirm(false);
 
       // Show success message
@@ -1597,8 +1608,8 @@ ${t('sessions.aiChatFollowUp')}`;
                 )}
               </h3>
               
-              {/* Upload Mode Selection */}
-              {!session?.transcription_session_id && !hasTranscript && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
+              {/* Upload Mode Selection - Only show for sessions that never had a transcript */}
+              {!session?.transcription_session_id && !hasTranscript && !transcriptDeleted && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
                 <div className="mb-6">
                   <p className="text-sm text-content-secondary mb-3">{t('sessions.selectUploadMethod')}</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1687,7 +1698,7 @@ ${t('sessions.aiChatFollowUp')}`;
                     </div>
                   </div>
                 </div>
-              ) : uploadMode === 'audio' && !session?.transcription_session_id && !hasTranscript && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
+              ) : uploadMode === 'audio' && !session?.transcription_session_id && !hasTranscript && !transcriptDeleted && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
                 <AudioUploader
                   sessionId={sessionId}
                   existingAudioSessionId={transcriptionSessionId || undefined}
@@ -1707,7 +1718,7 @@ ${t('sessions.aiChatFollowUp')}`;
               )}
 
               {/* Transcript Upload Mode */}
-              {uploadMode === 'transcript' && !session?.transcription_session_id && !hasTranscript && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
+              {uploadMode === 'transcript' && !session?.transcription_session_id && !hasTranscript && !transcriptDeleted && (transcriptionSession?.status !== 'completed' && transcriptionSession?.status !== 'processing' && transcriptionSession?.status !== 'pending') && (
                 <div className="space-y-4">
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4">
                     <div className="flex">
@@ -1845,7 +1856,35 @@ ${t('sessions.aiChatFollowUp')}`;
                   )}
                 </div>
               )}
-              
+
+              {/* Deleted Transcript Status - Show when transcript was deleted */}
+              {transcriptDeleted && !transcriptionSessionId && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+                  <div className="flex items-start gap-4">
+                    <TrashIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h4 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                        {t('sessions.transcriptDeleted')}
+                      </h4>
+                      <p className="text-yellow-700 dark:text-yellow-300 mb-3">
+                        {t('sessions.transcriptDeletedDesc')}
+                      </p>
+                      {savedSpeakingStats && (
+                        <div className="bg-white dark:bg-gray-800 rounded-md p-3">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            {t('sessions.savedStatistics')}
+                          </p>
+                          <div className="text-xs text-gray-500 dark:text-gray-500 space-y-1">
+                            <div>教練發言時間: {Math.round(savedSpeakingStats.coach_speaking_time)}秒 ({savedSpeakingStats.coach_percentage.toFixed(1)}%)</div>
+                            <div>客戶發言時間: {Math.round(savedSpeakingStats.client_speaking_time)}秒 ({savedSpeakingStats.client_percentage.toFixed(1)}%)</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Transcription Status Display */}
               {transcriptionSessionId && (
                 <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">

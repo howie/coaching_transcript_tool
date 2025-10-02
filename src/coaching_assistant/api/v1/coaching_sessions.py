@@ -134,6 +134,10 @@ class CoachingSessionResponse(BaseModel):
         UUID
     ]  # References session.id for linked transcription
     transcription_session: Optional[TranscriptionSessionSummary]
+    transcript_deleted_at: Optional[str] = None  # Timestamp when transcript was deleted
+    saved_speaking_stats: Optional[dict] = (
+        None  # Speaking statistics saved before deletion
+    )
     notes: Optional[str]
     created_at: str
     updated_at: str
@@ -1009,9 +1013,16 @@ def _parse_timestamp(timestamp_str: str) -> float:
         raise ValueError(f"Failed to parse timestamp '{timestamp_str}': {e}")
 
 
+class DeleteTranscriptRequest(BaseModel):
+    """Request body for deleting transcript."""
+
+    speaking_stats: Optional[dict] = None  # Speaking statistics to save before deletion
+
+
 @router.delete("/{session_id}/transcript")
 async def delete_session_transcript(
     session_id: UUID,
+    request: Optional[DeleteTranscriptRequest] = None,
     current_user: User = Depends(get_current_user_dependency),
     db: Session = Depends(get_db),
 ):
@@ -1025,6 +1036,7 @@ async def delete_session_transcript(
     But preserves:
     - The coaching session record
     - Session statistics (duration, fee, etc.)
+    - Speaking statistics (if provided in request body)
     - Client relationship
     """
     logger.info(
@@ -1080,6 +1092,16 @@ async def delete_session_transcript(
         db.delete(transcription_session)
         logger.info(f"🗑️ Deleted transcription session {transcription_session_id}")
 
+    # Save speaking statistics if provided
+    if request and request.speaking_stats:
+        from datetime import datetime, timezone
+
+        coaching_session.saved_speaking_stats = request.speaking_stats
+        coaching_session.transcript_deleted_at = datetime.now(timezone.utc)
+        logger.info(
+            f"💾 Saved speaking statistics and deletion timestamp for session {session_id}"
+        )
+
     # Remove the link from coaching session to prevent status lookup errors
     coaching_session.transcription_session_id = None
     logger.info(
@@ -1098,4 +1120,5 @@ async def delete_session_transcript(
         "session_id": str(session_id),
         "deleted_segments": deleted_segments,
         "coaching_session_preserved": True,
+        "speaking_stats_saved": bool(request and request.speaking_stats),
     }

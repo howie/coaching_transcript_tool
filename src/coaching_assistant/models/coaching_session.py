@@ -12,7 +12,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSON, TIMESTAMP, UUID
 from sqlalchemy.orm import relationship
 
 from .base import BaseModel
@@ -55,6 +55,14 @@ class CoachingSession(BaseModel):
     transcription_session_id = Column(
         UUID(as_uuid=True), nullable=True
     )  # References session.id for linked transcription
+
+    # Transcript deletion tracking
+    transcript_deleted_at = Column(
+        TIMESTAMP(timezone=True), nullable=True
+    )  # Timestamp when transcript was deleted
+    saved_speaking_stats = Column(
+        JSON, nullable=True
+    )  # Speaking statistics saved before deletion
 
     # Notes
     notes = Column(Text, nullable=True)

@@ -222,6 +222,33 @@
 - ✅ 放置在 GettingStarted 下方
 - ✅ 加入 Dashboard 首次瀏覽追蹤
 
+#### 1.5 修復逐字稿刪除後的狀態顯示 ✅ (2025-10-02)
+**問題**：刪除逐字稿後重新進入頁面，前端顯示「未上傳」而非「已刪除」，無法區分「從未上傳」vs「已刪除」狀態。
+
+**解決方案**：
+- ✅ 後端新增欄位：`transcript_deleted_at` (TIMESTAMP) 和 `saved_speaking_stats` (JSON)
+  - 檔案：`alembic/versions/01dcbada3129_*.py`
+  - 檔案：`src/coaching_assistant/core/models/coaching_session.py`
+  - 檔案：`src/coaching_assistant/models/coaching_session.py`
+- ✅ 更新刪除 API：保存統計資料和刪除時間戳
+  - 檔案：`src/coaching_assistant/api/v1/coaching_sessions.py`
+  - 接受 `speaking_stats` 參數
+  - 設定 `transcript_deleted_at` 和 `saved_speaking_stats`
+- ✅ 前端更新
+  - 檔案：`apps/web/app/dashboard/sessions/[id]/page.tsx`
+  - 更新 Session interface 包含新欄位
+  - fetchSession 時初始化 `transcriptDeleted` 和 `savedSpeakingStats` state
+  - 顯示三種狀態：
+    1. 從未上傳：顯示上傳 UI
+    2. 已刪除：顯示黃色提示卡片 + 保留統計資料
+    3. 有逐字稿：正常顯示
+- ✅ 更新 API client：`apps/web/lib/api.ts`
+  - `deleteSessionTranscript()` 接受 `speakingStats` 參數
+- ✅ 新增翻譯：`apps/web/lib/i18n/translations/sessions.ts`
+  - `sessions.transcriptDeleted`: "逐字稿已刪除"
+  - `sessions.transcriptDeletedDesc`: 描述文字
+  - `sessions.savedStatistics`: "已保存的統計資料"
+
 ### Phase 2: GA 事件埋點 🔄 核心完成 (2025-10-01)
 
 #### 2.1 設定 GTM 容器 ✅
