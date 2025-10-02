@@ -151,6 +151,7 @@ const SessionDetailPage = () => {
   const [transcript, setTranscript] = useState<TranscriptData | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [transcriptDeleted, setTranscriptDeleted] = useState(false);
+  const [savedSpeakingStats, setSavedSpeakingStats] = useState<SpeakingStats | null>(null);
   const [exportFormat, setExportFormat] = useState<'txt' | 'xlsx'>('xlsx');
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
@@ -747,6 +748,11 @@ ${t('sessions.aiChatFollowUp')}`;
 
     setIsDeletingTranscript(true);
     try {
+      // Save speaking stats before deletion
+      if (speakingStats) {
+        setSavedSpeakingStats(speakingStats);
+      }
+
       await apiClient.deleteSessionTranscript(sessionId);
 
       // Refresh session data
@@ -1916,77 +1922,87 @@ ${t('sessions.aiChatFollowUp')}`;
         {activeTab === 'transcript' && (
           <div className="space-y-4">
             {/* Speaking Statistics - moved from overview tab */}
-            {speakingStats && hasTranscript && (
+            {(speakingStats || (transcriptDeleted && savedSpeakingStats)) && (
               <div className="bg-surface border border-border rounded-lg p-6">
                 <div className="border-b border-border pb-4 mb-6">
                   <h3 className="text-lg font-semibold text-content-primary flex items-center gap-2">
                     <DocumentMagnifyingGlassIcon className="h-5 w-5" />
                     {t('sessions.talkAnalysisResults')}
+                    {transcriptDeleted && savedSpeakingStats && (
+                      <span className="text-sm text-yellow-600 font-normal">
+                        (逐字稿已刪除，顯示刪除前的統計資料)
+                      </span>
+                    )}
                   </h3>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Speaking Time Distribution */}
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                    <h4 className="font-medium text-content-primary mb-3">{t('sessions.talkTimeDistribution')}</h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-blue-600 font-medium">{t('sessions.coach')}</span>
-                        <span className="text-sm">{formatDuration(speakingStats.coach_speaking_time)} ({speakingStats.coach_percentage.toFixed(1)}%)</span>
+                {(() => {
+                  const stats = speakingStats || savedSpeakingStats!;
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Speaking Time Distribution */}
+                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                        <h4 className="font-medium text-content-primary mb-3">{t('sessions.talkTimeDistribution')}</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-blue-600 font-medium">{t('sessions.coach')}</span>
+                            <span className="text-sm">{formatDuration(stats.coach_speaking_time)} ({stats.coach_percentage.toFixed(1)}%)</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div
+                              className="bg-blue-500 h-2 rounded-full"
+                              style={{width: `${stats.coach_percentage}%`}}
+                            ></div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-green-600 font-medium">{t('sessions.client')}</span>
+                            <span className="text-sm">{formatDuration(stats.client_speaking_time)} ({stats.client_percentage.toFixed(1)}%)</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div
+                              className="bg-green-500 h-2 rounded-full"
+                              style={{width: `${stats.client_percentage}%`}}
+                            ></div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div 
-                          className="bg-blue-500 h-2 rounded-full" 
-                          style={{width: `${speakingStats.coach_percentage}%`}}
-                        ></div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <span className="text-green-600 font-medium">{t('sessions.client')}</span>
-                        <span className="text-sm">{formatDuration(speakingStats.client_speaking_time)} ({speakingStats.client_percentage.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full" 
-                          style={{width: `${speakingStats.client_percentage}%`}}
-                        ></div>
+
+                      {/* Overall Stats */}
+                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                        <h4 className="font-medium text-content-primary mb-3">{t('sessions.overallStats')}</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-content-secondary">{t('sessions.totalDuration')}</span>
+                            <span className="text-content-primary font-medium">
+                              {formatDuration(stats.total_speaking_time + stats.silence_time)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-content-secondary">{t('sessions.talkTime')}</span>
+                            <span className="text-content-primary font-medium">{formatDuration(stats.total_speaking_time)}</span>
+                          </div>
+                          {/* Silence time calculation is not accurate from STT, showing warning */}
+                          <div className="flex justify-between">
+                            <span className="text-content-secondary">
+                              {t('sessions.silenceTime')}
+                              <span className="text-xs text-yellow-600 ml-1" title={t('sessions.silenceTimeNote')}>
+                                ({t('sessions.silenceTimeNote')})
+                              </span>
+                            </span>
+                            <span className="text-content-primary font-medium">
+                              {stats.silence_time > 0 ? formatDuration(stats.silence_time) : t('sessions.silenceTimeCalculationError')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-content-secondary">{t('sessions.conversationSegments')}</span>
+                            <span className="text-content-primary font-medium">{transcript?.segments.length || (transcriptDeleted ? '(已刪除)' : '0')}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  {/* Overall Stats */}
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                    <h4 className="font-medium text-content-primary mb-3">{t('sessions.overallStats')}</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-content-secondary">{t('sessions.totalDuration')}</span>
-                        <span className="text-content-primary font-medium">
-                          {speakingStats ? formatDuration(speakingStats.total_speaking_time + speakingStats.silence_time) : formatDuration(transcript?.duration_sec || 0)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-content-secondary">{t('sessions.talkTime')}</span>
-                        <span className="text-content-primary font-medium">{formatDuration(speakingStats.total_speaking_time)}</span>
-                      </div>
-                      {/* Silence time calculation is not accurate from STT, showing warning */}
-                      <div className="flex justify-between">
-                        <span className="text-content-secondary">
-                          {t('sessions.silenceTime')}
-                          <span className="text-xs text-yellow-600 ml-1" title={t('sessions.silenceTimeNote')}>
-                            ({t('sessions.silenceTimeNote')})
-                          </span>
-                        </span>
-                        <span className="text-content-primary font-medium">
-                          {speakingStats.silence_time > 0 ? formatDuration(speakingStats.silence_time) : t('sessions.silenceTimeCalculationError')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-content-secondary">{t('sessions.conversationSegments')}</span>
-                        <span className="text-content-primary font-medium">{transcript?.segments.length || 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             )}
             {/* Transcription Status */}
@@ -2013,8 +2029,8 @@ ${t('sessions.aiChatFollowUp')}`;
             )}
 
 
-            {/* Export Controls */}
-            {hasTranscript && (
+            {/* Export Controls - hide when transcript is deleted */}
+            {hasTranscript && !transcriptDeleted && (
               <div className="bg-surface border border-border rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -2041,8 +2057,8 @@ ${t('sessions.aiChatFollowUp')}`;
               </div>
             )}
 
-            {/* Transcript Table */}
-            {hasTranscript && (
+            {/* Transcript Table - only show when has transcript and not deleted */}
+            {hasTranscript && !transcriptDeleted && (
               <div className="bg-surface border border-border rounded-lg overflow-hidden">
                 <div className="px-6 py-4 border-b border-border">
                   <div className="flex items-center justify-between">
@@ -2200,22 +2216,15 @@ ${t('sessions.aiChatFollowUp')}`;
                 <div className="space-y-4">
                   {transcriptDeleted ? (
                     <>
-                      <TrashIcon className="h-16 w-16 text-content-secondary mx-auto" />
+                      <TrashIcon className="h-12 w-12 text-content-secondary mx-auto" />
                       <div>
-                        <p className="text-content-secondary mb-2 text-lg font-medium">
+                        <p className="text-content-primary font-medium mb-2">
                           逐字稿已刪除
                         </p>
                         <p className="text-content-secondary text-sm">
-                          教練 session 記錄和統計資料已保留
+                          教練 session 記錄和統計資料已保留於上方
                         </p>
                       </div>
-                      <Button
-                        onClick={() => setActiveTab('overview')}
-                        className="mx-auto flex items-center gap-2"
-                      >
-                        <CloudArrowUpIcon className="h-4 w-4" />
-                        重新上傳音檔或逐字稿
-                      </Button>
                     </>
                   ) : (
                     <>
@@ -2357,21 +2366,35 @@ ${t('sessions.aiChatFollowUp')}`;
           <div className="space-y-6">
             {!hasTranscript ? (
               <div className="bg-surface border border-border rounded-lg p-12 text-center">
-                <ChatBubbleLeftRightIcon className="h-16 w-16 text-content-secondary mx-auto mb-4" />
-                <p className="text-content-secondary mb-4">
-                  {t('sessions.needUploadForAI').replace('{type}', isTranscriptOnly ? t('sessions.transcriptFile') : t('sessions.needUploadAndTranscription').replace('{type}', t('sessions.audioFile')))}
-                </p>
-                <Button
-                  onClick={() => setActiveTab('overview')}
-                  className="flex items-center gap-2 mx-auto"
-                >
-                  {isTranscriptOnly ? (
-                    <DocumentTextIcon className="h-4 w-4" />
-                  ) : (
-                    <MicrophoneIcon className="h-4 w-4" />
-                  )}
-                  {t('sessions.goToOverviewToUpload').replace('{type}', isTranscriptOnly ? t('sessions.transcriptFile') : t('sessions.audioFile'))}
-                </Button>
+                {transcriptDeleted ? (
+                  <>
+                    <TrashIcon className="h-16 w-16 text-content-secondary mx-auto mb-4" />
+                    <p className="text-content-primary font-medium mb-2">
+                      音檔和逐字稿已刪除
+                    </p>
+                    <p className="text-content-secondary text-sm">
+                      無法進行 AI 分析
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <ChatBubbleLeftRightIcon className="h-16 w-16 text-content-secondary mx-auto mb-4" />
+                    <p className="text-content-secondary mb-4">
+                      {t('sessions.needUploadForAI').replace('{type}', isTranscriptOnly ? t('sessions.transcriptFile') : t('sessions.needUploadAndTranscription').replace('{type}', t('sessions.audioFile')))}
+                    </p>
+                    <Button
+                      onClick={() => setActiveTab('overview')}
+                      className="flex items-center gap-2 mx-auto"
+                    >
+                      {isTranscriptOnly ? (
+                        <DocumentTextIcon className="h-4 w-4" />
+                      ) : (
+                        <MicrophoneIcon className="h-4 w-4" />
+                      )}
+                      {t('sessions.goToOverviewToUpload').replace('{type}', isTranscriptOnly ? t('sessions.transcriptFile') : t('sessions.audioFile'))}
+                    </Button>
+                  </>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
