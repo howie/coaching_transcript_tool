@@ -13,26 +13,28 @@ export interface PlanLimit {
   retentionDays: number | 'permanent';
 }
 
+export interface PlanPricing {
+  monthlyUsd: number | null;
+  annualUsd: number | null;
+  monthlyTwd: number | null;
+  annualTwd: number | null;
+  annualDiscountPercentage: number | null;
+  annualSavingsUsd: number | null;
+  annualSavingsTwd: number | null;
+}
+
 export interface PlanConfig {
   planName: 'free' | 'pro' | 'business';
   displayName: string;
   description: string;
   tagline: string;
   limits: PlanLimit;
-  features: {
+  features?: {
     prioritySupport: boolean;
     exportFormats: string[];
     concurrentProcessing: number;
-  };
-  pricing: {
-    monthlyUsd: number;
-    annualUsd: number;
-    monthlyTwd: number;
-    annualTwd: number;
-    annualDiscountPercentage: number;
-    annualSavingsUsd: number;
-    annualSavingsTwd: number;
-  };
+  } | null;
+  pricing?: PlanPricing | null;
   display: {
     isPopular: boolean;
     colorScheme: string;
@@ -238,6 +240,8 @@ class PlanService {
 
   // Check if a specific feature is available for a plan
   isFeatureAvailable(plan: PlanConfig, feature: string): boolean {
+    if (!plan.features) return false;
+
     switch (feature) {
       case 'priority_support':
         return plan.features.prioritySupport;

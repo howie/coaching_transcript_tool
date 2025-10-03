@@ -266,10 +266,26 @@ export default function BillingPage() {
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-500">{t('billing.monthlyFee')}:</span>
                           <span className="text-sm font-medium">
-                            {currentPlan.planName === 'free' 
-                              ? t('billing.free') 
-                              : `NT$${currentPlan.pricing.monthlyTwd || currentPlan.pricing.monthlyUsd * 31.5}`
-                            }
+                            {(() => {
+                              if (!currentPlan || currentPlan.planName === 'free') {
+                                return t('billing.free');
+                              }
+
+                              const pricing = currentPlan.pricing;
+                              if (!pricing) {
+                                return '—';
+                              }
+
+                              if (typeof pricing.monthlyTwd === 'number') {
+                                return `NT$${pricing.monthlyTwd}`;
+                              }
+
+                              if (typeof pricing.monthlyUsd === 'number') {
+                                return `NT$${Math.round(pricing.monthlyUsd * 31.5)}`;
+                              }
+
+                              return '—';
+                            })()}
                           </span>
                         </div>
                       </div>
@@ -321,4 +337,3 @@ export default function BillingPage() {
     </div>
   )
 }
-

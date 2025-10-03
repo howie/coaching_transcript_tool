@@ -23,9 +23,9 @@ export default function SignupPage() {
   const [recaptchaError, setRecaptchaError] = useState(false)
 
   const handleGoogleSignup = () => {
-    // Redirect to backend Google login endpoint (use computed, HTTPS-safe base URL)
-    const baseUrl = apiClient.getBaseUrl() || (typeof window !== 'undefined' && window.location.hostname.includes('doxa.com.tw') ? 'https://api.doxa.com.tw' : 'http://localhost:8000')
-    window.location.href = `${baseUrl}/api/v1/auth/google/login`
+    // Redirect to backend Google login endpoint through proxy
+    const baseUrl = apiClient.getBaseUrl()
+    window.location.href = `${baseUrl}/v1/auth/google/login`
   }
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {

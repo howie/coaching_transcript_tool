@@ -1,8 +1,8 @@
 {
-  "version": "2.24.2",
-  "displayVersion": "v2.24.2",
-  "description": "CI/CD Pipeline Fixes & Production Issue Analysis",
-  "releaseDate": "2025-09-28",
-  "releaseNotes": "CI/CD pipeline stability improvements and production issue diagnostics: (1) Fixed GitHub Actions CI/CD frontend ESLint interactive prompt blocking builds; (2) Enhanced frontend linting workflow with Next.js build directory creation; (3) Added comprehensive production issue analysis for pricing.monthlyTwd error in docs/issues/; (4) Identified and documented root cause of frontend crashes due to missing pricing field in fallback plan configurations; (5) Provided immediate and long-term fix strategies for production billing page errors; (6) Updated CI workflow to use 'npx next lint --fix' for non-interactive execution; (7) Improved error handling and debugging documentation for dev vs production differences. All changes maintain backward compatibility while enhancing system reliability and developer experience.",
+  "version": "2.24.3",
+  "displayVersion": "v2.24.3",
+  "description": "Production CORS Hotfix & Terraform Configuration Cleanup",
+  "releaseDate": "2025-10-03",
+  "releaseNotes": "Production hotfix for CORS configuration and infrastructure cleanup: (1) Fixed production billing page CORS errors by updating ALLOWED_ORIGINS to support multiple domains; (2) Successfully synchronized Terraform workspace state (serial 120→125); (3) Removed deprecated TRANSCRIPT_STORAGE_BUCKET variable from render_web_service and render_background_worker; (4) Deployed with zero downtime (API: 8s, Worker: 5s, DB: 1s); (5) Created comprehensive deployment documentation including .deployment-log.md and .plan-verification.md; (6) Implemented state backup strategy with timestamped backups (20251003-173451); (7) Verified CORS functionality for both production (https://coachly.doxa.com.tw) and localhost (http://localhost:3000) origins. All changes maintain backward compatibility while fixing critical production API access issues.",
   "author": "Coachly Team"
 }

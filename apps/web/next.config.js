@@ -47,12 +47,25 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   async rewrites() {
+    // Determine backend API URL based on environment
+    // Supports multi-domain deployment (epic-new-domain)
+    const backendApiUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL ||
+                          process.env.NEXT_PUBLIC_API_URL ||
+                          'https://api.doxa.com.tw'
+
+    console.log(`🔗 Next.js API Proxy target: ${backendApiUrl}`)
+
     return [
-      // Proxy API calls to backend server with HTTPS enforcement
-      // This solves Mixed Content issues by routing through Next.js server
+      // Main API proxy - handles all /api/v1/* requests
+      // Supports any backend domain via environment variables
+      {
+        source: '/api/proxy/v1/:path*',
+        destination: `${backendApiUrl}/api/v1/:path*`,
+      },
+      // Legacy support - existing /api/proxy/* paths (non-v1)
       {
         source: '/api/proxy/:path*',
-        destination: 'https://api.doxa.com.tw/api/:path*',
+        destination: `${backendApiUrl}/api/:path*`,
       },
     ]
   },

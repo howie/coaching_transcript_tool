@@ -145,36 +145,21 @@ class ApiClient {
   // Lazy initialization of baseUrl to ensure proper runtime context
   public getBaseUrl(): string {
     if (this._baseUrl === null) {
-      // CRITICAL: Force HTTPS for production domains BEFORE checking env vars
+      // Browser environment: ALWAYS use relative proxy path to avoid CORS
+      // This supports multi-domain deployment (coachly.doxa.com.tw, coachly.tw, etc.)
       if (typeof window !== 'undefined') {
-        const isSecureContext = window.location.protocol === 'https:'
-        const isProductionDomain = window.location.hostname.includes('doxa.com.tw')
-        
-        if (isSecureContext || isProductionDomain) {
-          this._baseUrl = 'https://api.doxa.com.tw'
-          console.warn('🔒 FORCED HTTPS for production:', this._baseUrl)
-          debugLog('Production domain detected - forcing HTTPS API URL')
-          return this._baseUrl
-        }
+        this._baseUrl = '/api/proxy'
+        console.log('🔒 Using Next.js proxy for same-origin API requests')
+        debugLog('API requests will go through /api/proxy/* -> Next.js rewrites -> backend')
+        return this._baseUrl
       }
-      
-      // Only use env var for non-production environments
+
+      // SSR/Node environment: use environment variable or localhost
       const envUrl = process.env.NEXT_PUBLIC_API_URL
       this._baseUrl = envUrl || 'http://localhost:8000'
-      console.log('📡 Using environment API URL:', this._baseUrl)
+      console.log('📡 SSR using API URL:', this._baseUrl)
     }
-    
-    // ADDITIONAL SAFETY: Always ensure HTTPS for doxa.com.tw domains
-    if (typeof window !== 'undefined' && 
-        window.location.protocol === 'https:' && 
-        this._baseUrl && 
-        this._baseUrl.includes('doxa.com.tw') && 
-        !this._baseUrl.startsWith('https://')) {
-      console.warn('🚨 SAFETY OVERRIDE: Clearing HTTP baseUrl cache and forcing HTTPS')
-      // Clear bad cache and force HTTPS
-      this._baseUrl = 'https://api.doxa.com.tw'
-    }
-    
+
     return this._baseUrl
   }
 

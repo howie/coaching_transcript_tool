@@ -17,6 +17,7 @@ interface PlanCardProps {
 
 function PlanCard({ plan, price, billingCycle, isSelected, isCurrent, onSelect }: PlanCardProps) {
   const isPopular = plan.display.isPopular;
+  const discountPercentage = plan.pricing?.annualDiscountPercentage ?? 0;
   
   return (
     <div
@@ -54,9 +55,9 @@ function PlanCard({ plan, price, billingCycle, isSelected, isCurrent, onSelect }
           <span className="text-4xl font-bold text-white">NT${price}</span>
           <span className="text-gray-400 ml-2">/ month</span>
         </div>
-        {billingCycle === 'annual' && price > 0 && (
+        {billingCycle === 'annual' && price > 0 && discountPercentage > 0 && (
           <p className="text-sm text-gray-500 mt-1">
-            Billed annually (save {plan.pricing.annualDiscountPercentage}%)
+            Billed annually (save {discountPercentage}%)
           </p>
         )}
       </div>
@@ -88,7 +89,7 @@ function PlanCard({ plan, price, billingCycle, isSelected, isCurrent, onSelect }
             {plan.limits.concurrentProcessing} concurrent processing
           </span>
         </div>
-        {plan.features.prioritySupport && (
+        {plan.features?.prioritySupport && (
           <div className="flex items-center">
             <CheckIcon className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
             <span className="text-sm text-gray-300">Priority support</span>
@@ -139,10 +140,24 @@ export function PlanComparison() {
     }
   };
 
+  const convertUsdToTwd = (usd: number | null | undefined) => {
+    if (usd === null || usd === undefined) {
+      return null;
+    }
+    return Math.round(usd * 31.5);
+  };
+
   const getPrice = (plan: PlanConfig) => {
-    return billingCycle === 'annual' 
-      ? plan.pricing.annualTwd 
-      : plan.pricing.monthlyTwd;
+    const pricing = plan.pricing;
+    if (!pricing) {
+      return 0;
+    }
+
+    if (billingCycle === 'annual') {
+      return pricing.annualTwd ?? convertUsdToTwd(pricing.annualUsd) ?? 0;
+    }
+
+    return pricing.monthlyTwd ?? convertUsdToTwd(pricing.monthlyUsd) ?? 0;
   };
 
   const features = [
@@ -169,7 +184,12 @@ export function PlanComparison() {
     { 
       key: 'exportFormats', 
       label: 'Export Formats',
-      getValue: (plan: PlanConfig) => plan.features.exportFormats.join(', ').toUpperCase()
+      getValue: (plan: PlanConfig) => {
+        const formats = plan.features?.exportFormats;
+        return formats && formats.length > 0
+          ? formats.join(', ').toUpperCase()
+          : '—';
+      }
     },
     { 
       key: 'concurrent', 
@@ -179,7 +199,7 @@ export function PlanComparison() {
     { 
       key: 'support', 
       label: 'Priority Support',
-      getValue: (plan: PlanConfig) => plan.features.prioritySupport
+      getValue: (plan: PlanConfig) => Boolean(plan.features?.prioritySupport)
     },
     { 
       key: 'retention', 
@@ -187,6 +207,10 @@ export function PlanComparison() {
       getValue: (plan: PlanConfig) => planService.formatRetention(plan.limits.retentionDays)
     },
   ];
+
+  const selectedPlanConfig = selectedPlan 
+    ? plans.find(p => p.planName === selectedPlan) 
+    : null;
 
   if (loading) {
     return (
@@ -220,9 +244,9 @@ export function PlanComparison() {
             }`}
           >
             Annual
-            {plans.length > 0 && plans[0].pricing.annualDiscountPercentage > 0 && (
+            {plans.length > 0 && (plans[0].pricing?.annualDiscountPercentage ?? 0) > 0 && (
               <span className="ml-2 text-xs bg-green-500 bg-opacity-20 text-green-400 px-2 py-0.5 rounded-full">
-                Save {plans[0].pricing.annualDiscountPercentage}%
+                Save {plans[0].pricing?.annualDiscountPercentage}%
               </span>
             )}
           </button>
@@ -305,13 +329,27 @@ export function PlanComparison() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-white">
-                Ready to upgrade to {plans.find(p => p.planName === selectedPlan)?.displayName}?
+                Ready to upgrade to {selectedPlanConfig?.displayName || selectedPlan}?
               </h3>
               <p className="text-sm text-gray-400 mt-1">
-                {billingCycle === 'annual' 
-                  ? `Billed annually at NT$${(plans.find(p => p.planName === selectedPlan)?.pricing.annualTwd || 0) * 12}/year`
-                  : `Billed monthly at NT$${plans.find(p => p.planName === selectedPlan)?.pricing.monthlyTwd || 0}/month`
-                }
+                {(() => {
+                  if (!selectedPlanConfig) {
+                    return '';
+                  }
+
+                  const pricing = selectedPlanConfig.pricing;
+                  if (!pricing) {
+                    return 'Pricing currently unavailable';
+                  }
+
+                  if (billingCycle === 'annual') {
+                    const annualTwd = pricing.annualTwd ?? convertUsdToTwd(pricing.annualUsd) ?? 0;
+                    return `Billed annually at NT$${annualTwd * 12}/year`;
+                  }
+
+                  const monthlyTwd = pricing.monthlyTwd ?? convertUsdToTwd(pricing.monthlyUsd) ?? 0;
+                  return `Billed monthly at NT$${monthlyTwd}/month`;
+                })()}
               </p>
             </div>
             <button
