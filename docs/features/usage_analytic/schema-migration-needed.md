@@ -1,23 +1,42 @@
-# Usage Insights API 500 Internal Server Error
+# Usage Insights API - Schema Migration Required
+
+## Feature Status
+🚧 **In Development** - This feature is currently under development and hidden from production users.
+
+**Frontend Visibility**: Usage history tab only visible in `NODE_ENV=development` with "DEV" label.
 
 ## Issue Summary
-The usage insights API endpoint is returning a 500 Internal Server Error, preventing users from viewing their usage statistics and insights.
+The usage insights API endpoint is returning a 500 Internal Server Error, preventing the feature from working properly.
 
 **Error**: `GET http://localhost:3000/api/proxy/v1/usage/insights 500 (Internal Server Error)`
 
 ## Environment
-- **Page**: Dashboard (likely usage/analytics page)
+- **Page**: Dashboard billing page → Usage History tab (dev only)
 - **Component**: `UsageHistory.tsx`
 - **Authentication**: Token present ✅
-- **Error Location**: `UsageHistory.tsx:189` calling `ApiClient.getUsageInsights`
+- **Error Locations**:
+  - `UsageHistory.tsx:189` calling `ApiClient.getUsageInsights`
+  - `UsageHistory.tsx:219` calling `ApiClient.getUsagePredictions`
 
-## Error Stack Trace
+## Error Stack Traces
+
+### 1. Usage Insights Error
 ```
 GET /v1/usage/insights error: Error: Failed to generate usage insights
     at ApiClient.get (api.ts:298:15)
     at async ApiClient.getUsageInsights (api.ts:1869:14)
     at async eval (UsageHistory.tsx:189:24)
 ```
+
+### 2. Usage Predictions Error
+```
+GET /v1/usage/predictions error: Error: Failed to generate usage predictions
+    at ApiClient.get (api.ts:298:15)
+    at async ApiClient.getUsagePredictions (api.ts:1878:14)
+    at async eval (UsageHistory.tsx:219:27)
+```
+
+Both endpoints fail with same root cause: **Database schema mismatch**
 
 ## Root Cause Analysis
 
@@ -116,10 +135,65 @@ throw new Error('Failed to generate usage insights')
 - [ ] Error states show user-friendly messages
 - [ ] Integration tests cover success and failure cases
 
+## Root Cause Identified
+
+### Issue #1: Missing Repository Method
+- Use case calls `get_by_user_and_date_range()`
+- Repository only implements `get_by_user_id()`
+- **Fix**: Added method alias in `usage_log_repository.py:120`
+
+### Issue #2: Database Schema Mismatch (BLOCKING)
+```
+ERROR: column usage_logs.billable does not exist
+ERROR: column usage_logs.cost_cents does not exist
+```
+
+**Database has**: `cost_usd`, `processing_duration_seconds`, `session_duration_seconds`
+**Model expects**: `cost_cents`, `billable`, `processing_time_seconds`
+
+This is a **critical schema migration issue** - the database schema is out of sync with ORM models.
+
+## Temporary Workarounds Applied
+
+### 1. Added Missing Repository Method
+```python
+# usage_log_repository.py:120
+def get_by_user_and_date_range(self, user_id, start_date, end_date):
+    return self.get_by_user_id(user_id, start_date, end_date)
+```
+
+### 2. Made ORM Model Tolerant (Temporary)
+```python
+# usage_log_model.py:55 - Commented out missing column
+# billable = Column(Boolean, default=True, nullable=False)
+
+# usage_log_model.py:97 - Use getattr with default
+billable=getattr(self, 'billable', True)
+```
+
+## Permanent Solution Required
+
+### Database Migration Needed
+Create Alembic migration to:
+1. Add `billable` column (Boolean, default True)
+2. Rename `cost_usd` → `cost_cents` (or update models to match DB)
+3. Rename `processing_duration_seconds` → `processing_time_seconds`
+4. Handle data conversion (USD to cents if renaming)
+
+### Migration Script Location
+```
+migrations/versions/XXXX_add_billable_and_fix_cost_columns.py
+```
+
 ## Status
-🔴 **ACTIVE** - Requires immediate attention (500 error)
+🟡 **PARTIALLY RESOLVED** - Workarounds in place, requires database migration
 
 ---
 *Created: 2025-10-03*
-*Priority: HIGH*
+*Investigated: 2025-10-03*
+*Priority: HIGH - Schema mismatch blocks production usage insights*
 *Branch: hotfix/production-plan-fail*
+
+## Files Modified (Temporary Workarounds)
+1. `src/coaching_assistant/infrastructure/db/repositories/usage_log_repository.py` - Added method, commented billable filter
+2. `src/coaching_assistant/infrastructure/db/models/usage_log_model.py` - Made billable column optional with getattr defaults

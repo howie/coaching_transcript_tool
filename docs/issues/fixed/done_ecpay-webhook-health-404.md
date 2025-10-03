@@ -72,9 +72,34 @@ If ECPay status doesn't require webhook health check, remove this call
 5. ⬜ Test on billing page
 6. ⬜ Add integration test for endpoint
 
+## Solution Implemented
+
+### Root Cause
+Double prefix bug in router registration:
+- Router defined with `prefix="/api/webhooks"` in `ecpay.py:24`
+- Then included with `prefix="/api/webhooks"` in `main.py:175`
+- Result: `/api/webhooks/api/webhooks/health` (double prefix)
+
+### Fix Applied
+```python
+# src/coaching_assistant/api/webhooks/ecpay.py:24
+# Before:
+router = APIRouter(prefix="/api/webhooks", tags=["Webhooks"])
+
+# After:
+router = APIRouter(tags=["Webhooks"])
+```
+
+### Verification
+```bash
+curl http://localhost:8000/api/webhooks/health
+# Returns: {"status":"healthy","service":"ecpay-webhooks",...}
+```
+
 ## Status
-🔴 **ACTIVE** - Awaiting investigation
+✅ **RESOLVED** - Fixed in ecpay.py:24
 
 ---
 *Created: 2025-10-03*
+*Resolved: 2025-10-03*
 *Branch: hotfix/production-plan-fail*
