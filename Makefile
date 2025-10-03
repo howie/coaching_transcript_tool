@@ -228,7 +228,7 @@ test: dev-setup
 	@echo "🗄️  Database Integration Tests - Tests with SQLite in-memory DB"
 	@echo "⚠️  Excluding: E2E tests, API tests, frontend tests (use 'make test-server' for those)"
 	@echo ""
-	pytest tests/unit/ tests/integration/database/ \
+	uv run pytest tests/unit/ tests/integration/database/ \
 		tests/integration/test_transcript_smoother_integration.py \
 		-v --color=yes 2>&1 | tee logs/test.log
 
@@ -237,14 +237,14 @@ test-unit: dev-setup
 	@mkdir -p logs
 	@echo "Running unit tests only..."
 	@echo "🧪 Fast, isolated unit tests"
-	pytest tests/unit/ -v --color=yes 2>&1 | tee logs/test-unit.log
+	uv run pytest tests/unit/ -v --color=yes 2>&1 | tee logs/test-unit.log
 
 # Run database integration tests only
 test-db: dev-setup
 	@mkdir -p logs
 	@echo "Running database integration tests..."
 	@echo "🗄️  Tests using SQLite in-memory database"
-	pytest tests/integration/database/ \
+	uv run pytest tests/integration/database/ \
 		tests/integration/test_transcript_smoother_integration.py \
 		-v --color=yes 2>&1 | tee logs/test-db.log
 
@@ -259,7 +259,7 @@ test-server: dev-setup
 	@echo "🔗 ECPay Integration Tests"  
 	@echo "🎭 E2E Tests"
 	@echo "🖥️  Frontend Tests"
-	pytest tests/integration/api/ \
+	uv run pytest tests/integration/api/ \
 		tests/integration/test_ecpay_*.py \
 		tests/integration/test_lemur_integration.py \
 		tests/integration/test_webhook_retry_scenarios.py \
@@ -282,7 +282,7 @@ test-all: dev-setup
 	@mkdir -p logs
 	@echo "Running all tests (standalone + server-dependent)..."
 	@echo "⚠️  Server-dependent tests will fail if API server is not running"
-	pytest tests/ -v --color=yes 2>&1 | tee logs/test-all.log
+	uv run pytest tests/ -v --color=yes 2>&1 | tee logs/test-all.log
 
 # Run standalone tests with coverage report
 coverage: dev-setup
@@ -294,7 +294,7 @@ coverage: dev-setup
 	@echo "  - HTML report: htmlcov/index.html"
 	@echo "============================================"
 	@$(PIP) install pytest-cov --break-system-packages 2>/dev/null || true
-	@pytest tests/unit/ tests/integration/database/ \
+	@uv run pytest tests/unit/ tests/integration/database/ \
 		tests/integration/test_database_models.py \
 		tests/integration/test_transcript_smoother_integration.py \
 		--cov=src/coaching_assistant \
@@ -317,7 +317,7 @@ coverage-all: dev-setup
 	@echo "⚠️  Server-dependent tests require API server at localhost:8000"
 	@echo "============================================"
 	@$(PIP) install pytest-cov --break-system-packages 2>/dev/null || true
-	@pytest tests/ \
+	@uv run pytest tests/ \
 		--cov=src/coaching_assistant \
 		--cov-report=term-missing \
 		--cov-report=html \
@@ -364,21 +364,21 @@ test-enum-conversions: dev-setup
 	@mkdir -p logs
 	@echo "Running enum conversion tests..."
 	@echo "📝 Testing domain ↔ database enum conversions"
-	pytest tests/unit/infrastructure/test_enum_conversions.py -v --color=yes 2>&1 | tee logs/test-enum-conversions.log
+	uv run pytest tests/unit/infrastructure/test_enum_conversions.py -v --color=yes 2>&1 | tee logs/test-enum-conversions.log
 
 # Run repository layer tests
 test-repository-layers: dev-setup
 	@mkdir -p logs
 	@echo "Running repository layer conversion tests..."
 	@echo "📝 Testing repository _to_domain() and _from_domain() methods"
-	pytest tests/integration/repositories/test_repository_conversions.py -v --color=yes 2>&1 | tee logs/test-repository-layers.log
+	uv run pytest tests/integration/repositories/test_repository_conversions.py -v --color=yes 2>&1 | tee logs/test-repository-layers.log
 
 # Run API parameter validation tests
 test-api-parameters: dev-setup
 	@mkdir -p logs
 	@echo "Running API endpoint parameter validation tests..."
 	@echo "📝 Testing dependency injection and response function parameters"
-	pytest tests/api/test_dependency_injection.py -v --color=yes 2>&1 | tee logs/test-api-parameters.log
+	uv run pytest tests/api/test_dependency_injection.py -v --color=yes 2>&1 | tee logs/test-api-parameters.log
 
 # Run all architecture compliance tests
 test-architecture: test-enum-conversions test-repository-layers test-api-parameters check-architecture
