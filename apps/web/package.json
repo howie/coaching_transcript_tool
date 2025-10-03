@@ -1,6 +1,6 @@
 {
   "name": "@coaching-transcript-tool/frontend",
-  "version": "2.24.4",
+  "version": "2.25.0",
   "private": true,
   "description": "Next.js frontend for Coaching Transcript Tool",
   "scripts": {
@@ -8,12 +8,13 @@
     "dev:quiet": "NODE_NO_WARNINGS=1 next dev",
     "build": "next build",
     "build:cf": "npx @opennextjs/cloudflare build",
+    "verify:chunks": "node scripts/verify-chunks.js",
     "clean": "rm -rf .next .vercel .turbo",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "deploy": "npm run build && npm run build:cf && npx wrangler deploy",
+    "deploy": "npm run build && npm run build:cf && npm run verify:chunks && npx wrangler deploy",
     "deploy:only": "npx wrangler deploy",
     "preview": "npx wrangler dev",
     "postinstall": "patch-package"

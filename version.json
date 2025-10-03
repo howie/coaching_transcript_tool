@@ -1,8 +1,8 @@
 {
-  "version": "2.24.4",
-  "displayVersion": "v2.24.4",
-  "description": "Frontend API Proxy Fixes & SQLAlchemy Log Suppression",
+  "version": "2.25.0",
+  "displayVersion": "v2.25.0",
+  "description": "Production Deployment Fixes: Chunk Loading & Google OAuth",
   "releaseDate": "2025-10-03",
-  "releaseNotes": "Critical fixes for API proxy architecture and logging: (1) Fixed duplicate /api path bug in frontend - all API requests were generating /api/proxy/api/v1/... instead of /api/proxy/v1/...; (2) Updated 8 files (api.ts + 7 service/component files) to remove /api prefix from path constructions; (3) Added comprehensive regression tests (42 tests total) documenting 4 known bugs including service layer path errors; (4) Implemented SQLAlchemy log suppression using logging filter to eliminate query log pollution during database connectivity checks; (5) Added database startup validation in FastAPI lifespan to fail fast if PostgreSQL is not running; (6) All changes verified with passing test suite and clean startup logs showing only essential messages.",
+  "releaseNotes": "Critical production fixes for deployment and authentication: (1) Fixed 404 chunk loading errors by stabilizing BUILD_ID generation - now uses Git SHA instead of unstable timestamp; (2) Added chunk verification script to prevent broken deployments - validates all Next.js chunks exist in OpenNext output before deployment; (3) Enhanced deployment workflow with automatic clean builds and verification steps; (4) Fixed Google OAuth login failures by implementing Next.js middleware with proper CSP headers allowing Google authentication domains; (5) Updated backend OAuth to use configurable FRONTEND_URL instead of hardcoded URLs for multi-domain support; (6) Created comprehensive documentation for Google OAuth setup and deployment procedures; (7) All fixes tested and verified with production-ready deployment process.",
   "author": "Coachly Team"
 }

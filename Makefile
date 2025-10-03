@@ -137,18 +137,29 @@ deploy-frontend:
 	@echo "  NODE_ENV=production"
 	@echo "  NEXT_PUBLIC_API_URL=https://api.doxa.com.tw"
 	@echo ""
+	@echo "🧹 Cleaning previous builds..."
+	@cd apps/web && npm run clean
 	@echo "📦 Preparing deployment environment..."
 	@if [ -f apps/web/.env.local ]; then \
 		echo "  → Backing up .env.local to .env.local.bak"; \
 		mv apps/web/.env.local apps/web/.env.local.bak; \
 	fi
-	@echo "🔧 Starting deployment process..."
+	@echo "🔧 Starting clean build and deployment process..."
+	@echo "  1️⃣  Building Next.js application..."
+	@echo "  2️⃣  Building Cloudflare Workers adapter..."
+	@echo "  3️⃣  Verifying chunk completeness..."
+	@echo "  4️⃣  Deploying to Cloudflare..."
 	cd apps/web && NODE_ENV=production NEXT_PUBLIC_API_URL=https://api.doxa.com.tw npm run deploy
 	@if [ -f apps/web/.env.local.bak ]; then \
 		echo "  → Restoring .env.local from backup"; \
 		mv apps/web/.env.local.bak apps/web/.env.local; \
 	fi
 	@echo "✅ Frontend deployment complete!"
+	@echo ""
+	@echo "🔍 Post-deployment verification:"
+	@echo "  → Visit https://coachly.doxa.com.tw/login"
+	@echo "  → Check browser console for chunk errors"
+	@echo "  → Test signup redirect and navigation"
 
 deploy-frontend-only: build-frontend-cf
 	@echo "🚀 Deploying frontend to Cloudflare Workers (without rebuild)..."

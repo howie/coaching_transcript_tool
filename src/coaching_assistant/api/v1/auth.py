@@ -349,11 +349,8 @@ async def google_callback(
 
     # 5. 重定向到前端，帶上 tokens
     # 在生產環境中，應該使用更安全的方式傳遞 tokens（如設置 HttpOnly cookies）
-    frontend_url = (
-        "https://coachly.doxa.com.tw"
-        if settings.ENVIRONMENT == "production"
-        else "http://localhost:3000"
-    )
+    # Use configured FRONTEND_URL for better multi-domain support
+    frontend_url = settings.FRONTEND_URL.rstrip("/")
     redirect_url = (
         f"{frontend_url}/dashboard?access_token={access_token}"
         f"&refresh_token={refresh_token}"

@@ -12,6 +12,12 @@ This directory contains comprehensive documentation for the AI Coach system, org
 - UI component specifications
 - Success metrics and testing strategies
 
+**[Session Summary & Feedback](./session-summary-feedback.md)** 🆕 *Customer Request*
+- AI-powered session summary generation
+- Coaching feedback and skill suggestions
+- LLM integration specifications
+- Implementation plan and cost estimates
+
 **[Implementation Roadmap](./implementation-roadmap.md)**
 - Phase-by-phase development plan
 - Resource allocation and timeline

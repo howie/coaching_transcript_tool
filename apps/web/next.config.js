@@ -97,15 +97,32 @@ const nextConfig = {
   },
   // Generate consistent build ID to prevent chunk loading issues
   generateBuildId: async () => {
-    // Use Git SHA if available, otherwise use timestamp
-    if (process.env.VERCEL_GIT_COMMIT_SHA) {
-      return process.env.VERCEL_GIT_COMMIT_SHA
-    }
+    // Priority 1: Use Git SHA from Cloudflare Pages (production)
     if (process.env.CF_PAGES_COMMIT_SHA) {
       return process.env.CF_PAGES_COMMIT_SHA
     }
-    // Fallback to package version + timestamp for local builds
-    return `v${require('./package.json').version}-${Date.now()}`
+    // Priority 2: Use Git SHA from Vercel (if migrating)
+    if (process.env.VERCEL_GIT_COMMIT_SHA) {
+      return process.env.VERCEL_GIT_COMMIT_SHA
+    }
+    // Priority 3: Try to get Git SHA locally
+    try {
+      const { execSync } = require('child_process')
+      const gitSha = execSync('git rev-parse HEAD', {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore'] // Suppress error output
+      }).trim()
+      if (gitSha) {
+        console.log('📦 Using Git SHA as Build ID:', gitSha.substring(0, 7))
+        return gitSha
+      }
+    } catch (error) {
+      // Git command failed, continue to fallback
+    }
+    // Fallback: Use package version only (stable, no timestamp)
+    const buildId = `v${require('./package.json').version}`
+    console.log('📦 Using package version as Build ID:', buildId)
+    return buildId
   },
   // CSP headers are now managed by middleware.ts for dynamic nonce support
   // OpenNext Cloudflare configuration
