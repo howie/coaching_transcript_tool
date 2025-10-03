@@ -2,7 +2,7 @@
 
 # Variables
 PACKAGE_NAME = coaching_transcript_tool
-VERSION = $(shell grep -m 1 'version' pyproject.toml | cut -d '"' -f 2)
+VERSION = $(shell python3 -c "import json; print(json.load(open('version.json'))['version'])" 2>/dev/null || grep -m 1 'version' pyproject.toml | cut -d '"' -f 2)
 DOCKER_API_IMAGE = $(PACKAGE_NAME)-api:$(VERSION)
 DOCKER_CLI_IMAGE = $(PACKAGE_NAME)-cli:$(VERSION)
 DOCKER_API_LATEST = $(PACKAGE_NAME)-api:latest
@@ -390,6 +390,37 @@ make-lint:
 make-test-unit:
 	/usr/bin/make test-unit
 
+# Version Management
+version-check:
+	@echo "Checking version consistency across all files..."
+	@python3 scripts/sync-version.py --check
+
+version-sync:
+	@echo "Synchronizing versions from version.json..."
+	@python3 scripts/sync-version.py
+
+version-show:
+	@echo "Current version information:"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Master Version (version.json): $$(python3 -c "import json; print(json.load(open('version.json'))['version'])")"
+	@echo "Python Package (pyproject.toml): $$(grep -m 1 'version' pyproject.toml | cut -d '"' -f 2)"
+	@if [ -f "apps/web/package.json" ]; then \
+		echo "Frontend (apps/web/package.json): $$(python3 -c "import json; print(json.load(open('apps/web/package.json'))['version'])")"; \
+	fi
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+version-bump-patch:
+	@echo "Bumping patch version..."
+	@python3 scripts/bump-version.py patch
+
+version-bump-minor:
+	@echo "Bumping minor version..."
+	@python3 scripts/bump-version.py minor
+
+version-bump-major:
+	@echo "Bumping major version..."
+	@python3 scripts/bump-version.py major
+
 # Help target
 help:
 	@echo "Available targets:"
@@ -413,10 +444,18 @@ help:
 	@echo "  coverage       : Run standalone tests with coverage report"
 	@echo "  coverage-all   : Run all tests with coverage (requires API server)"
 	@echo "  lint           : Run Ruff formatting and linting (logs to logs/lint.log)"
-	@echo ""  
+	@echo ""
 	@echo "Zsh compatibility aliases:"
 	@echo "  make-lint      : Run Ruff formatting and linting (alias for zsh users)"
 	@echo "  make-test-unit : Run unit tests (alias for zsh users)"
+	@echo ""
+	@echo "Version Management:"
+	@echo "  version-show   : Display current version from all files"
+	@echo "  version-check  : Check version consistency across all files"
+	@echo "  version-sync   : Sync all versions from version.json (single source of truth)"
+	@echo "  version-bump-patch : Bump patch version (x.y.Z) - for bug fixes"
+	@echo "  version-bump-minor : Bump minor version (x.Y.0) - for new features"
+	@echo "  version-bump-major : Bump major version (X.0.0) - for breaking changes"
 	@echo ""
 	@echo "Frontend (Node.js):"
 	@echo "  dev-frontend     : Start frontend development server (logs to logs/frontend-dev.log)"
