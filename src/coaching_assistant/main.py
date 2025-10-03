@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from sqlalchemy import text
 
 from .api import (
     debug,
@@ -70,6 +71,31 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting Coaching Transcript Tool Backend API {DISPLAY_VERSION}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {settings.DEBUG}")
+
+    # Suppress SQLAlchemy query logs BEFORE importing engine
+    # This must be done before any database operations
+    if not settings.SQL_ECHO:
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+        logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.WARNING)
+        # Also suppress pool and dialect logs
+        logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+        logging.getLogger("sqlalchemy.dialects").setLevel(logging.WARNING)
+
+    # Validate database connectivity on startup
+    from .core.database import engine
+
+    try:
+        logger.info("🔌 Testing database connectivity...")
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        logger.info("✅ Database connection successful")
+    except Exception as e:
+        logger.error(f"❌ Database connection failed: {e}")
+        logger.error("💡 Please ensure PostgreSQL is running:")
+        logger.error("   - brew services start postgresql@14")
+        logger.error("   - or docker-compose up -d postgres")
+        raise RuntimeError(f"Failed to connect to database: {e}") from e
+
     try:
         yield
     finally:

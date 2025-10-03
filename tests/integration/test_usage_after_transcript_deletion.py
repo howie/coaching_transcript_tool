@@ -19,9 +19,6 @@ from src.coaching_assistant.infrastructure.db.repositories.coaching_session_repo
     SQLAlchemyCoachingSessionRepository,
 )
 from src.coaching_assistant.models import Base, Client, User
-from src.coaching_assistant.models.coaching_session import (
-    CoachingSession as ORMCoachingSession,
-)
 from src.coaching_assistant.models.session import Session as TranscriptionSession
 from src.coaching_assistant.models.session import SessionStatus
 
@@ -403,9 +400,7 @@ class TestUsageAfterTranscriptDeletion:
 
         # Verify speaking stats are preserved for deleted sessions
         sessions = repository.get_by_coach_id(test_user.id)
-        deleted_sessions = [
-            s for s in sessions if s.transcript_deleted_at is not None
-        ]
+        deleted_sessions = [s for s in sessions if s.transcript_deleted_at is not None]
         assert len(deleted_sessions) == 2
         for session in deleted_sessions:
             assert session.saved_speaking_stats is not None

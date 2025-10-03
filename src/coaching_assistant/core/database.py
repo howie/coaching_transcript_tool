@@ -5,10 +5,24 @@ Database connection and session management.
 import logging
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+# Aggressively suppress SQLAlchemy query logs at module import time
+# This must be done BEFORE importing SQLAlchemy
+for logger_name in [
+    "sqlalchemy",
+    "sqlalchemy.engine",
+    "sqlalchemy.engine.Engine",
+    "sqlalchemy.pool",
+    "sqlalchemy.dialects",
+]:
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.ERROR)  # Only show errors
+    logger.propagate = False  # Don't propagate to root logger
+    logger.handlers = []  # Remove all handlers
 
-from .config import settings
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+
+from .config import settings  # noqa: E402
 
 
 def create_database_engine(database_url: str, **kwargs):
@@ -24,6 +38,7 @@ def create_database_engine(database_url: str, **kwargs):
         "pool_size": 10,  # Number of connections to maintain
         "max_overflow": 20,  # Additional connections allowed
         "echo": settings.SQL_ECHO,  # Log SQL queries when enabled
+        "echo_pool": False,  # Disable connection pool logging
         "connect_args": {},
         **kwargs,
     }
@@ -59,16 +74,6 @@ def create_database_engine(database_url: str, **kwargs):
 
 # Create the SQLAlchemy engine using the helper function
 engine = create_database_engine(settings.DATABASE_URL)
-
-# Configure SQLAlchemy logging independently from general logging
-if not settings.SQL_ECHO:
-    # Suppress SQLAlchemy's SQL query logs by setting logger level to WARNING
-    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-    logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.WARNING)
-else:
-    # Enable detailed SQL logging when SQL_ECHO is True
-    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-    logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.INFO)
 
 # Create a configured "Session" class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

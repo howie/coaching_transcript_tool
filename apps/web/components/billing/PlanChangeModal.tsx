@@ -136,7 +136,7 @@ export function PlanChangeModal({
 
     setLoading(true)
     try {
-      const response = await apiClient.post('/api/v1/subscriptions/preview-change', {
+      const response = await apiClient.post('/v1/subscriptions/preview-change', {
         new_plan_id: selectedPlan.toUpperCase(),
         new_billing_cycle: selectedCycle
       })
@@ -161,13 +161,13 @@ export function PlanChangeModal({
     setConfirming(true)
     try {
       if (changeType === 'upgrade') {
-        await apiClient.post('/api/v1/subscriptions/upgrade', {
+        await apiClient.post('/v1/subscriptions/upgrade', {
           plan_id: selectedPlan.toUpperCase(),
           billing_cycle: selectedCycle
         })
         alert('方案升級成功！')
       } else {
-        await apiClient.post('/api/v1/subscriptions/downgrade', {
+        await apiClient.post('/v1/subscriptions/downgrade', {
           plan_id: selectedPlan.toUpperCase(),
           billing_cycle: selectedCycle
         })

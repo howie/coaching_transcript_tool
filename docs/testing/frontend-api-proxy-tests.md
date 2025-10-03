@@ -53,10 +53,11 @@ Login and signup pages were generating incorrect Google OAuth URLs:
 - ✅ Consistency checks (lowercase, kebab-case)
 - ✅ Critical endpoints validation
 
-**`apps/web/__tests__/regression/api-proxy-paths.test.ts`** (11 tests)
+**`apps/web/__tests__/regression/api-proxy-paths.test.ts`** (14 tests)
 - ✅ Documents Bug #1: Duplicate /api in Google OAuth URL
 - ✅ Documents Bug #2: Hard-coded domain checks
 - ✅ Documents Bug #3: CORS errors on production
+- ✅ Documents Bug #4: Service layer /api prefix errors
 - ✅ Bug prevention patterns
 - ✅ Documentation of correct usage
 
@@ -103,9 +104,9 @@ npm test -- __tests__/integration/api-paths.test.ts
 
 # Regression Tests
 npm test -- __tests__/regression/api-proxy-paths.test.ts
-✓ 11 passed, 11 total (0.296s)
+✓ 14 passed, 14 total (0.296s)
 
-TOTAL: 39 tests passed
+TOTAL: 42 tests passed
 ```
 
 ---
@@ -256,9 +257,9 @@ npm test -- __tests__/integration/api-paths.test.ts
 
 ## Summary
 
-✅ **39 comprehensive tests** protect API proxy architecture
+✅ **42 comprehensive tests** protect API proxy architecture
 ✅ **All tests passing** - validated correct implementation
-✅ **4 known bugs** documented and prevented
+✅ **4 known bugs** documented and prevented (including service layer errors)
 ✅ **40+ API endpoints** validated for correctness
 ✅ **Multi-domain ready** for future migrations
 

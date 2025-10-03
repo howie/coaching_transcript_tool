@@ -73,7 +73,7 @@ export function SubscriptionDashboard() {
 
   const loadSubscriptionData = async () => {
     try {
-      const data = await apiClient.get('/api/v1/subscriptions/current')
+      const data = await apiClient.get('/v1/subscriptions/current')
       setSubscriptionData(data)
     } catch (error) {
       console.error('Failed to load subscription data:', error)
@@ -83,7 +83,7 @@ export function SubscriptionDashboard() {
 
   const loadBillingHistory = async () => {
     try {
-      const data = await apiClient.get('/api/v1/subscriptions/billing-history')
+      const data = await apiClient.get('/v1/subscriptions/billing-history')
       setBillingHistory(data.payments || [])
     } catch (error) {
       console.error('Failed to load billing history:', error)
@@ -104,7 +104,7 @@ export function SubscriptionDashboard() {
 
     setActionLoading('cancel')
     try {
-      await apiClient.post('/api/v1/subscriptions/cancel', { 
+      await apiClient.post('/v1/subscriptions/cancel', { 
         immediate,
         reason: '用戶主動取消' 
       })
@@ -127,7 +127,7 @@ export function SubscriptionDashboard() {
 
     setActionLoading('reactivate')
     try {
-      await apiClient.post('/api/v1/subscriptions/reactivate')
+      await apiClient.post('/v1/subscriptions/reactivate')
       alert('訂閱已重新啟用')
       await loadSubscriptionData()
     } catch (error) {

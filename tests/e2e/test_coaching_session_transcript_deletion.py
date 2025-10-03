@@ -4,7 +4,6 @@ Tests the complete API flow for deleting transcripts while preserving
 coaching session data and speaking statistics.
 """
 
-import json
 from datetime import date, datetime, timezone
 from uuid import uuid4
 
@@ -12,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from src.coaching_assistant.models.transcript_segment import TranscriptSegment
 
 from src.coaching_assistant.api.v1.auth import create_access_token
 from src.coaching_assistant.config import get_settings
@@ -22,7 +22,6 @@ from src.coaching_assistant.models.coaching_session import (
 )
 from src.coaching_assistant.models.session import Session as TranscriptionSession
 from src.coaching_assistant.models.session import SessionStatus
-from src.coaching_assistant.models.transcript_segment import TranscriptSegment
 
 
 # Test database setup
@@ -447,9 +446,7 @@ class TestDeletionAuthorization:
     def test_requires_authentication(self, client, test_db):
         """Test that deletion requires authentication."""
         # Act - No auth headers
-        response = client.delete(
-            f"/api/v1/coaching-sessions/{uuid4()}/transcript"
-        )
+        response = client.delete(f"/api/v1/coaching-sessions/{uuid4()}/transcript")
 
         # Assert
         assert response.status_code == 401

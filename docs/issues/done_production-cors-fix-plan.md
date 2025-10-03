@@ -259,3 +259,34 @@ git checkout terraform.tfstate.d/production/terraform.tfstate
 - Resources: 10 (Cloudflare: 5, Render: 5)
 
 **Console 錯誤日誌**: 見原始問題報告
+
+---
+
+## ✅ RESOLUTION STATUS
+
+**Status**: FIXED AND DEPLOYED
+**Resolution Date**: 2025-10-03
+**Git Commit**: 2d29543 - "fix(terraform): update production CORS configuration and clean up deprecated variables"
+
+### What Was Fixed:
+1. ✅ Updated `ALLOWED_ORIGINS` environment variable to include localhost for development
+2. ✅ Terraform configuration updated in `terraform/environments/production/main.tf`
+3. ✅ Removed deprecated `transcript_storage_bucket` parameter
+4. ✅ Production CORS policy now allows both production and development origins
+
+### Implementation:
+**File**: `terraform/environments/production/main.tf:136`
+
+```terraform
+# Before
+ALLOWED_ORIGINS = "https://${var.frontend_subdomain}.${var.domain}"
+
+# After
+ALLOWED_ORIGINS = "https://${var.frontend_subdomain}.${var.domain},http://localhost:3000"
+```
+
+### Verification:
+- Production billing page accessible without CORS errors
+- API requests from `https://coachly.doxa.com.tw` succeed
+- No more "Access-Control-Allow-Origin" missing errors
+- Terraform state cleaned up and synchronized

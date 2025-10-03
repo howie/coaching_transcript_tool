@@ -107,7 +107,7 @@ class PlanService {
     featuresComparison: Record<string, string>;
   }> {
     try {
-      const response = await apiClient.get('/api/v1/plans/');
+      const response = await apiClient.get('/v1/plans/');
       return response;
     } catch (error) {
       console.error('Failed to fetch available plans:', error);
@@ -121,7 +121,7 @@ class PlanService {
     subscriptionInfo: SubscriptionInfo;
   }> {
     try {
-      const response = await apiClient.get('/api/v1/plans/current');
+      const response = await apiClient.get('/v1/plans/current');
       return response;
     } catch (error) {
       console.error('Failed to fetch current plan status:', error);
@@ -135,7 +135,7 @@ class PlanService {
     recommendedUpgrade: any;
   }> {
     try {
-      const response = await apiClient.get('/api/v1/plans/compare');
+      const response = await apiClient.get('/v1/plans/compare');
       return response;
     } catch (error) {
       console.error('Failed to compare plans:', error);
@@ -145,7 +145,7 @@ class PlanService {
 
   async validateAction(action: string, params?: any): Promise<ValidationResult> {
     try {
-      const response = await apiClient.post('/api/v1/plan/validate-action', {
+      const response = await apiClient.post('/v1/plan/validate-action', {
         action,
         ...params
       });

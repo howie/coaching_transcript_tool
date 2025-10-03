@@ -242,4 +242,89 @@ describe('Regression: API Proxy Path Bugs', () => {
       })
     })
   })
+
+  describe('Bug #4: Service layer calling apiClient.get with /api prefix (2025-10-03)', () => {
+    /**
+     * BUG DESCRIPTION:
+     * Service layer files were calling apiClient.get('/api/v1/...') with full /api prefix
+     * This creates duplicate /api segments when combined with baseUrl='/api/proxy'
+     *
+     * AFFECTED FILES:
+     * - lib/services/plan.service.ts
+     * - lib/services/subscription.service.ts
+     * - components/billing/*.tsx
+     *
+     * EXAMPLE WRONG USAGE:
+     * await apiClient.get('/api/v1/plans/current')  // ❌ Wrong
+     *
+     * CORRECT USAGE:
+     * await apiClient.get('/v1/plans/current')  // ✅ Correct
+     *
+     * ROOT CAUSE:
+     * Developers were treating apiClient.get() as if it expected absolute paths
+     * In reality, the paths are relative to baseUrl which already contains /api/proxy
+     */
+
+    it('should NOT pass /api prefix to apiClient.get()', () => {
+      const baseUrl = apiClient.getBaseUrl()
+
+      // These patterns should NEVER be used
+      const wrongPatterns = [
+        '/api/v1/plans/current',
+        '/api/v1/subscriptions/current',
+        '/api/v1/user/profile',
+      ]
+
+      wrongPatterns.forEach(wrongPath => {
+        const result = `${baseUrl}${wrongPath}`
+        // This would create duplicate /api
+        expect(result).toMatch(/\/api\/.*\/api\//)
+        expect(result).not.toBe(`/api/proxy${wrongPath.replace('/api', '')}`)
+      })
+    })
+
+    it('should pass paths WITHOUT /api prefix to apiClient methods', () => {
+      const baseUrl = apiClient.getBaseUrl()
+
+      // These are the CORRECT patterns
+      const correctPatterns = [
+        '/v1/plans/current',
+        '/v1/subscriptions/current',
+        '/v1/user/profile',
+      ]
+
+      correctPatterns.forEach(correctPath => {
+        const result = `${baseUrl}${correctPath}`
+        // Should NOT have duplicate /api
+        expect(result).not.toMatch(/\/api\/.*\/api\//)
+        // Should result in correct proxy path
+        expect(result).toBe(`/api/proxy${correctPath}`)
+      })
+    })
+
+    it('validates correct path construction for all service methods', () => {
+      const baseUrl = apiClient.getBaseUrl()
+
+      // Examples of service layer calls
+      const serviceCalls = [
+        { service: 'PlanService.getCurrentPlanStatus', path: '/v1/plans/current' },
+        { service: 'SubscriptionService.getCurrentSubscription', path: '/v1/subscriptions/current' },
+        { service: 'SubscriptionService.createAuthorization', path: '/v1/subscriptions/authorize' },
+      ]
+
+      serviceCalls.forEach(({ service, path }) => {
+        const fullPath = `${baseUrl}${path}`
+
+        // Validate no duplicate /api
+        expect(fullPath).not.toMatch(/\/api\/.*\/api\//)
+
+        // Validate correct structure
+        expect(fullPath).toBe(`/api/proxy${path}`)
+
+        // Validate exactly one /api segment
+        const apiCount = (fullPath.match(/\/api\//g) || []).length
+        expect(apiCount).toBe(1)
+      })
+    })
+  })
 })

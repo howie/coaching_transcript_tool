@@ -5,7 +5,6 @@ ORM models and domain models, especially the newly added transcript
 deletion tracking fields.
 """
 
-import json
 from datetime import date, datetime, timezone
 from uuid import uuid4
 
@@ -183,7 +182,7 @@ class TestRepositoryMapping:
         )
 
         # Save initial session
-        saved = repository.save(domain_session)
+        _ = repository.save(domain_session)
         db_session.commit()
 
         # Update with deletion info
@@ -193,7 +192,7 @@ class TestRepositoryMapping:
         domain_session.saved_speaking_stats = stats
 
         # Act - Update session with deletion fields
-        updated = repository.save(domain_session)
+        _ = repository.save(domain_session)
         db_session.commit()
 
         # Assert
@@ -270,7 +269,7 @@ class TestDeletionScenarios:
             "coach_percentage": 70,
             "client_percentage": 30,
         }
-        updated = repository.save(session)
+        _ = repository.save(session)
         db_session.commit()
 
         # Assert
