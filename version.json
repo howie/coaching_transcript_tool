@@ -1,8 +1,8 @@
 {
-  "version": "2.24.2",
-  "displayVersion": "v2.24.2",
-  "description": "CI/CD Pipeline Fixes & Production Issue Analysis",
-  "releaseDate": "2025-09-28",
-  "releaseNotes": "CI/CD pipeline stability improvements and production issue diagnostics: (1) Fixed GitHub Actions CI/CD frontend ESLint interactive prompt blocking builds; (2) Enhanced frontend linting workflow with Next.js build directory creation; (3) Added comprehensive production issue analysis for pricing.monthlyTwd error in docs/issues/; (4) Identified and documented root cause of frontend crashes due to missing pricing field in fallback plan configurations; (5) Provided immediate and long-term fix strategies for production billing page errors; (6) Updated CI workflow to use 'npx next lint --fix' for non-interactive execution; (7) Improved error handling and debugging documentation for dev vs production differences. All changes maintain backward compatibility while enhancing system reliability and developer experience.",
+  "version": "2.24.4",
+  "displayVersion": "v2.24.4",
+  "description": "Frontend API Proxy Fixes & SQLAlchemy Log Suppression",
+  "releaseDate": "2025-10-03",
+  "releaseNotes": "Critical fixes for API proxy architecture and logging: (1) Fixed duplicate /api path bug in frontend - all API requests were generating /api/proxy/api/v1/... instead of /api/proxy/v1/...; (2) Updated 8 files (api.ts + 7 service/component files) to remove /api prefix from path constructions; (3) Added comprehensive regression tests (42 tests total) documenting 4 known bugs including service layer path errors; (4) Implemented SQLAlchemy log suppression using logging filter to eliminate query log pollution during database connectivity checks; (5) Added database startup validation in FastAPI lifespan to fail fast if PostgreSQL is not running; (6) All changes verified with passing test suite and clean startup logs showing only essential messages.",
   "author": "Coachly Team"
 }

@@ -52,7 +52,7 @@ export function PaymentSettings() {
 
   const loadSubscriptionData = async () => {
     try {
-      const data = await apiClient.get('/api/v1/subscriptions/current')
+      const data = await apiClient.get('/v1/subscriptions/current')
       setSubscriptionData(data)
       console.log('Subscription data loaded:', data) // Debug log
     } catch (error) {

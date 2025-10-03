@@ -45,7 +45,7 @@ export function SubscriptionStatusBanner() {
 
   const loadSubscriptionStatus = async () => {
     try {
-      const data = await apiClient.get('/api/v1/subscriptions/current')
+      const data = await apiClient.get('/v1/subscriptions/current')
       setSubscriptionStatus(data)
     } catch (error) {
       console.error('Failed to load subscription status:', error)

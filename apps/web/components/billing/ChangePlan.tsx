@@ -167,7 +167,7 @@ export function ChangePlan() {
         // User has no subscription - create new authorization
         console.log('🆕 創建新訂閱授權')
         
-        data = await apiClient.post('/api/v1/subscriptions/authorize', {
+        data = await apiClient.post('/v1/subscriptions/authorize', {
           plan_id: ecpayPlanId,
           billing_cycle: billingCycle
         })

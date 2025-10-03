@@ -17,7 +17,9 @@ export const commonTranslations = {
     'common.enterTagHint': '輸入後按 Enter 新增標籤',
     'common.note': '注意：',
     'common.noData': '無數據',
-    
+    'common.error': '錯誤',
+    'common.failedToLoadData': '無法載入真實使用數據，顯示範例數據',
+
     // Error Messages with Plan Context
     'errors.sessionLimitExceededWithPlan': '您已達到每月會談數限制 {limit} 次（{plan} 方案）。考慮升級方案以獲得更高限制。',
     'errors.transcriptionLimitExceededWithPlan': '您已達到每月轉錄數限制 {limit} 次（{plan} 方案）。考慮升級方案以獲得更高限制。',
@@ -67,7 +69,9 @@ export const commonTranslations = {
     'common.enterTagHint': 'Enter tag and press Enter to add',
     'common.note': 'Note:',
     'common.noData': 'No Data',
-    
+    'common.error': 'Error',
+    'common.failedToLoadData': 'Failed to load real usage data, showing sample data',
+
     // Error Messages with Plan Context
     'errors.sessionLimitExceededWithPlan': 'You have reached your monthly session limit of {limit} ({plan} plan). Consider upgrading your plan for higher limits.',
     'errors.transcriptionLimitExceededWithPlan': 'You have reached your monthly transcription limit of {limit} ({plan} plan). Consider upgrading your plan for higher limits.',

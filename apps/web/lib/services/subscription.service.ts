@@ -72,7 +72,7 @@ class SubscriptionService {
    */
   async getCurrentSubscription(): Promise<SubscriptionData> {
     try {
-      const response = await apiClient.get('/api/v1/subscriptions/current')
+      const response = await apiClient.get('/v1/subscriptions/current')
       return response
     } catch (error) {
       console.error('Failed to get current subscription:', error)
@@ -85,7 +85,7 @@ class SubscriptionService {
    */
   async getAvailablePlans(): Promise<PlanData[]> {
     try {
-      const response = await apiClient.get('/api/v1/plans')
+      const response = await apiClient.get('/v1/plans')
       return response.plans || this.getDefaultPlans()
     } catch (error) {
       console.error('Failed to get available plans:', error)
@@ -97,7 +97,7 @@ class SubscriptionService {
    * Create subscription authorization with ECPay
    */
   async createSubscriptionAuthorization(planId: string, billingCycle: string) {
-    const response = await apiClient.post('/api/v1/subscriptions/authorize', {
+    const response = await apiClient.post('/v1/subscriptions/authorize', {
       plan_id: planId,
       billing_cycle: billingCycle
     })
@@ -108,7 +108,7 @@ class SubscriptionService {
    * Preview plan change with prorated billing
    */
   async previewPlanChange(planId: string, billingCycle: string) {
-    const response = await apiClient.post('/api/v1/subscriptions/preview-change', {
+    const response = await apiClient.post('/v1/subscriptions/preview-change', {
       plan_id: planId,
       billing_cycle: billingCycle
     })
@@ -119,7 +119,7 @@ class SubscriptionService {
    * Upgrade subscription plan
    */
   async upgradeSubscription(planId: string, billingCycle: string) {
-    const response = await apiClient.post('/api/v1/subscriptions/upgrade', {
+    const response = await apiClient.post('/v1/subscriptions/upgrade', {
       plan_id: planId,
       billing_cycle: billingCycle
     })
@@ -130,7 +130,7 @@ class SubscriptionService {
    * Downgrade subscription plan
    */
   async downgradeSubscription(planId: string, billingCycle: string) {
-    const response = await apiClient.post('/api/v1/subscriptions/downgrade', {
+    const response = await apiClient.post('/v1/subscriptions/downgrade', {
       plan_id: planId,
       billing_cycle: billingCycle
     })
@@ -141,7 +141,7 @@ class SubscriptionService {
    * Cancel subscription
    */
   async cancelSubscription(immediate: boolean = false, reason?: string) {
-    const response = await apiClient.post('/api/v1/subscriptions/cancel', {
+    const response = await apiClient.post('/v1/subscriptions/cancel', {
       immediate,
       reason
     })
@@ -152,7 +152,7 @@ class SubscriptionService {
    * Reactivate cancelled subscription
    */
   async reactivateSubscription() {
-    const response = await apiClient.post('/api/v1/subscriptions/reactivate')
+    const response = await apiClient.post('/v1/subscriptions/reactivate')
     return response
   }
 

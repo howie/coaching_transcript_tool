@@ -13,26 +13,28 @@ export interface PlanLimit {
   retentionDays: number | 'permanent';
 }
 
+export interface PlanPricing {
+  monthlyUsd: number | null;
+  annualUsd: number | null;
+  monthlyTwd: number | null;
+  annualTwd: number | null;
+  annualDiscountPercentage: number | null;
+  annualSavingsUsd: number | null;
+  annualSavingsTwd: number | null;
+}
+
 export interface PlanConfig {
   planName: 'free' | 'pro' | 'business';
   displayName: string;
   description: string;
   tagline: string;
   limits: PlanLimit;
-  features: {
+  features?: {
     prioritySupport: boolean;
     exportFormats: string[];
     concurrentProcessing: number;
-  };
-  pricing: {
-    monthlyUsd: number;
-    annualUsd: number;
-    monthlyTwd: number;
-    annualTwd: number;
-    annualDiscountPercentage: number;
-    annualSavingsUsd: number;
-    annualSavingsTwd: number;
-  };
+  } | null;
+  pricing?: PlanPricing | null;
   display: {
     isPopular: boolean;
     colorScheme: string;
@@ -105,7 +107,7 @@ class PlanService {
     featuresComparison: Record<string, string>;
   }> {
     try {
-      const response = await apiClient.get('/api/v1/plans/');
+      const response = await apiClient.get('/v1/plans/');
       return response;
     } catch (error) {
       console.error('Failed to fetch available plans:', error);
@@ -119,7 +121,7 @@ class PlanService {
     subscriptionInfo: SubscriptionInfo;
   }> {
     try {
-      const response = await apiClient.get('/api/v1/plans/current');
+      const response = await apiClient.get('/v1/plans/current');
       return response;
     } catch (error) {
       console.error('Failed to fetch current plan status:', error);
@@ -133,7 +135,7 @@ class PlanService {
     recommendedUpgrade: any;
   }> {
     try {
-      const response = await apiClient.get('/api/v1/plans/compare');
+      const response = await apiClient.get('/v1/plans/compare');
       return response;
     } catch (error) {
       console.error('Failed to compare plans:', error);
@@ -143,7 +145,7 @@ class PlanService {
 
   async validateAction(action: string, params?: any): Promise<ValidationResult> {
     try {
-      const response = await apiClient.post('/api/v1/plan/validate-action', {
+      const response = await apiClient.post('/v1/plan/validate-action', {
         action,
         ...params
       });
@@ -238,6 +240,8 @@ class PlanService {
 
   // Check if a specific feature is available for a plan
   isFeatureAvailable(plan: PlanConfig, feature: string): boolean {
+    if (!plan.features) return false;
+
     switch (feature) {
       case 'priority_support':
         return plan.features.prioritySupport;

@@ -92,7 +92,12 @@ def setup_logging(
     # 設定第三方套件的日誌級別
     logging.getLogger("uvicorn").setLevel(logging.INFO)
     logging.getLogger("fastapi").setLevel(logging.INFO)
-    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)  # 減少 SQL 日誌
+
+    # 完全抑制 SQLAlchemy 的 SQL query logs
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.dialects").setLevel(logging.WARNING)
 
 
 class CeleryStyleFormatter(logging.Formatter):

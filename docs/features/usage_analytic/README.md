@@ -32,8 +32,18 @@ The usage analytics feature provides **Enterprise plan users** with comprehensiv
 
 🚧 **In Development**
 - Backend API endpoints for real usage data
-- Database schema for usage history tracking
+- Database schema for usage history tracking (see `schema-migration-needed.md`)
 - Scheduled aggregation jobs
+
+⚠️ **Known Issues**
+- Database schema mismatch blocking usage insights AND predictions API (see `schema-migration-needed.md`)
+- Missing columns: `billable`, `cost_cents` in `usage_logs` table
+- Temporary workarounds in place, requires database migration
+- Frontend hidden from production (dev-only with DEV label)
+
+✅ **Recent Fixes** (2025-10-03)
+- Added i18n translation for error messages (`common.failedToLoadData`)
+- Hidden usage history tab from production (dev-only visibility)
 
 📝 **Planned**
 - Advanced prediction algorithms
@@ -44,6 +54,7 @@ The usage analytics feature provides **Enterprise plan users** with comprehensiv
 ## Files
 
 - `US005-usage-history-analytics.md` - Complete technical specification and implementation plan
+- `schema-migration-needed.md` - Database schema migration issue and workarounds
 - `README.md` - This overview document
 
 ## Related Features

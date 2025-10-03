@@ -10,6 +10,9 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from src.coaching_assistant.infrastructure.db.repositories.transcription_session_repository import (
+    SQLAlchemyTranscriptionSessionRepository,
+)
 
 from src.coaching_assistant.core.models.coaching_session import (
     CoachingSession as DomainCoachingSession,
@@ -23,9 +26,6 @@ from src.coaching_assistant.infrastructure.db.repositories.client_repository imp
 )
 from src.coaching_assistant.infrastructure.db.repositories.coaching_session_repository import (
     SQLAlchemyCoachingSessionRepository,
-)
-from src.coaching_assistant.infrastructure.db.repositories.transcription_session_repository import (
-    SQLAlchemyTranscriptionSessionRepository,
 )
 from src.coaching_assistant.models import Base, Client, User
 from src.coaching_assistant.models.coaching_session import (
@@ -93,10 +93,12 @@ def repositories(db_session):
 @pytest.fixture
 def use_case(repositories):
     """Create use case with repositories."""
-    retrieval_use_case = CoachingSessionManagementUseCase.CoachingSessionRetrievalUseCase(
-        repositories["coaching_session"],
-        repositories["client"],
-        repositories["transcription"],
+    retrieval_use_case = (
+        CoachingSessionManagementUseCase.CoachingSessionRetrievalUseCase(
+            repositories["coaching_session"],
+            repositories["client"],
+            repositories["transcription"],
+        )
     )
     return retrieval_use_case
 
@@ -322,7 +324,7 @@ class TestTranscriptDeletionIntegration:
             "client_percentage": 40,
             "silence_time": 0,
         }
-        updated = repo.save(saved)
+        _ = repo.save(saved)
         db_session.commit()
 
         # Clean up transcription

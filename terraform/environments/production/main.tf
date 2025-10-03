@@ -133,7 +133,7 @@ module "render" {
 
   api_env_vars = {
     SECRET_KEY      = var.api_secret_key
-    ALLOWED_ORIGINS = "https://${var.frontend_subdomain}.${var.domain}"
+    ALLOWED_ORIGINS = "https://${var.frontend_subdomain}.${var.domain},http://localhost:3000"
     DEBUG           = "false"
     LOG_LEVEL       = "INFO"
   }
@@ -147,7 +147,6 @@ module "render" {
   gcp_project_id            = var.gcp_project_id
   gcp_service_account_json  = var.google_application_credentials_json
   audio_storage_bucket      = "${var.gcp_project_id}-audio-production"
-  transcript_storage_bucket = "${var.gcp_project_id}-transcripts-production"
 
   # STT Configuration
   stt_provider        = var.stt_provider

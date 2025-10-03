@@ -145,36 +145,21 @@ class ApiClient {
   // Lazy initialization of baseUrl to ensure proper runtime context
   public getBaseUrl(): string {
     if (this._baseUrl === null) {
-      // CRITICAL: Force HTTPS for production domains BEFORE checking env vars
+      // Browser environment: ALWAYS use relative proxy path to avoid CORS
+      // This supports multi-domain deployment (coachly.doxa.com.tw, coachly.tw, etc.)
       if (typeof window !== 'undefined') {
-        const isSecureContext = window.location.protocol === 'https:'
-        const isProductionDomain = window.location.hostname.includes('doxa.com.tw')
-        
-        if (isSecureContext || isProductionDomain) {
-          this._baseUrl = 'https://api.doxa.com.tw'
-          console.warn('🔒 FORCED HTTPS for production:', this._baseUrl)
-          debugLog('Production domain detected - forcing HTTPS API URL')
-          return this._baseUrl
-        }
+        this._baseUrl = '/api/proxy'
+        console.log('🔒 Using Next.js proxy for same-origin API requests')
+        debugLog('API requests will go through /api/proxy/* -> Next.js rewrites -> backend')
+        return this._baseUrl
       }
-      
-      // Only use env var for non-production environments
+
+      // SSR/Node environment: use environment variable or localhost
       const envUrl = process.env.NEXT_PUBLIC_API_URL
       this._baseUrl = envUrl || 'http://localhost:8000'
-      console.log('📡 Using environment API URL:', this._baseUrl)
+      console.log('📡 SSR using API URL:', this._baseUrl)
     }
-    
-    // ADDITIONAL SAFETY: Always ensure HTTPS for doxa.com.tw domains
-    if (typeof window !== 'undefined' && 
-        window.location.protocol === 'https:' && 
-        this._baseUrl && 
-        this._baseUrl.includes('doxa.com.tw') && 
-        !this._baseUrl.startsWith('https://')) {
-      console.warn('🚨 SAFETY OVERRIDE: Clearing HTTP baseUrl cache and forcing HTTPS')
-      // Clear bad cache and force HTTPS
-      this._baseUrl = 'https://api.doxa.com.tw'
-    }
-    
+
     return this._baseUrl
   }
 
@@ -347,7 +332,7 @@ class ApiClient {
     try {
       const baseUrl = this.baseUrl
       // Add trailing slash to prevent backend redirect from HTTPS to HTTP
-      const url = `${baseUrl}/api/health/`
+      const url = `${baseUrl}/health/`
       console.log('🔍 HEALTH CHECK DEBUG:', {
         baseUrl,
         constructedUrl: url,
@@ -378,7 +363,7 @@ class ApiClient {
       formData.append('client_name', options.clientName)
       formData.append('convert_to_traditional_chinese', options.convertToTraditional.toString())
 
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/format`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/format`, {
         method: 'POST',
         body: formData,
       })
@@ -430,7 +415,7 @@ class ApiClient {
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const response = await this.fetcher(`${this.baseUrl}/api/v1/user/profile`, {
+        const response = await this.fetcher(`${this.baseUrl}/v1/user/profile`, {
           headers: await this.getHeaders(),
         })
 
@@ -462,7 +447,7 @@ class ApiClient {
 
   async signup(name: string, email: string, password: string, recaptchaToken?: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/auth/signup`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/auth/signup`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify({ name, email, password, recaptcha_token: recaptchaToken }),
@@ -486,7 +471,7 @@ class ApiClient {
       formData.append('username', email)
       formData.append('password', password)
 
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/auth/login`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -508,7 +493,7 @@ class ApiClient {
 
   async updateProfile(data: { name?: string }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/profile`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/user/profile`, {
         method: 'PUT',
         headers: await this.getHeaders(),
         body: JSON.stringify(data),
@@ -528,7 +513,7 @@ class ApiClient {
 
   async updateUserPreferences(preferences: { language?: 'zh' | 'en' | 'system' }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/preferences`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/user/preferences`, {
         method: 'PUT',
         headers: await this.getHeaders(),
         body: JSON.stringify(preferences),
@@ -559,7 +544,7 @@ class ApiClient {
   }) {
     try {
       // For now, store billing preferences in user preferences as well
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/preferences`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/user/preferences`, {
         method: 'PUT',
         headers: await this.getHeaders(),
         body: JSON.stringify({
@@ -584,7 +569,7 @@ class ApiClient {
 
   async setPassword(newPassword: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/set-password`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/user/set-password`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify({ new_password: newPassword }),
@@ -604,7 +589,7 @@ class ApiClient {
 
   async changePassword(currentPassword: string, newPassword: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/change-password`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/user/change-password`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify({ 
@@ -627,7 +612,7 @@ class ApiClient {
 
   async deleteAccount() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/user/account`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/user/account`, {
         method: 'DELETE',
         headers: await this.getHeaders(),
       })
@@ -656,7 +641,7 @@ class ApiClient {
         params.append('query', query)
       }
 
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients?${params}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/clients?${params}`, {
         headers: await this.getHeaders(),
       })
 
@@ -673,7 +658,7 @@ class ApiClient {
 
   async getClient(clientId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/clients/${clientId}`, {
         headers: await this.getHeaders(),
       })
 
@@ -699,7 +684,7 @@ class ApiClient {
     status?: string
   }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/clients`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify(clientData),
@@ -728,7 +713,7 @@ class ApiClient {
     status?: string
   }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/clients/${clientId}`, {
         method: 'PATCH',
         headers: await this.getHeaders(),
         body: JSON.stringify(clientData),
@@ -748,7 +733,7 @@ class ApiClient {
 
   async deleteClient(clientId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/clients/${clientId}`, {
         method: 'DELETE',
         headers: await this.getHeaders(),
       })
@@ -767,7 +752,7 @@ class ApiClient {
 
   async anonymizeClient(clientId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/${clientId}/anonymize`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/clients/${clientId}/anonymize`, {
         method: 'POST',
         headers: await this.getHeaders(),
       })
@@ -786,7 +771,7 @@ class ApiClient {
 
   async getClientSources() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/options/sources`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/clients/options/sources`, {
         headers: await this.getHeaders(),
       })
 
@@ -803,7 +788,7 @@ class ApiClient {
 
   async getClientTypes() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/options/types`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/clients/options/types`, {
         headers: await this.getHeaders(),
       })
 
@@ -820,7 +805,7 @@ class ApiClient {
 
   async getClientStatuses() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/options/statuses`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/clients/options/statuses`, {
         headers: await this.getHeaders(),
       })
 
@@ -837,7 +822,7 @@ class ApiClient {
 
   async getClientStatistics() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/clients/statistics`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/clients/statistics`, {
         headers: await this.getHeaders(),
       })
 
@@ -876,7 +861,7 @@ class ApiClient {
         })
       }
 
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions?${params}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/coaching-sessions?${params}`, {
         headers: await this.getHeaders(),
       })
 
@@ -896,7 +881,7 @@ class ApiClient {
 
   async getSession(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/coaching-sessions/${sessionId}`, {
         headers: await this.getHeaders(),
       })
 
@@ -923,7 +908,7 @@ class ApiClient {
     notes?: string
   }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/coaching-sessions`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify(sessionData),
@@ -951,7 +936,7 @@ class ApiClient {
     transcription_session_id?: string
   }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/coaching-sessions/${sessionId}`, {
         method: 'PATCH',
         headers: await this.getHeaders(),
         body: JSON.stringify(sessionData),
@@ -974,7 +959,7 @@ class ApiClient {
 
   async deleteSession(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/coaching-sessions/${sessionId}`, {
         method: 'DELETE',
         headers: await this.getHeaders(),
       })
@@ -993,7 +978,7 @@ class ApiClient {
 
   async getCurrencies() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/options/currencies`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/coaching-sessions/options/currencies`, {
         headers: await this.getHeaders(),
       })
 
@@ -1010,7 +995,7 @@ class ApiClient {
 
   async getClientLastSession(clientId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/clients/${clientId}/last-session`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/coaching-sessions/clients/${clientId}/last-session`, {
         headers: await this.getHeaders(),
       })
 
@@ -1240,7 +1225,7 @@ class ApiClient {
         params.append('month', month)
       }
 
-      const url = `${this.baseUrl}/api/v1/dashboard/summary${params.toString() ? `?${params}` : ''}`
+      const url = `${this.baseUrl}/v1/dashboard/summary${params.toString() ? `?${params}` : ''}`
       const response = await this.fetcher(url, {
         headers: await this.getHeaders(),
       })
@@ -1262,7 +1247,7 @@ class ApiClient {
     language?: string
   }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify(sessionData),
@@ -1294,7 +1279,7 @@ class ApiClient {
         filename,
         file_size_mb: fileSizeMB.toString()
       })
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/upload-url?${params}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions/${sessionId}/upload-url?${params}`, {
         method: 'POST',
         headers: await this.getHeaders(),
       })
@@ -1377,7 +1362,7 @@ class ApiClient {
 
   async confirmUpload(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/confirm-upload`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions/${sessionId}/confirm-upload`, {
         method: 'POST',
         headers: await this.getHeaders(),
       })
@@ -1396,7 +1381,7 @@ class ApiClient {
 
   async startTranscription(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/start-transcription`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions/${sessionId}/start-transcription`, {
         method: 'POST',
         headers: await this.getHeaders(),
       })
@@ -1415,7 +1400,7 @@ class ApiClient {
 
   async getTranscriptionSession(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions/${sessionId}`, {
         headers: await this.getHeaders(),
       })
 
@@ -1442,7 +1427,7 @@ class ApiClient {
         params.append('status', status)
       }
 
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions?${params}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions?${params}`, {
         headers: await this.getHeaders(),
       })
 
@@ -1461,7 +1446,7 @@ class ApiClient {
   async exportTranscript(sessionId: string, format: 'json' | 'vtt' | 'srt' | 'txt' | 'xlsx' = 'json') {
     try {
       const params = new URLSearchParams({ format })
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/transcript?${params}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions/${sessionId}/transcript?${params}`, {
         headers: await this.getHeaders(),
       })
 
@@ -1495,7 +1480,7 @@ class ApiClient {
 
   async getTranscriptionStatus(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/status`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions/${sessionId}/status`, {
         headers: await this.getHeaders(),
       })
       if (!response.ok) {
@@ -1511,7 +1496,7 @@ class ApiClient {
 
   async updateSpeakerRoles(sessionId: string, roleAssignments: { [speakerId: number]: 'coach' | 'client' }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/speaker-roles`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions/${sessionId}/speaker-roles`, {
         method: 'PATCH',
         headers: await this.getHeaders(),
         body: JSON.stringify({
@@ -1533,7 +1518,7 @@ class ApiClient {
 
   async updateSegmentRoles(sessionId: string, segmentRoles: { [segmentId: string]: 'coach' | 'client' }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/segment-roles`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions/${sessionId}/segment-roles`, {
         method: 'PATCH',
         headers: await this.getHeaders(),
         body: JSON.stringify({
@@ -1553,7 +1538,7 @@ class ApiClient {
 
   async updateSegmentContent(sessionId: string, segmentContent: { [segmentId: string]: string }) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/sessions/${sessionId}/segment-content`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/sessions/${sessionId}/segment-content`, {
         method: 'PATCH',
         headers: await this.getHeaders(),
         body: JSON.stringify({
@@ -1601,7 +1586,7 @@ class ApiClient {
       const headers = await this.getHeaders()
       delete headers['Content-Type'] // Remove Content-Type to let browser set it for FormData
 
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}/transcript`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/coaching-sessions/${sessionId}/transcript`, {
         method: 'POST',
         headers: headers,
         body: formData,
@@ -1621,7 +1606,7 @@ class ApiClient {
 
   async deleteSessionTranscript(sessionId: string, speakingStats?: any) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/coaching-sessions/${sessionId}/transcript`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/coaching-sessions/${sessionId}/transcript`, {
         method: 'DELETE',
         headers: await this.getHeaders(),
         body: speakingStats ? JSON.stringify({ speaking_stats: speakingStats }) : undefined,
@@ -1642,7 +1627,7 @@ class ApiClient {
   // Transcript smoothing methods
   async smoothTranscript(transcript: any, language: string = 'auto', config?: any) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/smooth-and-punctuate`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/transcript/smooth-and-punctuate`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify({
@@ -1677,7 +1662,7 @@ class ApiClient {
         requestBody.custom_prompts = customPrompts;
       }
       
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/lemur-smooth`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/transcript/lemur-smooth`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify(requestBody),
@@ -1708,7 +1693,7 @@ class ApiClient {
         requestBody.custom_prompts = { speakerPrompt: customPrompts.speakerPrompt };
       }
       
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/lemur-speaker-identification`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/transcript/lemur-speaker-identification`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify(requestBody),
@@ -1739,7 +1724,7 @@ class ApiClient {
         requestBody.custom_prompts = { punctuationPrompt: customPrompts.punctuationPrompt };
       }
       
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/lemur-punctuation-optimization`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/transcript/lemur-punctuation-optimization`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify(requestBody),
@@ -1767,7 +1752,7 @@ class ApiClient {
         requestBody.custom_prompts = { speakerPrompt: customPrompts.speakerPrompt };
       }
       
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/session/${sessionId}/lemur-speaker-identification`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/transcript/session/${sessionId}/lemur-speaker-identification`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify(requestBody),
@@ -1795,7 +1780,7 @@ class ApiClient {
         requestBody.custom_prompts = { punctuationPrompt: customPrompts.punctuationPrompt };
       }
       
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/session/${sessionId}/lemur-punctuation-optimization`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/transcript/session/${sessionId}/lemur-punctuation-optimization`, {
         method: 'POST',
         headers: await this.getHeaders(),
         body: JSON.stringify(requestBody),
@@ -1817,7 +1802,7 @@ class ApiClient {
   async getSmoothingDefaults(language: string = 'chinese') {
     try {
       const params = new URLSearchParams({ language })
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/smooth/config/defaults?${params}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/transcript/smooth/config/defaults?${params}`, {
         headers: await this.getHeaders(),
       })
 
@@ -1835,7 +1820,7 @@ class ApiClient {
 
   async getSupportedLanguages() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/smooth/languages`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/transcript/smooth/languages`, {
         headers: await this.getHeaders(),
       })
 
@@ -1853,7 +1838,7 @@ class ApiClient {
 
   async getRawAssemblyAiData(sessionId: string) {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/transcript/session/${sessionId}/raw-data`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/transcript/session/${sessionId}/raw-data`, {
         headers: await this.getHeaders(),
       })
 
@@ -1881,7 +1866,7 @@ class ApiClient {
 
   async getUsageInsights() {
     try {
-      return await this.get('/api/v1/usage/insights')
+      return await this.get('/v1/usage/insights')
     } catch (error) {
       console.error('Get usage insights error:', error)
       throw error
@@ -1890,7 +1875,7 @@ class ApiClient {
 
   async getUsagePredictions() {
     try {
-      return await this.get('/api/v1/usage/predictions')
+      return await this.get('/v1/usage/predictions')
     } catch (error) {
       console.error('Get usage predictions error:', error)
       throw error
@@ -1899,7 +1884,7 @@ class ApiClient {
 
   async exportUsageData(format: string = 'json', period: string = '30d') {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/usage/export?format=${format}&period=${period}`, {
+      const response = await this.fetcher(`${this.baseUrl}/v1/usage/export?format=${format}&period=${period}`, {
         method: 'GET',
         headers: await this.getHeaders(),
       })
@@ -1923,7 +1908,7 @@ class ApiClient {
   // Refresh token functionality
   async refreshAccessToken(refreshToken: string) {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/auth/refresh`, {
+      const response = await fetch(`${this.baseUrl}/v1/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

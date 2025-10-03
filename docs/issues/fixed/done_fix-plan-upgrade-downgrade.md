@@ -200,3 +200,22 @@ While the case-insensitive plan handling fix removed the original `Invalid plan_
 
 Created: 2025-09-27
 Fixed: 2025-09-27
+
+---
+
+## ✅ RESOLUTION STATUS
+
+**Status**: FIXED AND VERIFIED
+**Resolution Date**: 2025-10-03
+**Git Commit**: b8bbbe0 - "fix: add missing repository mappings for transcript deletion fields"
+
+### What Was Fixed:
+1. ✅ Case-insensitive plan ID handling implemented
+2. ✅ `_extract_plan_amount_cents` helper added for nested pricing structure
+3. ✅ Repository update logic fixed to prevent duplicate key violations
+4. ✅ All subscription upgrade/downgrade endpoints working correctly
+
+### Verification:
+- Unit tests passing for subscription use cases
+- Plan upgrade/downgrade operations working in production
+- No more AttributeError on pricing fields
