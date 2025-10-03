@@ -1,8 +1,8 @@
 {
-  "version": "2.25.0",
-  "displayVersion": "v2.25.0",
-  "description": "Production Deployment Fixes: Chunk Loading & Google OAuth",
+  "version": "2.25.1",
+  "displayVersion": "v2.25.1",
+  "description": "Hotfix: Google OAuth CSP Middleware Exclusion",
   "releaseDate": "2025-10-03",
-  "releaseNotes": "Critical production fixes for deployment and authentication: (1) Fixed 404 chunk loading errors by stabilizing BUILD_ID generation - now uses Git SHA instead of unstable timestamp; (2) Added chunk verification script to prevent broken deployments - validates all Next.js chunks exist in OpenNext output before deployment; (3) Enhanced deployment workflow with automatic clean builds and verification steps; (4) Fixed Google OAuth login failures by implementing Next.js middleware with proper CSP headers allowing Google authentication domains; (5) Updated backend OAuth to use configurable FRONTEND_URL instead of hardcoded URLs for multi-domain support; (6) Created comprehensive documentation for Google OAuth setup and deployment procedures; (7) All fixes tested and verified with production-ready deployment process.",
+  "releaseNotes": "Critical hotfix for Google OAuth login failures caused by CSP conflicts. Fixed by excluding Google OAuth routes (api/proxy/v1/auth/google/*) from Next.js CSP middleware matcher. This prevents our CSP headers from conflicting with Google's authentication page CSP, allowing inline scripts to execute properly. Also added comprehensive staging environment plan for future testing with new domain architecture (staging.coachly.tw).",
   "author": "Coachly Team"
 }
