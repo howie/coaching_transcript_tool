@@ -75,6 +75,20 @@ def create_database_engine(database_url: str, **kwargs):
 # Create the SQLAlchemy engine using the helper function
 engine = create_database_engine(settings.DATABASE_URL)
 
+# Aggressively suppress SQLAlchemy logs AFTER engine creation
+# SQLAlchemy adds its own handlers during engine creation, so we need to remove them
+for logger_name in [
+    "sqlalchemy",
+    "sqlalchemy.engine",
+    "sqlalchemy.engine.Engine",
+    "sqlalchemy.pool",
+    "sqlalchemy.dialects",
+]:
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.ERROR)  # Only show errors
+    logger.propagate = False  # Don't propagate to root logger
+    logger.handlers.clear()  # Remove all handlers that SQLAlchemy added
+
 # Create a configured "Session" class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

@@ -1,8 +1,8 @@
 {
-  "version": "2.24.3",
-  "displayVersion": "v2.24.3",
-  "description": "Production CORS Hotfix & Terraform Configuration Cleanup",
+  "version": "2.24.4",
+  "displayVersion": "v2.24.4",
+  "description": "Frontend API Proxy Fixes & SQLAlchemy Log Suppression",
   "releaseDate": "2025-10-03",
-  "releaseNotes": "Production hotfix for CORS configuration and infrastructure cleanup: (1) Fixed production billing page CORS errors by updating ALLOWED_ORIGINS to support multiple domains; (2) Successfully synchronized Terraform workspace state (serial 120→125); (3) Removed deprecated TRANSCRIPT_STORAGE_BUCKET variable from render_web_service and render_background_worker; (4) Deployed with zero downtime (API: 8s, Worker: 5s, DB: 1s); (5) Created comprehensive deployment documentation including .deployment-log.md and .plan-verification.md; (6) Implemented state backup strategy with timestamped backups (20251003-173451); (7) Verified CORS functionality for both production (https://coachly.doxa.com.tw) and localhost (http://localhost:3000) origins. All changes maintain backward compatibility while fixing critical production API access issues.",
+  "releaseNotes": "Critical fixes for API proxy architecture and logging: (1) Fixed duplicate /api path bug in frontend - all API requests were generating /api/proxy/api/v1/... instead of /api/proxy/v1/...; (2) Updated 8 files (api.ts + 7 service/component files) to remove /api prefix from path constructions; (3) Added comprehensive regression tests (42 tests total) documenting 4 known bugs including service layer path errors; (4) Implemented SQLAlchemy log suppression using logging filter to eliminate query log pollution during database connectivity checks; (5) Added database startup validation in FastAPI lifespan to fail fast if PostgreSQL is not running; (6) All changes verified with passing test suite and clean startup logs showing only essential messages.",
   "author": "Coachly Team"
 }

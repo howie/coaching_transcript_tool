@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "coaching-assistant-core"
-version = "2.24.3"
+version = "2.24.4"
 description = "Core logic package for coaching transcript tool"
 readme = "README.md"
 authors = [
@@ -65,7 +65,7 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "2.24.4"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I"]
@@ -82,7 +82,7 @@ force-sort-within-sections = false
 known-first-party = ["coaching_assistant"]
 
 [tool.mypy]
-python_version = "2.24.3"
+python_version = "2.24.4"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

@@ -72,14 +72,28 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
-    # Suppress SQLAlchemy query logs BEFORE importing engine
+    # Aggressively suppress SQLAlchemy query logs using a filter
     # This must be done before any database operations
-    if not settings.SQL_ECHO:
-        logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-        logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.WARNING)
-        # Also suppress pool and dialect logs
-        logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
-        logging.getLogger("sqlalchemy.dialects").setLevel(logging.WARNING)
+    class SQLAlchemyFilter(logging.Filter):
+        def filter(self, record):
+            # Block all SQLAlchemy logs
+            return not record.name.startswith("sqlalchemy")
+
+    # Add filter to root logger to block all SQLAlchemy logs
+    sqlalchemy_filter = SQLAlchemyFilter()
+    logging.getLogger().addFilter(sqlalchemy_filter)
+
+    # Also set logger levels as backup
+    for logger_name in [
+        "sqlalchemy",
+        "sqlalchemy.engine",
+        "sqlalchemy.engine.Engine",
+        "sqlalchemy.pool",
+        "sqlalchemy.dialects",
+    ]:
+        sql_logger = logging.getLogger(logger_name)
+        sql_logger.setLevel(logging.ERROR)
+        sql_logger.propagate = False
 
     # Validate database connectivity on startup
     from .core.database import engine
