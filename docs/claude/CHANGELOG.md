@@ -5,6 +5,35 @@ All notable changes to the Coaching Assistant Platform will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.25.2] - 2025-10-03
+
+### 🔧 Fixed - Critical OAuth Resolution
+- **Google OAuth Login Complete Fix**: Resolved two critical issues preventing OAuth authentication
+  - **Frontend**: OAuth buttons now bypass Next.js proxy and connect directly to backend API
+    - Next.js rewrites were intercepting HTTP 302 redirects and proxying Google's auth page content
+    - This caused CSP violations as Google's page was served from our domain
+    - Solution: Login/signup pages now use `NEXT_PUBLIC_BACKEND_API_URL` for OAuth
+  - **Backend**: Added automatic frontend URL detection for OAuth callbacks
+    - Created `get_frontend_url` property that auto-detects production URL based on ENVIRONMENT
+    - OAuth callbacks now redirect to `https://coachly.doxa.com.tw` in production
+    - Prevents localhost redirect issues in production
+  - **Middleware**: Updated CSP matcher to exclude entire `/api/*` tree
+    - Simpler and more maintainable than path-specific exclusions
+    - API routes now handle their own security headers
+
+### 📚 Documentation
+- Added comprehensive lessons-learned document: `docs/lessons-learned/oauth-middleware-csp-fix.md`
+- Documented Next.js rewrite behavior with OAuth redirects
+- Added troubleshooting guide for CSP violations
+
+### 📝 Files Changed
+- `apps/web/app/login/page.tsx` - Direct backend URL for OAuth
+- `apps/web/app/signup/page.tsx` - Direct backend URL for OAuth
+- `apps/web/middleware.ts` - Exclude /api/* from CSP
+- `src/coaching_assistant/core/config.py` - Auto-detect frontend URL
+- `src/coaching_assistant/api/v1/auth.py` - Use auto-detected URL
+- `src/coaching_assistant/core/services/ecpay_service.py` - Use auto-detected URL
+
 ## [2.24.3] - 2025-10-02
 
 ### 🐛 Bug Fixes

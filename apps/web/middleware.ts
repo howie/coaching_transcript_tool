@@ -58,12 +58,12 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except:
+     * - api/* (API routes handle their own security, especially OAuth)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder files
-     * - api/proxy/v1/auth/google/* (Google OAuth redirects - use Google's own CSP)
+     * - images/* (public folder images)
      */
-    '/((?!_next/static|_next/image|favicon.ico|images/|api/proxy/v1/auth/google/).*)',
+    '/((?!api)(?!_next/static)(?!_next/image)(?!favicon.ico)(?!images/).*)',
   ],
 }

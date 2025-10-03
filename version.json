@@ -1,8 +1,8 @@
 {
-  "version": "2.25.1",
-  "displayVersion": "v2.25.1",
-  "description": "Hotfix: Google OAuth CSP Middleware Exclusion",
+  "version": "2.25.2",
+  "displayVersion": "v2.25.2",
+  "description": "Critical Fix: Google OAuth Login Complete Resolution",
   "releaseDate": "2025-10-03",
-  "releaseNotes": "Critical hotfix for Google OAuth login failures caused by CSP conflicts. Fixed by excluding Google OAuth routes (api/proxy/v1/auth/google/*) from Next.js CSP middleware matcher. This prevents our CSP headers from conflicting with Google's authentication page CSP, allowing inline scripts to execute properly. Also added comprehensive staging environment plan for future testing with new domain architecture (staging.coachly.tw).",
+  "releaseNotes": "Complete fix for Google OAuth login failures with two critical issues resolved:\n\n1. Frontend Fix: OAuth buttons now bypass Next.js proxy and connect directly to backend API. Next.js rewrites were intercepting HTTP 302 redirects and serving Google's auth page from our domain, causing CSP violations.\n\n2. Backend Fix: Added automatic frontend URL detection based on ENVIRONMENT variable. OAuth callbacks now correctly redirect to https://coachly.doxa.com.tw in production instead of localhost.\n\n3. Middleware Fix: Updated CSP matcher to exclude entire /api/* tree from security headers, allowing OAuth endpoints to handle their own security.\n\nFiles changed:\n- apps/web/app/login/page.tsx\n- apps/web/app/signup/page.tsx\n- apps/web/middleware.ts\n- src/coaching_assistant/core/config.py\n- src/coaching_assistant/api/v1/auth.py\n- src/coaching_assistant/core/services/ecpay_service.py\n\nDocumentation: docs/lessons-learned/oauth-middleware-csp-fix.md",
   "author": "Coachly Team"
 }

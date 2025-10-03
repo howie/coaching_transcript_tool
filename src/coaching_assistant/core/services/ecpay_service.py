@@ -109,10 +109,10 @@ class ECPaySubscriptionService:
                 # Note: ECPay V5 API does not have ProductDesc field, only TradeDesc and ItemName
                 # URLs for callbacks
                 "OrderResultURL": (
-                    f"{self.settings.FRONTEND_URL}/api/subscription/result"
+                    f"{self.settings.get_frontend_url}/api/subscription/result"
                 ),
                 "ReturnURL": (f"{self.settings.API_BASE_URL}/api/webhooks/ecpay-auth"),
-                "ClientBackURL": f"{self.settings.FRONTEND_URL}/billing",
+                "ClientBackURL": f"{self.settings.get_frontend_url}/billing",
                 # Credit card recurring payment specific fields
                 "PeriodType": (
                     "M" if billing_cycle == "monthly" else "Y"

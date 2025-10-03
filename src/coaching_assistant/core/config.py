@@ -8,7 +8,7 @@ import json
 import os
 from typing import List, Union
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -158,9 +158,27 @@ class Settings(BaseSettings):
     ECPAY_HASH_IV: str = ""  # HashIV
     ECPAY_ENVIRONMENT: str = "sandbox"  # "sandbox" or "production"
 
-    # Frontend/Backend URLs for ECPay callbacks
-    FRONTEND_URL: str = "http://localhost:3000"
-    API_BASE_URL: str = "http://localhost:8000"
+    # Frontend/Backend URLs for ECPay callbacks and OAuth redirects
+    # In production, these should be set via environment variables
+    # Development defaults to localhost
+    FRONTEND_URL: str = Field(
+        default="http://localhost:3000",
+        description="Frontend URL for OAuth redirects and payment callbacks"
+    )
+    API_BASE_URL: str = Field(
+        default="http://localhost:8000",
+        description="Backend API base URL"
+    )
+
+    @property
+    def get_frontend_url(self) -> str:
+        """Get frontend URL based on environment if not explicitly set"""
+        if self.FRONTEND_URL != "http://localhost:3000":
+            return self.FRONTEND_URL
+        # Auto-detect production frontend URL
+        if self.ENVIRONMENT == "production":
+            return "https://coachly.doxa.com.tw"
+        return self.FRONTEND_URL
 
     # Admin webhook token for manual operations
     ADMIN_WEBHOOK_TOKEN: str = "change-me-in-production"

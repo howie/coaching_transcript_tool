@@ -23,9 +23,13 @@ export default function SignupPage() {
   const [recaptchaError, setRecaptchaError] = useState(false)
 
   const handleGoogleSignup = () => {
-    // Redirect to backend Google login endpoint through proxy
-    const baseUrl = apiClient.getBaseUrl()
-    window.location.href = `${baseUrl}/v1/auth/google/login`
+    // For OAuth, we MUST use direct backend URL (not Next.js proxy)
+    // Next.js rewrites don't follow HTTP redirects, causing CSP conflicts
+    // when Google's auth page is served through our domain
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL ||
+                       process.env.NEXT_PUBLIC_API_URL ||
+                       'https://api.doxa.com.tw'
+    window.location.href = `${backendUrl}/api/v1/auth/google/login`
   }
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
