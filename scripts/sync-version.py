@@ -41,9 +41,11 @@ def update_pyproject_toml(root_dir: Path, version: str) -> bool:
     content = pyproject_file.read_text(encoding='utf-8')
     original_content = content
 
-    # Update version in [project] section
-    pattern = r'(version\s*=\s*")[^"]+(")'
-    content = re.sub(pattern, f'\\g<1>{version}\\g<2>', content)
+    # Update version ONLY in [project] section
+    # This pattern specifically looks for 'version = "x.x.x"' (not target-version or python_version)
+    # and ensures it's in the [project] section by requiring it comes after [project]
+    pattern = r'(\[project\][^\[]*?)(version\s*=\s*")[^"]+(")'
+    content = re.sub(pattern, f'\\g<1>\\g<2>{version}\\g<3>', content, flags=re.DOTALL)
 
     if content != original_content:
         pyproject_file.write_text(content, encoding='utf-8')
