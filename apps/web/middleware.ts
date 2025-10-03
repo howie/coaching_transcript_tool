@@ -62,7 +62,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder files
+     * - api/proxy/v1/auth/google/* (Google OAuth redirects - use Google's own CSP)
      */
-    '/((?!_next/static|_next/image|favicon.ico|images/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|images/|api/proxy/v1/auth/google/).*)',
   ],
 }
