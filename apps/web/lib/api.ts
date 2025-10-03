@@ -1872,13 +1872,7 @@ class ApiClient {
   // Usage History APIs
   async getUsageHistory(period: string = '30d', groupBy: string = 'day') {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/usage/trends?period=${period}&group_by=${groupBy}`)
-
-      if (!response.ok) {
-        throw new Error(`Get usage history failed: ${response.statusText}`)
-      }
-
-      return await response.json()
+      return await this.get(`/api/v1/usage/trends?period=${period}&group_by=${groupBy}`)
     } catch (error) {
       console.error('Get usage history error:', error)
       throw error
@@ -1887,13 +1881,7 @@ class ApiClient {
 
   async getUsageInsights() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/usage/insights`)
-
-      if (!response.ok) {
-        throw new Error(`Get usage insights failed: ${response.statusText}`)
-      }
-
-      return await response.json()
+      return await this.get('/api/v1/usage/insights')
     } catch (error) {
       console.error('Get usage insights error:', error)
       throw error
@@ -1902,13 +1890,7 @@ class ApiClient {
 
   async getUsagePredictions() {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/usage/predictions`)
-
-      if (!response.ok) {
-        throw new Error(`Get usage predictions failed: ${response.statusText}`)
-      }
-
-      return await response.json()
+      return await this.get('/api/v1/usage/predictions')
     } catch (error) {
       console.error('Get usage predictions error:', error)
       throw error
@@ -1917,7 +1899,10 @@ class ApiClient {
 
   async exportUsageData(format: string = 'json', period: string = '30d') {
     try {
-      const response = await this.fetcher(`${this.baseUrl}/api/v1/usage/export?format=${format}&period=${period}`)
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/usage/export?format=${format}&period=${period}`, {
+        method: 'GET',
+        headers: await this.getHeaders(),
+      })
 
       if (!response.ok) {
         throw new Error(`Export usage data failed: ${response.statusText}`)
