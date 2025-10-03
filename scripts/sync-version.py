@@ -41,8 +41,9 @@ def update_pyproject_toml(root_dir: Path, version: str) -> bool:
     content = pyproject_file.read_text(encoding='utf-8')
     original_content = content
 
-    # Update version in [project] section
-    pattern = r'(version\s*=\s*")[^"]+(")'
+    # Update version in [project] section only (not target-version or python_version)
+    # Match 'version = "..."' but not 'target-version' or 'python_version'
+    pattern = r'(?<!target-)(?<!python_)(version\s*=\s*")[^"]+(")'
     content = re.sub(pattern, f'\\g<1>{version}\\g<2>', content)
 
     if content != original_content:

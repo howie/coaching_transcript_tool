@@ -214,10 +214,13 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
             # Total cost (convert from cents to main currency)
             # TODO: Re-enable billable filter after migration
             total_cost_cents = (
-                base_query.with_entities(  # .filter(UsageLogModel.billable == True)  # noqa: E712
-                    func.sum(UsageLogModel.cost_cents)
-                ).scalar()
-            ) or 0
+                (
+                    base_query.with_entities(  # .filter(UsageLogModel.billable == True)  # noqa: E712
+                        func.sum(UsageLogModel.cost_cents)
+                    ).scalar()
+                )
+                or 0
+            )
             total_cost = float(total_cost_cents / 100)
 
             # Breakdown by transcription type
