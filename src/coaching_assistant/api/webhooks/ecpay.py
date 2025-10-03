@@ -21,7 +21,7 @@ from ...models import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/webhooks", tags=["Webhooks"])
+router = APIRouter(tags=["Webhooks"])
 
 
 def _get_client_ip(request: Request) -> str:
