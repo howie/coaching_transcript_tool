@@ -176,7 +176,7 @@ const UsageHistory: React.FC<UsageHistoryProps> = ({
       // Fallback to mock data if API fails
       const mockData = generateMockUsageData(period);
       setData(mockData);
-      setError('Failed to load real usage data, showing sample data');
+      setError(t('common.failedToLoadData'));
     } finally {
       setLoading(false);
     }

@@ -89,7 +89,8 @@ export default function BillingPage() {
             { id: 'overview', label: t('billing.overview'), icon: ChartBarIcon },
             { id: 'plans', label: t('billing.changePlan'), icon: ArrowPathIcon },
             { id: 'payment', label: t('billing.paymentSettings'), icon: CreditCardIcon },
-            { id: 'usage', label: t('billing.usageHistory'), icon: ClockIcon },
+            // Usage history tab - only visible in development
+            ...(process.env.NODE_ENV === 'development' ? [{ id: 'usage', label: t('billing.usageHistory'), icon: ClockIcon, isDev: true }] : []),
           ].map((tab) => (
             <button
               key={tab.id}
@@ -102,6 +103,11 @@ export default function BillingPage() {
             >
               <tab.icon className="h-5 w-5" />
               <span>{tab.label}</span>
+              {'isDev' in tab && tab.isDev && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-yellow-500/20 text-yellow-500 rounded">
+                  DEV
+                </span>
+              )}
             </button>
           ))}
         </div>

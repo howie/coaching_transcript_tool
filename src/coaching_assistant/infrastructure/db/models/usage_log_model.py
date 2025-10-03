@@ -52,7 +52,8 @@ class UsageLogModel(BaseModel):
     )
 
     # Billing information
-    billable = Column(Boolean, default=True, nullable=False)
+    # TODO: Re-enable after adding column to database schema
+    # billable = Column(Boolean, default=True, nullable=False)
     cost_cents = Column(
         Integer, default=0, nullable=False
     )  # Cost in cents for precise calculation
@@ -93,7 +94,9 @@ class UsageLogModel(BaseModel):
             user_id=PyUUID(str(self.user_id)) if self.user_id else None,
             duration_minutes=self.duration_minutes or 0,
             transcription_type=self.transcription_type or TranscriptionType.ORIGINAL,
-            billable=self.billable if self.billable is not None else True,
+            billable=getattr(
+                self, "billable", True
+            ),  # Default to True if column doesn't exist
             cost_cents=self.cost_cents or 0,
             currency=self.currency or "TWD",
             stt_provider=(
@@ -144,7 +147,7 @@ class UsageLogModel(BaseModel):
         """Update ORM model fields from domain model."""
         self.duration_minutes = usage_log.duration_minutes
         self.transcription_type = usage_log.transcription_type
-        self.billable = usage_log.billable
+        # self.billable = usage_log.billable  # Column doesn't exist yet
         self.cost_cents = usage_log.cost_cents
         self.currency = usage_log.currency
         self.stt_provider = usage_log.stt_provider
@@ -240,7 +243,8 @@ class UsageLogModel(BaseModel):
 
     def is_billable_usage(self) -> bool:
         """Check if this usage counts toward billing."""
-        return self.billable and self.transcription_type in [
+        billable = getattr(self, "billable", True)  # Default to True
+        return billable and self.transcription_type in [
             TranscriptionType.ORIGINAL,
             TranscriptionType.RETRY_SUCCESS,
         ]
@@ -284,7 +288,7 @@ class UsageLogModel(BaseModel):
             "words_per_minute": self.get_words_per_minute(),
             "efficiency_score": self.calculate_efficiency_score(),
             "quality_score": self.get_quality_score(),
-            "billable": self.billable,
+            "billable": getattr(self, "billable", True),
             "is_retry": self.is_retry_attempt(),
             "is_free": self.is_free_retry(),
             "effective_minutes": self.get_effective_minutes(),
@@ -358,5 +362,5 @@ class UsageLogModel(BaseModel):
             f"session_id={self.session_id}, "
             f"duration={self.duration_minutes}m, "
             f"type={self.transcription_type.value if self.transcription_type else 'None'}, "
-            f"billable={self.billable})>"
+            f"billable={getattr(self, 'billable', True)})>"
         )

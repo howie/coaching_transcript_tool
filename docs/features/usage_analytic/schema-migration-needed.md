@@ -194,6 +194,29 @@ migrations/versions/XXXX_add_billable_and_fix_cost_columns.py
 *Priority: HIGH - Schema mismatch blocks production usage insights*
 *Branch: hotfix/production-plan-fail*
 
+## Additional Frontend Issues
+
+### Missing i18n Translation
+**Error**: `common.error Failed to load real usage data, showing sample data`
+
+The error message key is not defined in translation files. Component falls back to showing raw key.
+
+**Location**: `UsageHistory.tsx` error handling
+
+**Fix Needed**: Add translation to i18n files:
+```json
+// en.json & zh.json
+{
+  "common": {
+    "error": "Error"
+  },
+  "usageHistory": {
+    "failedToLoadData": "Failed to load real usage data, showing sample data"
+  }
+}
+```
+
 ## Files Modified (Temporary Workarounds)
 1. `src/coaching_assistant/infrastructure/db/repositories/usage_log_repository.py` - Added method, commented billable filter
 2. `src/coaching_assistant/infrastructure/db/models/usage_log_model.py` - Made billable column optional with getattr defaults
+3. `apps/web/app/dashboard/billing/page.tsx` - Hidden usage tab from production (dev only)

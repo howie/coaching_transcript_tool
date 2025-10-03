@@ -5,6 +5,7 @@ operations using SQLAlchemy ORM with proper domain ↔ ORM conversion,
 following Clean Architecture principles.
 """
 
+import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -17,6 +18,8 @@ from sqlalchemy.orm import Session as DBSession
 from ....core.models.usage_log import TranscriptionType, UsageLog
 from ....core.repositories.ports import UsageLogRepoPort
 from ..models.usage_log_model import UsageLogModel
+
+logger = logging.getLogger(__name__)
 
 
 class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
@@ -113,9 +116,30 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
             orm_usage_logs = query.order_by(UsageLogModel.created_at).all()
             return [orm_usage_log.to_domain() for orm_usage_log in orm_usage_logs]
         except SQLAlchemyError as e:
+            logger.error(f"SQL Error in get_by_user_id: {e}")
             raise RuntimeError(
                 f"Database error retrieving usage logs for user {user_id}"
             ) from e
+
+    def get_by_user_and_date_range(
+        self,
+        user_id: UUID,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> List[UsageLog]:
+        """Get usage logs for user within date range.
+
+        This is an alias for get_by_user_id with required date parameters.
+
+        Args:
+            user_id: UUID of the user
+            start_date: Start date for filtering
+            end_date: End date for filtering
+
+        Returns:
+            List of UsageLog domain entities
+        """
+        return self.get_by_user_id(user_id, start_date, end_date)
 
     def get_total_cost_for_user(
         self,
@@ -135,10 +159,9 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
         """
         try:
             query = self.session.query(func.sum(UsageLogModel.cost_cents)).filter(
-                and_(
-                    UsageLogModel.user_id == user_id,
-                    UsageLogModel.billable == True,  # noqa: E712
-                )
+                UsageLogModel.user_id == user_id
+                # TODO: Re-enable billable filter after migration
+                # UsageLogModel.billable == True,  # noqa: E712
             )
 
             if start_date is not None:
@@ -189,10 +212,11 @@ class SQLAlchemyUsageLogRepository(UsageLogRepoPort):
             ) or 0
 
             # Total cost (convert from cents to main currency)
+            # TODO: Re-enable billable filter after migration
             total_cost_cents = (
-                base_query.filter(UsageLogModel.billable == True)  # noqa: E712
-                .with_entities(func.sum(UsageLogModel.cost_cents))
-                .scalar()
+                base_query.with_entities(  # .filter(UsageLogModel.billable == True)  # noqa: E712
+                    func.sum(UsageLogModel.cost_cents)
+                ).scalar()
             ) or 0
             total_cost = float(total_cost_cents / 100)
 

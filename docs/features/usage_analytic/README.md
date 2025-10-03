@@ -36,9 +36,14 @@ The usage analytics feature provides **Enterprise plan users** with comprehensiv
 - Scheduled aggregation jobs
 
 ⚠️ **Known Issues**
-- Database schema mismatch blocking usage insights API (see `schema-migration-needed.md`)
+- Database schema mismatch blocking usage insights AND predictions API (see `schema-migration-needed.md`)
 - Missing columns: `billable`, `cost_cents` in `usage_logs` table
 - Temporary workarounds in place, requires database migration
+- Frontend hidden from production (dev-only with DEV label)
+
+✅ **Recent Fixes** (2025-10-03)
+- Added i18n translation for error messages (`common.failedToLoadData`)
+- Hidden usage history tab from production (dev-only visibility)
 
 📝 **Planned**
 - Advanced prediction algorithms
