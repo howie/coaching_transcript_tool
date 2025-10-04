@@ -6,15 +6,11 @@ from uuid import UUID as PyUUID
 
 from sqlalchemy import (
     DECIMAL,
-    JSON,
-    Boolean,
     Column,
     Enum,
-    Float,
     ForeignKey,
     Integer,
     String,
-    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -52,35 +48,41 @@ class UsageLogModel(BaseModel):
     )
 
     # Billing information
-    # TODO: Re-enable after adding column to database schema
+    # TODO: Re-enable after adding columns to database schema
     # billable = Column(Boolean, default=True, nullable=False)
-    cost_cents = Column(
-        Integer, default=0, nullable=False
-    )  # Cost in cents for precise calculation
-    currency = Column(String(10), default="TWD", nullable=False)
+    # cost_cents = Column(
+    #     Integer, default=0, nullable=False
+    # )  # Cost in cents for precise calculation
+    # currency = Column(String(10), default="TWD", nullable=False)
 
     # Processing details
     stt_provider = Column(String(50), default="google", nullable=False)
-    processing_time_seconds = Column(Integer)
-    confidence_score = Column(Float)
+    # TODO: Re-enable after adding columns to database schema
+    # processing_time_seconds = Column(Integer)
+    # confidence_score = Column(Float)
 
     # Quality metrics
-    word_count = Column(Integer)
-    character_count = Column(Integer)
-    speaker_count = Column(Integer)
+    # TODO: Re-enable after adding columns to database schema
+    # word_count = Column(Integer)
+    # character_count = Column(Integer)
+    # speaker_count = Column(Integer)
 
     # Error tracking
-    error_occurred = Column(Boolean, default=False, nullable=False)
-    error_message = Column(Text)
-    retry_count = Column(Integer, default=0, nullable=False)
+    # TODO: Re-enable after adding columns to database schema
+    # error_occurred = Column(Boolean, default=False, nullable=False)
+    # error_message = Column(Text)
+    # retry_count = Column(Integer, default=0, nullable=False)
 
     # Metadata
-    usage_metadata = Column(JSON)  # Store additional metadata as JSON
+    # TODO: Re-enable after adding columns to database schema
+    # usage_metadata = Column(JSON)  # Store additional metadata as JSON
 
     # Legacy fields (maintain compatibility)
+    # NOTE: According to actual DB schema, only cost_usd exists
     cost_usd = Column(DECIMAL(10, 4))  # Legacy cost field in USD
-    processing_duration_seconds = Column(Integer)  # Legacy processing duration
-    session_duration_minutes = Column(Integer)  # Legacy session duration
+    # TODO: Re-enable after adding columns to database schema
+    # processing_duration_seconds = Column(Integer)  # Legacy processing duration
+    # session_duration_minutes = Column(Integer)  # Legacy session duration
 
     # ORM relationships
     session = relationship("SessionModel", back_populates="usage_logs")
@@ -97,22 +99,20 @@ class UsageLogModel(BaseModel):
             billable=getattr(
                 self, "billable", True
             ),  # Default to True if column doesn't exist
-            cost_cents=self.cost_cents or 0,
-            currency=self.currency or "TWD",
+            cost_cents=getattr(self, "cost_cents", 0),
+            currency=getattr(self, "currency", "TWD"),
             stt_provider=(
                 (self.stt_provider or "").strip().lower() or settings.STT_PROVIDER
             ),
-            processing_time_seconds=self.processing_time_seconds,
-            confidence_score=self.confidence_score,
-            word_count=self.word_count,
-            character_count=self.character_count,
-            speaker_count=self.speaker_count,
-            error_occurred=(
-                self.error_occurred if self.error_occurred is not None else False
-            ),
-            error_message=self.error_message,
-            retry_count=self.retry_count or 0,
-            metadata=self.usage_metadata,
+            processing_time_seconds=getattr(self, "processing_time_seconds", None),
+            confidence_score=getattr(self, "confidence_score", None),
+            word_count=getattr(self, "word_count", None),
+            character_count=getattr(self, "character_count", None),
+            speaker_count=getattr(self, "speaker_count", None),
+            error_occurred=getattr(self, "error_occurred", False),
+            error_message=getattr(self, "error_message", None),
+            retry_count=getattr(self, "retry_count", 0),
+            metadata=getattr(self, "usage_metadata", None),
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -126,9 +126,9 @@ class UsageLogModel(BaseModel):
             user_id=usage_log.user_id,
             duration_minutes=usage_log.duration_minutes,
             transcription_type=usage_log.transcription_type,
-            billable=usage_log.billable,
-            cost_cents=usage_log.cost_cents,
-            currency=usage_log.currency,
+            # billable=usage_log.billable,  # Column doesn't exist yet
+            # cost_cents=usage_log.cost_cents,  # Column doesn't exist yet
+            # currency=usage_log.currency,  # Column doesn't exist yet
             stt_provider=usage_log.stt_provider,
             processing_time_seconds=usage_log.processing_time_seconds,
             confidence_score=usage_log.confidence_score,
@@ -148,8 +148,8 @@ class UsageLogModel(BaseModel):
         self.duration_minutes = usage_log.duration_minutes
         self.transcription_type = usage_log.transcription_type
         # self.billable = usage_log.billable  # Column doesn't exist yet
-        self.cost_cents = usage_log.cost_cents
-        self.currency = usage_log.currency
+        # self.cost_cents = usage_log.cost_cents  # Column doesn't exist yet
+        # self.currency = usage_log.currency  # Column doesn't exist yet
         self.stt_provider = usage_log.stt_provider
         self.processing_time_seconds = usage_log.processing_time_seconds
         self.confidence_score = usage_log.confidence_score
@@ -166,14 +166,17 @@ class UsageLogModel(BaseModel):
 
     def get_cost_formatted(self) -> str:
         """Format cost in local currency."""
-        if self.currency == "TWD":
-            dollars = self.cost_cents / 100
+        cost_cents = getattr(self, "cost_cents", 0)
+        currency = getattr(self, "currency", "TWD")
+
+        if currency == "TWD":
+            dollars = cost_cents / 100
             return f"NT${dollars:.2f}"
-        elif self.currency == "USD":
-            dollars = self.cost_cents / 100
+        elif currency == "USD":
+            dollars = cost_cents / 100
             return f"${dollars:.2f}"
         else:
-            return f"{self.cost_cents} cents"
+            return f"{cost_cents} cents"
 
     def get_duration_formatted(self) -> str:
         """Format duration in human-readable format."""
@@ -272,13 +275,14 @@ class UsageLogModel(BaseModel):
         """Calculate cost per minute."""
         if self.duration_minutes <= 0:
             return None
-        return self.cost_cents / self.duration_minutes
+        cost_cents = getattr(self, "cost_cents", 0)
+        return cost_cents / self.duration_minutes
 
     def get_processing_metrics(self) -> dict:
         """Get comprehensive processing metrics."""
         metrics = {
             "duration_minutes": self.duration_minutes,
-            "cost_cents": self.cost_cents,
+            "cost_cents": getattr(self, "cost_cents", 0),
             "cost_formatted": self.get_cost_formatted(),
             "processing_time_seconds": self.processing_time_seconds,
             "confidence_score": self.confidence_score,
@@ -303,46 +307,50 @@ class UsageLogModel(BaseModel):
         character_count: Optional[int] = None,
     ) -> None:
         """Update processing performance metrics."""
-        self.processing_time_seconds = processing_time_seconds
-        if confidence_score is not None:
-            self.confidence_score = confidence_score
-        if word_count is not None:
-            self.word_count = word_count
-        if character_count is not None:
-            self.character_count = character_count
+        # Future: Update when columns are added to schema
+        # setattr(self, "processing_time_seconds", processing_time_seconds)
+        # if confidence_score is not None:
+        #     setattr(self, "confidence_score", confidence_score)
+        # if word_count is not None:
+        #     setattr(self, "word_count", word_count)
+        # if character_count is not None:
+        #     setattr(self, "character_count", character_count)
         self.updated_at = datetime.now(UTC)
 
     def mark_error(self, error_message: str) -> None:
         """Mark usage log with error."""
-        self.error_occurred = True
-        self.error_message = error_message
+        # Future: self.error_occurred = True
+        # Future: self.error_message = error_message
         self.updated_at = datetime.now(UTC)
 
     def clear_error(self) -> None:
         """Clear error status."""
-        self.error_occurred = False
-        self.error_message = None
+        # Future: self.error_occurred = False
+        # Future: self.error_message = None
         self.updated_at = datetime.now(UTC)
 
     def add_metadata(self, key: str, value: any) -> None:
         """Add metadata entry."""
-        if self.usage_metadata is None:
-            self.usage_metadata = {}
-
-        self.usage_metadata[key] = value
+        # Future: Use usage_metadata column when available
+        # if self.usage_metadata is None:
+        #     self.usage_metadata = {}
+        # self.usage_metadata[key] = value
         self.updated_at = datetime.now(UTC)
 
     def sync_legacy_fields(self) -> None:
         """Sync data to legacy fields for backward compatibility."""
-        # Convert cost to USD (assuming 30:1 TWD to USD ratio)
-        if self.currency == "TWD":
-            self.cost_usd = self.cost_cents / 100 / 30  # Rough conversion
-        else:
-            self.cost_usd = self.cost_cents / 100
+        cost_cents = getattr(self, "cost_cents", 0)
+        currency = getattr(self, "currency", "TWD")
 
-        # Sync processing duration
-        self.processing_duration_seconds = self.processing_time_seconds
-        self.session_duration_minutes = self.duration_minutes
+        # Convert cost to USD (assuming 30:1 TWD to USD ratio)
+        if currency == "TWD":
+            self.cost_usd = cost_cents / 100 / 30  # Rough conversion
+        else:
+            self.cost_usd = cost_cents / 100
+
+        # Future: Sync processing duration when columns exist
+        # self.processing_duration_seconds = getattr(self, "processing_time_seconds", None)
+        # self.session_duration_minutes = self.duration_minutes
 
     def get_legacy_transcription_type(self) -> str:
         """Get transcription type in legacy string format."""
