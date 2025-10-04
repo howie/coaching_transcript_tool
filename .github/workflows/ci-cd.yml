@@ -62,6 +62,9 @@ jobs:
     - name: Install Python dependencies
       run: make dev-setup
 
+    - name: Create logs directory
+      run: mkdir -p logs
+
     - name: Run Python linting
       continue-on-error: true  # Allow linting to fail temporarily
       run: make lint
@@ -139,6 +142,9 @@ jobs:
 
     - name: Install dependencies
       run: make dev-setup
+
+    - name: Create logs directory
+      run: mkdir -p logs
 
     - name: Run unit tests
       run: make test-unit
@@ -259,6 +265,9 @@ jobs:
 
     - name: Install dependencies
       run: make dev-setup
+
+    - name: Create logs and coverage directories
+      run: mkdir -p logs htmlcov
 
     - name: Run coverage analysis
       env:

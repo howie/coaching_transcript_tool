@@ -220,7 +220,7 @@ docker-run: docker-run-cli
 
 # Run standalone tests (unit + database integration tests that don't need API server)
 test: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running standalone tests (unit + database integration)..."
 	@echo "Test logs will be saved to logs/test.log (with colors preserved)"
 	@echo ""
@@ -234,14 +234,14 @@ test: dev-setup
 
 # Run unit tests only (fastest)
 test-unit: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running unit tests only..."
 	@echo "🧪 Fast, isolated unit tests"
 	uv run pytest tests/unit/ -v --color=yes 2>&1 | tee logs/test-unit.log
 
 # Run database integration tests only
 test-db: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running database integration tests..."
 	@echo "🗄️  Tests using SQLite in-memory database"
 	uv run pytest tests/integration/database/ \
@@ -250,13 +250,13 @@ test-db: dev-setup
 
 # Run server-dependent tests (requires API server to be running)
 test-server: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running server-dependent tests..."
 	@echo "⚠️  These tests require the API server to be running at localhost:8000"
 	@echo "   Start server with: make run-api (in another terminal)"
 	@echo ""
 	@echo "🌐 API Integration Tests"
-	@echo "🔗 ECPay Integration Tests"  
+	@echo "🔗 ECPay Integration Tests"
 	@echo "🎭 E2E Tests"
 	@echo "🖥️  Frontend Tests"
 	uv run pytest tests/integration/api/ \
@@ -270,7 +270,7 @@ test-server: dev-setup
 
 # Run payment system tests (requires API server and authentication)
 test-payment: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running payment system tests..."
 	@echo "⚠️  These tests require API server and authentication setup"
 	@echo "   See: tests/AUTHENTICATION_SETUP.md for setup instructions"
@@ -279,14 +279,15 @@ test-payment: dev-setup
 
 # Run all tests (standalone + server-dependent)
 test-all: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running all tests (standalone + server-dependent)..."
 	@echo "⚠️  Server-dependent tests will fail if API server is not running"
 	uv run pytest tests/ -v --color=yes 2>&1 | tee logs/test-all.log
 
 # Run standalone tests with coverage report
 coverage: dev-setup
-	@mkdir -p logs htmlcov
+	@test -d logs || mkdir -p logs
+	@test -d htmlcov || mkdir -p htmlcov
 	@echo "Running standalone tests with coverage analysis..."
 	@echo "============================================"
 	@echo "Coverage report will be saved to:"
@@ -312,7 +313,8 @@ coverage: dev-setup
 
 # Run all tests with coverage report (requires API server)
 coverage-all: dev-setup
-	@mkdir -p logs htmlcov
+	@test -d logs || mkdir -p logs
+	@test -d htmlcov || mkdir -p htmlcov
 	@echo "Running all tests with coverage analysis..."
 	@echo "⚠️  Server-dependent tests require API server at localhost:8000"
 	@echo "============================================"
@@ -339,7 +341,7 @@ dev-setup:
 
 # Run linting and formatting with Ruff
 lint: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running Ruff linting and formatting..."
 	@echo "Lint logs will be saved to logs/lint.log"
 	@echo ""
@@ -354,28 +356,28 @@ lint: dev-setup
 
 # Run architecture compliance checks
 check-architecture: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running Clean Architecture compliance checks..."
 	@echo "Architecture check logs will be saved to logs/architecture-check.log"
 	$(PYTHON) scripts/check_architecture.py 2>&1 | tee logs/architecture-check.log
 
 # Run enum conversion tests
 test-enum-conversions: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running enum conversion tests..."
 	@echo "📝 Testing domain ↔ database enum conversions"
 	uv run pytest tests/unit/infrastructure/test_enum_conversions.py -v --color=yes 2>&1 | tee logs/test-enum-conversions.log
 
 # Run repository layer tests
 test-repository-layers: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running repository layer conversion tests..."
 	@echo "📝 Testing repository _to_domain() and _from_domain() methods"
 	uv run pytest tests/integration/repositories/test_repository_conversions.py -v --color=yes 2>&1 | tee logs/test-repository-layers.log
 
 # Run API parameter validation tests
 test-api-parameters: dev-setup
-	@mkdir -p logs
+	@test -d logs || mkdir -p logs
 	@echo "Running API endpoint parameter validation tests..."
 	@echo "📝 Testing dependency injection and response function parameters"
 	uv run pytest tests/api/test_dependency_injection.py -v --color=yes 2>&1 | tee logs/test-api-parameters.log
