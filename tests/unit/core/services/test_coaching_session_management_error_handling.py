@@ -12,7 +12,10 @@ import pytest
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 from coaching_assistant.core.models.client import Client
-from coaching_assistant.core.models.coaching_session import CoachingSession, SessionSource
+from coaching_assistant.core.models.coaching_session import (
+    CoachingSession,
+    SessionSource,
+)
 from coaching_assistant.core.models.user import User, UserPlan
 from coaching_assistant.core.services.coaching_session_management_use_case import (
     CoachingSessionCreationUseCase,
@@ -46,9 +49,7 @@ class TestCoachingSessionRetrievalErrorHandling:
             transcription_session_repo=mock_repos["transcription_session_repo"],
         )
 
-    def test_get_session_by_id_returns_none_when_not_found(
-        self, use_case, mock_repos
-    ):
+    def test_get_session_by_id_returns_none_when_not_found(self, use_case, mock_repos):
         """Test that None is returned when session not found."""
         # Arrange
         session_id = uuid4()
@@ -69,8 +70,10 @@ class TestCoachingSessionRetrievalErrorHandling:
         # Arrange
         session_id = uuid4()
         coach_id = uuid4()
-        mock_repos["session_repo"].get_with_ownership_check.side_effect = (
-            OperationalError("Database connection failed", None, None)
+        mock_repos[
+            "session_repo"
+        ].get_with_ownership_check.side_effect = OperationalError(
+            "Database connection failed", None, None
         )
 
         # Act & Assert
@@ -114,8 +117,10 @@ class TestCoachingSessionRetrievalErrorHandling:
         coach_id = uuid4()
         mock_coach = Mock(spec=User)
         mock_repos["user_repo"].get_by_id.return_value = mock_coach
-        mock_repos["session_repo"].get_paginated_with_filters.side_effect = (
-            OperationalError("Query timeout", None, None)
+        mock_repos[
+            "session_repo"
+        ].get_paginated_with_filters.side_effect = OperationalError(
+            "Query timeout", None, None
         )
 
         # Act & Assert
@@ -154,9 +159,7 @@ class TestCoachingSessionRetrievalErrorHandling:
         # Assert - Use case passes through to repository
         assert mock_repos["session_repo"].get_paginated_with_filters.called
 
-    def test_list_sessions_calculates_total_pages_correctly(
-        self, use_case, mock_repos
-    ):
+    def test_list_sessions_calculates_total_pages_correctly(self, use_case, mock_repos):
         """Test correct calculation of total pages."""
         # Arrange
         coach_id = uuid4()
@@ -649,7 +652,9 @@ class TestCoachingSessionUpdateErrorHandling:
 
         # Act
         use_case.update_session(
-            mock_session.id, mock_session.user_id, duration_min=90  # Only update duration
+            mock_session.id,
+            mock_session.user_id,
+            duration_min=90,  # Only update duration
         )
 
         # Assert
@@ -657,9 +662,7 @@ class TestCoachingSessionUpdateErrorHandling:
         assert mock_session.session_date == original_date
         assert mock_session.client_id == original_client_id
 
-    def test_update_session_updates_timestamp(
-        self, use_case, mock_repos, mock_session
-    ):
+    def test_update_session_updates_timestamp(self, use_case, mock_repos, mock_session):
         """Test that updated_at timestamp is refreshed."""
         # Arrange
         original_updated_at = mock_session.updated_at
@@ -667,9 +670,7 @@ class TestCoachingSessionUpdateErrorHandling:
         mock_repos["session_repo"].save.return_value = Mock(spec=CoachingSession)
 
         # Act
-        use_case.update_session(
-            mock_session.id, mock_session.user_id, duration_min=90
-        )
+        use_case.update_session(mock_session.id, mock_session.user_id, duration_min=90)
 
         # Assert
         assert mock_session.updated_at > original_updated_at
@@ -728,15 +729,15 @@ class TestCoachingSessionDeletionErrorHandling:
 
         assert "Coaching session not found" in str(exc_info.value)
 
-    def test_delete_session_handles_database_error_on_get(
-        self, use_case, mock_repos
-    ):
+    def test_delete_session_handles_database_error_on_get(self, use_case, mock_repos):
         """Test handling of database errors when fetching session."""
         # Arrange
         session_id = uuid4()
         coach_id = uuid4()
-        mock_repos["session_repo"].get_with_ownership_check.side_effect = (
-            OperationalError("Database error", None, None)
+        mock_repos[
+            "session_repo"
+        ].get_with_ownership_check.side_effect = OperationalError(
+            "Database error", None, None
         )
 
         # Act & Assert

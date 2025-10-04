@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -41,8 +41,8 @@ class AuthorizationResponse(BaseModel):
 
 
 class CurrentSubscriptionResponse(BaseModel):
-    subscription: Dict[str, Any] = None
-    payment_method: Dict[str, Any] = None
+    subscription: Optional[Dict[str, Any]] = None
+    payment_method: Optional[Dict[str, Any]] = None
     status: str = "no_subscription"
 
 

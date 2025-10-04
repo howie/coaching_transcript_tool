@@ -6,10 +6,12 @@ that prevent proper testing. See coverage-week1-day1-progress.md for details.
 These tests focus on the working PlanLimits class edge cases.
 """
 
+import pytest
+
 from coaching_assistant.core.models.user import UserPlan
 from coaching_assistant.core.services.usage_tracking_use_case import PlanLimits
 
-import pytest
+
 class TestPlanLimitsEdgeCases:
     """Test edge cases in PlanLimits helper class."""
 

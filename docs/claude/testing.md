@@ -27,6 +27,7 @@ tests/
 - **Use fixtures** for common test data setup
 - **Include performance tests** for critical paths
 - **Test error conditions** and recovery scenarios
+- **Include integration tests for Pydantic response validation** (see Testing Gaps section below)
 
 ## Running Tests
 
@@ -232,6 +233,113 @@ Tests run automatically on:
 3. **Fast Feedback**: Unit tests should complete in < 100ms
 4. **Deterministic**: Tests should produce same results every run
 5. **Documentation**: Complex tests should include comments explaining the scenario
+
+## Testing Gaps: When Mocks Hide Bugs
+
+### Critical Lesson: Pydantic v2 Validation Bug (2025-10-04)
+
+**Production Issue**: `/api/v1/subscriptions/current` returned 500 errors for users without subscriptions.
+
+**Root Cause**: Pydantic schema used `Dict[str, Any] = None` instead of `Optional[Dict[str, Any]] = None`. In Pydantic v2, this causes validation errors when None values are returned.
+
+**Why Tests Missed It**:
+
+1. **Mocked Service Layer**: Unit tests mocked `get_current_subscription()` to return None
+2. **Bypassed Pydantic**: Mocks don't instantiate Pydantic models, so validation never ran
+3. **Missing Integration Test**: No test validated full request→service→Pydantic→response cycle
+
+### Prevention Strategy
+
+#### 1. Integration Tests for Response Validation
+
+**REQUIRED**: Every endpoint with a Pydantic `response_model` must have an integration test that:
+
+- Uses real service layer (not mocked use case)
+- Tests "empty state" scenarios (no data, None values)
+- Validates actual Pydantic model instantiation
+- Ensures response serializes to JSON correctly
+
+**Example** (see `tests/integration/api/test_subscription_endpoints_pydantic.py`):
+
+```python
+def test_get_current_subscription_no_subscription_validates_response(db_session):
+    """Test Pydantic validation with real None values from service layer."""
+
+    # Create user WITHOUT subscription (real database state)
+    user_repo = UserRepository(db_session)
+    subscription_repo = SubscriptionRepository(db_session)
+
+    # Use REAL service layer, not mocks
+    use_case = SubscriptionRetrievalUseCase(
+        user_repo=user_repo,
+        subscription_repo=subscription_repo
+    )
+
+    # Get real service response (returns None values)
+    result = use_case.get_current_subscription(test_user.id)
+
+    # CRITICAL: Instantiate Pydantic model with real response
+    # This catches type validation errors that mocks hide
+    response = CurrentSubscriptionResponse(
+        subscription=result["subscription"],  # None value
+        payment_method=result["payment_method"],  # None value
+        status=result["status"]
+    )
+
+    assert response.subscription is None  # Would fail with wrong schema
+```
+
+#### 2. Schema Validation Unit Tests
+
+**REQUIRED**: Every Pydantic response model must have unit tests for:
+
+- All fields accepting None (if Optional)
+- Default values
+- JSON serialization with None values
+- Type validation errors
+
+**Example** (see `tests/unit/api/test_subscription_schemas.py`):
+
+```python
+def test_current_subscription_response_accepts_all_none_values():
+    """Verify schema accepts None for all optional fields."""
+    response = CurrentSubscriptionResponse(
+        subscription=None,  # Would raise ValidationError with wrong type
+        payment_method=None,
+        status="no_subscription"
+    )
+    assert response.subscription is None
+```
+
+#### 3. When to Use Mocks vs Real Dependencies
+
+| Test Type | Service Layer | Database | Pydantic | Purpose |
+|-----------|--------------|----------|----------|---------|
+| **Unit Test (Schema)** | N/A | N/A | Real | Validate schema accepts expected values |
+| **Unit Test (API Endpoint)** | Mock | Mock | Bypass | Test endpoint logic, error handling |
+| **Integration Test** | Real | Real | Real | Validate full request→response cycle |
+| **E2E Test** | Real | Real | Real | Validate user workflows |
+
+**Rule of Thumb**:
+- ✅ Mock for testing business logic, error handling, edge cases
+- ❌ Never mock when testing Pydantic validation
+- ✅ Always have at least ONE integration test per endpoint testing "empty state"
+
+#### 4. Pre-Deployment Checklist
+
+Before deploying Pydantic schema changes:
+
+- [ ] Unit tests validate schema with None values
+- [ ] Integration test validates real service response
+- [ ] Local testing with empty database state
+- [ ] Production database seeded with required data
+- [ ] Verify all `= None` fields use `Optional[Type]` in Pydantic v2
+
+### Related Documentation
+
+- **Bug Report**: `@docs/issues/production-no-plan.md`
+- **Integration Tests**: `@tests/integration/api/test_subscription_endpoints_pydantic.py`
+- **Schema Tests**: `@tests/unit/api/test_subscription_schemas.py`
 
 ## Frontend Testing Strategy
 

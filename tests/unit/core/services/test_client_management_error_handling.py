@@ -41,9 +41,7 @@ class TestClientRetrievalErrorHandling:
             user_repo=mock_repos["user_repo"],
         )
 
-    def test_get_client_by_id_returns_none_when_not_found(
-        self, use_case, mock_repos
-    ):
+    def test_get_client_by_id_returns_none_when_not_found(self, use_case, mock_repos):
         """Test that None is returned when client not found."""
         # Arrange
         client_id = uuid4()
@@ -55,26 +53,26 @@ class TestClientRetrievalErrorHandling:
 
         # Assert
         assert result is None
-        mock_repos["client_repo"].get_client_with_ownership_check.assert_called_once_with(
-            client_id, coach_id
-        )
+        mock_repos[
+            "client_repo"
+        ].get_client_with_ownership_check.assert_called_once_with(client_id, coach_id)
 
     def test_get_client_by_id_handles_database_error(self, use_case, mock_repos):
         """Test handling of database errors."""
         # Arrange
         client_id = uuid4()
         coach_id = uuid4()
-        mock_repos["client_repo"].get_client_with_ownership_check.side_effect = (
-            OperationalError("Database connection failed", None, None)
+        mock_repos[
+            "client_repo"
+        ].get_client_with_ownership_check.side_effect = OperationalError(
+            "Database connection failed", None, None
         )
 
         # Act & Assert
         with pytest.raises(OperationalError):
             use_case.get_client_by_id(client_id, coach_id)
 
-    def test_list_clients_raises_error_when_coach_not_found(
-        self, use_case, mock_repos
-    ):
+    def test_list_clients_raises_error_when_coach_not_found(self, use_case, mock_repos):
         """Test that ValueError is raised when coach doesn't exist."""
         # Arrange
         coach_id = uuid4()
@@ -109,8 +107,8 @@ class TestClientRetrievalErrorHandling:
         coach_id = uuid4()
         mock_coach = Mock(spec=User)
         mock_repos["user_repo"].get_by_id.return_value = mock_coach
-        mock_repos["client_repo"].get_clients_paginated.side_effect = (
-            OperationalError("Query timeout", None, None)
+        mock_repos["client_repo"].get_clients_paginated.side_effect = OperationalError(
+            "Query timeout", None, None
         )
 
         # Act & Assert
@@ -133,9 +131,7 @@ class TestClientRetrievalErrorHandling:
         assert total == 0
         assert total_pages == 0
 
-    def test_list_clients_calculates_total_pages_correctly(
-        self, use_case, mock_repos
-    ):
+    def test_list_clients_calculates_total_pages_correctly(self, use_case, mock_repos):
         """Test correct calculation of total pages."""
         # Arrange
         coach_id = uuid4()
@@ -167,7 +163,9 @@ class TestClientRetrievalErrorHandling:
         mock_repos["client_repo"].get_clients_paginated.return_value = ([], 0)
 
         # Act
-        use_case.list_clients_paginated(coach_id, query=search_query, page=2, page_size=15)
+        use_case.list_clients_paginated(
+            coach_id, query=search_query, page=2, page_size=15
+        )
 
         # Assert
         mock_repos["client_repo"].get_clients_paginated.assert_called_once_with(
@@ -242,9 +240,7 @@ class TestClientCreationErrorHandling:
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
             use_case.create_client(
-                coach_id=mock_coach.id,
-                name="John Doe",
-                email="existing@example.com"
+                coach_id=mock_coach.id, name="John Doe", email="existing@example.com"
             )
 
         assert "email already exists" in str(exc_info.value)
@@ -283,9 +279,7 @@ class TestClientCreationErrorHandling:
         assert save_call_args.name == "John Doe"
         assert save_call_args.user_id == mock_coach.id
 
-    def test_create_client_with_all_fields(
-        self, use_case, mock_repos, mock_coach
-    ):
+    def test_create_client_with_all_fields(self, use_case, mock_repos, mock_coach):
         """Test creating client with all optional fields."""
         # Arrange
         mock_repos["user_repo"].get_by_id.return_value = mock_coach
@@ -303,7 +297,7 @@ class TestClientCreationErrorHandling:
             source="referral",
             client_type="paid",
             issue_types="anxiety,stress",
-            status="in_progress"
+            status="in_progress",
         )
 
         # Assert
@@ -381,14 +375,14 @@ class TestClientUpdateErrorHandling:
         """Test that ValueError is raised when new email already exists."""
         # Arrange
         new_email = "newemail@example.com"
-        mock_repos["client_repo"].get_client_with_ownership_check.return_value = mock_client
+        mock_repos[
+            "client_repo"
+        ].get_client_with_ownership_check.return_value = mock_client
         mock_repos["client_repo"].check_email_exists_for_coach.return_value = True
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            use_case.update_client(
-                mock_client.id, mock_client.user_id, email=new_email
-            )
+            use_case.update_client(mock_client.id, mock_client.user_id, email=new_email)
 
         assert "email already exists" in str(exc_info.value)
 
@@ -397,16 +391,16 @@ class TestClientUpdateErrorHandling:
     ):
         """Test handling of database errors when saving."""
         # Arrange
-        mock_repos["client_repo"].get_client_with_ownership_check.return_value = mock_client
+        mock_repos[
+            "client_repo"
+        ].get_client_with_ownership_check.return_value = mock_client
         mock_repos["client_repo"].save.side_effect = OperationalError(
             "Database error", None, None
         )
 
         # Act & Assert
         with pytest.raises(OperationalError):
-            use_case.update_client(
-                mock_client.id, mock_client.user_id, name="New Name"
-            )
+            use_case.update_client(mock_client.id, mock_client.user_id, name="New Name")
 
     def test_update_client_only_updates_provided_fields(
         self, use_case, mock_repos, mock_client
@@ -416,13 +410,17 @@ class TestClientUpdateErrorHandling:
         original_email = mock_client.email
         original_phone = mock_client.phone
 
-        mock_repos["client_repo"].get_client_with_ownership_check.return_value = mock_client
+        mock_repos[
+            "client_repo"
+        ].get_client_with_ownership_check.return_value = mock_client
         mock_updated_client = Mock(spec=Client)
         mock_repos["client_repo"].save.return_value = mock_updated_client
 
         # Act
         use_case.update_client(
-            mock_client.id, mock_client.user_id, name="New Name"  # Only update name
+            mock_client.id,
+            mock_client.user_id,
+            name="New Name",  # Only update name
         )
 
         # Assert
@@ -430,19 +428,17 @@ class TestClientUpdateErrorHandling:
         assert mock_client.email == original_email
         assert mock_client.phone == original_phone
 
-    def test_update_client_updates_timestamp(
-        self, use_case, mock_repos, mock_client
-    ):
+    def test_update_client_updates_timestamp(self, use_case, mock_repos, mock_client):
         """Test that updated_at timestamp is refreshed."""
         # Arrange
         original_updated_at = mock_client.updated_at
-        mock_repos["client_repo"].get_client_with_ownership_check.return_value = mock_client
+        mock_repos[
+            "client_repo"
+        ].get_client_with_ownership_check.return_value = mock_client
         mock_repos["client_repo"].save.return_value = Mock(spec=Client)
 
         # Act
-        use_case.update_client(
-            mock_client.id, mock_client.user_id, name="New Name"
-        )
+        use_case.update_client(mock_client.id, mock_client.user_id, name="New Name")
 
         # Assert
         assert mock_client.updated_at > original_updated_at
@@ -452,7 +448,9 @@ class TestClientUpdateErrorHandling:
     ):
         """Test that email duplicate check is skipped if email unchanged."""
         # Arrange
-        mock_repos["client_repo"].get_client_with_ownership_check.return_value = mock_client
+        mock_repos[
+            "client_repo"
+        ].get_client_with_ownership_check.return_value = mock_client
         mock_repos["client_repo"].save.return_value = Mock(spec=Client)
 
         # Act
@@ -501,30 +499,30 @@ class TestClientDeletionErrorHandling:
 
         assert "Client not found" in str(exc_info.value)
 
-    def test_delete_client_handles_database_error_on_get(
-        self, use_case, mock_repos
-    ):
+    def test_delete_client_handles_database_error_on_get(self, use_case, mock_repos):
         """Test handling of database errors when fetching client."""
         # Arrange
         client_id = uuid4()
         coach_id = uuid4()
-        mock_repos["client_repo"].get_client_with_ownership_check.side_effect = (
-            OperationalError("Database error", None, None)
+        mock_repos[
+            "client_repo"
+        ].get_client_with_ownership_check.side_effect = OperationalError(
+            "Database error", None, None
         )
 
         # Act & Assert
         with pytest.raises(OperationalError):
             use_case.delete_client(client_id, coach_id)
 
-    def test_delete_client_handles_database_error_on_delete(
-        self, use_case, mock_repos
-    ):
+    def test_delete_client_handles_database_error_on_delete(self, use_case, mock_repos):
         """Test handling of database errors when deleting."""
         # Arrange
         client_id = uuid4()
         coach_id = uuid4()
         mock_client = Mock(spec=Client)
-        mock_repos["client_repo"].get_client_with_ownership_check.return_value = mock_client
+        mock_repos[
+            "client_repo"
+        ].get_client_with_ownership_check.return_value = mock_client
         mock_repos["client_repo"].delete.side_effect = OperationalError(
             "Delete failed", None, None
         )
@@ -539,7 +537,9 @@ class TestClientDeletionErrorHandling:
         client_id = uuid4()
         coach_id = uuid4()
         mock_client = Mock(spec=Client)
-        mock_repos["client_repo"].get_client_with_ownership_check.return_value = mock_client
+        mock_repos[
+            "client_repo"
+        ].get_client_with_ownership_check.return_value = mock_client
         mock_repos["client_repo"].delete.return_value = True
 
         # Act

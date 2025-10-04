@@ -4,18 +4,24 @@ This test suite focuses on error paths, edge cases, and validation scenarios
 for transcript parsing and upload functionality.
 """
 
-import pytest
 from unittest.mock import Mock
 from uuid import uuid4
+
+import pytest
 from sqlalchemy.exc import IntegrityError, OperationalError
 
+from coaching_assistant.core.models.coaching_session import CoachingSession
+from coaching_assistant.core.models.session import (
+    Session as TranscriptionSession,
+)
+from coaching_assistant.core.models.session import (
+    SessionStatus,
+)
 from coaching_assistant.core.services.transcript_upload_use_case import (
     TranscriptParsingService,
-    TranscriptUploadUseCase,
     TranscriptUploadResult,
+    TranscriptUploadUseCase,
 )
-from coaching_assistant.core.models.coaching_session import CoachingSession
-from coaching_assistant.core.models.session import Session as TranscriptionSession, SessionStatus
 
 
 class TestTranscriptParsingServiceErrorHandling:
@@ -146,6 +152,7 @@ class TestTranscriptUploadUseCaseErrorHandling:
     @pytest.fixture
     def mock_coaching_session(self):
         from datetime import date
+
         return CoachingSession(
             id=uuid4(),
             user_id=uuid4(),
@@ -228,9 +235,7 @@ class TestTranscriptUploadUseCaseErrorHandling:
 
         assert "No valid segments found" in str(exc_info.value)
 
-    def test_upload_handles_database_error_on_session_fetch(
-        self, use_case, mock_repos
-    ):
+    def test_upload_handles_database_error_on_session_fetch(self, use_case, mock_repos):
         """Test upload handles database errors when fetching coaching session."""
         mock_repos[
             "coaching_session_repo"
@@ -428,7 +433,7 @@ Speaker 1: Test content
 
         # Generate VTT with 100 segments
         segments = [
-            f"00:00:{i:02d}.000 --> 00:00:{i+1:02d}.000\nSpeaker 1: Segment {i}"
+            f"00:00:{i:02d}.000 --> 00:00:{i + 1:02d}.000\nSpeaker 1: Segment {i}"
             for i in range(100)
         ]
         vtt_content = "WEBVTT\n\n" + "\n\n".join(segments)
