@@ -1,11 +1,21 @@
 # Test Coverage Improvement Plan - 2025-10-04
 
-## Current Status (After Phase 5)
+## Current Status (Updated 2025-10-04)
 
+### Initial Status (After Phase 5)
 - **Test Results**: 610 passed, 0 failed, 0 errors
 - **Warning Count**: 905 warnings
 - **Code Coverage**: 46% (target: 85%)
 - **Test Execution Time**: 5-6 seconds
+
+### After Day 1 (2025-10-04) ✅
+- **Test Results**: 670 passed, 0 failed, 0 errors (+64 tests)
+- **Code Coverage**: 47.04% (target: 85%)
+- **Test Execution Time**: ~7.3 seconds
+- **Modules Completed**:
+  - coaching_session_management_use_case.py: 20% → 68% ✅
+  - client_management_use_case.py: 20% → 62% ✅
+- **Critical Issues Found**: 3 architectural bugs in usage_tracking_use_case.py
 
 ## Warning Analysis
 
@@ -192,63 +202,121 @@
 
 ## Implementation Roadmap
 
-### Week 1: Payment & Billing Critical Path
-- **Days 1-3**: `usage_tracking_use_case.py` error handling
-  - Database failure mocking
-  - Usage limit violation tests
-  - Cost calculation edge cases
-  - Target: 18% → 60% (+42%)
+### Week 1: Core Use Case Error Handling (REVISED)
 
-- **Days 4-5**: `ecpay_service.py` error handling
-  - Payment gateway timeout simulation
-  - Webhook validation tests
-  - Network failure scenarios
-  - Target: 40% → 70% (+30%)
+#### Day 1 (2025-10-04) ✅ COMPLETED
+- ✅ **coaching_session_management_use_case.py**: 20% → 68% (+48%)
+  - 35 error handling tests created
+  - All 5 use case classes covered
+  - Database errors, validation, edge cases
 
-**Deliverable**: ~90 new error handling tests, +15% coverage
+- ✅ **client_management_use_case.py**: 20% → 62% (+42%)
+  - 29 error handling tests created
+  - All 5 use case classes covered
+  - Duplicate detection, validation, authorization
 
-### Week 2: Data Integrity Critical Path
-- **Days 1-2**: `coaching_session_management_use_case.py`
-  - Session lifecycle error tests
-  - State transition validation
-  - Target: 20% → 60% (+40%)
+- ❌ **usage_tracking_use_case.py**: BLOCKED
+  - Architectural issues discovered (domain model mismatch)
+  - Requires code fixes before testing viable
+  - See: coverage-week1-day1-progress.md
 
-- **Days 3-4**: `transcript_upload_use_case.py`
-  - File upload error scenarios
-  - Storage failure handling
-  - Target: 20% → 60% (+40%)
+**Day 1 Results**: +64 tests, 46.36% → 47.04% coverage (+0.68%)
 
-- **Day 5**: `client_management_use_case.py`
-  - Duplicate detection tests
-  - Validation error handling
-  - Target: 20% → 60% (+40%)
+#### Day 2 (2025-10-05) - IN PROGRESS
+- **session_management_use_case.py**: 73% → 85% (+12%)
+  - Currently at 73%, identify remaining gaps
+  - Add edge case tests (~15 tests)
+  - Target: 85%+ coverage
 
-**Deliverable**: ~80 new tests, +12% coverage
+- **transcript_upload_use_case.py**: 20% → 50% (+30%)
+  - Verify module testability first
+  - Error handling test suite (~25 tests)
+  - File upload errors, storage failures
 
-### Week 3: Repository Layer & Polish
-- **Days 1-2**: Repository error handling
-  - Database constraint violation tests
-  - Concurrent update scenarios
-  - Target: +8% coverage
+- **billing_analytics_use_case.py**: 34% → 55% (+21%)
+  - Verify dependencies testable
+  - Error handling tests (~20 tests)
+  - Calculation errors, missing data
 
-- **Days 3-4**: Happy path coverage
-  - Normal operation flows
-  - Integration tests
-  - Target: +10% coverage
+**Day 2 Target**: +60 tests, 47.04% → 48.5% coverage (+1.5%)
 
-- **Day 5**: Review and documentation
-  - Update test documentation
-  - Performance benchmarking
-  - CI/CD optimization
+#### Days 3-4: Additional Core Modules
+- **plan_management_use_case.py**: 29% → 60% (+31%)
+- **dashboard_summary_use_case.py**: 35% → 60% (+25%)
+- **speaker_role_management_use_case.py**: 92% → 95% (+3%, polish)
 
-**Deliverable**: ~100 new tests, +18% coverage
+**Days 3-4 Target**: +50 tests, 48.5% → 50% coverage (+1.5%)
 
-## Success Metrics
+#### Day 5: Review & Polish
+- Integration test scenarios
+- Edge case coverage for completed modules
+- Documentation updates
+- Architecture fix planning for usage_tracking
+
+**Week 1 Deliverable**: ~175 new tests, 46% → 50% coverage (+4%)
+
+### Week 2: Repository & Service Layer (REVISED)
+
+#### Focus: Repository error handling and service integration
+
+- **Days 1-2**: Repository Layer Error Handling
+  - `coaching_session_repository.py`: 41% → 70%
+  - `client_repository.py`: 20% → 60%
+  - `session_repository.py`: 25% → 60%
+  - Database constraint violations, concurrent updates
+  - Target: +40 tests, +2% coverage
+
+- **Days 3-4**: Service Layer Coverage
+  - `ecpay_service.py`: 40% → 70% (payment gateway errors)
+  - `plan_limits.py`: 58% → 80% (validation edge cases)
+  - `permissions.py`: 95% → 98% (polish)
+  - Target: +35 tests, +2% coverage
+
+- **Day 5**: Integration & Edge Cases
+  - Critical path integration tests
+  - Multi-module scenarios
+  - Edge case coverage
+  - Target: +25 tests, +1% coverage
+
+**Week 2 Deliverable**: ~100 new tests, 50% → 55% coverage (+5%)
+
+### Week 3: Advanced Coverage & Architecture Fixes (REVISED)
+
+#### Focus: Remaining modules and architectural improvements
+
+- **Days 1-2**: STT Provider Services
+  - `assemblyai_stt.py`: 68% → 85%
+  - `google_stt.py`: 9% → 40%
+  - `stt_factory.py`: 76% → 90%
+  - API error handling, timeout scenarios
+  - Target: +60 tests, +3% coverage
+
+- **Days 3-4**: Background Tasks & Analytics
+  - `transcription_tasks.py`: 12% → 50%
+  - `usage_analytics_service.py`: 89% → 95%
+  - `billing_analytics_service.py`: 66% → 80%
+  - Celery error handling, retry logic
+  - Target: +40 tests, +2% coverage
+
+- **Day 5**: Architecture Fixes & Review
+  - **Fix usage_tracking_use_case.py** architectural issues
+  - Align domain models with use cases
+  - Add missing repository methods
+  - Documentation and retrospective
+
+**Week 3 Deliverable**: ~100 new tests, 55% → 60% coverage (+5%)
+
+## Success Metrics (REVISED)
 
 ### Coverage Targets
-- **Week 1 End**: 46% → 61% (+15%)
-- **Week 2 End**: 61% → 73% (+12%)
-- **Week 3 End**: 73% → 85%+ (+12%+)
+- **Week 1 End**: 46% → 50% (+4%) - Focus on testable core modules
+- **Week 2 End**: 50% → 55% (+5%) - Repository and service layer
+- **Week 3 End**: 55% → 60%+ (+5%+) - Advanced coverage + architecture fixes
+
+**Note**: Original 85% target revised to 60% for 3-week period due to:
+- Discovery of architectural issues requiring code fixes
+- ~15% of codebase needs refactoring before testable
+- Focus on quality over quantity (error-first approach)
 
 ### Quality Metrics
 - **Test Reliability**: 100% pass rate maintained
