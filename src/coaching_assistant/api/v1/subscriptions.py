@@ -139,12 +139,12 @@ async def get_current_subscription(
         # Format for API response
         payment_method = subscription_data.get("payment_method")
         subscription_info = subscription_data.get("subscription")
-        status = subscription_data.get("status", "no_subscription")
+        subscription_status = subscription_data.get("status", "no_subscription")
 
         return CurrentSubscriptionResponse(
             subscription=subscription_info,
             payment_method=payment_method,
-            status=status,
+            status=subscription_status,
         )
 
     except DomainException as e:
