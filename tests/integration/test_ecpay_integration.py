@@ -91,10 +91,10 @@ class TestECPayIntegration:
             timestamp = int(time.time())
             merchant_member_id = f"USER{user_id[:8]}{timestamp}"
 
-            # ECPay MerchantMemberID limit is typically 30 characters
-            assert len(merchant_member_id) <= 30, (
+            # ECPay MerchantMemberID limit is 50 characters in our database schema
+            assert len(merchant_member_id) <= 50, (
                 f"MerchantMemberID '{merchant_member_id}' is {len(merchant_member_id)} "
-                f"characters, exceeds 30-character limit"
+                f"characters, exceeds 50-character limit"
             )
 
     def test_required_fields_present(self, ecpay_service):

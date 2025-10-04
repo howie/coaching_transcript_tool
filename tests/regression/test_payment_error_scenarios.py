@@ -221,8 +221,8 @@ class TestECPayCheckMacValueRegression:
 
         for user_id in test_user_ids:
             member_id = generate_merchant_member_id(user_id)
-            assert len(member_id) <= 30, (
-                f"MerchantMemberID too long: {len(member_id)} chars"
+            assert len(member_id) <= 50, (
+                f"MerchantMemberID too long: {len(member_id)} chars (limit: 50)"
             )
             # Should not contain problematic characters for ECPay
             assert not any(char in member_id for char in ["<", ">", '"', "'", "&"])
