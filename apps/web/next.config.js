@@ -49,11 +49,22 @@ const nextConfig = {
   async rewrites() {
     // Determine backend API URL based on environment
     // Supports multi-domain deployment (epic-new-domain)
+    const isDevelopment = process.env.NODE_ENV === 'development'
+
     const backendApiUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL ||
                           process.env.NEXT_PUBLIC_API_URL ||
-                          'https://api.doxa.com.tw'
+                          (isDevelopment
+                            ? 'http://localhost:8000'      // Dev default: local backend
+                            : 'https://api.doxa.com.tw')   // Prod default
 
     console.log(`🔗 Next.js API Proxy target: ${backendApiUrl}`)
+
+    // Warn if using production API in development
+    if (isDevelopment && backendApiUrl === 'https://api.doxa.com.tw') {
+      console.warn('⚠️  WARNING: Using production API in development!')
+      console.warn('   Set NEXT_PUBLIC_API_URL=http://localhost:8000 in .env.local')
+      console.warn('   See: apps/web/.env.local.example')
+    }
 
     return [
       // Main API proxy - handles all /api/v1/* requests
