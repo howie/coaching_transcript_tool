@@ -39,8 +39,18 @@ class SQLAlchemyCoachingSessionRepository(CoachingSessionRepoPort):
 
     def _to_domain(self, orm_session: CoachingSessionModel) -> DomainCoachingSession:
         """Convert ORM CoachingSession to domain CoachingSession model."""
+        from datetime import timezone
+
         if not orm_session:
             return None
+
+        # Helper to ensure timezone-aware datetimes (SQLite loses timezone info)
+        def ensure_utc(dt):
+            if dt is None:
+                return None
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
 
         # Convert database enum to domain enum value
         if isinstance(orm_session.source, DatabaseSessionSource):
@@ -65,11 +75,11 @@ class SQLAlchemyCoachingSessionRepository(CoachingSessionRepoPort):
             fee_currency=orm_session.fee_currency,
             fee_amount=orm_session.fee_amount,
             transcription_session_id=orm_session.transcription_session_id,
-            transcript_deleted_at=orm_session.transcript_deleted_at,
+            transcript_deleted_at=ensure_utc(orm_session.transcript_deleted_at),
             saved_speaking_stats=orm_session.saved_speaking_stats,
             notes=orm_session.notes,
-            created_at=orm_session.created_at,
-            updated_at=orm_session.updated_at,
+            created_at=ensure_utc(orm_session.created_at),
+            updated_at=ensure_utc(orm_session.updated_at),
         )
 
     def _create_orm_session(
@@ -225,7 +235,12 @@ class SQLAlchemyCoachingSessionRepository(CoachingSessionRepoPort):
                     orm_session.transcript_deleted_at = session.transcript_deleted_at
                     orm_session.saved_speaking_stats = session.saved_speaking_stats
                     orm_session.notes = session.notes
-                    orm_session.updated_at = session.updated_at
+                    # Auto-update timestamp if not provided
+                    from datetime import datetime, timezone
+
+                    orm_session.updated_at = session.updated_at or datetime.now(
+                        timezone.utc
+                    )
                 else:
                     # Session ID exists but not found in DB - create new
                     orm_session = self._create_orm_session(session)

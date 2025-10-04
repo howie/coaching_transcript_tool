@@ -334,7 +334,7 @@ dev-setup:
 	$(UV) sync --dev
 	$(UV) pip install -r apps/api-server/requirements.txt
 	$(UV) pip install -r apps/cli/requirements.txt
-	$(UV) pip install setuptools wheel build pytest
+	$(UV) pip install setuptools wheel build pytest pytest-cov pytest-asyncio
 	$(UV) pip install -e .
 
 # Run linting and formatting with Ruff

@@ -1,7 +1,7 @@
 """Role audit log model for tracking role changes."""
 
 from sqlalchemy import Column, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import INET, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from .base import BaseModel
@@ -27,8 +27,9 @@ class RoleAuditLog(BaseModel):
     new_role = Column(String(20), nullable=False)
     reason = Column(Text, nullable=True)
 
-    # Security tracking
-    ip_address = Column(INET, nullable=True)
+    # Security tracking - using String for SQLite compatibility
+    # PostgreSQL INET would be ideal but we need SQLite support for tests
+    ip_address = Column(String(45), nullable=True)  # IPv6 max length
 
     # Relationships
     user = relationship(

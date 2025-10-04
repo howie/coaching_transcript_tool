@@ -163,11 +163,10 @@ class Settings(BaseSettings):
     # Development defaults to localhost
     FRONTEND_URL: str = Field(
         default="http://localhost:3000",
-        description="Frontend URL for OAuth redirects and payment callbacks"
+        description="Frontend URL for OAuth redirects and payment callbacks",
     )
     API_BASE_URL: str = Field(
-        default="http://localhost:8000",
-        description="Backend API base URL"
+        default="http://localhost:8000", description="Backend API base URL"
     )
 
     @property
