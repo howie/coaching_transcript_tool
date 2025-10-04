@@ -7,7 +7,6 @@ Target coverage: 29% → 60%
 """
 
 from datetime import UTC, datetime
-from typing import Any, Dict, List, Optional
 from unittest.mock import Mock
 from uuid import UUID, uuid4
 
@@ -32,7 +31,6 @@ from src.coaching_assistant.core.services.plan_management_use_case import (
     PlanValidationUseCase,
 )
 from src.coaching_assistant.exceptions import DomainException
-
 
 # ============================================================================
 # Test Fixtures
@@ -461,7 +459,9 @@ class TestPlanValidationUseCase:
         mock_user_repo.get_by_id.return_value = free_user
         mock_plan_config_repo.get_by_plan_type.return_value = free_plan_config
         mock_session_repo.count_user_sessions.return_value = 5  # Under 10 limit
-        mock_session_repo.get_total_duration_minutes.return_value = 60  # Under 120 limit
+        mock_session_repo.get_total_duration_minutes.return_value = (
+            60  # Under 120 limit
+        )
         mock_usage_log_repo.get_by_user_id.return_value = []
 
         result = validation_use_case.validate_user_limits(user_id)

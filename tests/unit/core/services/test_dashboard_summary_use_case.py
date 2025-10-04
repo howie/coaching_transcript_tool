@@ -7,7 +7,6 @@ Target coverage: 35% → 60%
 """
 
 from datetime import datetime
-from typing import Dict
 from unittest.mock import Mock
 from uuid import UUID, uuid4
 
@@ -22,7 +21,6 @@ from src.coaching_assistant.core.services.dashboard_summary_use_case import (
     DashboardSummaryResponse,
     DashboardSummaryUseCase,
 )
-
 
 # ============================================================================
 # Test Fixtures
@@ -315,7 +313,7 @@ class TestDashboardSummaryUseCase:
         request = DashboardSummaryRequest(user_id=user_id, month="2025-01")
 
         # Act
-        response = dashboard_use_case.execute(request)
+        dashboard_use_case.execute(request)
 
         # Assert - verify January (month 1) was parsed correctly
         mock_coaching_session_repo.get_monthly_minutes_for_user.assert_called_once_with(
@@ -345,7 +343,7 @@ class TestDashboardSummaryUseCase:
         request = DashboardSummaryRequest(user_id=user_id, month="2025-12")
 
         # Act
-        response = dashboard_use_case.execute(request)
+        dashboard_use_case.execute(request)
 
         # Assert - verify December (month 12) was parsed correctly
         mock_coaching_session_repo.get_monthly_minutes_for_user.assert_called_once_with(
@@ -407,20 +405,17 @@ class TestDashboardSummaryUseCase:
         request = DashboardSummaryRequest(user_id=user_id, month="2025-03")
 
         # Act
-        response = dashboard_use_case.execute(request)
+        dashboard_use_case.execute(request)
 
         # Assert all repository methods were called exactly once
         assert mock_coaching_session_repo.get_total_minutes_for_user.call_count == 1
-        assert (
-            mock_coaching_session_repo.get_monthly_minutes_for_user.call_count == 1
-        )
+        assert mock_coaching_session_repo.get_monthly_minutes_for_user.call_count == 1
         assert mock_session_repo.get_completed_count_for_user.call_count == 1
         assert (
             mock_coaching_session_repo.get_monthly_revenue_by_currency.call_count == 1
         )
         assert (
-            mock_coaching_session_repo.get_unique_clients_count_for_user.call_count
-            == 1
+            mock_coaching_session_repo.get_unique_clients_count_for_user.call_count == 1
         )
 
     def test_execute_handles_empty_revenue_dict(
@@ -435,9 +430,7 @@ class TestDashboardSummaryUseCase:
         mock_coaching_session_repo.get_total_minutes_for_user.return_value = 300
         mock_coaching_session_repo.get_monthly_minutes_for_user.return_value = 0
         mock_session_repo.get_completed_count_for_user.return_value = 5
-        mock_coaching_session_repo.get_monthly_revenue_by_currency.return_value = (
-            {}
-        )  # No revenue this month
+        mock_coaching_session_repo.get_monthly_revenue_by_currency.return_value = {}  # No revenue this month
         mock_coaching_session_repo.get_unique_clients_count_for_user.return_value = 2
 
         request = DashboardSummaryRequest(user_id=user_id, month="2025-02")
@@ -469,7 +462,7 @@ class TestDashboardSummaryUseCase:
         request = DashboardSummaryRequest(user_id=user_id, month="2024-05")
 
         # Act
-        response = dashboard_use_case.execute(request)
+        dashboard_use_case.execute(request)
 
         # Assert - verify 2024 was parsed correctly
         mock_coaching_session_repo.get_monthly_minutes_for_user.assert_called_once_with(

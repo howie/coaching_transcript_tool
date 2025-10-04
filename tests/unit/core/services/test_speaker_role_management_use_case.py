@@ -2,6 +2,8 @@
 
 This module tests the pure business logic of speaker role assignment and retrieval
 use cases without any infrastructure dependencies (using mock repositories).
+
+Day 3 additions: Cover missing error paths for 92% → 95%+ coverage.
 """
 
 from datetime import UTC, datetime
